@@ -35,10 +35,13 @@ the epoch.
 
 ## Evidence
 
-- Known-planet benchmark run `20261009T171758Z-benchmark-known-b64d6e2-d508`, written under the data directory's
-  `runs/`. It is not yet published to `results/benchmarks/`; link it here once it is.
+- Known-planet benchmark run `20261009T171758Z-benchmark-known-b64d6e2-d508`, before this decision, written under the
+  data directory's `runs/` and not published.
+- The rerun after this decision, published:
+  [summary.md](../../results/benchmarks/20261009T180940Z-benchmark-known-0801864-d6f6/summary.md).
 - Unit tests in [tests/test_benchmark.py](../../tests/test_benchmark.py):
   `test_classify_recovers_when_catalog_period_drifts` (the TOI-396.01 ephemeris and the signal the search found for
-  it) and `test_classify_still_rejects_wrong_phase` (a signal at the true period, half a period off, is neither
+  it), `test_classify_recovers_when_search_period_drifts` (the mirror case, where only the truth's period carries
+  the epoch onto the signal) and `test_classify_still_rejects_wrong_phase` (a signal at the true period, half a period off, is neither
   recovered nor an alias). The task brief's tests pass unchanged: `test_classify_recovered`,
   `test_classify_below_threshold_is_not_recovery`, `test_classify_alias_is_not_recovery` and `test_classify_missed`.

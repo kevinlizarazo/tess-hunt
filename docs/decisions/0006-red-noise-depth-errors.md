@@ -41,8 +41,11 @@ The real eclipsing binary TOI-188.01 (TIC 280830734) failed the odd and even che
 ## Evidence
 
 - Vet runs `20261009T181228Z-vet-0801864-99a5` (Pi Men c) and `20261009T182044Z-vet-0801864-e073` (TOI-188.01),
-  written under the data directory's `runs/`. They are not yet published to `results/`; link them here once they
-  are.
+  before this decision, written under the data directory's `runs/` and not published.
+- The same two vets after this decision, published:
+  [Pi Men c](../../results/benchmarks/20261009T190108Z-vet-c7a2625-fe36/checks.json) and
+  [TOI-188.01](../../results/benchmarks/20261009T191134Z-vet-c7a2625-ce0e/checks.json). Each report carries the
+  per-sector factor under `red_noise`.
 - Unit tests in [tests/test_photometry_checks.py](../../tests/test_photometry_checks.py):
   `test_red_noise_beta_is_one_on_white_noise` (white noise at 2-min and 30-min cadence gives beta near 1, and a window
   under three cadences gives 1 with a note), `test_red_noise_beta_sees_correlated_noise`,
