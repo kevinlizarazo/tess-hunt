@@ -79,6 +79,22 @@ def test_classify_missed():
     assert not out["recovered"] and not out["alias"]
 
 
+def test_classify_recovers_when_catalog_period_drifts():
+    # TOI-396.01: its sector-97 epoch, carried 426 cycles back with the catalog period, misses the
+    # sector-3 signal; carried with the signal's period, it lands on it.
+    truth = Ephemeris(5.973912448814195, 3936.895179999992, 0.1301477674611527)
+    found = Signal(178155732, 2, 5.97471, 1391.7001, 0.1875, 1e-3, 10.0, 37.1, 5)
+    out = classify(truth, [found], MATCH, 9.0)
+    assert out["recovered"] and not out["alias"] and out["rank"] == 2
+
+
+def test_classify_still_rejects_wrong_phase():
+    truth = Ephemeris(5.973912448814195, 3936.895179999992, 0.1301477674611527)
+    off_phase = sig(truth.period, t0=truth.t0 + 0.5 * truth.period, sde=37.1)
+    out = classify(truth, [off_phase], MATCH, 9.0)
+    assert not out["recovered"] and not out["alias"]
+
+
 def test_completeness_fractions():
     rows = pd.DataFrame(
         {

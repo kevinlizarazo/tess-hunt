@@ -38,8 +38,19 @@ SNR_EDGES = [0, 5, 7, 10, 15, 20, 50, np.inf]
 def classify(truth: Ephemeris, signals, match_cfg: dict, threshold: float) -> dict:
     """Recovered: a signal at the true ephemeris at or above the threshold. Alias: only a harmonic matches."""
     sp, st = match_cfg["sigma_p"], match_cfg["sigma_t"]
+
+    # Over a long baseline the catalog period can be the less precise one, so the epochs may line
+    # up only when carried with the signal's period. ALIASES is closed under inversion, so the
+    # reversed order keeps the alias test's meaning.
+    def matches(s, ratios) -> bool:
+        found = s.ephemeris()
+        return (
+            ephemeris_match(found, truth, ratios, sp, st) is not None
+            or ephemeris_match(truth, found, ratios, sp, st) is not None
+        )
+
     for s in signals:
-        if ephemeris_match(s.ephemeris(), truth, (1.0,), sp, st) is not None:
+        if matches(s, (1.0,)):
             return {
                 "recovered": bool(s.sde >= threshold),
                 "alias": False,
@@ -48,7 +59,7 @@ def classify(truth: Ephemeris, signals, match_cfg: dict, threshold: float) -> di
                 "rank": s.rank,
             }
     for s in signals:
-        if ephemeris_match(s.ephemeris(), truth, ALIASES, sp, st) is not None:
+        if matches(s, ALIASES):
             return {
                 "recovered": False,
                 "alias": True,
