@@ -88,6 +88,13 @@ def test_classify_recovers_when_catalog_period_drifts():
     assert out["recovered"] and not out["alias"] and out["rank"] == 2
 
 
+def test_classify_recovers_when_search_period_drifts():
+    truth = Ephemeris(5.973912448814195, 3936.895179999992, 0.1301477674611527)
+    found = sig(5.97471, t0=truth.t0 - 426 * truth.period, sde=37.1)
+    out = classify(truth, [found], MATCH, 9.0)
+    assert out["recovered"] and not out["alias"]
+
+
 def test_classify_still_rejects_wrong_phase():
     truth = Ephemeris(5.973912448814195, 3936.895179999992, 0.1301477674611527)
     off_phase = sig(truth.period, t0=truth.t0 + 0.5 * truth.period, sde=37.1)
