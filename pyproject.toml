@@ -1,0 +1,57 @@
+[project]
+name = "tess-hunt"
+version = "0.1.0"
+description = "Independent transit search of public TESS light curves"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "astroquery==0.4.11",
+    "batman-package==2.5.3",
+    "emcee==3.1.6",
+    "leo-vetter==1.2.0",
+    "lightkurve==2.6.0",
+    "matplotlib",
+    "numba==0.68.0",
+    "pandas",
+    "pyarrow",
+    "requests",
+    "scikit-learn",
+    "scipy",
+    # pytransit, pulled in by triceratops, imports pkg_resources, which setuptools 81 removed.
+    "setuptools<81",
+    "transitleastsquares==2.0",
+    "triceratops==1.1.0",
+    "wotan==1.10",
+]
+
+[project.scripts]
+tess-hunt = "tess_hunt.cli:main"
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tess_hunt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+markers = [
+    "network: needs MAST, S3, ExoFOP or the Exoplanet Archive; excluded by default and in CI",
+    "slow: takes more than about 10 s",
+]
+addopts = "-m 'not network'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # ruff format owns line length; long URLs and test literals stay unbroken
