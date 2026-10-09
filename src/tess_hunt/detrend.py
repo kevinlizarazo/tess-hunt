@@ -9,17 +9,19 @@ from tess_hunt.lightcurve import LightCurve
 
 def detrend(lc: LightCurve, cfg: dict, mask: list[Ephemeris] = ()) -> LightCurve:
     """Flatten each sector with a time-windowed biweight. Cadences inside `mask` transits are
-    dropped first, so known planets neither bend the trend nor reach the search."""
-    keep = np.ones(len(lc.time), dtype=bool)
+    left out of the trend and dropped after flattening, so known planets neither bend the trend
+    nor reach the search."""
+    known = np.zeros(len(lc.time), dtype=bool)
     for eph in mask:
-        keep &= ~in_transit(lc.time, eph, cfg["known_mask_width"])
-    lc = lc.select(keep)
+        known |= in_transit(lc.time, eph, cfg["known_mask_width"])
     parts = []
     for sector in np.unique(lc.sector):
         m = lc.sector == sector
-        if m.sum() < cfg["min_points_per_sector"]:
+        if (m & ~known).sum() < cfg["min_points_per_sector"]:
             continue
         time = lc.time[m]
+        # Masked cadences stay in the time array: deleting them would leave gaps that wotan
+        # treats as segment breaks, each with its own edge cut.
         flat = flatten(
             time,
             lc.flux[m],
@@ -27,8 +29,9 @@ def detrend(lc: LightCurve, cfg: dict, mask: list[Ephemeris] = ()) -> LightCurve
             window_length=cfg["window_days"],
             edge_cutoff=cfg["edge_cutoff_days"],
             break_tolerance=cfg["break_tolerance_days"],
+            mask=known[m],
         )
-        ok = np.isfinite(flat)
+        ok = np.isfinite(flat) & ~known[m]
         time, flat = time[ok], flat[ok]
         if len(flat) < cfg["min_points_per_sector"]:
             continue

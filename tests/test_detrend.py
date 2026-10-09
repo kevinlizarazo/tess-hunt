@@ -29,6 +29,23 @@ def test_masked_transits_are_removed():
     assert not in_transit(flat.time, eph).any()
 
 
+def test_long_masked_transits_do_not_split_segments():
+    planet = (3.0, 1326.0, 0.3, 1000e-6)
+    lc = make_lc(sectors=(1,), cadence_min=2.0, noise_ppm=300.0, signals=[planet], seed=6)
+    lc.flux = lc.flux * (1.0 + 0.002 * np.sin(2 * np.pi * lc.time / 10.0))
+    eph = Ephemeris(*planet[:3])
+    flat = detrend(lc, CFG, mask=[eph])
+    masked = in_transit(lc.time, eph, CFG["known_mask_width"])
+    # Edge cuts belong only at the sector ends and the orbit gap, never beside a masked transit.
+    gap = np.argmax(np.diff(lc.time)) + 1
+    ends = lc.time[[0, gap - 1, gap, -1]]
+    near_end = np.min(np.abs(lc.time[:, None] - ends), axis=1) < CFG["edge_cutoff_days"]
+    expected = np.sum(~masked & ~near_end)
+    assert abs(len(flat.time) - expected) < 0.02 * expected
+    assert not in_transit(flat.time, eph, CFG["known_mask_width"]).any()
+    assert np.std(flat.flux) < 1.3 * 300e-6
+
+
 def test_upward_outlier_clipped():
     lc = make_lc(sectors=(1,), noise_ppm=200.0, seed=2)
     lc.flux[300] += 0.01
