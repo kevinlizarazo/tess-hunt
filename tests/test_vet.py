@@ -1,10 +1,12 @@
 from pathlib import Path
 
 import pytest
-from synthetic import make_transit_lc, write_catalog_snapshot
+from synthetic import correlated_noise, make_transit_lc, write_catalog_snapshot
 
 from tess_hunt.catalogs import load_known
+from tess_hunt.checks.photometry import box_depth
 from tess_hunt.config import load_criteria
+from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
 from tess_hunt.vet import other_known_transits, vet_signal
 
@@ -74,6 +76,25 @@ def test_known_toi_is_flagged_and_does_not_advance(tmp_path):
     assert novelty["outcome"] == "fail" and not report["advances"]
     others = {c["check"]: c["outcome"] for c in report["checks"] if c["check"] != "novelty"}
     assert all(o == "pass" for o in others.values()), others
+
+
+@pytest.mark.slow
+def test_report_carries_red_noise_and_depth_errors_use_it(tmp_path):
+    lc = make_transit_lc()
+    lc.flux += correlated_noise(lc, 300.0, 1.5, seed=4)
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    report, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET, seed=1)
+    betas = report["red_noise"]
+    assert set(betas) == {"1", "2", "64"}
+    assert max(row["beta"] for row in betas.values()) > 1.3, betas
+    flat = detrend(lc, SEARCH["detrend"])
+    core = VET["depth"]["core_fraction"]
+    sector_depth = next(c for c in report["checks"] if c["check"] == "sector_depth")
+    for row in sector_depth["evidence"]["sectors"]:
+        m = flat.sector == row["sector"]
+        _, white_err, _ = box_depth(flat.time[m], flat.flux[m], flat.flux_err[m], eph, core)
+        assert row["err"] == pytest.approx(white_err * betas[str(row["sector"])]["beta"])
 
 
 def test_signal_with_stale_catalog_epoch_is_not_masked(tmp_path):

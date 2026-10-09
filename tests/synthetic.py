@@ -48,6 +48,21 @@ def make_lc(
     return LightCurve(tic, time, flux, err, sector, sources)
 
 
+def correlated_noise(lc: LightCurve, rms_ppm: float, smooth_hours: float, seed: int) -> np.ndarray:
+    """White noise smoothed by a running mean of `smooth_hours` within each sector, scaled to
+    `rms_ppm`. It stays correlated over a transit and survives a 1.2 d biweight, like the residuals
+    of a bright star's 2-min light curve."""
+    rng = np.random.default_rng(seed)
+    out = np.zeros(len(lc.time))
+    for sector in np.unique(lc.sector):
+        m = lc.sector == sector
+        k = max(1, round(smooth_hours * 3600.0 / lc.sources[str(int(sector))]["cadence_s"]))
+        # "valid" over k - 1 extra draws, so the sector edges are as smooth as the middle.
+        smooth = np.convolve(rng.normal(size=m.sum() + k - 1), np.ones(k) / k, mode="valid")
+        out[m] = smooth * np.sqrt(k) * rms_ppm * 1e-6
+    return out
+
+
 TOI_COLUMNS = [
     "TIC ID",
     "TOI",

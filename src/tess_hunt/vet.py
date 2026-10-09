@@ -11,7 +11,13 @@ import pandas as pd
 from tess_hunt.catalogs import FILES, known_ephemerides, load_known
 from tess_hunt.checks import Outcome, inconclusive
 from tess_hunt.checks.holdout import holdout
-from tess_hunt.checks.photometry import odd_even, secondary, sector_depths
+from tess_hunt.checks.photometry import (
+    odd_even,
+    red_noise_beta,
+    secondary,
+    sector_depths,
+    with_red_noise,
+)
 from tess_hunt.checks.physical import density, shape
 from tess_hunt.config import lc_dir, load_criteria
 from tess_hunt.detrend import detrend
@@ -60,6 +66,12 @@ def vet_signal(
     others = other_known_transits(eph, known, tic, harmonics, crit_search)
     flat = detrend(lc, crit_search["detrend"], others)
     core = crit_vet["depth"]["core_fraction"]
+    # Detrended errors are each sector's white scatter, but a bright star's residuals stay
+    # correlated over a transit, so depth errors would come out too small. The depth checks get
+    # errors scaled by each sector's time-averaging beta at the core timescale (Pont et al. 2006;
+    # Winn et al. 2008; docs/decisions/0006-red-noise-depth-errors.md). The fit keeps white errors.
+    betas = red_noise_beta(flat, eph, core * eph.duration)
+    noisy = with_red_noise(flat, betas)
     results = [
         check_novelty(
             tic,
@@ -73,19 +85,19 @@ def vet_signal(
             match["sigma_t"],
         ),
         odd_even(
-            flat, eph, core, crit_vet["odd_even"]["max_sigma"], crit_vet["odd_even"]["min_points"]
+            noisy, eph, core, crit_vet["odd_even"]["max_sigma"], crit_vet["odd_even"]["min_points"]
         ),
         secondary(
-            flat, eph, crit_vet["secondary"]["max_sigma"], crit_vet["secondary"]["min_points"]
+            noisy, eph, crit_vet["secondary"]["max_sigma"], crit_vet["secondary"]["min_points"]
         ),
         sector_depths(
-            flat,
+            noisy,
             eph,
             core,
             crit_vet["sector_depth"]["min_p_value"],
             crit_vet["sector_depth"]["min_points"],
         ),
-        holdout(flat, eph, crit_vet["holdout"], core),
+        holdout(noisy, eph, crit_vet["holdout"], core),
     ]
     fit = None
     try:
@@ -110,6 +122,7 @@ def vet_signal(
         "tic": tic,
         "ephemeris": asdict(eph),
         "masked": [asdict(k) for k in others],
+        "red_noise": betas,
         "checks": [r.to_dict() for r in results],
         "fit": fit.summary() if fit else None,
         "advances": all(r.outcome is Outcome.PASS for r in results),

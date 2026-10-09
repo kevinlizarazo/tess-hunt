@@ -1,11 +1,64 @@
 """Light-curve checks: odd and even depths, secondary eclipse, depth by sector."""
 
+from dataclasses import replace
+
 import numpy as np
 from scipy.stats import chi2
 
 from tess_hunt.checks import CheckResult, failed, inconclusive, passed
 from tess_hunt.ephemeris import Ephemeris, epoch_numbers, in_transit
 from tess_hunt.lightcurve import LightCurve
+
+
+def red_noise_beta(
+    lc: LightCurve,
+    eph: Ephemeris,
+    timescale_days: float,
+    exclude_width: float = 3.0,
+    min_bins: int = 20,
+) -> dict[str, dict]:
+    """Each sector's red-noise factor at `timescale_days` by the time-averaging method (Pont et al.
+    2006; Winn et al. 2008): the scatter of out-of-transit bin means over what white noise gives."""
+    outside = ~in_transit(lc.time, eph, exclude_width)
+    betas = {}
+    for sector in np.unique(lc.sector):
+        m = outside & (lc.sector == sector)
+        time, flux, err = lc.time[m], lc.flux[m], lc.flux_err[m]
+        if len(time) == 0:
+            betas[str(int(sector))] = {
+                "beta": 1.0,
+                "n_bins": 0,
+                "cadences_per_bin": 0.0,
+                "note": "no cadences outside transits",
+            }
+            continue
+        index = np.floor((time - time.min()) / timescale_days).astype(int)
+        counts = np.bincount(index)
+        sums = np.bincount(index, weights=flux)
+        # Bins cut by a gap or an excluded transit hold fewer cadences and would read as noisier.
+        kept = counts >= 0.8 * counts.max()
+        n_bins = int(kept.sum())
+        per_bin = float(np.median(counts[kept]))
+        row = {"beta": 1.0, "n_bins": n_bins, "cadences_per_bin": per_bin}
+        mean_count = float(counts[counts > 0].mean())
+        if mean_count < 3.0:
+            row["note"] = f"{mean_count:.1f} cadences per bin on average, need 3"
+        elif n_bins < min_bins:
+            row["note"] = f"{n_bins} full bins, need {min_bins}"
+        else:
+            means = sums[kept] / counts[kept]
+            white = np.median(err) / np.sqrt(per_bin)
+            row["beta"] = max(1.0, float(np.std(means, ddof=1) / white))
+        betas[str(int(sector))] = row
+    return betas
+
+
+def with_red_noise(lc: LightCurve, betas: dict[str, dict]) -> LightCurve:
+    """A copy with each sector's errors multiplied by its beta; sectors not in `betas` keep theirs."""
+    scale = np.ones(len(lc.time))
+    for sector, row in betas.items():
+        scale[lc.sector == int(sector)] = row["beta"]
+    return replace(lc, flux_err=lc.flux_err * scale)
 
 
 def box_depth(time, flux, err, eph: Ephemeris, fraction: float) -> tuple[float, float, int]:
