@@ -1,0 +1,51 @@
+# Search criteria, version 1.
+# Changing a value after any result exists needs a docs/decisions entry first.
+
+[sample]
+teff_min = 5300.0        # exclusive
+teff_max = 6500.0
+tmag_max = 10.5
+logg_min = 4.0
+logg_max = 5.5
+min_sectors = 4
+recent_sector_min = 97
+recent_sector_max = 107
+
+[fetch]
+min_good_cadences = 100
+
+[detrend]
+window_days = 1.2               # 3x the longest searched duration (Hippke et al. 2019)
+edge_cutoff_days = 0.5
+break_tolerance_days = 0.5
+clip_sigma = 3.0                # upward outliers only
+min_points_per_sector = 100
+known_mask_width = 2.0          # multiples of the catalog duration
+fallback_duration_days = 0.25   # known planets with no catalog duration
+
+[search]
+engine = "bls"
+bin_minutes = 30.0
+period_min_days = 1.0
+period_max_days = 40.0
+min_transits = 3
+oversampling = 2
+durations_hours = [1.0, 1.5, 2.0, 3.0, 4.5, 6.0, 8.0, 10.0]
+sde_kernel = 1001
+max_signals = 3
+continue_sde = 9.0
+iter_mask_width = 2.0
+min_points = 100
+
+[match]
+sigma_p = 2.5                   # Coughlin et al. 2014
+sigma_t = 2.0
+
+[benchmark]
+provisional_sde = 9.0           # replaced by the null-calibrated threshold in M2
+required_recovery_snr = 12.0    # TOI "Planet SNR" at or above this must be recovered
+known_count = 20
+inject_rp_min_rearth = 0.5
+inject_rp_max_rearth = 16.0
+inject_u1 = 0.40
+inject_u2 = 0.21

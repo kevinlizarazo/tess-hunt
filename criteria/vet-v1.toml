@@ -1,0 +1,42 @@
+# Vetting criteria, version 1.
+# Changing a value after any result exists needs a docs/decisions entry first.
+
+[depth]
+core_fraction = 0.5             # central part of each transit used for depths
+
+[odd_even]
+max_sigma = 3.0
+min_points = 5
+
+[secondary]
+max_sigma = 3.0
+min_points = 5
+
+[sector_depth]
+min_p_value = 0.001
+min_points = 5
+
+[holdout]
+season_gap_days = 60.0
+min_expected_snr = 4.0
+min_sigma = 2.0
+max_depth_tension = 3.0
+min_points = 5
+
+[fit]
+walkers = 32
+steps = 5000
+burn = 2000
+window_durations = 3.0
+seed = 1
+
+[shape]
+max_grazing_probability = 0.5
+
+[density]
+max_sigma = 3.0
+default_log_rho_error = 0.1     # dex, when the TIC gives no density error
+
+[novelty]
+neighbour_arcmin = 2.5
+harmonics = [1.0, 0.5, 2.0, 0.3333333333333333, 3.0]
