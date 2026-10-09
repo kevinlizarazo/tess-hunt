@@ -1,6 +1,6 @@
 import pandas as pd
 
-from tess_hunt.targets import build_sample, covered, select_known
+from tess_hunt.targets import build_sample, covered, sample_hosts, select_known
 
 SAMPLE = {
     "teff_min": 5300.0,
@@ -110,3 +110,11 @@ def test_select_known_spreads_depths_and_forces_pi_men():
     assert not out.loc[out["toi"] == "1001.01", "required"].item()
     assert out.loc[out["toi"] == "1001.01", "t0"].item() == 2000.5
     assert out.loc[out["toi"] == "1001.01", "duration"].item() == 0.125
+
+
+def test_sample_hosts_cuts_on_tic_values_and_keeps_forced():
+    # ExoFOP's stellar values pass for all three; only the TIC frame decides.
+    toi = pd.DataFrame([toi_row(1001.01, 11), toi_row(1002.01, 12), toi_row(144.01, 261136679)])
+    stars = pd.DataFrame([star(11), star(12, logg=float("nan")), star(261136679, teff=4000.0)])
+    out = sample_hosts(toi, stars, SAMPLE)
+    assert sorted(f"{v:.2f}" for v in out["TOI"]) == ["1001.01", "144.01"]

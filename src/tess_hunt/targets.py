@@ -90,16 +90,7 @@ def build_sample(
     return out
 
 
-def select_known(
-    toi: pd.DataFrame,
-    sectors: dict[int, list[int]],
-    sample: dict,
-    search: dict,
-    count: int,
-    required_snr: float,
-    always: tuple[str, ...] = ("144.01",),
-) -> pd.DataFrame:
-    """Confirmed and known planets like sample A's targets, spread across depth."""
+def _exofop_cut(toi: pd.DataFrame, sample: dict, search: dict) -> pd.Series:
     num = {
         c: pd.to_numeric(toi[c], errors="coerce")
         for c in (
@@ -112,7 +103,7 @@ def select_known(
             "Duration (hours)",
         )
     }
-    ok = (
+    return (
         toi["TFOPWG Disposition"].isin(["KP", "CP"])
         & (num["Stellar Eff Temp (K)"] > sample["teff_min"])
         & (num["Stellar Eff Temp (K)"] <= sample["teff_max"])
@@ -123,6 +114,30 @@ def select_known(
         & num["Epoch (BJD)"].notna()
         & num["Duration (hours)"].notna()
     )
+
+
+def sample_hosts(
+    toi: pd.DataFrame, stars: pd.DataFrame, sample: dict, always: tuple[str, ...] = ("144.01",)
+) -> pd.DataFrame:
+    """TOI rows whose host passes the sample cut on its TIC values, plus the forced rows."""
+    # Sample A is defined on TIC v8.2, and ExoFOP's stellar values can disagree with it
+    # (TOI 194.01: ExoFOP log g 4.23, TIC log g blank).
+    hosts = set(stars.loc[in_sample(stars, sample), "tic"].astype(int))
+    names = toi["TOI"].map(lambda v: f"{v:.2f}")
+    return toi[toi["TIC ID"].astype(int).isin(hosts) | names.isin(always)]
+
+
+def select_known(
+    toi: pd.DataFrame,
+    sectors: dict[int, list[int]],
+    sample: dict,
+    search: dict,
+    count: int,
+    required_snr: float,
+    always: tuple[str, ...] = ("144.01",),
+) -> pd.DataFrame:
+    """Confirmed and known planets like sample A's targets, spread across depth."""
+    ok = _exofop_cut(toi, sample, search)
     names = toi["TOI"].map(lambda v: f"{v:.2f}")
     forced = toi[names.isin(always)]
     cand = toi[ok & ~names.isin(always)]
@@ -202,14 +217,17 @@ def cmd_known(args) -> int:
     toi_path = args.catalogs / FILES["TOI"]
     run.record_input("toi", toi_path)
     toi = pd.read_csv(toi_path)
+    # The ExoFOP cut costs nothing and shrinks the TIC and MAST queries to the hosts that could pass.
     plausible = toi[
-        toi["TFOPWG Disposition"].isin(["KP", "CP"])
+        _exofop_cut(toi, criteria["sample"], criteria["search"])
         | toi["TOI"].map(lambda v: f"{v:.2f}").eq("144.01")
     ]
-    products = mast.discover(sorted({int(t) for t in plausible["TIC ID"]}))
+    stars = query_tic_ids(sorted({int(t) for t in plausible["TIC ID"]}))
+    hosts = sample_hosts(plausible, stars, criteria["sample"])
+    products = mast.discover(sorted({int(t) for t in hosts["TIC ID"]}))
     bench = criteria["benchmark"]
     known = select_known(
-        toi,
+        hosts,
         sectors_by_tic(products),
         criteria["sample"],
         criteria["search"],
