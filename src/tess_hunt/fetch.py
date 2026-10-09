@@ -46,6 +46,12 @@ def read_product(path: Path, provenance: str) -> tuple[np.ndarray, np.ndarray, n
     return time, flux / scale, err / scale, facts
 
 
+def _manifest_sources(sources: dict) -> dict:
+    # lc/<tic>.npz is overwritten by --refresh or a newly ranked product, so the run keeps its own copy.
+    keys = ("provenance", "cadence_s", "s3_key", "sha256")
+    return {sector: {k: info[k] for k in keys} for sector, info in sources.items()}
+
+
 def fetch_star(
     tic: int,
     products: pd.DataFrame,
@@ -66,6 +72,7 @@ def fetch_star(
                 "tic": tic,
                 "status": "cached",
                 "sectors": sorted(int(s) for s in existing.sources),
+                "sources": _manifest_sources(existing.sources),
                 "problems": {},
                 "lc_sha256": sha256_file(target),
             }
@@ -80,7 +87,14 @@ def fetch_star(
                     continue
                 path = Path(tmp) / row.filename
                 path.write_bytes(blob)
-                time, flux, err, facts = read_product(path, row.provenance)
+                try:
+                    time, flux, err, facts = read_product(path, row.provenance)
+                except Exception as exc:
+                    # Only the type: reader messages can carry the temp path into the manifest.
+                    problems.setdefault(str(sector), []).append(
+                        f"{row.provenance}: unreadable ({type(exc).__name__})"
+                    )
+                    continue
                 if len(time) < min_good:
                     problems.setdefault(str(sector), []).append(
                         f"{row.provenance}: {len(time)} good cadences"
@@ -105,6 +119,7 @@ def fetch_star(
         "tic": tic,
         "status": "ok",
         "sectors": sorted(int(s) for s in sources),
+        "sources": _manifest_sources(sources),
         "problems": problems,
         "lc_sha256": sha256_file(target),
     }

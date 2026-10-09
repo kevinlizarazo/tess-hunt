@@ -51,6 +51,16 @@ def test_fetch_falls_back_when_best_missing(tmp_path):
     assert lc.sources["1"]["provenance"] == "TESS-SPOC"
     assert lc.sources["1"]["cadence_s"] == 1800.0
     assert len(lc.sources["1"]["sha256"]) == 64
+    assert entry["sources"]["1"]["s3_key"] == "k/tspoc"
+    assert len(entry["sources"]["1"]["sha256"]) == 64
+
+
+def test_fetch_falls_back_when_best_unreadable(tmp_path):
+    served = routes() | {S3_BASE + "k/spoc": b"0123456789"}
+    entry = fetch_star(TIC, products(), tmp_path, min_good=100, session=FakeSession(served))
+    assert entry["status"] == "ok"
+    assert entry["sources"]["1"]["provenance"] == "TESS-SPOC"
+    assert entry["problems"]["1"][0].startswith("SPOC: unreadable (")
 
 
 def test_fetch_records_empty_and_writes_nothing(tmp_path):
@@ -70,3 +80,5 @@ def test_fetch_uses_cache_when_sources_unchanged(tmp_path):
     session = FakeSession()
     entry = fetch_star(TIC, products(with_spoc=False), tmp_path, 100, session=session)
     assert entry["status"] == "cached" and session.urls == []
+    assert entry["sources"]["1"]["s3_key"] == "k/tspoc"
+    assert len(entry["sources"]["1"]["sha256"]) == 64
