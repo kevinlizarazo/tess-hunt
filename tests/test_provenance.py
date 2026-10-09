@@ -101,3 +101,7 @@ def test_finish_freezes_the_run(repo, tmp_path):
     assert prov["ended_at"] and prov["summary"] == {"stars": 3}
     with pytest.raises(PermissionError):
         (run.path / "result.json").write_text("{}")
+    with pytest.raises(PermissionError):
+        run.write_json("added.json", {"n": 2})
+    with pytest.raises(PermissionError):
+        (run.path / "provenance.json").unlink()

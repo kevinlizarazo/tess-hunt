@@ -92,9 +92,14 @@ class Run:
         self.provenance["summary"] = summary
         self._save()
         # A finished run is evidence; later edits must fail loudly.
-        for p in self.path.rglob("*"):
+        entries = list(self.path.rglob("*"))
+        for p in entries:
             if p.is_file():
                 p.chmod(0o444)
+        # A writable directory still lets files be added, unlinked or renamed over, whatever their mode.
+        dirs = [p for p in entries if p.is_dir()] + [self.path]
+        for d in sorted(dirs, key=lambda d: len(d.parts), reverse=True):
+            d.chmod(0o555)
 
     def _save(self) -> None:
         (self.path / "provenance.json").write_text(
