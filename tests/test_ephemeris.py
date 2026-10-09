@@ -49,3 +49,10 @@ def test_match_harmonic_only_when_asked():
 
 def test_match_without_epoch_uses_period_only():
     assert ephemeris_match(Ephemeris(3.0, 100.0, 0.1), Ephemeris(3.0, float("nan"), 0.1)) == 1.0
+
+
+def test_match_carries_old_reference_epoch_with_its_own_period():
+    reference = Ephemeris(3.0, 1500.0, 0.1)
+    t0 = 1500.0 + 833 * 3.0
+    assert ephemeris_match(Ephemeris(3.0002, t0, 0.1), reference) == 1.0
+    assert ephemeris_match(Ephemeris(2.9998, t0, 0.1), reference) == 1.0

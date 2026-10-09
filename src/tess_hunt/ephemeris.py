@@ -51,15 +51,20 @@ def ephemeris_match(
     sigma_t: float = 2.0,
 ) -> float | None:
     """The ratio k for which `b` at period P_b * k matches `a` (Coughlin et al. 2014), or None.
-    A `b` without an epoch matches on period alone."""
+    `a` is the candidate or measured signal; `b` is the reference (a catalog entry or an injected
+    truth). A `b` without an epoch matches on period alone."""
     for k in harmonics:
         if _sigma(abs(a.period - b.period * k) / a.period) <= sigma_p:
             continue
         if not np.isfinite(b.t0):
             return k
+        # Catalog epochs can be hundreds of cycles old. Carrying them with the candidate's period
+        # would let its small error accumulate, so the reference's own period carries them.
+        n = np.round((a.t0 - b.t0) / b.period)
+        resid = a.t0 - b.t0 - n * b.period
         # Harmonics share every transit of the shorter period, so compare phases on that period.
         wrap = min(a.period, b.period)
-        offset = abs(((a.t0 - b.t0) / wrap + 0.5) % 1.0 - 0.5)
+        offset = abs((resid / wrap + 0.5) % 1.0 - 0.5)
         if _sigma(offset) > sigma_t:
             return k
     return None
