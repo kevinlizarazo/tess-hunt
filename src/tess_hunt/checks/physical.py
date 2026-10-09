@@ -13,6 +13,7 @@ def shape(fit: FitResult, max_grazing_probability: float) -> CheckResult:
         "grazing_probability": grazing,
         "b_median": float(np.median(fit.column("b"))),
         "rp_rs_median": float(np.median(fit.column("rp_rs"))),
+        "acceptance": fit.acceptance,
     }
     if grazing > max_grazing_probability:
         return failed("shape", f"V-shaped: grazing in {grazing:.0%} of samples", **evidence)
@@ -44,6 +45,7 @@ def density(
         "tic_log_rho": log_tic,
         "tic_log_rho_sd": float(err_tic),
         "tension_sigma": float(tension),
+        "acceptance": fit.acceptance,
     }
     if tension > max_sigma:
         return failed(

@@ -13,6 +13,9 @@ from tess_hunt.lightcurve import LightCurve
 from tess_hunt.transit import a_rs_from_density, density_from_duration, light_curve
 
 NAMES = ("t0", "period", "rp_rs", "b", "log_rho", "q1", "q2")
+# emcee neither moves nor raises when every walker sits outside the prior; it hands back the
+# starting ball, which the checks would read as a posterior. A healthy fit accepts about 0.3.
+MIN_ACCEPTANCE = 0.01
 
 
 @dataclass(frozen=True)
@@ -81,7 +84,8 @@ def fit_transit(
         [
             eph.t0,
             eph.period,
-            np.sqrt(depth),
+            # An eclipse deeper than 25% would start every walker beyond the rp_rs < 0.5 bound.
+            np.clip(np.sqrt(depth), 0.002, 0.45),
             0.3,
             rho_prior[0] if rho_prior else start_log_rho,
             0.36,
@@ -95,5 +99,8 @@ def fit_transit(
     if seed is not None:
         sampler.random_state = np.random.RandomState(seed).get_state()
     sampler.run_mcmc(p0, cfg["steps"], progress=False)
+    acceptance = float(np.mean(sampler.acceptance_fraction))
+    if acceptance < MIN_ACCEPTANCE:
+        raise ValueError(f"the walkers never moved (acceptance {acceptance:.3g}); no fit")
     samples = sampler.get_chain(discard=cfg["burn"], flat=True)
-    return FitResult(samples, float(np.mean(sampler.acceptance_fraction)), rho_prior)
+    return FitResult(samples, acceptance, rho_prior)

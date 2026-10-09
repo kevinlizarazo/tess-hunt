@@ -5,9 +5,10 @@ from synthetic import make_transit_lc
 from tess_hunt.checks import Outcome
 from tess_hunt.checks.physical import density
 from tess_hunt.ephemeris import Ephemeris
-from tess_hunt.fit import fit_transit
+from tess_hunt.fit import MIN_ACCEPTANCE, fit_transit
 
 CFG = {"walkers": 32, "steps": 3000, "burn": 1500, "window_durations": 3.0}
+SMALL = {"walkers": 16, "steps": 200, "burn": 100, "window_durations": 3.0}
 
 
 @pytest.mark.slow
@@ -32,3 +33,19 @@ def test_fit_refuses_without_data_near_transit():
     lc = make_transit_lc()
     with pytest.raises(ValueError):
         fit_transit(lc.select(lc.time > 5000), Ephemeris(5.0, 1326.1, 0.13), CFG, seed=1)
+
+
+def test_eclipse_deeper_than_the_prior_still_starts_inside_it():
+    lc = make_transit_lc(rp_rs=0.6)
+    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.2, 0.3), SMALL, seed=1)
+    assert fit.acceptance > MIN_ACCEPTANCE
+    assert len(np.unique(fit.column("b"))) > SMALL["walkers"]
+
+
+# Judging each rejected proposal, emcee subtracts the walker's -inf log probability from the proposal's.
+@pytest.mark.filterwarnings("ignore:invalid value encountered in scalar subtract:RuntimeWarning")
+def test_fit_whose_walkers_never_move_raises():
+    lc = make_transit_lc()
+    white_dwarf_prior = (6.0, 0.1)
+    with pytest.raises(ValueError, match="acceptance"):
+        fit_transit(lc, Ephemeris(5.0, 1326.1, 0.13, 0.0008), SMALL, white_dwarf_prior, seed=1)
