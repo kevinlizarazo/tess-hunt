@@ -69,3 +69,26 @@ def test_known_object_without_period_on_same_star_is_inconclusive(known):
     assert (
         check(known, 400, 20.0, -50.0, Ephemeris(9.9, 1500.0, 0.1)).outcome is Outcome.INCONCLUSIVE
     )
+
+
+def test_same_star_period_match_out_of_phase_is_inconclusive(known):
+    result = check(known, 100, 10.0, -60.0, Ephemeris(3.0, 1501.5, 0.1))
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert result.evidence["period_matches"][0]["name"] == "TOI-500.01"
+
+
+def test_neighbour_period_match_out_of_phase_is_inconclusive(known):
+    result = check(known, 999, 10.0, -60.0, Ephemeris(7.0, 1505.5, 0.15))
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert result.evidence["period_matches"][0]["name"] == "CTOI-200.01"
+
+
+def test_neighbour_at_half_period_out_of_phase_passes(known):
+    assert check(known, 999, 10.0, -60.0, Ephemeris(3.5, 1503.75, 0.15)).outcome is Outcome.PASS
+
+
+def test_missing_candidate_position_is_inconclusive(known):
+    # A NaN position finds no neighbours, so without the guard this copy of CTOI-200.01 would pass.
+    result = check(known, 999, np.nan, -60.0, Ephemeris(7.0, 1502.0, 0.15))
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert result.reason == "candidate position or ephemeris missing"

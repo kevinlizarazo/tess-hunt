@@ -23,6 +23,12 @@ ARCHIVE_QUERY = (
     "from pscomppars where tic_id is not null"
 )
 BJD_OFFSET = 2457000.0
+# Community uploads include MJD-style epochs, misplaced decimals and multi-day durations. A wrong
+# epoch would hide a known object from novelty, so values outside these bounds count as missing
+# (docs/decisions/0002-catalog-data-quality.md).
+MIN_T0_BTJD = -20000.0
+MAX_T0_BTJD = 10000.0
+MAX_DURATION_DAYS = 1.0
 FILES = {"TOI": "toi.csv", "CTOI": "ctoi.csv", "archive": "pscomppars.csv"}
 KNOWN_COLUMNS = ["source", "name", "tic", "ra", "dec", "period", "t0", "duration", "depth_ppm"]
 
@@ -57,7 +63,13 @@ def _number(series) -> np.ndarray:
 def _btjd(bjd) -> np.ndarray:
     # A few community uploads already give BTJD; only full BJD values carry the offset.
     bjd = _number(bjd)
-    return np.where(bjd > 2_400_000.0, bjd - BJD_OFFSET, bjd)
+    btjd = np.where(bjd > 2_400_000.0, bjd - BJD_OFFSET, bjd)
+    return np.where((btjd >= MIN_T0_BTJD) & (btjd <= MAX_T0_BTJD), btjd, np.nan)
+
+
+def _days(hours) -> np.ndarray:
+    days = _number(hours) / 24.0
+    return np.where(days <= MAX_DURATION_DAYS, days, np.nan)
 
 
 def normalise_toi(df: pd.DataFrame) -> pd.DataFrame:
@@ -73,7 +85,7 @@ def normalise_toi(df: pd.DataFrame) -> pd.DataFrame:
             "dec": coords.dec.deg,
             "period": _number(df["Period (days)"]),
             "t0": _btjd(df["Epoch (BJD)"]),
-            "duration": _number(df["Duration (hours)"]) / 24.0,
+            "duration": _days(df["Duration (hours)"]),
             "depth_ppm": _number(df["Depth (ppm)"]),
         },
         columns=KNOWN_COLUMNS,
@@ -90,7 +102,7 @@ def normalise_ctoi(df: pd.DataFrame) -> pd.DataFrame:
             "dec": _number(df["Dec"]),
             "period": _number(df["Period (days)"]),
             "t0": _btjd(df["Transit Epoch (BJD)"]),
-            "duration": _number(df["Duration (hrs)"]) / 24.0,
+            "duration": _days(df["Duration (hrs)"]),
             "depth_ppm": _number(df["Depth ppm"]),
         },
         columns=KNOWN_COLUMNS,
@@ -107,7 +119,7 @@ def normalise_archive(df: pd.DataFrame) -> pd.DataFrame:
             "dec": _number(df["dec"]),
             "period": _number(df["pl_orbper"]),
             "t0": _btjd(df["pl_tranmid"]),
-            "duration": _number(df["pl_trandur"]) / 24.0,
+            "duration": _days(df["pl_trandur"]),
             "depth_ppm": _number(df["pl_trandep"]) * 1e4,  # the archive gives percent
         },
         columns=KNOWN_COLUMNS,

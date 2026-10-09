@@ -50,6 +50,28 @@ def test_normalise_archive_percent_depth_and_tic_string():
     assert row["t0"] == pytest.approx(-947.24404)
 
 
+def normalised_ctoi_with(column, value):
+    df = pd.read_csv(io.StringIO(CTOI_CSV))
+    df[column] = value
+    return normalise_ctoi(df).iloc[0]
+
+
+# MJD with 2457000 added, as some community uploads give it, and an epoch from the 1860s.
+@pytest.mark.parametrize("bjd", [2514000.5, 2401426.781])
+def test_ctoi_epoch_outside_window_is_missing(bjd):
+    assert np.isnan(normalised_ctoi_with("Transit Epoch (BJD)", bjd)["t0"])
+
+
+def test_old_archive_epoch_inside_window_is_kept():
+    df = pd.read_csv(io.StringIO(ARCHIVE_CSV))
+    df["pl_tranmid"] = 2440619.0
+    assert normalise_archive(df).iloc[0]["t0"] == pytest.approx(-16381.0)
+
+
+def test_ctoi_duration_over_a_day_is_missing():
+    assert np.isnan(normalised_ctoi_with("Duration (hrs)", 378.5)["duration"])
+
+
 def test_load_known_needs_all_three(tmp_path):
     snap = write_catalog_snapshot(tmp_path / "s")
     assert set(load_known(snap)["source"]) == {"TOI", "CTOI", "archive"}
