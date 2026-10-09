@@ -133,3 +133,36 @@ def write_catalog_snapshot(path: Path, toi_rows=(), ctoi_rows=(), archive_rows=(
         path / "pscomppars.csv", index=False
     )
     return path
+
+
+from tess_hunt.transit import a_rs_from_density, light_curve  # noqa: E402
+
+
+def make_transit_lc(
+    rho_gcc=1.41,
+    rp_rs=0.03,
+    b=0.3,
+    period=5.0,
+    t0=1326.1,
+    sectors=(1, 2, 64),
+    cadences=None,
+    noise_ppm=None,
+    seed=3,
+) -> LightCurve:
+    """Limb-darkened transit; by default two 2-min sectors and one 30-min sector, as in the 2026-10-08 probe."""
+    cadences = cadences or {1: 2.0, 2: 2.0, 64: 30.0}
+    noise_ppm = noise_ppm or {1: 600.0, 2: 600.0, 64: 150.0}
+    lc = make_lc(sectors=sectors, cadences=cadences, noise_ppm=noise_ppm, seed=seed)
+    model = light_curve(
+        lc.time,
+        lc.exposure_days(),
+        t0,
+        period,
+        rp_rs,
+        a_rs_from_density(rho_gcc, period),
+        b,
+        0.36,
+        0.24,
+    )
+    lc.flux = lc.flux * model
+    return lc
