@@ -1,0 +1,71 @@
+import numpy as np
+import pandas as pd
+import pytest
+
+from tess_hunt.catalogs import KNOWN_COLUMNS
+from tess_hunt.checks import Outcome
+from tess_hunt.ephemeris import Ephemeris
+from tess_hunt.novelty import check_novelty
+
+HARMONICS = (1.0, 0.5, 2.0, 1 / 3, 3.0)
+
+
+@pytest.fixture
+def known():
+    rows = [
+        ("TOI", "TOI-500.01", 100, 10.0, -60.0, 3.0, 1500.0, 0.1, 1000.0),
+        ("CTOI", "CTOI-200.01", 200, 10.0, -60.03, 7.0, 1502.0, 0.15, 800.0),
+        ("archive", "Far b", 300, 50.0, 10.0, 5.0, 1501.0, 0.1, 500.0),
+        ("TOI", "TOI-600.01", 400, 20.0, -50.0, np.nan, np.nan, np.nan, 700.0),
+    ]
+    return pd.DataFrame(rows, columns=KNOWN_COLUMNS)
+
+
+def check(known, tic, ra, dec, eph):
+    return check_novelty(tic, ra, dec, eph, known, 2.5, HARMONICS, 2.5, 2.0)
+
+
+def test_known_toi_on_same_star_fails(known):
+    result = check(known, 100, 10.0, -60.0, Ephemeris(3.0, 1500.0, 0.1))
+    assert result.outcome is Outcome.FAIL
+    assert result.evidence["matches"][0]["name"] == "TOI-500.01"
+
+
+def test_new_period_on_known_star_passes(known):
+    assert check(known, 100, 10.0, -60.0, Ephemeris(4.1, 1500.3, 0.1)).outcome is Outcome.PASS
+
+
+def test_neighbour_within_blend_radius_fails(known):
+    result = check(known, 999, 10.0, -60.0, Ephemeris(7.0, 1502.0, 0.15))
+    assert result.outcome is Outcome.FAIL
+    assert result.evidence["matches"][0]["name"] == "CTOI-200.01"
+
+
+def test_neighbour_beyond_blend_radius_passes(known):
+    assert check(known, 999, 10.0, -60.09, Ephemeris(7.0, 1502.0, 0.15)).outcome is Outcome.PASS
+
+
+def test_half_period_harmonic_is_known(known):
+    result = check(known, 100, 10.0, -60.0, Ephemeris(1.5, 1500.0, 0.1))
+    assert result.outcome is Outcome.FAIL and result.evidence["matches"][0]["ratio"] == 0.5
+
+
+def test_empty_catalog_is_inconclusive_not_pass(known):
+    empty = known.iloc[0:0]
+    assert (
+        check(empty, 100, 10.0, -60.0, Ephemeris(9.9, 1500.0, 0.1)).outcome is Outcome.INCONCLUSIVE
+    )
+
+
+def test_missing_catalog_source_is_inconclusive(known):
+    partial = known[known["source"] != "CTOI"]
+    assert (
+        check(partial, 100, 10.0, -60.0, Ephemeris(9.9, 1500.0, 0.1)).outcome
+        is Outcome.INCONCLUSIVE
+    )
+
+
+def test_known_object_without_period_on_same_star_is_inconclusive(known):
+    assert (
+        check(known, 400, 20.0, -50.0, Ephemeris(9.9, 1500.0, 0.1)).outcome is Outcome.INCONCLUSIVE
+    )
