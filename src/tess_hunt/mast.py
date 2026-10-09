@@ -1,0 +1,127 @@
+"""Find TESS light-curve files at MAST and download them from the public S3 bucket."""
+
+import re
+import time
+
+import numpy as np
+import pandas as pd
+import requests
+from astroquery.mast import Observations
+
+PROVENANCES = ("SPOC", "TESS-SPOC", "QLP")
+PREFERENCE = {"SPOC": 0, "TESS-SPOC": 1, "QLP": 2}
+S3_BASE = "https://stpubdata.s3.amazonaws.com/"
+PRODUCT_COLUMNS = [
+    "tic",
+    "sector",
+    "provenance",
+    "cadence_s",
+    "filename",
+    "data_uri",
+    "size",
+    "s3_key",
+]
+_SPOC_NAME = re.compile(r"^tess\d{13}-s(\d{4})-(\d{16})-\d{4}-s_lc\.fits$")
+
+
+class DownloadError(RuntimeError):
+    pass
+
+
+class MissingProduct(DownloadError):
+    pass
+
+
+def s3_key(data_uri: str) -> str:
+    if data_uri.startswith("mast:HLSP/"):
+        return "mast/hlsp/" + data_uri[len("mast:HLSP/") :]
+    if data_uri.startswith("mast:TESS/product/"):
+        name = data_uri[len("mast:TESS/product/") :]
+        match = _SPOC_NAME.match(name)
+        if not match:
+            raise ValueError(f"unrecognised SPOC product name: {name}")
+        sector, tic16 = match.groups()
+        parts = "/".join(tic16[i : i + 4] for i in range(0, 16, 4))
+        return f"tess/public/tid/s{sector}/{parts}/{name}"
+    raise ValueError(f"unrecognised data URI: {data_uri}")
+
+
+def is_light_curve(provenance: str, filename: str) -> bool:
+    if provenance == "QLP":
+        return filename.endswith("_llc.fits")
+    return filename.endswith("_lc.fits") and not filename.endswith("fast-lc.fits")
+
+
+def discover(tics: list[int], batch: int = 50) -> pd.DataFrame:
+    """Every SPOC 2-min, TESS-SPOC and QLP light-curve file for these stars."""
+    rows = []
+    for start in range(0, len(tics), batch):
+        names = [str(t) for t in tics[start : start + batch]]
+        obs = Observations.query_criteria(
+            target_name=names, provenance_name=list(PROVENANCES), dataproduct_type="timeseries"
+        )
+        if len(obs) == 0:
+            continue
+        # 20-s targets also get their own 20-s observation; the 2-min one covers the same sector.
+        fast = (obs["provenance_name"] == "SPOC") & (
+            np.asarray(obs["t_exptime"], dtype=float) < 100
+        )
+        obs = obs[~fast]
+        by_obs_id = {str(o["obs_id"]): o for o in obs}
+        for product in Observations.get_product_list(obs):
+            o = by_obs_id.get(str(product["obs_id"]))
+            name = str(product["productFilename"])
+            if o is None or not is_light_curve(str(o["provenance_name"]), name):
+                continue
+            size = product["size"]
+            rows.append(
+                {
+                    "tic": int(o["target_name"]),
+                    "sector": int(o["sequence_number"]),
+                    "provenance": str(o["provenance_name"]),
+                    "cadence_s": float(o["t_exptime"]),
+                    "filename": name,
+                    "data_uri": str(product["dataURI"]),
+                    "size": 0 if np.ma.is_masked(size) else int(size),
+                    "s3_key": s3_key(str(product["dataURI"])),
+                }
+            )
+    frame = pd.DataFrame(rows, columns=PRODUCT_COLUMNS)
+    return frame.drop_duplicates("data_uri").reset_index(drop=True)
+
+
+def rank(products: pd.DataFrame) -> pd.DataFrame:
+    """Products best-first within each star and sector: SPOC 2-min, then TESS-SPOC, then QLP."""
+    order = products["provenance"].map(PREFERENCE)
+    ranked = products.assign(_rank=order).sort_values(["tic", "sector", "_rank", "cadence_s"])
+    return ranked.drop(columns="_rank").reset_index(drop=True)
+
+
+def best(products: pd.DataFrame) -> pd.DataFrame:
+    return rank(products).drop_duplicates(["tic", "sector"]).reset_index(drop=True)
+
+
+def download(
+    key: str, expected_size: int, session, attempts: int = 3, backoff: float = 2.0
+) -> bytes:
+    url = S3_BASE + key
+    problem = ""
+    for attempt in range(attempts):
+        if attempt:
+            time.sleep(backoff * attempt)
+        try:
+            response = session.get(url, timeout=60)
+        except requests.RequestException as exc:
+            problem = f"{type(exc).__name__}: {exc}"
+            continue
+        if response.status_code == 404:
+            # New products can be listed at MAST before they reach the bucket.
+            raise MissingProduct(f"not in bucket: {key}")
+        if response.status_code != 200:
+            problem = f"HTTP {response.status_code}"
+            continue
+        if expected_size and len(response.content) != expected_size:
+            problem = f"got {len(response.content)} bytes, expected {expected_size}"
+            continue
+        return response.content
+    raise DownloadError(f"{key}: {problem}")
