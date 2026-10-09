@@ -2,7 +2,7 @@
 
 import sys
 from collections.abc import Mapping
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +22,29 @@ from tess_hunt.novelty import check_novelty
 from tess_hunt.provenance import start_run
 
 
+def other_known_transits(
+    eph: Ephemeris,
+    known: pd.DataFrame,
+    tic: int,
+    harmonics: tuple[float, ...],
+    crit_search: dict,
+) -> list[Ephemeris]:
+    """The star's known transits to mask before vetting: every one except the signal under test."""
+    match = crit_search["match"]
+    fallback = crit_search["detrend"]["fallback_duration_days"]
+    # Matching on period alone, as novelty does for the star's own rows: a stale catalog epoch can
+    # sit out of phase with a rediscovery yet close enough that its mask cuts the transits under
+    # test (docs/decisions/0003-novelty-stale-ephemerides.md). A full match is also a period match.
+    return [
+        k
+        for k in known_ephemerides(known, tic, fallback)
+        if ephemeris_match(
+            eph, replace(k, t0=float("nan")), harmonics, match["sigma_p"], match["sigma_t"]
+        )
+        is None
+    ]
+
+
 def vet_signal(
     lc: LightCurve,
     star: Mapping,
@@ -34,13 +57,7 @@ def vet_signal(
     tic = int(star["tic"])
     harmonics = tuple(crit_vet["novelty"]["harmonics"])
     match = crit_search["match"]
-    fallback = crit_search["detrend"]["fallback_duration_days"]
-    # Mask the star's other known planets, never the signal under test.
-    others = [
-        k
-        for k in known_ephemerides(known, tic, fallback)
-        if ephemeris_match(eph, k, harmonics, match["sigma_p"], match["sigma_t"]) is None
-    ]
+    others = other_known_transits(eph, known, tic, harmonics, crit_search)
     flat = detrend(lc, crit_search["detrend"], others)
     core = crit_vet["depth"]["core_fraction"]
     results = [
@@ -92,6 +109,7 @@ def vet_signal(
     report = {
         "tic": tic,
         "ephemeris": asdict(eph),
+        "masked": [asdict(k) for k in others],
         "checks": [r.to_dict() for r in results],
         "fit": fit.summary() if fit else None,
         "advances": all(r.outcome is Outcome.PASS for r in results),

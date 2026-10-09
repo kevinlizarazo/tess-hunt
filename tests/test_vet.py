@@ -5,8 +5,8 @@ from synthetic import make_transit_lc, write_catalog_snapshot
 
 from tess_hunt.catalogs import load_known
 from tess_hunt.config import load_criteria
-from tess_hunt.ephemeris import Ephemeris
-from tess_hunt.vet import vet_signal
+from tess_hunt.ephemeris import Ephemeris, ephemeris_match
+from tess_hunt.vet import other_known_transits, vet_signal
 
 ROOT = Path(__file__).resolve().parents[1]
 SEARCH = load_criteria(ROOT / "criteria" / "search-v1.toml").values
@@ -72,3 +72,20 @@ def test_known_toi_is_flagged_and_does_not_advance(tmp_path):
     )
     novelty = next(c for c in report["checks"] if c["check"] == "novelty")
     assert novelty["outcome"] == "fail" and not report["advances"]
+    others = {c["check"]: c["outcome"] for c in report["checks"] if c["check"] != "novelty"}
+    assert all(o == "pass" for o in others.values()), others
+
+
+def test_signal_with_stale_catalog_epoch_is_not_masked(tmp_path):
+    # The catalog epoch is 0.05 d off: too far for an epoch match, near enough for the catalog
+    # transit's mask to cover most of the transit under test.
+    row = {"TIC ID": 1, "RA": "02:00:00", "Dec": "-40:00:00", "Duration (hours)": 1.44}
+    stale = {**row, "TOI": 7777.01, "Period (days)": 1.0, "Epoch (BJD)": 2458326.15}
+    other = {**row, "TOI": 7777.02, "Period (days)": 3.7, "Epoch (BJD)": 2458327.0}
+    known = load_known(write_catalog_snapshot(tmp_path / "snap", toi_rows=[stale, other]))
+    eph = Ephemeris(1.0, 1326.1, 0.06)
+    harmonics = tuple(VET["novelty"]["harmonics"])
+    sigma_p, sigma_t = SEARCH["match"]["sigma_p"], SEARCH["match"]["sigma_t"]
+    assert ephemeris_match(eph, Ephemeris(1.0, 1326.15, 0.06), harmonics, sigma_p, sigma_t) is None
+    masks = other_known_transits(eph, known, 1, harmonics, SEARCH)
+    assert [m.period for m in masks] == [3.7]
