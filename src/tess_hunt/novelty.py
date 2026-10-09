@@ -27,7 +27,7 @@ def check_novelty(
     sigma_t: float,
 ) -> CheckResult:
     if not np.all(np.isfinite([ra, dec, eph.period, eph.t0])):
-        # A NaN position finds no neighbours and a NaN ephemeris matches nothing, so either would pass.
+        # A NaN position finds no neighbours and a NaN ephemeris matches nothing: both would pass.
         return inconclusive(
             "novelty",
             "candidate position or ephemeris missing",
