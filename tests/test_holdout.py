@@ -11,6 +11,7 @@ CFG = {
     "min_sigma": 2.0,
     "max_depth_tension": 3.0,
     "min_points": 5,
+    "min_training_seasons": 2,
 }
 SECTORS = (1, 2, 3, 14, 15, 16, 28, 29, 30)  # three seasons about a year apart
 EPH = Ephemeris(3.7, 1326.1, 0.12)
@@ -40,6 +41,18 @@ def test_negative_control_signal_missing_from_one_season():
 def test_single_season_is_inconclusive():
     lc = make_lc(sectors=(1, 2, 3), noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 1500e-6)], seed=3)
     assert holdout(lc, EPH, CFG, 0.5).outcome is Outcome.INCONCLUSIVE
+
+
+def test_two_seasons_are_untestable_not_fail():
+    lc = make_lc(
+        sectors=(1, 2, 3, 28, 29, 30),
+        noise_ppm=300.0,
+        signals=[(3.7, 1326.1, 0.12, 1500e-6)],
+        seed=0,
+    )
+    result = holdout(lc, EPH, CFG, 0.5)
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert [s["status"] for s in result.evidence["seasons"]] == ["untestable", "untestable"]
 
 
 def test_underpowered_seasons_are_inconclusive_not_fail():

@@ -38,42 +38,67 @@ def refit_ephemeris(lc: LightCurve, eph: Ephemeris) -> Ephemeris:
 
 def holdout(lc: LightCurve, eph: Ephemeris, cfg: dict, core_fraction: float) -> CheckResult:
     labels = season_labels(lc.time, cfg["season_gap_days"])
-    full_depth, full_err, _ = box_depth(lc.time, lc.flux, lc.flux_err, eph, core_fraction)
     seasons = []
     for label in np.unique(labels):
         test, train = labels == label, labels != label
+        training_seasons = len(np.unique(labels[train]))
         row = {
             "season": int(label),
             "start": float(lc.time[test].min()),
             "end": float(lc.time[test].max()),
+            "training_seasons": training_seasons,
         }
-        if not train.any():
-            seasons.append({**row, "status": "no_training_data"})
+        if training_seasons < cfg["min_training_seasons"]:
+            # A period fitted on one season drifts out of the core window a year later.
+            seasons.append(
+                {
+                    **row,
+                    "status": "untestable",
+                    "reason": f"{training_seasons} training season(s), need "
+                    f"{cfg['min_training_seasons']}: one season can't predict a season a year away",
+                }
+            )
             continue
         predicted = refit_ephemeris(lc.select(train), eph)
         depth, err, n = box_depth(
             lc.time[test], lc.flux[test], lc.flux_err[test], predicted, core_fraction
         )
+        # The reference comes from the training cadences only, so it is independent of the held-out depth.
+        ref, ref_err, ref_n = box_depth(
+            lc.time[train], lc.flux[train], lc.flux_err[train], predicted, core_fraction
+        )
         row.update(
-            predicted_period=predicted.period, predicted_t0=predicted.t0, depth=depth, err=err, n=n
+            predicted_period=predicted.period,
+            predicted_t0=predicted.t0,
+            depth=depth,
+            err=err,
+            n=n,
+            ref=ref,
+            ref_err=ref_err,
+            ref_n=ref_n,
         )
         if n < cfg["min_points"]:
             row["status"] = "no_predicted_transit_in_data"
-        elif full_depth / err < cfg["min_expected_snr"]:
+        elif ref_n < cfg["min_points"]:
+            row.update(
+                status="untestable",
+                reason=f"fewer than {cfg['min_points']} training cadences in predicted transits",
+            )
+        elif ref / err < cfg["min_expected_snr"]:
             # Too few transits in this season to expect the dip to show; absence proves nothing.
-            row.update(status="underpowered", expected_snr=full_depth / err)
+            row.update(status="underpowered", expected_snr=ref / err)
         else:
-            tension = abs(depth - full_depth) / np.hypot(err, full_err)
+            tension = abs(depth - ref) / np.hypot(err, ref_err)
             ok = depth / err >= cfg["min_sigma"] and tension <= cfg["max_depth_tension"]
             row.update(
                 status="predicted" if ok else "missed",
                 sigma=depth / err,
                 tension=tension,
-                expected_snr=full_depth / err,
+                expected_snr=ref / err,
             )
         seasons.append(row)
     tested = [s for s in seasons if s["status"] in ("predicted", "missed")]
-    evidence = {"full_depth": full_depth, "full_err": full_err, "seasons": seasons}
+    evidence = {"seasons": seasons}
     if len(tested) < 2:
         return inconclusive(
             "holdout", f"{len(tested)} season(s) could be tested; need 2", **evidence
