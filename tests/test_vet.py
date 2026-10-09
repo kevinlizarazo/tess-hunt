@@ -1,0 +1,74 @@
+from pathlib import Path
+
+import pytest
+from synthetic import make_transit_lc, write_catalog_snapshot
+
+from tess_hunt.catalogs import load_known
+from tess_hunt.config import load_criteria
+from tess_hunt.ephemeris import Ephemeris
+from tess_hunt.vet import vet_signal
+
+ROOT = Path(__file__).resolve().parents[1]
+SEARCH = load_criteria(ROOT / "criteria" / "search-v1.toml").values
+VET = load_criteria(ROOT / "criteria" / "vet-v1.toml").values
+FAST_VET = {**VET, "fit": {**VET["fit"], "steps": 1500, "burn": 700}}
+STAR = {"tic": 1, "ra": 30.0, "dec": -40.0, "rho": 1.0, "e_rho": 0.1}
+SECTORS = (1, 2, 14, 15, 28, 29)
+
+
+@pytest.mark.slow
+def test_clean_planet_advances(tmp_path):
+    lc = make_transit_lc(
+        rp_rs=0.04,
+        sectors=SECTORS,
+        cadences={s: 30.0 for s in SECTORS},
+        noise_ppm={s: 200.0 for s in SECTORS},
+    )
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    report, fit = vet_signal(
+        lc, STAR, Ephemeris(5.0, 1326.1, 0.13, 0.0017), known, SEARCH, FAST_VET, seed=1
+    )
+    outcomes = {c["check"]: c["outcome"] for c in report["checks"]}
+    assert set(outcomes) == {
+        "novelty",
+        "odd_even",
+        "secondary",
+        "sector_depth",
+        "holdout",
+        "shape",
+        "density",
+    }
+    assert all(o == "pass" for o in outcomes.values()), outcomes
+    assert report["advances"] and fit is not None
+
+
+@pytest.mark.slow
+def test_known_toi_is_flagged_and_does_not_advance(tmp_path):
+    lc = make_transit_lc(
+        rp_rs=0.04,
+        sectors=SECTORS,
+        cadences={s: 30.0 for s in SECTORS},
+        noise_ppm={s: 200.0 for s in SECTORS},
+    )
+    toi = {
+        "TIC ID": 1,
+        "TOI": 7777.01,
+        "TFOPWG Disposition": "PC",
+        "TESS Mag": 9.0,
+        "Stellar Eff Temp (K)": 5800.0,
+        "Stellar log(g) (cm/s^2)": 4.4,
+        "RA": "02:00:00",
+        "Dec": "-40:00:00",
+        "Period (days)": 5.0,
+        "Epoch (BJD)": 2458326.1,
+        "Duration (hours)": 3.1,
+        "Depth (ppm)": 1700.0,
+        "Planet SNR": 30.0,
+        "Comments": "",
+    }
+    known = load_known(write_catalog_snapshot(tmp_path / "snap", toi_rows=[toi]))
+    report, _ = vet_signal(
+        lc, STAR, Ephemeris(5.0, 1326.1, 0.13, 0.0017), known, SEARCH, FAST_VET, seed=1
+    )
+    novelty = next(c for c in report["checks"] if c["check"] == "novelty")
+    assert novelty["outcome"] == "fail" and not report["advances"]
