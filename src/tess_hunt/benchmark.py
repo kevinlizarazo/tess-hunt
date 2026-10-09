@@ -17,11 +17,12 @@ import pandas as pd  # noqa: E402
 from tess_hunt.catalogs import FILES, known_ephemerides, load_known  # noqa: E402
 from tess_hunt.config import lc_dir, load_criteria, runs_dir  # noqa: E402
 from tess_hunt.detrend import detrend  # noqa: E402
-from tess_hunt.ephemeris import Ephemeris, ephemeris_match, in_transit  # noqa: E402
+from tess_hunt.ephemeris import Ephemeris, ephemeris_match  # noqa: E402
 from tess_hunt.inject import draw, inject  # noqa: E402
 from tess_hunt.lightcurve import LightCurve  # noqa: E402
 from tess_hunt.provenance import repo_root, start_run  # noqa: E402
 from tess_hunt.search import search_star, star_params  # noqa: E402
+from tess_hunt.transit import light_curve  # noqa: E402
 
 ENGINES = {
     "bls30": {"engine": "bls", "bin_minutes": 30.0},
@@ -68,12 +69,19 @@ def classify(truth: Ephemeris, signals, match_cfg: dict, threshold: float) -> di
 def injection_job(job: tuple) -> list[dict]:
     star, lc_path, known_ephs, crit, engines, per_star, seed = job
     rng = np.random.default_rng(seed)
-    lc = LightCurve.load(lc_path)
     rstar, mstar, assumed = star_params(star)
     bench, search = crit["benchmark"], crit["search"]
+    u = (bench["inject_u1"], bench["inject_u2"])
+    bases = [
+        {"tic": int(star["tic"]), "injection": k, "assumed_solar": assumed} for k in range(per_star)
+    ]
+    try:
+        lc = LightCurve.load(lc_path)
+    except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
+        error = f"{type(exc).__name__}: {exc}"
+        return [{**base, "status": "error", "error": error} for base in bases]
     rows = []
-    for k in range(per_star):
-        base = {"tic": int(star["tic"]), "injection": k, "assumed_solar": assumed}
+    for base in bases:
         inj = draw(
             rng,
             lc.time,
@@ -86,39 +94,59 @@ def injection_job(job: tuple) -> list[dict]:
         if inj is None:
             rows.append({**base, "status": "no_draw"})
             continue
-        flat = detrend(
-            inject(lc, inj, (bench["inject_u1"], bench["inject_u2"])), crit["detrend"], known_ephs
-        )
-        n_in = int(in_transit(flat.time, inj.ephemeris()).sum())
-        expected_snr = (
-            float(inj.rp_rs**2 / np.median(flat.flux_err) * np.sqrt(n_in)) if n_in else 0.0
-        )
-        for name in engines:
-            started = time.perf_counter()
-            signals = search_star(flat, rstar, mstar, {**search, **ENGINES[name]})
-            rows.append(
-                {
-                    **base,
-                    "status": "ok",
-                    "engine": name,
-                    "runtime_s": time.perf_counter() - started,
-                    **{f"inj_{key}": value for key, value in asdict(inj).items()},
-                    "expected_snr": expected_snr,
-                    **classify(inj.ephemeris(), signals, crit["match"], bench["provisional_sde"]),
-                }
+        try:
+            flat = detrend(inject(lc, inj, u), crit["detrend"], known_ephs)
+            # The search stage skips these stars; scoring them would measure a different sample.
+            if len(flat.time) < search["min_points"]:
+                rows.append({**base, "status": "too_few_points", "n_points": len(flat.time)})
+                continue
+            # The signal the search sees, after limb darkening, impact parameter and exposure smearing.
+            model = light_curve(
+                flat.time, flat.exposure_days(), inj.t0, inj.period, inj.rp_rs, inj.a_rs, inj.b, *u
             )
+            expected_snr = float(np.sqrt(np.sum(((1.0 - model) / flat.flux_err) ** 2)))
+            # Engines are compared on the same injections, so a failure drops the injection for all.
+            scored = []
+            for name in engines:
+                started = time.perf_counter()
+                signals = search_star(flat, rstar, mstar, {**search, **ENGINES[name]})
+                scored.append(
+                    {
+                        **base,
+                        "status": "ok",
+                        "engine": name,
+                        "runtime_s": time.perf_counter() - started,
+                        **{f"inj_{key}": value for key, value in asdict(inj).items()},
+                        "expected_snr": expected_snr,
+                        **classify(
+                            inj.ephemeris(), signals, crit["match"], bench["provisional_sde"]
+                        ),
+                    }
+                )
+            rows += scored
+        except Exception as exc:  # one bad injection must not stop the run; it is recorded
+            rows.append({**base, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
     return rows
 
 
 def known_job(job: tuple) -> dict:
     planet, star, lc_path, crit = job
-    base = {k: planet[k] for k in ("toi", "tic", "period", "depth_ppm", "planet_snr", "required")}
+    rstar, mstar, assumed = star_params(star)
+    base = {
+        **{k: planet[k] for k in ("toi", "tic", "period", "depth_ppm", "planet_snr", "required")},
+        "assumed_solar": assumed,
+    }
+    missed = {"recovered": False, "alias": False}
     if not Path(lc_path).exists():
-        return {**base, "status": "no_light_curve", "recovered": False, "alias": False}
-    # Masks off: these planets are the positive controls.
-    flat = detrend(LightCurve.load(lc_path), crit["detrend"])
-    rstar, mstar, _ = star_params(star)
-    signals = search_star(flat, rstar, mstar, crit["search"])
+        return {**base, "status": "no_light_curve", **missed}
+    try:
+        # Masks off: these planets are the positive controls.
+        flat = detrend(LightCurve.load(lc_path), crit["detrend"])
+        if len(flat.time) < crit["search"]["min_points"]:
+            return {**base, "status": "too_few_points", "n_points": len(flat.time), **missed}
+        signals = search_star(flat, rstar, mstar, crit["search"])
+    except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
+        return {**base, "status": "error", "error": f"{type(exc).__name__}: {exc}", **missed}
     truth = Ephemeris(planet["period"], planet["t0"], planet["duration"])
     return {
         **base,
@@ -264,22 +292,25 @@ def cmd_known(args) -> int:
         f"Required planets recovered: {int((table['required'] & table['recovered']).sum())} of {int(table['required'].sum())}.",
         f"All planets recovered: {int(table['recovered'].sum())} of {len(table)}.",
         "",
+        # Rows that never reached the search carry no classify columns; reindex fills them with NaN.
         md_table(
-            table[
-                [
+            table.reindex(
+                columns=[
                     "toi",
                     "tic",
                     "period",
                     "depth_ppm",
                     "planet_snr",
                     "required",
+                    "assumed_solar",
+                    "status",
                     "recovered",
                     "alias",
                     "found_period",
                     "sde",
                     "rank",
                 ]
-            ]
+            )
         ),
         "",
     ]
@@ -354,8 +385,11 @@ def cmd_inject(args) -> int:
         plot_map(table, engine, run.path / f"completeness_{engine}.png")
         lines += [f"![{engine}](completeness_{engine}.png)", ""]
     (run.path / "summary.md").write_text("\n".join(lines))
+    statuses = rows["status"].value_counts()
     run.finish(
-        stars=len(stars), injections=int(len(ok)), no_draw=int((rows["status"] == "no_draw").sum())
+        stars=len(stars),
+        injections=int(len(ok)),
+        **{s: int(statuses.get(s, 0)) for s in ("no_draw", "too_few_points", "error")},
     )
     print("\n".join(lines))
     return 0

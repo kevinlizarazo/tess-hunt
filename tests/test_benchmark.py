@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from synthetic import make_lc
 
-from tess_hunt.benchmark import classify, completeness, injection_job, md_table
+from tess_hunt.benchmark import classify, completeness, injection_job, known_job, md_table
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris
 from tess_hunt.search import Signal
@@ -13,10 +13,51 @@ from tess_hunt.search import Signal
 ROOT = Path(__file__).resolve().parents[1]
 CRIT = load_criteria(ROOT / "criteria" / "search-v1.toml").values
 MATCH = CRIT["match"]
+SUN = {"tic": 1, "rad": 1.0, "mass": 1.0}
+PLANET = {
+    "toi": "100.01",
+    "tic": 1,
+    "period": 4.3,
+    "t0": 1326.0,
+    "duration": 0.12,
+    "depth_ppm": 3000.0,
+    "planet_snr": 40.0,
+    "required": True,
+}
 
 
 def sig(period, t0=100.0, sde=20.0, rank=1):
     return Signal(1, rank, period, t0, 0.1, 1e-3, 10.0, sde, 5)
+
+
+def test_injection_job_records_a_light_curve_that_fails_to_load(tmp_path):
+    path = tmp_path / "1.npz"
+    path.write_bytes(b"not a light curve")
+    rows = injection_job((SUN, path, [], CRIT, ["bls30"], 1, 11))
+    assert len(rows) == 1 and rows[0]["status"] == "error" and rows[0]["error"]
+
+
+def test_injection_job_gates_a_light_curve_too_short_to_search(tmp_path):
+    path = tmp_path / "1.npz"
+    lc = make_lc(sectors=(1,), seed=3)
+    # Every 13th cadence leaves 96 points: enough for transits to land on data, too few for detrend.
+    lc.select(np.arange(len(lc.time)) % 13 == 0).save(path)
+    rows = injection_job((SUN, path, [], CRIT, ["bls30"], 1, 11))
+    assert [r["status"] for r in rows] == ["too_few_points"] and rows[0]["n_points"] == 0
+
+
+def test_known_job_flags_a_host_missing_from_targets(tmp_path):
+    path = tmp_path / "1.npz"
+    make_lc(noise_ppm=300.0, signals=[(4.3, 1326.0, 0.12, 0.003)], seed=3).save(path)
+    row = known_job((PLANET, {"tic": 1}, path, CRIT))
+    assert row["status"] == "ok" and row["assumed_solar"] and row["recovered"]
+
+
+def test_known_job_records_an_error_as_a_miss(tmp_path):
+    path = tmp_path / "1.npz"
+    path.write_bytes(b"not a light curve")
+    row = known_job((PLANET, SUN, path, CRIT))
+    assert row["status"] == "error" and not row["recovered"] and not row["alias"]
 
 
 def test_classify_recovered():
