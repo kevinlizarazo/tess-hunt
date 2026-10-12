@@ -1,0 +1,50 @@
+{
+  "argv": [
+    "tess-hunt",
+    "benchmark",
+    "known",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261009T171713Z-targets-b64d6e2-50d4/targets.parquet",
+    "--manifest",
+    "$TESS_HUNT_DATA/runs/20261009T171734Z-fetch-b64d6e2-f043/fetch_manifest.jsonl",
+    "--workers",
+    "16",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v1.toml",
+      "sha256": "31be7de40427782c79ae2e00d52d254fda9b3dcfce100abdacc604b00447a8e1"
+    }
+  ],
+  "ended_at": "2026-10-12T14:47:49.152383+00:00",
+  "git": {
+    "commit": "bcd8d2e268cd39e4703e9581114676b1a37b74ad",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "fetch_manifest": {
+      "file": "fetch_manifest.jsonl",
+      "sha256": "b107139bcf1d5aca1b9ac0f4907cfca7892a7b2e3d91029b6ca1eac61d068fc5"
+    },
+    "known": {
+      "file": "known_planets.csv",
+      "sha256": "2b91a2a1f23d32b1832b5bfa72d7e5650d236df2d6feabf8f07c90d977e88617"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "eb5e6218e511cda0eeff9c54ae109b7e582e30215d3620f8c5a2c948aac72f98"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261012T144539Z-benchmark-known-bcd8d2e-5e48",
+  "stage": "benchmark-known",
+  "started_at": "2026-10-12T14:45:39.803862+00:00",
+  "summary": {
+    "planets": 20,
+    "recovered": 17,
+    "required_missed": 0
+  },
+  "uv_lock_sha256": "1ea0de8eb5e75372914ff2fd58de1aa4a06c55508ea1d7695d28c9b56e0764e7"
+}

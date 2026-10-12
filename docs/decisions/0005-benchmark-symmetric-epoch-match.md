@@ -39,6 +39,8 @@ the epoch.
   data directory's `runs/` and not published.
 - The rerun after this decision, published:
   [summary.md](../../results/benchmarks/20261009T180940Z-benchmark-known-0801864-d6f6/summary.md).
+- The same rerun repeated after the final review, with light-curve hashes and the fetch manifest recorded:
+  [summary.md](../../results/benchmarks/20261012T144539Z-benchmark-known-bcd8d2e-5e48/summary.md).
 - Unit tests in [tests/test_benchmark.py](../../tests/test_benchmark.py):
   `test_classify_recovers_when_catalog_period_drifts` (the TOI-396.01 ephemeris and the signal the search found for
   it), `test_classify_recovers_when_search_period_drifts` (the mirror case, where only the truth's period carries

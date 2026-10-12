@@ -29,7 +29,8 @@ The runs were made at different commits. The one commit between them, c7a2625, c
 ## Limitations
 
 The injection-recovery maps understate the losses on variable stars. The search can spend its signal slots on the
-star's own variability: its duration grid has no upper bound, and it can detect the same variability more than once.
+star's own variability: its duration grid is the same for every period, so a box far longer than a transit at
+that period can fit the variability, and it can detect the same variability more than once.
 M2 fixes the search and reruns the benchmark.
 
 ## Evidence
@@ -44,4 +45,6 @@ M2 fixes the search and reruns the benchmark.
   Joining the two `injections.csv` files on `tic` and `injection` pairs the planets: the injected period and epoch
   agree row for row, and the `recovered` column agrees for every pair.
 - Known-planet recovery with `bls30`:
-  [summary.md](../../results/benchmarks/20261009T180940Z-benchmark-known-0801864-d6f6/summary.md).
+  [summary.md](../../results/benchmarks/20261009T180940Z-benchmark-known-0801864-d6f6/summary.md),
+  and the same run repeated with light-curve hashes and the fetch manifest recorded:
+  [summary.md](../../results/benchmarks/20261012T144539Z-benchmark-known-bcd8d2e-5e48/summary.md).
