@@ -12,9 +12,8 @@ setting), BLS on 10-minute bins (`bls10`) and TLS on 30-minute bins (`tls`, on t
 The TLS run used the same seeds as the BLS run, so its 20 injected planets are the BLS run's first planet on each of
 those stars, and the three engines can be compared planet by planet.
 
-The runs were made at different commits. The search and injection code is the same in both; the commits between
-them changed only the vetting checks and the benchmark's match rule, which affects known planets and is described in
-decision 0005.
+The runs were made at different commits. The one commit between them, c7a2625, changed only the vetting depth errors
+(decision 0006); the search, injection and classify code was identical in both.
 
 ## Decision
 
@@ -26,6 +25,12 @@ decision 0005.
   runtime per search. TLS does not earn a place in M2's search.
 - The measured runtime per search is well above the design's estimate of 10 to 20 seconds per star. These stars have
   many sectors, so they sit near the worst case, but M2's compute plan should start from the measured value.
+
+## Limitations
+
+The injection-recovery maps understate the losses on variable stars. The search can spend its signal slots on the
+star's own variability: its duration grid has no upper bound, and it can detect the same variability more than once.
+M2 fixes the search and reruns the benchmark.
 
 ## Evidence
 

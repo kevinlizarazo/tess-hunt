@@ -2,8 +2,11 @@
 
 An independent search for transiting planets in public NASA TESS light curves.
 
-**Status:** under construction. Nothing here is a confirmed planet. Any signal this project reports is a candidate
-until other observers confirm it.
+**Status:** under construction. No signal this project reports is a confirmed planet; every one is a candidate until
+other observers confirm it. The known planets under `results/benchmarks/` are positive controls from the TOI catalog.
+
+`results/benchmarks/` holds M1's known-planet, injection-recovery and control vet runs
+([results/README.md](results/README.md)); no search has run yet.
 
 ## What it searches
 
@@ -19,10 +22,12 @@ Requires [uv](https://docs.astral.sh/uv/) on Linux or macOS (Windows through WSL
     uv sync
     uv run tess-hunt --help
 
-Light curves are cached in `$TESS_HUNT_DATA` (default `~/.cache/tess-hunt`). Data is read anonymously from the
-public TESS bucket on AWS (`s3://stpubdata`); no credentials are needed.
+Light curves are read anonymously from the public TESS bucket on AWS (`s3://stpubdata`) and cached in
+`$TESS_HUNT_DATA` (default `~/.cache/tess-hunt`). Stellar parameters come from the TIC via MAST, and known planets and
+candidates from ExoFOP and the NASA Exoplanet Archive, all without credentials.
 
 ## Licenses
 
-Code: MIT ([LICENSE](LICENSE)). Results in `results/`: CC BY 4.0 ([results/LICENSE](results/LICENSE)). Data
-credits and required acknowledgements: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
+Code: MIT ([LICENSE](LICENSE)). Results in `results/`: CC BY 4.0 ([results/LICENSE](results/LICENSE)). The FITS files
+under `tests/fixtures/` are TESS data products under CC BY 4.0 ([tests/fixtures/README.md](tests/fixtures/README.md)).
+Data credits and required acknowledgements: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).

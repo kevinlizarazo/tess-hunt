@@ -27,3 +27,22 @@ A planet is `required` when its TOI "Planet SNR" is at least `[benchmark]` `requ
 exits non-zero if any required planet is missed.
 
 Times in the CSV are BTJD (BJD_TDB - 2457000); durations are in days.
+
+## Eclipsing-binary control
+
+`eb_control.csv` holds the real-data negative control for the vetting checks: a known eclipsing binary that a vet run
+must not advance. It is a control input, not a criterion.
+
+The row is TOI-188.01 (TIC 280830734) from the ExoFOP TOI table in the catalog snapshot of 2026-10-09 (UTC). ExoFOP
+gives its TESS disposition as EB and its TFOPWG disposition as FP; the catalog comment notes an odd and even depth
+difference in SPOC's S1-S69 search and its retirement by TFOP as an eclipsing binary.
+
+The values are the catalog row's, converted the way the catalog loader converts them: the epoch from BJD to BTJD and
+the duration from hours to days. The period (days) and depth (ppm) are unchanged. No `tess-hunt` command writes or
+reads the file.
+
+The published vet run
+[`20261009T191134Z-vet-c7a2625-ce0e`](../results/benchmarks/20261009T191134Z-vet-c7a2625-ce0e/checks.json) vetted
+this signal, with the period, epoch and duration rounded on the command line; its `provenance.json` records the
+arguments. [Decision 0006](../docs/decisions/0006-red-noise-depth-errors.md) describes the run. Later runs of the
+control should pass the file's full-precision values.

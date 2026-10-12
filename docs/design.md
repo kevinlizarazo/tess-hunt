@@ -1,7 +1,7 @@
 # tess-hunt: design
 
 Status: approved 2026-10-08.
-Repo: `kevinlizarazo/tess-hunt` (private, written to go public later), at `~/code/tess-hunt` in WSL Ubuntu-26.04.
+Repo: `kevinlizarazo/tess-hunt` (private, written to go public later).
 
 ## 1. Goal
 
@@ -45,7 +45,6 @@ Consequences for this design:
 |---|---|
 | Ambition | As far as Pavel: dossier, Zenodo preprint, preregistered predictions, DDT proposal |
 | Search slice | A (bright Sun-like dwarfs on the newest sectors) first; B (long-period duo/tri-transits) later as a second search mode |
-| Location | WSL `~/code/tess-hunt` |
 | Owner | `kevinlizarazo` personal account, private |
 | Licenses | Code MIT, results CC BY 4.0, copyright "Kevin Lizarazo"; `CITATION.cff` carries the same name |
 | Commit email | Repo-local GitHub noreply address; global git config untouched |
@@ -53,7 +52,7 @@ Consequences for this design:
 
 ## 3. Why slice A
 
-What has been searched (details and sources in the 2026-10-08 landscape research):
+What has been searched (sources in section 9):
 
 - **SPOC:** searches 2-min targets every sector. Its latest multi-sector run is S1-S96 [L1]. It requires MES > 7.1
   and at least 2 transits [L2], and skips transits longer than 15 h [L3].
@@ -374,10 +373,10 @@ period. It meets the same bar as M2 and M3.
 
 ## 9. Sources
 
-Facts marked [R], [L] and [T] were fetched on 2026-10-08. The [L] and [T] numbers follow the two research reports
-from that session; key URLs are listed here.
+Facts marked [R], [L] and [T] were fetched on 2026-10-08. The [L] and [T] numbers come from unpublished working notes,
+which is why they have gaps; only the URLs listed here are the sources.
 
-- [R1] Reddit thread "I think I found a planet nobody knew existed" (PDF copy), and https://x.com/p_rabtsevich/status/2107803696058822742
+- [R1] Reddit thread "I think I found a planet nobody knew existed", and https://x.com/p_rabtsevich/status/2107803696058822742
 - [R2] https://gist.github.com/MrBoostie/b7a34b9ec96fbfb37e8fd250ba6debba; preprint https://doi.org/10.5281/zenodo.22967456; predictions https://doi.org/10.5281/zenodo.23175179; https://tess.mit.edu/science/ddt/
 - [R3] https://exofop.ipac.caltech.edu/tess/news.php
 - [R4] https://exofop.ipac.caltech.edu/tess/candidate_help.php
