@@ -20,7 +20,7 @@ from tess_hunt.detrend import detrend  # noqa: E402
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match  # noqa: E402
 from tess_hunt.inject import draw, inject  # noqa: E402
 from tess_hunt.lightcurve import LightCurve  # noqa: E402
-from tess_hunt.provenance import repo_root, start_run  # noqa: E402
+from tess_hunt.provenance import repo_root, sha256_file, start_run  # noqa: E402
 from tess_hunt.search import search_star, star_params  # noqa: E402
 from tess_hunt.transit import light_curve  # noqa: E402
 
@@ -87,6 +87,9 @@ def injection_job(job: tuple) -> list[dict]:
         {"tic": int(star["tic"]), "injection": k, "assumed_solar": assumed} for k in range(per_star)
     ]
     try:
+        # The cached light curve can be rewritten by a later fetch; the hash ties each row to its bytes.
+        digest = sha256_file(lc_path)
+        bases = [{**base, "lc_sha256": digest} for base in bases]
         lc = LightCurve.load(lc_path)
     except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
         error = f"{type(exc).__name__}: {exc}"
@@ -151,6 +154,7 @@ def known_job(job: tuple) -> dict:
     if not Path(lc_path).exists():
         return {**base, "status": "no_light_curve", **missed}
     try:
+        base["lc_sha256"] = sha256_file(lc_path)
         # Masks off: these planets are the positive controls.
         flat = detrend(LightCurve.load(lc_path), crit["detrend"])
         if len(flat.time) < crit["search"]["min_points"]:
@@ -270,6 +274,9 @@ def add_parser(sub) -> None:
     i.set_defaults(func=cmd_inject)
     for mode in (k, i):
         mode.add_argument("--criteria", type=Path, default=Path("criteria/search-v1.toml"))
+        mode.add_argument(
+            "--manifest", type=Path, help="the fetch run's fetch_manifest.jsonl, to record"
+        )
         mode.add_argument("--workers", type=int, default=8)
         mode.add_argument("--production", action="store_true")
     pub = modes.add_parser("publish", help="copy a benchmark run's summary into results/")
@@ -282,6 +289,8 @@ def cmd_known(args) -> int:
     run = start_run("benchmark-known", [criteria], args.production, sys.argv)
     run.record_input("known", args.known)
     run.record_input("targets", args.targets)
+    if args.manifest:
+        run.record_input("fetch_manifest", args.manifest)
     known = pd.read_csv(args.known, dtype={"toi": str})
     stars = _star_index(args.targets)
     jobs = [
@@ -343,6 +352,8 @@ def cmd_inject(args) -> int:
     run.record_input("targets", args.targets)
     for name in FILES.values():
         run.record_input(name, args.catalogs / name)
+    if args.manifest:
+        run.record_input("fetch_manifest", args.manifest)
     known = load_known(args.catalogs)
     fallback = criteria["detrend"]["fallback_duration_days"]
     stars = [

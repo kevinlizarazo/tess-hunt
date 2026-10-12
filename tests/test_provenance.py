@@ -92,6 +92,11 @@ def test_record_input_and_argv_carry_no_machine_paths(repo, tmp_path, monkeypatc
     assert run.provenance["inputs"]["targets"]["file"] == "targets.parquet"
 
 
+def test_argv_records_the_program_by_name_only(repo, tmp_path):
+    run = start(repo, tmp_path, production=False, argv=("/opt/checkout/.venv/bin/tess-hunt", "vet"))
+    assert run.provenance["argv"] == ["tess-hunt", "vet"]
+
+
 @pytest.mark.skipif(os.geteuid() == 0, reason="root ignores file permissions")
 def test_finish_freezes_the_run(repo, tmp_path):
     run = start(repo, tmp_path, production=False)

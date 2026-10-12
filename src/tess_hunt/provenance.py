@@ -145,7 +145,8 @@ def start_run(
             "criteria": [
                 {"file": f, "sha256": c.sha256} for f, c in zip(files, criteria, strict=True)
             ],
-            "argv": [_scrub(a) for a in argv],
+            # argv[0] is wherever the checkout's venv put the script; only its name is reproducible.
+            "argv": [Path(argv[0]).name, *(_scrub(a) for a in argv[1:])],
             "python": sys.version.split()[0],
             "inputs": {},
             "summary": None,

@@ -1,13 +1,16 @@
+import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
-from synthetic import make_lc
+from synthetic import make_lc, write_catalog_snapshot
 
 from tess_hunt.benchmark import classify, completeness, injection_job, known_job, md_table
+from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris
+from tess_hunt.provenance import sha256_file
 from tess_hunt.search import Signal
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +38,13 @@ def test_injection_job_records_a_light_curve_that_fails_to_load(tmp_path):
     path.write_bytes(b"not a light curve")
     rows = injection_job((SUN, path, [], CRIT, ["bls30"], 1, 11))
     assert len(rows) == 1 and rows[0]["status"] == "error" and rows[0]["error"]
+    assert rows[0]["lc_sha256"] == sha256_file(path)
+
+
+def test_injection_job_records_a_missing_light_curve(tmp_path):
+    rows = injection_job((SUN, tmp_path / "1.npz", [], CRIT, ["bls30"], 2, 11))
+    assert [r["status"] for r in rows] == ["error", "error"]
+    assert all("FileNotFoundError" in r["error"] and "lc_sha256" not in r for r in rows)
 
 
 def test_injection_job_gates_a_light_curve_too_short_to_search(tmp_path):
@@ -44,6 +54,7 @@ def test_injection_job_gates_a_light_curve_too_short_to_search(tmp_path):
     lc.select(np.arange(len(lc.time)) % 13 == 0).save(path)
     rows = injection_job((SUN, path, [], CRIT, ["bls30"], 1, 11))
     assert [r["status"] for r in rows] == ["too_few_points"] and rows[0]["n_points"] == 0
+    assert rows[0]["lc_sha256"] == sha256_file(path)
 
 
 def test_known_job_flags_a_host_missing_from_targets(tmp_path):
@@ -51,6 +62,7 @@ def test_known_job_flags_a_host_missing_from_targets(tmp_path):
     make_lc(noise_ppm=300.0, signals=[(4.3, 1326.0, 0.12, 0.003)], seed=3).save(path)
     row = known_job((PLANET, {"tic": 1}, path, CRIT))
     assert row["status"] == "ok" and row["assumed_solar"] and row["recovered"]
+    assert row["lc_sha256"] == sha256_file(path)
 
 
 def test_known_job_records_an_error_as_a_miss(tmp_path):
@@ -58,6 +70,49 @@ def test_known_job_records_an_error_as_a_miss(tmp_path):
     path.write_bytes(b"not a light curve")
     row = known_job((PLANET, SUN, path, CRIT))
     assert row["status"] == "error" and not row["recovered"] and not row["alias"]
+    assert row["lc_sha256"] == sha256_file(path)
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        "known",
+        # Grouping completeness_map's two interval columns, pandas fails to hash the intervals and
+        # falls back through a cast that warns.
+        pytest.param(
+            "inject",
+            marks=pytest.mark.filterwarnings(
+                "ignore:invalid value encountered in cast:RuntimeWarning"
+            ),
+        ),
+    ],
+)
+def test_benchmark_records_the_fetch_manifest(mode, tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    monkeypatch.setenv("TESS_HUNT_DATA", str(data))
+    make_lc(noise_ppm=300.0, signals=[(4.3, 1326.0, 0.12, 0.003)], seed=3).save(
+        data / "lc" / "1.npz"
+    )
+    targets = tmp_path / "targets.parquet"
+    pd.DataFrame([{**SUN, "ra": 30.0, "dec": -40.0}]).to_parquet(targets)
+    manifest = tmp_path / "fetch_manifest.jsonl"
+    manifest.write_text('{"tic": 1, "status": "ok"}\n')
+    known = tmp_path / "known.csv"
+    pd.DataFrame([PLANET]).to_csv(known, index=False)
+    snap = write_catalog_snapshot(tmp_path / "snap")
+    extra = {
+        "known": ["--known", str(known)],
+        "inject": ["--catalogs", str(snap), "--engines", "bls30", "--per-star", "1"],
+    }[mode]
+    monkeypatch.chdir(ROOT)
+    argv = ["benchmark", mode, "--targets", str(targets), "--manifest", str(manifest), *extra]
+    assert main([*argv, "--workers", "1"]) == 0
+    run = sorted((data / "runs").iterdir())[-1]
+    inputs = json.loads((run / "provenance.json").read_text())["inputs"]
+    assert inputs["fetch_manifest"] == {
+        "file": "fetch_manifest.jsonl",
+        "sha256": sha256_file(manifest),
+    }
 
 
 def test_classify_recovered():
@@ -136,4 +191,4 @@ def test_injection_job_recovers_a_large_planet(tmp_path):
     star = {"tic": 1, "rad": 1.0, "mass": 1.0}
     rows = injection_job((star, path, [], crit, ["bls30"], 1, 11))
     assert len(rows) == 1 and rows[0]["recovered"] and rows[0]["expected_snr"] > 20
-    assert np.isfinite(rows[0]["runtime_s"])
+    assert np.isfinite(rows[0]["runtime_s"]) and rows[0]["lc_sha256"] == sha256_file(path)
