@@ -1,13 +1,13 @@
 from pathlib import Path
 
 import pytest
-from synthetic import correlated_noise, make_transit_lc, write_catalog_snapshot
+from synthetic import correlated_noise, make_lc, make_transit_lc, write_catalog_snapshot
 
 from tess_hunt.catalogs import load_known
 from tess_hunt.checks.photometry import box_depth
 from tess_hunt.config import load_criteria
 from tess_hunt.detrend import detrend
-from tess_hunt.ephemeris import Ephemeris, ephemeris_match
+from tess_hunt.ephemeris import Ephemeris, ephemeris_match, in_transit
 from tess_hunt.vet import other_known_transits, vet_signal
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,6 +95,31 @@ def test_report_carries_red_noise_and_depth_errors_use_it(tmp_path):
         m = flat.sector == row["sector"]
         _, white_err, _ = box_depth(flat.time[m], flat.flux[m], flat.flux_err[m], eph, core)
         assert row["err"] == pytest.approx(white_err * betas[str(row["sector"])]["beta"])
+
+
+@pytest.mark.slow
+def test_eclipsing_binary_in_correlated_noise_fails_odd_even(tmp_path):
+    eb = [(7.4, 1326.1, 0.12, 3000e-6), (7.4, 1326.1 + 3.7, 0.12, 1500e-6)]
+    lc = make_lc(sectors=(1, 2), cadence_min=2.0, noise_ppm=500.0, signals=eb, seed=12)
+    lc.flux += correlated_noise(lc, 200.0, 1.5, seed=12)
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    eph = Ephemeris(3.7, 1326.1, 0.12, 2250e-6)
+    report, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET, seed=1)
+    assert min(row["beta"] for row in report["red_noise"].values()) > 1.3, report["red_noise"]
+    odd_even = next(c for c in report["checks"] if c["check"] == "odd_even")
+    assert odd_even["outcome"] == "fail" and not report["advances"], odd_even["evidence"]
+
+
+def test_no_cadence_inside_the_transits_leaves_shape_and_density_inconclusive(tmp_path):
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    lc = make_transit_lc(rp_rs=0.04)
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    report, fit = vet_signal(
+        lc.select(~in_transit(lc.time, eph)), STAR, eph, known, SEARCH, FAST_VET, seed=1
+    )
+    outcomes = {c["check"]: c["outcome"] for c in report["checks"]}
+    assert outcomes["shape"] == outcomes["density"] == "inconclusive", outcomes
+    assert fit is None and not report["advances"]
 
 
 def test_signal_with_stale_catalog_epoch_is_not_masked(tmp_path):

@@ -38,6 +38,15 @@ The real eclipsing binary TOI-188.01 (TIC 280830734) failed the odd and even che
 - The vet report records each sector's beta, bin count, cadences per bin and any note under `red_noise`.
 - No criteria value changes.
 
+## Limitations
+
+Beta is measured on every cadence outside the transits of the signal under test, so a signal locked to the orbital
+phase, such as the ellipsoidal variation of a short-period binary or its secondary eclipse, raises beta as if it were
+noise. That weakens the odd and even and the secondary eclipse checks on those binaries. The
+negative controls below show that a clear eclipsing binary still fails both checks through the inflated errors; a
+binary with a smaller depth difference or a shallower secondary could pass. Subtracting the folded out-of-transit
+profile before binning would remove the effect; it is not done yet.
+
 ## Evidence
 
 - Vet runs `20261009T181228Z-vet-0801864-99a5` (Pi Men c) and `20261009T182044Z-vet-0801864-e073` (TOI-188.01),
@@ -54,4 +63,9 @@ The real eclipsing binary TOI-188.01 (TIC 280830734) failed the odd and even che
   `test_with_red_noise_scales_each_sectors_errors`.
 - [tests/test_vet.py](../../tests/test_vet.py): `test_report_carries_red_noise_and_depth_errors_use_it`. The existing
   photometry, held-out season and vet tests pass unchanged.
+- Negative controls through the inflated errors, added after this decision:
+  `test_odd_even_negative_control_fails_through_red_noise_inflation` and
+  `test_secondary_negative_control_fails_through_red_noise_inflation` in
+  [tests/test_photometry_checks.py](../../tests/test_photometry_checks.py), and
+  `test_eclipsing_binary_in_correlated_noise_fails_odd_even` in [tests/test_vet.py](../../tests/test_vet.py).
 - Method: Pont, Zucker and Queloz 2006, MNRAS 373, 231; Winn et al. 2008, ApJ 683, 1076.

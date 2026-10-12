@@ -97,6 +97,9 @@ def odd_even(
         )
     sigma = abs(d_odd - d_even) / np.hypot(e_odd, e_even)
     evidence["sigma"] = sigma
+    # A NaN statistic compares False against every threshold, so it would pass.
+    if not np.isfinite(sigma):
+        return inconclusive("odd_even", "statistic is not finite", **evidence)
     if sigma > max_sigma:
         return failed("odd_even", f"odd and even depths differ by {sigma:.1f} sigma", **evidence)
     return passed("odd_even", f"odd and even depths agree within {sigma:.1f} sigma", **evidence)
@@ -113,6 +116,8 @@ def secondary(lc: LightCurve, eph: Ephemeris, max_sigma: float, min_points: int)
         )
     sigma = depth / err
     evidence["sigma"] = sigma
+    if not np.isfinite(sigma):
+        return inconclusive("secondary", "statistic is not finite", **evidence)
     if sigma > max_sigma:
         return failed(
             "secondary", f"dip at phase 0.5 of {depth * 1e6:.0f} ppm, {sigma:.1f} sigma", **evidence
@@ -150,6 +155,8 @@ def sector_depths(
     dof = len(rows) - 1
     p = float(chi2.sf(stat, dof))
     evidence = {"sectors": rows, "mean_depth": mean, "chi2": stat, "dof": dof, "p_value": p}
+    if not np.isfinite(p):
+        return inconclusive("sector_depth", "statistic is not finite", **evidence)
     if p < min_p_value:
         return failed("sector_depth", f"depths disagree across sectors (p = {p:.1e})", **evidence)
     return passed(

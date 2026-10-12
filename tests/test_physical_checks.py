@@ -1,10 +1,16 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
+from synthetic import make_transit_lc
 
 from tess_hunt.checks import Outcome
 from tess_hunt.checks.physical import density, shape
-from tess_hunt.fit import NAMES, FitResult
+from tess_hunt.config import load_criteria
+from tess_hunt.ephemeris import Ephemeris
+from tess_hunt.fit import NAMES, FitResult, fit_transit
 
+VET = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v1.toml").values
 SUNLIKE_LOG_RHO = float(np.log10(1.41))
 
 
@@ -21,8 +27,25 @@ def test_shape_negative_control_grazing_fails():
     assert shape(fake_fit(b=1.05, rp_rs=0.15), 0.5).outcome is Outcome.FAIL
 
 
+@pytest.mark.slow
+def test_shape_negative_control_end_to_end_grazing_eclipse():
+    # The criteria's step counts, not the shorter ones other tests use: after 1500 steps with 700
+    # burned, the walkers still sit near b 0.67, short of the grazing geometry, and this eclipse passes.
+    fit_cfg = VET["fit"]
+    lc = make_transit_lc(rp_rs=0.25, b=0.95)
+    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.10, 0.004), fit_cfg, seed=fit_cfg["seed"])
+    result = shape(fit, VET["shape"]["max_grazing_probability"])
+    assert result.outcome is Outcome.FAIL, result.evidence
+    assert result.evidence["grazing_probability"] > 0.5
+
+
 def test_shape_central_transit_passes():
     assert shape(fake_fit(), 0.5).outcome is Outcome.PASS
+
+
+def test_shape_of_an_empty_posterior_is_inconclusive():
+    empty = FitResult(np.empty((0, len(NAMES))), 0.3, None)
+    assert shape(empty, 0.5).outcome is Outcome.INCONCLUSIVE
 
 
 def test_density_negative_control_giant_host_fails():

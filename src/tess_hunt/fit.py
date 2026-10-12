@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import emcee
 import numpy as np
 
-from tess_hunt.ephemeris import Ephemeris, phase_days
+from tess_hunt.ephemeris import Ephemeris, in_transit, phase_days
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.transit import a_rs_from_density, density_from_duration, light_curve
 
@@ -47,11 +47,17 @@ def fit_transit(
     """Sample the transit posterior. rho_prior is (log10 rho in g/cm^3, sigma in dex), or None for a
     flat prior on log10 rho in (-3, 2). The density check needs the flat prior, or it would only see
     its own prior."""
+    if cfg["burn"] >= cfg["steps"]:
+        raise ValueError(f"a burn-in of {cfg['burn']} leaves none of {cfg['steps']} steps")
     near = np.abs(phase_days(lc.time, eph)) < cfg["window_durations"] * eph.duration
     time, flux, err = lc.time[near], lc.flux[near], lc.flux_err[near]
     exposure = lc.exposure_days()[near]
     if len(time) < 20:
         raise ValueError(f"only {len(time)} cadences near transit; need 20 to fit")
+    # With data around the transit but none in it, the posterior is the prior, which the shape and
+    # density checks would read as a pass.
+    if not in_transit(time, eph).any():
+        raise ValueError("no cadences inside the transit")
 
     def log_prob(theta: np.ndarray) -> float:
         t0, period, rp_rs, b, log_rho, q1, q2 = theta

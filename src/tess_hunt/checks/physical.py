@@ -8,6 +8,10 @@ from tess_hunt.transit import RHO_SUN_GCC
 
 
 def shape(fit: FitResult, max_grazing_probability: float) -> CheckResult:
+    # The grazing fraction of a non-empty posterior is always finite; of an empty one it is NaN,
+    # which compares False against the threshold and would pass.
+    if len(fit.samples) == 0:
+        return inconclusive("shape", "the posterior is empty", acceptance=fit.acceptance)
     grazing = float(np.mean(fit.column("b") + fit.column("rp_rs") > 1.0))
     evidence = {
         "grazing_probability": grazing,
