@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from tess_hunt.catalogs import FILES, known_ephemerides, load_known
+from tess_hunt.catalogs import known_ephemerides, load_known, snapshot_inputs
 from tess_hunt.checks import Outcome, inconclusive
 from tess_hunt.checks.holdout import holdout
 from tess_hunt.checks.photometry import (
@@ -149,8 +149,8 @@ def cmd(args) -> int:
     crit_search, crit_vet = load_criteria(args.criteria_search), load_criteria(args.criteria_vet)
     run = start_run("vet", [crit_search, crit_vet], args.production, sys.argv)
     run.record_input("targets", args.targets)
-    for name in FILES.values():
-        run.record_input(name, args.catalogs / name)
+    for name, path in snapshot_inputs(args.catalogs).items():
+        run.record_input(name, path)
     stars = pd.read_parquet(args.targets)
     star = stars[stars["tic"] == args.tic].to_dict("records")
     if not star:

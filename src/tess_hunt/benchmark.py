@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from tess_hunt.catalogs import FILES, known_ephemerides, load_known  # noqa: E402
+from tess_hunt.catalogs import known_ephemerides, load_known, snapshot_inputs  # noqa: E402
 from tess_hunt.config import lc_dir, load_criteria, runs_dir  # noqa: E402
 from tess_hunt.detrend import detrend  # noqa: E402
 from tess_hunt.ephemeris import Ephemeris  # noqa: E402
@@ -333,8 +333,8 @@ def cmd_inject(args) -> int:
         raise SystemExit(f"unknown engines: {sorted(unknown)}")
     run = start_run("benchmark-inject", [criteria], args.production, sys.argv)
     run.record_input("targets", args.targets)
-    for name in FILES.values():
-        run.record_input(name, args.catalogs / name)
+    for name, path in snapshot_inputs(args.catalogs).items():
+        run.record_input(name, path)
     if args.manifest:
         run.record_input("fetch_manifest", args.manifest)
     known = load_known(args.catalogs)

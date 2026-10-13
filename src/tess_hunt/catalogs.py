@@ -1,7 +1,8 @@
 """Snapshots of known planets and candidates, normalised into one table."""
 
 import datetime as dt
-import io
+import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -30,46 +31,89 @@ MIN_T0_BTJD = -20000.0
 MAX_T0_BTJD = 10000.0
 MAX_DURATION_DAYS = 1.0
 FILES = {"TOI": "toi.csv", "CTOI": "ctoi.csv", "archive": "pscomppars.csv"}
-KNOWN_COLUMNS = ["source", "name", "tic", "ra", "dec", "period", "t0", "duration", "depth_ppm"]
+KNOWN_COLUMNS = [
+    "source",
+    "kind",
+    "name",
+    "tic",
+    "ra",
+    "dec",
+    "period",
+    "t0",
+    "duration",
+    "depth_ppm",
+]
+KIND_OF = {"TOI": "candidate", "CTOI": "candidate", "archive": "planet"}
 
 
 class CatalogError(RuntimeError):
     pass
 
 
-def refresh(root: Path, session=None) -> Path:
-    """Download today's TOI, CTOI and Exoplanet Archive tables into root/<UTC date>/."""
+def refresh(
+    root: Path,
+    session=None,
+    targets_run: Path | None = None,
+    sources: list | None = None,
+    now: dt.datetime | None = None,
+) -> Path:
+    """Download every novelty source into a staging directory, normalise each there, and rename the
+    directory into place only when all succeeded: a snapshot is never partial and never
+    overwritten."""
+    from tess_hunt import sources as source_module  # sources imports this module's normalisers
+
     session = session or requests.Session()
-    dest = root / dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
-    dest.mkdir(parents=True, exist_ok=True)
-    sources = {
-        "TOI": (TOI_URL, None),
-        "CTOI": (CTOI_URL, None),
-        "archive": (ARCHIVE_URL, {"query": ARCHIVE_QUERY, "format": "csv"}),
-    }
-    for source, (url, params) in sources.items():
-        response = session.get(url, params=params, timeout=300)
-        response.raise_for_status()
-        if len(pd.read_csv(io.StringIO(response.text))) == 0:
-            raise CatalogError(f"{source} download was empty")
-        (dest / FILES[source]).write_text(response.text)
+    sources = source_module.SOURCES if sources is None else sources
+    stamp = (now or dt.datetime.now(dt.UTC)).strftime("%Y-%m-%dT%H%M%SZ")
+    dest = root / stamp
+    if dest.exists():
+        raise CatalogError(f"snapshot {dest} exists; snapshots are never overwritten")
+    staging = root / f".staging-{stamp}"
+    staging.mkdir(parents=True)
+    try:
+        ctx = source_module.Context(session, staging / "raw", targets_run)
+        frames, counts = [], {}
+        for source in sources:
+            try:
+                frame = source.fetch(ctx)
+            except Exception as exc:  # any failure fails the snapshot, with the source named
+                raise CatalogError(f"{source.name}: {type(exc).__name__}: {exc}") from exc
+            if len(frame) == 0:
+                raise CatalogError(f"{source.name} gave no rows")
+            frames.append(frame[KNOWN_COLUMNS])
+            counts[source.name] = {"kind": source.kind, "rows": len(frame)}
+        known = source_module.fill_positions(pd.concat(frames, ignore_index=True), ctx=ctx)
+        known.to_parquet(staging / "known.parquet")
+        manifest = {
+            "created": stamp,
+            "sources": counts,
+            "unplaced_tics": ctx.unplaced_tics,
+            "files": ctx.files,
+        }
+        (staging / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+        )
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    staging.rename(dest)
     return dest
 
 
-def _number(series) -> np.ndarray:
+def number(series) -> np.ndarray:
     return pd.to_numeric(series, errors="coerce").to_numpy(dtype=float)
 
 
-def _btjd(bjd) -> np.ndarray:
+def btjd(bjd) -> np.ndarray:
     # A few community uploads already give BTJD; only full BJD values carry the offset.
-    bjd = _number(bjd)
-    btjd = np.where(bjd > 2_400_000.0, bjd - BJD_OFFSET, bjd)
-    return np.where((btjd >= MIN_T0_BTJD) & (btjd <= MAX_T0_BTJD), btjd, np.nan)
+    bjd = number(bjd)
+    out = np.where(bjd > 2_400_000.0, bjd - BJD_OFFSET, bjd)
+    return np.where((out >= MIN_T0_BTJD) & (out <= MAX_T0_BTJD), out, np.nan)
 
 
-def _days(hours) -> np.ndarray:
-    days = _number(hours) / 24.0
-    return np.where(days <= MAX_DURATION_DAYS, days, np.nan)
+def days(hours) -> np.ndarray:
+    out = number(hours) / 24.0
+    return np.where(out <= MAX_DURATION_DAYS, out, np.nan)
 
 
 def normalise_toi(df: pd.DataFrame) -> pd.DataFrame:
@@ -79,14 +123,15 @@ def normalise_toi(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "source": "TOI",
+            "kind": KIND_OF["TOI"],
             "name": [f"TOI-{v:.2f}" for v in df["TOI"]],
             "tic": df["TIC ID"].astype(int).to_numpy(),
             "ra": coords.ra.deg,
             "dec": coords.dec.deg,
-            "period": _number(df["Period (days)"]),
-            "t0": _btjd(df["Epoch (BJD)"]),
-            "duration": _days(df["Duration (hours)"]),
-            "depth_ppm": _number(df["Depth (ppm)"]),
+            "period": number(df["Period (days)"]),
+            "t0": btjd(df["Epoch (BJD)"]),
+            "duration": days(df["Duration (hours)"]),
+            "depth_ppm": number(df["Depth (ppm)"]),
         },
         columns=KNOWN_COLUMNS,
     )
@@ -96,14 +141,15 @@ def normalise_ctoi(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "source": "CTOI",
+            "kind": KIND_OF["CTOI"],
             "name": [f"CTOI-{v:.2f}" for v in df["CTOI"]],
             "tic": df["TIC ID"].astype(int).to_numpy(),
-            "ra": _number(df["RA"]),
-            "dec": _number(df["Dec"]),
-            "period": _number(df["Period (days)"]),
-            "t0": _btjd(df["Transit Epoch (BJD)"]),
-            "duration": _days(df["Duration (hrs)"]),
-            "depth_ppm": _number(df["Depth ppm"]),
+            "ra": number(df["RA"]),
+            "dec": number(df["Dec"]),
+            "period": number(df["Period (days)"]),
+            "t0": btjd(df["Transit Epoch (BJD)"]),
+            "duration": days(df["Duration (hrs)"]),
+            "depth_ppm": number(df["Depth ppm"]),
         },
         columns=KNOWN_COLUMNS,
     )
@@ -113,20 +159,23 @@ def normalise_archive(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "source": "archive",
+            "kind": KIND_OF["archive"],
             "name": df["pl_name"].astype(str).to_numpy(),
             "tic": [int(str(v).split()[-1]) for v in df["tic_id"]],
-            "ra": _number(df["ra"]),
-            "dec": _number(df["dec"]),
-            "period": _number(df["pl_orbper"]),
-            "t0": _btjd(df["pl_tranmid"]),
-            "duration": _days(df["pl_trandur"]),
-            "depth_ppm": _number(df["pl_trandep"]) * 1e4,  # the archive gives percent
+            "ra": number(df["ra"]),
+            "dec": number(df["dec"]),
+            "period": number(df["pl_orbper"]),
+            "t0": btjd(df["pl_tranmid"]),
+            "duration": days(df["pl_trandur"]),
+            "depth_ppm": number(df["pl_trandep"]) * 1e4,  # the archive gives percent
         },
         columns=KNOWN_COLUMNS,
     )
 
 
 def load_known(snapshot: Path) -> pd.DataFrame:
+    if (snapshot / "known.parquet").exists():
+        return pd.read_parquet(snapshot / "known.parquet")[KNOWN_COLUMNS]
     parts = []
     for source, normalise in (
         ("TOI", normalise_toi),
@@ -174,16 +223,24 @@ def known_ephemerides(
 def add_parser(sub) -> None:
     p = sub.add_parser("catalogs", help="snapshot known planets and candidates")
     modes = p.add_subparsers(dest="mode", required=True)
-    r = modes.add_parser("refresh", help="download today's TOI, CTOI and Exoplanet Archive tables")
+    r = modes.add_parser("refresh", help="download every novelty source into a new snapshot")
+    r.add_argument(
+        "--targets", type=Path, help="targets run directory, for the sample's Gaia and VSX binaries"
+    )
     r.add_argument("--production", action="store_true")
     r.set_defaults(func=cmd_refresh)
 
 
 def cmd_refresh(args) -> int:
     run = start_run("catalogs", [], args.production, sys.argv)
-    dest = refresh(catalogs_dir())
-    for name in FILES.values():
-        run.record_input(name, dest / name)
-    run.finish(snapshot=dest.name)
+    dest = refresh(catalogs_dir(), targets_run=args.targets)
+    for name, path in snapshot_inputs(dest).items():
+        run.record_input(name, path)
+    manifest = json.loads((dest / "manifest.json").read_text())
+    counts = manifest["sources"]
+    run.finish(snapshot=dest.name, **{f"rows_{k}": v["rows"] for k, v in counts.items()})
+    for name, entry in counts.items():
+        print(f"{name}: {entry['rows']} {entry['kind']} rows")
+    print(f"TICs without a position: {manifest['unplaced_tics']}")
     print(f"catalogs: {dest}")
     return 0

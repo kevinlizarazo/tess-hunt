@@ -13,10 +13,10 @@ HARMONICS = (1.0, 0.5, 2.0, 1 / 3, 3.0)
 @pytest.fixture
 def known():
     rows = [
-        ("TOI", "TOI-500.01", 100, 10.0, -60.0, 3.0, 1500.0, 0.1, 1000.0),
-        ("CTOI", "CTOI-200.01", 200, 10.0, -60.03, 7.0, 1502.0, 0.15, 800.0),
-        ("archive", "Far b", 300, 50.0, 10.0, 5.0, 1501.0, 0.1, 500.0),
-        ("TOI", "TOI-600.01", 400, 20.0, -50.0, np.nan, np.nan, np.nan, 700.0),
+        ("TOI", "candidate", "TOI-500.01", 100, 10.0, -60.0, 3.0, 1500.0, 0.1, 1000.0),
+        ("CTOI", "candidate", "CTOI-200.01", 200, 10.0, -60.03, 7.0, 1502.0, 0.15, 800.0),
+        ("archive", "planet", "Far b", 300, 50.0, 10.0, 5.0, 1501.0, 0.1, 500.0),
+        ("TOI", "candidate", "TOI-600.01", 400, 20.0, -50.0, np.nan, np.nan, np.nan, 700.0),
     ]
     return pd.DataFrame(rows, columns=KNOWN_COLUMNS)
 
@@ -92,3 +92,88 @@ def test_missing_candidate_position_is_inconclusive(known):
     result = check(known, 999, np.nan, -60.0, Ephemeris(7.0, 1502.0, 0.15))
     assert result.outcome is Outcome.INCONCLUSIVE
     assert result.reason == "candidate position or ephemeris missing"
+
+
+def known_rows(*rows):
+    base = {
+        "source": "x",
+        "kind": "candidate",
+        "name": "n",
+        "tic": 1,
+        "ra": 10.0,
+        "dec": -50.0,
+        "period": 3.0,
+        "t0": 100.0,
+        "duration": 0.1,
+        "depth_ppm": 500.0,
+    }
+    required = [
+        {**base, "source": s, "tic": 999, "ra": 200.0, "dec": 60.0}
+        for s in ("TOI", "CTOI", "archive")
+    ]
+    return pd.DataFrame([*required, *({**base, **r} for r in rows)])
+
+
+def novelty(known):
+    return check_novelty(
+        1,
+        10.0,
+        -50.0,
+        Ephemeris(3.0, 100.0, 0.1),
+        known,
+        2.5,
+        HARMONICS,
+        2.5,
+        2.0,
+        inconclusive_kinds=("tce",),
+    )
+
+
+def test_tce_only_match_is_inconclusive_known_to_spoc():
+    result = novelty(known_rows({"source": "SPOC-TCE", "kind": "tce"}))
+    assert result.outcome is Outcome.INCONCLUSIVE and result.evidence["category"] == "known_to_spoc"
+    assert result.evidence["tce_matches"][0]["source"] == "SPOC-TCE"
+
+
+def test_a_candidate_match_fails_even_beside_a_tce():
+    result = novelty(
+        known_rows(
+            {"source": "SPOC-TCE", "kind": "tce"}, {"source": "eumemic", "kind": "community"}
+        )
+    )
+    assert result.outcome is Outcome.FAIL and result.evidence["category"] == "known"
+
+
+def test_an_eb_match_fails():
+    assert novelty(known_rows({"source": "prsa2022", "kind": "eb"})).outcome is Outcome.FAIL
+
+
+def test_nothing_known_passes():
+    assert novelty(known_rows()).outcome is Outcome.PASS
+
+
+def test_tce_period_match_out_of_phase_is_known_to_spoc():
+    result = novelty(known_rows({"source": "ExoMiner-v2", "kind": "tce", "t0": 101.5}))
+    assert result.outcome is Outcome.INCONCLUSIVE and result.evidence["category"] == "known_to_spoc"
+    assert result.evidence["tce_period_matches"][0]["source"] == "ExoMiner-v2"
+
+
+def test_tce_match_fails_unless_its_kind_is_listed_inconclusive():
+    known = known_rows({"source": "SPOC-TCE", "kind": "tce"})
+    result = check_novelty(
+        1, 10.0, -50.0, Ephemeris(3.0, 100.0, 0.1), known, 2.5, HARMONICS, 2.5, 2.0
+    )
+    assert result.outcome is Outcome.FAIL and result.evidence["category"] == "known"
+
+
+def test_every_non_pass_outcome_carries_a_category(known):
+    cases = {
+        "missing_input": check(known, 999, np.nan, -60.0, Ephemeris(7.0, 1502.0, 0.15)),
+        "catalogs_not_loaded": check(
+            known[known["source"] != "CTOI"], 100, 10.0, -60.0, Ephemeris(9.9, 1500.0, 0.1)
+        ),
+        "known": check(known, 100, 10.0, -60.0, Ephemeris(3.0, 1500.0, 0.1)),
+        "stale_catalog_epoch": check(known, 100, 10.0, -60.0, Ephemeris(3.0, 1501.5, 0.1)),
+        "no_period_object": check(known, 400, 20.0, -50.0, Ephemeris(9.9, 1500.0, 0.1)),
+    }
+    assert {name: r.evidence["category"] for name, r in cases.items()} == {c: c for c in cases}
