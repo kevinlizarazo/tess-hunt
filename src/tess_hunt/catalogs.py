@@ -44,6 +44,7 @@ KNOWN_COLUMNS = [
     "depth_ppm",
 ]
 KIND_OF = {"TOI": "candidate", "CTOI": "candidate", "archive": "planet"}
+KINDS = {"planet", "candidate", "community", "eb", "tce"}
 
 
 class CatalogError(RuntimeError):
@@ -80,8 +81,17 @@ def refresh(
                 raise CatalogError(f"{source.name}: {type(exc).__name__}: {exc}") from exc
             if len(frame) == 0:
                 raise CatalogError(f"{source.name} gave no rows")
+            # Novelty fails every kind it is not told to soften, so a misspelt kind would turn a
+            # TCE into a known planet.
+            unknown = set(frame["kind"]) - KINDS
+            if unknown:
+                raise CatalogError(f"{source.name} gave unknown kinds {sorted(map(str, unknown))}")
             frames.append(frame[KNOWN_COLUMNS])
-            counts[source.name] = {"kind": source.kind, "rows": len(frame)}
+            kinds = frame["kind"].value_counts().sort_index()
+            counts[source.name] = {
+                "kinds": {str(k): int(n) for k, n in kinds.items()},
+                "rows": len(frame),
+            }
         known = source_module.fill_positions(pd.concat(frames, ignore_index=True), ctx=ctx)
         known.to_parquet(staging / "known.parquet")
         manifest = {
@@ -240,7 +250,8 @@ def cmd_refresh(args) -> int:
     counts = manifest["sources"]
     run.finish(snapshot=dest.name, **{f"rows_{k}": v["rows"] for k, v in counts.items()})
     for name, entry in counts.items():
-        print(f"{name}: {entry['rows']} {entry['kind']} rows")
+        kinds = ", ".join(f"{kind} {n}" for kind, n in entry["kinds"].items())
+        print(f"{name}: {entry['rows']} rows ({kinds})")
     print(f"TICs without a position: {manifest['unplaced_tics']}")
     print(f"catalogs: {dest}")
     return 0

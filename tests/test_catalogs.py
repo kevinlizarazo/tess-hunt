@@ -24,7 +24,7 @@ from tess_hunt.catalogs import (
 )
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
-from tess_hunt.sources import SOURCES, Source
+from tess_hunt.sources import SOURCES, Source, SourceError, tic_positions
 
 TOI_CSV = (
     "TIC ID,TOI,RA,Dec,Period (days),Epoch (BJD),Duration (hours),Depth (ppm)\n"
@@ -231,7 +231,7 @@ def test_refresh_writes_known_and_manifest(tmp_path):
     known = load_known(snap)
     assert list(known["kind"]) == ["planet", "tce", "tce"]
     manifest = json.loads((snap / "manifest.json").read_text())
-    assert manifest["sources"]["b"] == {"kind": "tce", "rows": 2}
+    assert manifest["sources"]["b"] == {"kinds": {"tce": 2}, "rows": 2}
     assert {f["file"] for f in manifest["files"]} == {"a/a.csv", "b/b.csv"}
     assert set(snapshot_inputs(snap)) == {"known", "catalog_manifest"}
 
@@ -250,6 +250,21 @@ def test_failed_source_leaves_no_snapshot(tmp_path):
 def test_empty_source_fails_the_refresh(tmp_path):
     with pytest.raises(CatalogError, match="no rows"):
         refresh(tmp_path, session_for("a"), sources=[fake_source("a", "planet", rows=0)], now=NOW)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_manifest_counts_the_kinds_a_source_returns(tmp_path):
+    def mixed(ctx):
+        return fake_source("m", "tce", 3).fetch(ctx).assign(kind=["community", "tce", "tce"])
+
+    snap = refresh(tmp_path, session_for("m"), sources=[Source("m", "community", mixed)], now=NOW)
+    manifest = json.loads((snap / "manifest.json").read_text())
+    assert manifest["sources"]["m"] == {"kinds": {"community": 1, "tce": 2}, "rows": 3}
+
+
+def test_unknown_kind_fails_the_refresh(tmp_path):
+    with pytest.raises(CatalogError, match="unknown kinds"):
+        refresh(tmp_path, session_for("a"), sources=[fake_source("a", "confirmed")], now=NOW)
     assert list(tmp_path.iterdir()) == []
 
 
@@ -420,19 +435,37 @@ def test_v2_snapshots_keep_m1_source_labels_and_masks(tmp_path):
     assert ephemerides(known, MASK_SOURCES) == PINNED_EPHEMERIDES
 
 
-def test_refresh_keeps_tic_positions_and_counts_the_tics_it_could_not_place(tmp_path, monkeypatch):
-    def unplaced(ctx):
-        return fake_source("t", "tce", 2).fetch(ctx).assign(ra=np.nan, dec=np.nan)
+def without_positions(ctx):
+    return fake_source("t", "tce", 2).fetch(ctx).assign(ra=np.nan, dec=np.nan)
 
+
+def test_refresh_keeps_tic_positions_and_counts_the_tics_it_could_not_place(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "tess_hunt.sources.tic_positions",
         lambda tics: pd.DataFrame({"tic": [100], "ra": [9.0], "dec": [8.0]}),
     )
-    snap = refresh(tmp_path, session_for("t"), sources=[Source("t", "tce", unplaced)], now=NOW)
+    snap = refresh(
+        tmp_path, session_for("t"), sources=[Source("t", "tce", without_positions)], now=NOW
+    )
     manifest = json.loads((snap / "manifest.json").read_text())
     assert manifest["unplaced_tics"] == 1
     assert {f["file"] for f in manifest["files"]} == {"t/t.csv", "TIC/tic_positions.parquet"}
     assert list(load_known(snap)["ra"].fillna(-1.0)) == [9.0, -1.0]
+
+
+def test_failed_tic_lookup_leaves_no_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+
+    def down(ids):
+        raise ConnectionError("MAST is down")
+
+    monkeypatch.setattr(
+        "tess_hunt.sources.tic_positions", partial(tic_positions, query=down, backoff=0)
+    )
+    root = tmp_path / "catalogs"
+    with pytest.raises(SourceError, match="MAST is down"):
+        refresh(root, session_for("t"), sources=[Source("t", "tce", without_positions)], now=NOW)
+    assert list(root.iterdir()) == []
 
 
 def test_cmd_refresh_reports_the_snapshot_it_wrote(tmp_path, monkeypatch, capsys):
@@ -447,4 +480,4 @@ def test_cmd_refresh_reports_the_snapshot_it_wrote(tmp_path, monkeypatch, capsys
     provenance = json.loads((run / "provenance.json").read_text())
     assert provenance["summary"] == {"snapshot": "2026-10-13T120000Z", "rows_a": 1, "rows_b": 2}
     assert set(provenance["inputs"]) == {"known", "catalog_manifest"}
-    assert "b: 2 tce rows" in capsys.readouterr().out
+    assert "b: 2 rows (tce 2)" in capsys.readouterr().out

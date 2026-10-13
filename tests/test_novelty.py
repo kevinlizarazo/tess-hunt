@@ -177,3 +177,29 @@ def test_every_non_pass_outcome_carries_a_category(known):
         "no_period_object": check(known, 400, 20.0, -50.0, Ephemeris(9.9, 1500.0, 0.1)),
     }
     assert {name: r.evidence["category"] for name, r in cases.items()} == {c: c for c in cases}
+
+
+def test_a_period_less_known_object_outranks_a_tce_match():
+    result = novelty(
+        known_rows(
+            {"source": "TOI", "name": "TOI-7.01", "period": np.nan, "t0": np.nan},
+            {"source": "SPOC-TCE", "kind": "tce"},
+        )
+    )
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert result.evidence["category"] == "no_period_object"
+    assert result.evidence["objects"] == ["TOI-7.01"]
+    assert result.evidence["tce_matches"][0]["source"] == "SPOC-TCE"
+
+
+def test_tce_matches_stay_in_the_evidence_of_every_outcome():
+    tce = {"source": "SPOC-TCE", "kind": "tce"}
+    known = novelty(known_rows({"source": "eumemic", "kind": "community"}, tce))
+    stale = novelty(known_rows({"source": "TOI", "t0": 101.5}, tce))
+    assert [known.evidence["category"], stale.evidence["category"]] == [
+        "known",
+        "stale_catalog_epoch",
+    ]
+    for result in (known, stale):
+        assert result.evidence["tce_matches"][0]["source"] == "SPOC-TCE"
+        assert result.evidence["tce_period_matches"] == []

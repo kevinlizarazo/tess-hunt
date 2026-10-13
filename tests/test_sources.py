@@ -158,3 +158,40 @@ def test_tic_positions_give_up_after_attempts(tmp_path, monkeypatch):
 
     with pytest.raises(sources.SourceError, match="MAST is down"):
         sources.tic_positions([1], query=down, backoff=0)
+
+
+def header_only(text: str) -> bytes:
+    return "".join(text.splitlines(keepends=True)[:-1]).encode()
+
+
+def test_an_empty_tce_file_fails_the_source(tmp_path):
+    first, last = sources.tce_files(INDEX_HTML)
+    routes = {
+        sources.TCE_INDEX: INDEX_HTML.encode(),
+        sources.TCE_INDEX + first: TCE_CSV.encode(),
+        sources.TCE_INDEX + last: TCE_CSV.encode(),
+    }
+    out = sources.fetch_spoc_tce(sources.Context(FakeSession(routes), tmp_path / "full", None))
+    assert [n.split()[1] for n in out["name"]] == ["s0001-s0001", "s0107-s0107"]
+    routes[sources.TCE_INDEX + last] = header_only(TCE_CSV)
+    with pytest.raises(sources.SourceError, match=f"{last} has no rows"):
+        sources.fetch_spoc_tce(sources.Context(FakeSession(routes), tmp_path / "empty", None))
+
+
+def test_an_empty_exominer_file_fails_the_source(tmp_path):
+    record, name = sources.EXOMINER_V1
+    v1 = sources.ZENODO_FILE.format(record=record, name=name)
+    record, (two_min, ffi) = sources.EXOMINER_V2
+    v2 = [sources.ZENODO_FILE.format(record=record, name=n) for n in (two_min, ffi)]
+    routes = {v1: EXOMINER_V1.encode(), v2[0]: EXOMINER_V2.encode(), v2[1]: EXOMINER_V2.encode()}
+    out = sources.fetch_exominer(sources.Context(FakeSession(routes), tmp_path / "full", None))
+    assert list(out["source"]) == ["ExoMiner-v1", "ExoMiner-v2", "ExoMiner-v2"]
+    routes[v2[1]] = header_only(EXOMINER_V2)
+    with pytest.raises(sources.SourceError, match=f"{ffi} has no rows"):
+        sources.fetch_exominer(sources.Context(FakeSession(routes), tmp_path / "empty", None))
+
+
+def test_context_download_records_the_query_with_the_url(tmp_path):
+    ctx = sources.Context(FakeSession(routes={"https://x/tap": b"a\n1\n"}), tmp_path, None)
+    ctx.download("archive", "https://x/tap", "t.csv", {"query": "select a from t", "format": "csv"})
+    assert ctx.files[0]["url"] == "https://x/tap?query=select+a+from+t&format=csv"

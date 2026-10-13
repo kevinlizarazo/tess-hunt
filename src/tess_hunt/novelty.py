@@ -91,6 +91,9 @@ def check_novelty(
         "catalog_rows": len(known),
         "nearby_rows": len(near),
         "neighbour_arcmin": neighbour_arcmin,
+        # Kept on every outcome, so a signal judged on another object still shows that SPOC saw it.
+        "tce_matches": tce_matches,
+        "tce_period_matches": tce_period_matches,
     }
     if matches:
         return failed(
@@ -109,6 +112,15 @@ def check_novelty(
             period_matches=period_matches,
             **evidence,
         )
+    # Before the TCE branch: a TOI or planet with no period on this star is not a SPOC-only object.
+    if unknown_period:
+        return inconclusive(
+            "novelty",
+            "this star has a known object with no period",
+            category="no_period_object",
+            objects=unknown_period,
+            **evidence,
+        )
     if tce_matches or tce_period_matches:
         # Decision 0013: SPOC detected it but it never became a TOI; listed for the maintainer, not
         # shortlisted.
@@ -116,16 +128,6 @@ def check_novelty(
             "novelty",
             "matches only SPOC TCE or ExoMiner rows",
             category="known_to_spoc",
-            tce_matches=tce_matches,
-            tce_period_matches=tce_period_matches,
-            **evidence,
-        )
-    if unknown_period:
-        return inconclusive(
-            "novelty",
-            "this star has a known object with no period",
-            category="no_period_object",
-            objects=unknown_period,
             **evidence,
         )
     return passed("novelty", "no known object matches", **evidence)

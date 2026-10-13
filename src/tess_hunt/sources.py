@@ -54,7 +54,8 @@ class _ServerError(RuntimeError):
 
 @dataclass
 class Context:
-    """What a source's fetch works with; it lists every file kept in the snapshot for the manifest."""
+    """What a source's fetch works with; it lists every file kept in the snapshot, for the
+    manifest."""
 
     session: object
     raw: Path
@@ -80,9 +81,13 @@ class Context:
             error=SourceError,
             what=f"{source}: {url}",
         )
+        # The query is part of what was fetched: archive and archive_ps share one TAP URL.
+        fetched = requests.Request("GET", url, params=params).prepare().url
         if response.status_code != 200:
-            raise SourceError(f"{source}: HTTP {response.status_code} for {url}")
-        return self.keep(source, name, response.content, url, response.headers.get("Last-Modified"))
+            raise SourceError(f"{source}: HTTP {response.status_code} for {fetched}")
+        return self.keep(
+            source, name, response.content, fetched, response.headers.get("Last-Modified")
+        )
 
     def keep(
         self, source: str, name: str, content: bytes, url: str, last_modified: str | None = None
@@ -180,6 +185,15 @@ def _csv(path: Path, **kwargs) -> pd.DataFrame:
     return pd.read_csv(path, low_memory=False, **kwargs)
 
 
+def _rows(path: Path, **kwargs) -> pd.DataFrame:
+    """One file of a source built from several. An empty one would hide its rows from novelty while
+    the source as a whole still has rows, so it fails the source."""
+    table = _csv(path, **kwargs)
+    if len(table) == 0:
+        raise SourceError(f"{path.parent.name}: {path.name} has no rows")
+    return table
+
+
 def fetch_toi(ctx: Context) -> pd.DataFrame:
     return normalise_toi(_csv(ctx.download("TOI", TOI_URL, "toi.csv")))
 
@@ -207,11 +221,8 @@ def fetch_spoc_tce(ctx: Context) -> pd.DataFrame:
     parts = []
     for name in tce_files(index):
         run = re.search(r"-(s\d{4}-s\d{4})_", name).group(1)
-        parts.append(
-            normalise_spoc_tce(
-                _csv(ctx.download("SPOC-TCE", TCE_INDEX + name, name), comment="#"), run
-            )
-        )
+        path = ctx.download("SPOC-TCE", TCE_INDEX + name, name)
+        parts.append(normalise_spoc_tce(_rows(path, comment="#"), run))
     if not parts:
         raise SourceError("SPOC-TCE: the index lists no TCE files")
     return pd.concat(parts, ignore_index=True)
@@ -219,15 +230,12 @@ def fetch_spoc_tce(ctx: Context) -> pd.DataFrame:
 
 def fetch_exominer(ctx: Context) -> pd.DataFrame:
     record, name = EXOMINER_V1
-    parts = [
-        normalise_exominer_v1(
-            _csv(ctx.download("ExoMiner-v1", ZENODO_FILE.format(record=record, name=name), name))
-        )
-    ]
+    path = ctx.download("ExoMiner-v1", ZENODO_FILE.format(record=record, name=name), name)
+    parts = [normalise_exominer_v1(_rows(path))]
     record, names = EXOMINER_V2
     for name in names:
         path = ctx.download("ExoMiner-v2", ZENODO_FILE.format(record=record, name=name), name)
-        parts.append(normalise_exominer_v2(_csv(path, comment="#"), name.removesuffix(".csv")))
+        parts.append(normalise_exominer_v2(_rows(path, comment="#"), name.removesuffix(".csv")))
     return pd.concat(parts, ignore_index=True)
 
 
