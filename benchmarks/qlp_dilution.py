@@ -1,6 +1,7 @@
 """Empirical dilution check: QLP sap_flux transit depth against SPOC PDCSAP (crowding-corrected) depth, in every
-sector with both, for five crowded TOI hosts. Sectors from S94 are QLP's TGLC era, earlier ones its FIPHOT era. If
-QLP were uncorrected, QLP/SPOC depth would track SPOC's CROWDSAP; if corrected, it would sit near 1.
+sector with both, for five crowded TOI hosts. Sectors from S94 are QLP's TGLC era, earlier ones its FIPHOT era. A
+QLP/SPOC depth ratio near 1 means the two agree. SPOC's CROWDSAP is printed for context only: it describes SPOC's
+aperture, not QLP's, so it does not predict QLP's dilution.
 
 Usage: uv run python benchmarks/qlp_dilution.py > results/benchmarks/qlp-dilution-2026-10-13.txt
 """
@@ -80,7 +81,7 @@ def depth(dt, ff, duration):
     return 1.0 - np.median(ff[inside]) / np.median(ff[outside]), int(inside.sum())
 
 
-crowded, checked = 0, 0
+measured, checked = 0, 0
 for tic, sector in pairs:
     if checked >= 60:
         break
@@ -110,9 +111,9 @@ for tic, sector in pairs:
     dq, nq = depth(*segments(tq, fq, epochs, duration), duration)
     if ns < 5 or nq < 3 or ds <= 0:
         continue
-    crowded += 1
+    measured += 1
     print(
         f"TIC {tic} S{sector}: SPOC CROWDSAP {crowd:.3f}; depth SPOC PDCSAP {ds * 1e6:.0f} ppm, "
         f"QLP sap_flux {dq * 1e6:.0f} ppm; QLP/SPOC {dq / ds:.3f}"
     )
-print(f"checked {checked} pairs, {crowded} with CROWDSAP and both depths measured")
+print(f"checked {checked} pairs, {measured} with CROWDSAP and both depths measured")

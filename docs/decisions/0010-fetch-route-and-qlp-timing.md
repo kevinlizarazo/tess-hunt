@@ -35,14 +35,17 @@ files have not been redelivered; the files served are version `v01`.
   `test_cached_file_without_timing_flags_refetches`, `test_all_nan_errors_become_scatter_errors`).
 - QLP timing offset (Task 6, Step 1). The plan's script, [benchmarks/qlp_timing.py](../../benchmarks/qlp_timing.py),
   read two QLP minus SPOC medians above 10 minutes
-  ([output](../../results/benchmarks/qlp-timing-2026-10-13.txt)), and both are artifacts: +75.00 min on TIC 7439481
-  S102, where the TOI ephemeris has drifted beyond the 40 minutes either side that the script searches, and -20.50
-  min on TIC 22560356 S100, a faint, crowded star whose SPOC 2-minute scatter per point exceeds its transit depth.
-  Both diagnoses come from build diagnostics that are not in the repo. The ephemeris-independent remeasurement,
-  [benchmarks/qlp_timing_robust.py](../../benchmarks/qlp_timing_robust.py), times each QLP transit against that
-  sector's own SPOC fit and puts every reliable pair's median offset under 10 minutes, the largest at -6.50 min
-  ([output](../../results/benchmarks/qlp-timing-robust-2026-10-13.txt)). Single transits in reliable pairs reach
-  +35.25 min.
+  ([output](../../results/benchmarks/qlp-timing-2026-10-13.txt)). +75.00 min on TIC 7439481 S102 is an artifact: the
+  TOI ephemeris has drifted beyond the 40 minutes either side that the script searches. -20.50 min on TIC 22560356
+  S100 is too noisy to count as a measured offset: it rests on 3 transits with a spread of 11.66 min, the star is
+  faint and crowded, its SPOC 2-minute scatter per point exceeds its transit depth, and the same star reads -2.00 min
+  in S99 and +1.13 min in S101, which is also inside the affected window. The ephemeris drift and the scatter come
+  from build diagnostics that are not in the repo. The ephemeris-independent remeasurement,
+  [benchmarks/qlp_timing_robust.py](../../benchmarks/qlp_timing_robust.py), picks its own 31 pairs (24 reliable),
+  which share no star with the plan script's 8 pairs and so do not include those two. It times each QLP transit
+  against that sector's own SPOC fit and puts every reliable pair's median offset under 10 minutes, the largest at
+  -6.50 min ([output](../../results/benchmarks/qlp-timing-robust-2026-10-13.txt)). Single transits in reliable pairs
+  reach +35.25 min.
 - On 2026-10-13 the maintainer ruled that QLP S99 to S104 is used for detection, flagged `timing_suspect`, as
   designed.
 - QLP dilution (Task 6, Step 1b). The header of a QLP S100 light curve carries no crowding or dilution keyword. QLP
@@ -61,9 +64,10 @@ files have not been redelivered; the files served are version `v01`.
   scatter errors (`errors_from_scatter`). 138 sectors on 133 stars were dropped, each a QLP file with too few good
   cadences (136 with none, one with 13, one with 20); 19 of those stars fall below the coverage rule after the fetch,
   leaving 30,176 covered.
-- The control fetch `20261013T151147Z-fetch-cce2f6e-0f95` (the 18 hosts in
-  [benchmarks/known_planets.csv](../../benchmarks/known_planets.csv)) took all 161 of its sector sources from the
-  bucket; 17 hosts were already cached and one was fetched.
+- The control fetch `20261013T151147Z-fetch-cce2f6e-0f95`, from targets run `20261013T031523Z-targets-cce2f6e-630d`
+  (the 18 hosts in [benchmarks/known_planets.csv](../../benchmarks/known_planets.csv)): 17 hosts came from the cache
+  and one was fetched. All 161 of its sector sources are bucket sources; for a cached host the manifest repeats the
+  route recorded by the earlier fetch that wrote the file.
 - Sector 1751. 501 sample stars got a sector labelled 1751: 488 TESS-SPOC (200 s, through the MAST API) and 13 SPOC
   (2 min, from the bucket). It is TESS's special pointing at the interstellar comet 3I/ATLAS inside Sector 99
   (2026-01-15 to 2026-01-22); a safe mode lost about 2.8 days and SPOC ran only a subset of its pipeline modules
