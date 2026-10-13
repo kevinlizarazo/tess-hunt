@@ -10,6 +10,7 @@ from tess_hunt.checks.photometry import (
     red_noise_beta,
     secondary,
     sector_depths,
+    signal_present,
     with_red_noise,
 )
 from tess_hunt.config import load_criteria
@@ -203,9 +204,6 @@ def test_with_red_noise_scales_each_sectors_errors():
         noisy.flux_err / lc.flux_err, np.select([lc.sector == 1, lc.sector == 2], [2.0, 1.5], 1.0)
     )
     assert np.array_equal(noisy.flux, lc.flux) and np.allclose(lc.flux_err, 300e-6)
-
-
-from tess_hunt.checks.photometry import signal_present  # noqa: E402
 
 
 def test_signal_present_passes_a_planet():

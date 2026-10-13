@@ -32,9 +32,12 @@ this check. Triage's pixel check can catch one whose eclipse sits on a resolved 
 
 - [tests/test_fit.py](../../tests/test_fit.py): `test_deep_eclipse_is_not_pinned_at_the_bound` (a central eclipse with
   a true Rp/R* of 0.6 gives a posterior centred above 0.5 rather than piled at it) and
-  `test_eclipse_deeper_than_the_prior_still_starts_inside_it`.
+  `test_eclipse_deeper_than_the_prior_still_starts_inside_it` (under vet-v1's bound of 0.5 the same eclipse starts
+  inside the prior only through the clip at 0.9 of the bound).
 - [tests/test_physical_checks.py](../../tests/test_physical_checks.py):
-  `test_radius_negative_control_eclipsing_binary_fails` (Rp/R* 0.6 around a solar-radius star) and
+  `test_radius_negative_control_end_to_end_deep_eclipse` (that eclipse on a solar-radius star, fitted with vet-v2's
+  bound and step counts, fails `radius` with a median Rp/R* above 0.5),
+  `test_radius_negative_control_eclipsing_binary_fails` (a posterior at Rp/R* 0.6 around a solar-radius star) and
   `test_radius_of_a_planet_passes_and_missing_tic_radius_is_inconclusive`.
 - [tests/test_vet.py](../../tests/test_vet.py): `test_clean_planet_advances` (`radius` passes a clean synthetic
   planet), `test_no_cadence_inside_the_transits_leaves_shape_and_density_inconclusive` (radius too) and

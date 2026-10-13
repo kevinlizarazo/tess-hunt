@@ -66,8 +66,11 @@ def test_fit_refuses_a_burn_in_that_leaves_no_samples():
 
 
 def test_eclipse_deeper_than_the_prior_still_starts_inside_it():
+    # Under vet-v1's bound of 0.5 the eclipse's sqrt(depth) lies beyond the prior, so only the clip
+    # keeps the walkers inside it; under vet-v2's bound of 1 the clip never comes into play.
     lc = make_transit_lc(rp_rs=0.6)
-    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.2, 0.3), SMALL, seed=1)
+    v1_bound = {**SMALL, "max_rp_rs": 0.5}
+    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.2, 0.3), v1_bound, seed=1)
     assert fit.acceptance > FIT["min_acceptance"]
     assert len(np.unique(fit.column("b"))) > SMALL["walkers"]
 

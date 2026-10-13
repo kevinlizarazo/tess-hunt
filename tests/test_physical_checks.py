@@ -5,7 +5,7 @@ import pytest
 from synthetic import make_transit_lc
 
 from tess_hunt.checks import Outcome
-from tess_hunt.checks.physical import density, shape
+from tess_hunt.checks.physical import density, radius, shape
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris
 from tess_hunt.fit import NAMES, FitResult, fit_transit
@@ -108,12 +108,21 @@ def test_vet_v1s_symmetric_density_error_still_fails_the_long_tail():
     assert result.evidence["fit_log_rho_sd"] == pytest.approx((minus + plus) / 2)
 
 
-from tess_hunt.checks.physical import radius  # noqa: E402
-
-
 def test_radius_negative_control_eclipsing_binary_fails():
     result = radius(fake_fit(rp_rs=0.6), 1.0, 22.0)
     assert result.outcome is Outcome.FAIL and result.evidence["rp_rearth"] > 60
+
+
+@pytest.mark.slow
+def test_radius_negative_control_end_to_end_deep_eclipse():
+    # M1's deep-eclipse case: a central eclipse with a true Rp/R* of 0.6 on a Sun-sized star, fitted
+    # with the criteria's bound and step counts.
+    fit_cfg = VET["fit"]
+    lc = make_transit_lc(rp_rs=0.6, b=0.0)
+    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.3, 0.3), fit_cfg, seed=fit_cfg["seed"])
+    result = radius(fit, 1.0, VET["radius"]["max_rearth"])
+    assert result.outcome is Outcome.FAIL, result.evidence
+    assert result.evidence["rp_rs_median"] > 0.5, result.evidence
 
 
 def test_radius_of_a_planet_passes_and_missing_tic_radius_is_inconclusive():

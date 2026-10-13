@@ -19,6 +19,10 @@ read as support for a signal that isn't there.
   fewer than `[signal_present] min_points` in-transit cadences, or with a non-finite statistic, it is inconclusive. It
   never fails: a weak dip is a lack of evidence for a planet, not evidence against one. A signal advances only when
   every check passes, so an inconclusive `signal_present` stops it.
+- This is an exception to the spec's rule that every check ships a negative control that makes it fail
+  (`docs/design.md` section 5.2): the check's own negative control, pure noise, is inconclusive, and the control that
+  matters is the pipeline's, `test_noise_at_an_arbitrary_ephemeris_does_not_read_as_passes` in `tests/test_vet.py`,
+  which shows such a signal does not advance.
 - The evidence records the depth, its error, the statistic and the cadence count.
 - The odd and even, secondary eclipse and per-sector depth checks still run and report as before. Their passes are read
   alongside `signal_present`.
