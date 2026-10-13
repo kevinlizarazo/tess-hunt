@@ -39,16 +39,18 @@ class LightCurve:
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp.npz")
-        np.savez_compressed(
-            tmp,
-            tic=self.tic,
-            time=self.time,
-            flux=self.flux,
-            flux_err=self.flux_err,
-            sector=self.sector,
-            sources=json.dumps(self.sources),
-        )
+        # The temporary name must not end in .npz: stages pick stars by globbing for light curves.
+        tmp = path.with_name(path.name + ".part")
+        with open(tmp, "wb") as fh:
+            np.savez_compressed(
+                fh,
+                tic=self.tic,
+                time=self.time,
+                flux=self.flux,
+                flux_err=self.flux_err,
+                sector=self.sector,
+                sources=json.dumps(self.sources),
+            )
         # Rename last so a crash mid-write never leaves a file that loads as a complete light curve.
         tmp.replace(path)
 

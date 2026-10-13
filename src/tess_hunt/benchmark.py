@@ -1,9 +1,9 @@
 """Benchmarks: recover known planets and injected transits, and compare search engines."""
 
+import json
 import shutil
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
 
@@ -20,6 +20,7 @@ from tess_hunt.detrend import detrend  # noqa: E402
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match  # noqa: E402
 from tess_hunt.inject import draw, inject  # noqa: E402
 from tess_hunt.lightcurve import LightCurve  # noqa: E402
+from tess_hunt.pool import process_pool  # noqa: E402
 from tess_hunt.provenance import repo_root, sha256_file, start_run  # noqa: E402
 from tess_hunt.search import search_star, star_params  # noqa: E402
 from tess_hunt.transit import light_curve  # noqa: E402
@@ -302,7 +303,7 @@ def cmd_known(args) -> int:
         )
         for p in known.to_dict("records")
     ]
-    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+    with process_pool(args.workers) as pool:
         table = pd.DataFrame(list(pool.map(known_job, jobs)))
     table.to_csv(run.path / "known.csv", index=False)
     missed = table[table["required"] & ~table["recovered"]]
@@ -375,7 +376,7 @@ def cmd_inject(args) -> int:
         )
         for n, s in enumerate(stars)
     ]
-    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+    with process_pool(args.workers) as pool:
         rows = pd.DataFrame([row for batch in pool.map(injection_job, jobs) for row in batch])
     rows.to_csv(run.path / "injections.csv", index=False)
     by_snr = completeness(rows, "expected_snr", SNR_EDGES)
@@ -419,8 +420,15 @@ def cmd_inject(args) -> int:
 
 def cmd_publish(args) -> int:
     source = runs_dir() / args.run
+    provenance = source / "provenance.json"
+    if not provenance.exists():
+        raise SystemExit(f"no run {args.run} under the data directory")
+    if json.loads(provenance.read_text())["ended_at"] is None:
+        raise SystemExit(f"run {args.run} has not finished; only finished runs are evidence")
     dest = repo_root() / "results" / "benchmarks" / args.run
-    dest.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        raise SystemExit(f"{dest} exists; published results are never overwritten")
+    dest.mkdir(parents=True)
     for path in source.iterdir():
         if path.suffix in (".md", ".csv", ".png", ".json"):
             shutil.copy(path, dest / path.name)

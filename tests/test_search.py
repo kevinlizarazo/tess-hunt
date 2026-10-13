@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from synthetic import make_lc, write_catalog_snapshot
 
+from tess_hunt import search as search_module
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
@@ -112,3 +113,33 @@ def test_search_cli_writes_signals_and_records_missing_stars(tmp_path, monkeypat
     assert stars.loc[11, "status"] == "ok" and stars.loc[12, "status"] == "no_light_curve"
     signals = pd.read_parquet(run / "signals.parquet")
     assert abs(signals.iloc[0]["period"] - 3.7) < 0.01
+
+
+def test_nan_sde_stops_the_iteration(monkeypatch):
+    calls = []
+
+    def nan_peak(lc, periods, durations, kernel):
+        calls.append(1)
+        return {
+            "period": 3.0,
+            "t0": 1326.0,
+            "duration": 0.1,
+            "depth": 1e-4,
+            "depth_snr": 1.0,
+            "sde": float("nan"),
+        }
+
+    monkeypatch.setattr(search_module, "_bls_peak", nan_peak)
+    search_star(make_lc(sectors=(1, 2), noise_ppm=300.0, seed=1), 1.0, 1.0, CFG)
+    assert len(calls) == 1
+
+
+def test_search_job_records_a_bad_star_row(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path))
+    make_lc(sectors=(1,), tic=5).save(tmp_path / "lc" / "5.npz")
+    crit = load_criteria(ROOT / "criteria" / "search-v1.toml")
+    status, signals = search_module._search_job(
+        ({"tic": 5, "rad": "not a number"}, [], crit["detrend"], CFG)
+    )
+    assert status["status"] == "error" and status["error"].startswith("ValueError")
+    assert signals == []

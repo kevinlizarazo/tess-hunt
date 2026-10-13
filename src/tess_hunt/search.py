@@ -2,7 +2,6 @@
 
 import sys
 from collections.abc import Mapping
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -18,6 +17,7 @@ from tess_hunt.config import lc_dir, load_criteria
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, in_transit, transit_times_in_data
 from tess_hunt.lightcurve import LightCurve
+from tess_hunt.pool import process_pool
 from tess_hunt.provenance import sha256_file, start_run
 
 
@@ -41,7 +41,8 @@ def star_params(star: Mapping) -> tuple[float, float, bool]:
     """TIC radius and mass in solar units; solar values, flagged, when the TIC has none."""
 
     def usable(v) -> bool:
-        return v is not None and np.isfinite(v) and v > 0
+        # float() raises on text, so a corrupt TIC value is an error row, not a silent solar fallback.
+        return v is not None and np.isfinite(float(v)) and float(v) > 0
 
     r, m = star.get("rad"), star.get("mass")
     return (
@@ -165,7 +166,8 @@ def search_star(lc: LightCurve, rstar: float, mstar: float, cfg: Mapping) -> lis
                 len(transit_times_in_data(data.time, eph)),
             )
         )
-        if peak["sde"] < cfg["continue_sde"]:
+        # A NaN SDE compares False against any threshold; stop rather than mask around a meaningless peak.
+        if not peak["sde"] >= cfg["continue_sde"]:
             break
         data = data.select(~in_transit(data.time, eph, cfg["iter_mask_width"]))
     return signals
@@ -177,8 +179,9 @@ def _search_job(job: tuple) -> tuple[dict, list[dict]]:
     path = lc_dir() / f"{tic}.npz"
     if not path.exists():
         return {"tic": tic, "status": "no_light_curve"}, []
-    rstar, mstar, assumed = star_params(star)
     try:
+        rstar, mstar, assumed = star_params(star)
+        digest = sha256_file(path)
         flat = detrend(LightCurve.load(path), cfg_detrend, known_ephs)
         if len(flat.time) < cfg_search["min_points"]:
             return {"tic": tic, "status": "too_few_points", "n_points": len(flat.time)}, []
@@ -191,7 +194,7 @@ def _search_job(job: tuple) -> tuple[dict, list[dict]]:
         "n_points": len(flat.time),
         "n_sectors": int(len(np.unique(flat.sector))),
         "assumed_solar": assumed,
-        "lc_sha256": sha256_file(path),
+        "lc_sha256": digest,
     }
     return status, [{**asdict(s), "engine": cfg_search["engine"]} for s in signals]
 
@@ -229,7 +232,7 @@ def cmd(args) -> int:
         )
         for s in stars
     ]
-    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+    with process_pool(args.workers) as pool:
         results = list(pool.map(_search_job, jobs, chunksize=2))
     star_rows = [r[0] for r in results]
     signal_rows = [row for r in results for row in r[1]]

@@ -4,7 +4,6 @@ import hashlib
 import json
 import sys
 import tempfile
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +15,7 @@ import requests
 from tess_hunt import mast
 from tess_hunt.config import lc_dir, load_criteria
 from tess_hunt.lightcurve import LightCurve
+from tess_hunt.pool import process_pool
 from tess_hunt.provenance import sha256_file, start_run
 
 
@@ -111,6 +111,8 @@ def fetch_star(
                 }
                 break
     if not parts:
+        # A stale file from an earlier fetch would otherwise be searched as if it were current.
+        target.unlink(missing_ok=True)
         return {"tic": tic, "status": "empty", "sectors": [], "problems": problems}
     time, flux, err, sector = (np.concatenate(cols) for cols in zip(*parts, strict=True))
     order = np.argsort(time, kind="stable")
@@ -156,7 +158,7 @@ def cmd(args) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     min_good = criteria["fetch"]["min_good_cadences"]
     jobs = [(t, products[products["tic"] == t], out_dir, min_good, args.refresh) for t in tics]
-    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+    with process_pool(args.workers) as pool:
         entries = list(pool.map(_fetch_job, jobs, chunksize=4))
     with open(run.path / "fetch_manifest.jsonl", "w") as fh:
         for entry in entries:

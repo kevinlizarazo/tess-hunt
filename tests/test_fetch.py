@@ -82,3 +82,22 @@ def test_fetch_uses_cache_when_sources_unchanged(tmp_path):
     assert entry["status"] == "cached" and session.urls == []
     assert entry["sources"]["1"]["s3_key"] == "k/tspoc"
     assert len(entry["sources"]["1"]["sha256"]) == 64
+
+
+def test_empty_fetch_deletes_a_stale_light_curve(tmp_path):
+    stale = make_stale(tmp_path)
+    entry = fetch_star(TIC, products(), tmp_path, min_good=100, session=FakeSession())
+    assert entry["status"] == "empty" and not stale.exists()
+
+
+def make_stale(tmp_path):
+    lc = LightCurve(
+        TIC,
+        np.arange(5.0),
+        np.ones(5),
+        np.ones(5),
+        np.full(5, 1, dtype=np.int16),
+        {"1": {"s3_key": "old"}},
+    )
+    lc.save(tmp_path / f"{TIC}.npz")
+    return tmp_path / f"{TIC}.npz"

@@ -1,0 +1,5 @@
+# Criteria are hashed into every run; a CRLF checkout would change the hash.
+criteria/*.toml text eol=lf
+*.fits binary
+*.npz binary
+*.parquet binary

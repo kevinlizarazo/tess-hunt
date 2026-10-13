@@ -192,3 +192,31 @@ def test_injection_job_recovers_a_large_planet(tmp_path):
     rows = injection_job((star, path, [], crit, ["bls30"], 1, 11))
     assert len(rows) == 1 and rows[0]["recovered"] and rows[0]["expected_snr"] > 20
     assert np.isfinite(rows[0]["runtime_s"]) and rows[0]["lc_sha256"] == sha256_file(path)
+
+
+def publish(run_id, tmp_path, monkeypatch):
+    monkeypatch.setattr("tess_hunt.benchmark.repo_root", lambda: tmp_path / "repo")
+    return main(["benchmark", "publish", "--run", run_id])
+
+
+def test_publish_refuses_a_missing_or_unfinished_run(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    with pytest.raises(SystemExit, match="no run"):
+        publish("nope", tmp_path, monkeypatch)
+    run = tmp_path / "data" / "runs" / "r1"
+    run.mkdir(parents=True)
+    (run / "provenance.json").write_text(json.dumps({"ended_at": None}))
+    with pytest.raises(SystemExit, match="not finished"):
+        publish("r1", tmp_path, monkeypatch)
+
+
+def test_publish_never_overwrites(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    run = tmp_path / "data" / "runs" / "r2"
+    run.mkdir(parents=True)
+    (run / "provenance.json").write_text(json.dumps({"ended_at": "2026-10-13T00:00:00+00:00"}))
+    (run / "summary.md").write_text("# s\n")
+    assert publish("r2", tmp_path, monkeypatch) == 0
+    assert (tmp_path / "repo" / "results" / "benchmarks" / "r2" / "summary.md").exists()
+    with pytest.raises(SystemExit, match="exists"):
+        publish("r2", tmp_path, monkeypatch)
