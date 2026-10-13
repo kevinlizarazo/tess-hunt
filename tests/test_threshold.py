@@ -58,12 +58,20 @@ def candidates(sdes):
     )
 
 
-def fake_evaluate(passing_below):
+def fake_evaluate(passing_below, unjudged=()):
+    """Signals below `passing_below` pass; those in `unjudged` were not judged, so they count as passing."""
     calls = []
 
     def evaluate(rows):
         calls.append([r["sde"] for r in rows])
-        return [{**r, "passes_fa": r["sde"] < passing_below} for r in rows]
+        return [
+            {
+                **r,
+                "passes_fa": r["sde"] < passing_below or r["sde"] in unjudged,
+                "judged": r["sde"] not in unjudged,
+            }
+            for r in rows
+        ]
 
     return evaluate, calls
 
@@ -81,6 +89,22 @@ def test_no_passing_null_signal_gives_no_threshold():
     evaluate, _ = fake_evaluate(passing_below=0.0)
     value, evaluated = compute_threshold(candidates([30.0, 12.0]), evaluate, batch=10)
     assert value is None and len(evaluated) == 2
+
+
+def test_an_unjudged_pass_sets_the_threshold_and_evaluation_goes_on_to_a_judged_one():
+    evaluate, calls = fake_evaluate(passing_below=15.0, unjudged=(25.0,))
+    value, evaluated = compute_threshold(
+        candidates([30.0, 25.0, 20.0, 14.0, 13.0, 10.0]), evaluate, batch=2
+    )
+    assert value == 25.0 and calls == [[30.0, 25.0], [20.0, 14.0]]
+    assert len(evaluated) == 4
+
+
+def test_without_a_judged_pass_every_candidate_is_evaluated():
+    evaluate, calls = fake_evaluate(passing_below=0.0, unjudged=(25.0,))
+    value, evaluated = compute_threshold(candidates([30.0, 25.0, 20.0]), evaluate, batch=1)
+    assert value == 25.0 and calls == [[30.0], [25.0], [20.0]]
+    assert len(evaluated) == 3
 
 
 def known_table(*rows):
@@ -210,7 +234,15 @@ def fake_leo(outcome_for, calls=None):
     def leo_flux(lc, star, eph, others, exclude, crit_detrend, crit_triage, fa_only=False):
         if calls is not None:
             calls.append(
-                {"lc": lc, "eph": eph, "others": others, "exclude": exclude, "fa_only": fa_only}
+                {
+                    "lc": lc,
+                    "eph": eph,
+                    "others": others,
+                    "exclude": exclude,
+                    "crit_detrend": crit_detrend,
+                    "crit_triage": crit_triage,
+                    "fa_only": fa_only,
+                }
             )
         outcome, reason = outcome_for(star, eph)
         return inconclusive("leo_flux", reason), outcome, None
@@ -232,6 +264,9 @@ def test_leo_job_judges_the_light_curve_the_null_searched(tmp_path, monkeypatch)
     assert exclude.any() and call["fa_only"]
     assert call["eph"] == Ephemeris(19.84, 1330.0, 0.12, 0.001)
     assert call["others"] == [Ephemeris(23.53, 1331.0, 0.1)]
+    # Real leo_flux reads these as it is called, outside its own try: a wrong dict would leave every
+    # null signal unjudged.
+    assert call["crit_detrend"] == SEARCH["detrend"] and call["crit_triage"] == TRIAGE.values
 
 
 @pytest.mark.parametrize(
@@ -265,7 +300,18 @@ def test_leo_job_names_an_exception_and_counts_the_signal_as_surviving(tmp_path,
     monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
     out = _leo_job(leo_job())
     assert out["passes_fa"] and not out["judged"]
-    assert out["why_unjudged"].startswith("FileNotFoundError"), out["why_unjudged"]
+    why = out["why_unjudged"]
+    # threshold.json is published under results/, so the data directory's path is scrubbed.
+    assert why.startswith("FileNotFoundError") and "$TESS_HUNT_DATA/lc/1.npz" in why, why
+    assert str(tmp_path) not in why
+
+
+def test_leo_job_scrubs_the_data_directory_from_leo_vetters_reason(tmp_path, monkeypatch):
+    save_star(tmp_path, monkeypatch)
+    reason = f"LEO-Vetter raised OSError: {tmp_path / 'data' / 'tdi'} is not writable"
+    monkeypatch.setattr(threshold_module, "leo_flux", fake_leo(lambda star, eph: (None, reason)))
+    why = _leo_job(leo_job())["why_unjudged"]
+    assert why == "LEO-Vetter raised OSError: $TESS_HUNT_DATA/tdi is not writable", why
 
 
 def null_signals(lc, seed):
@@ -305,11 +351,21 @@ def test_a_null_signal_with_no_cadence_in_transit_cannot_be_traced():
     assert out["built"] is None and out["n_cadences"] == 0 and out["reason"]
 
 
+def test_a_star_whose_unscrambled_search_finds_nothing_is_not_built():
+    # Fewer cadences than a search needs: detrend keeps no sector, so the unscrambled search finds nothing.
+    lc = make_lc(sectors=(1,), seed=6)
+    lc = lc.select(np.arange(len(lc.time)) < 90)
+    out = own_transits(lc, SUN, [], SEARCH.values, 3, Ephemeris(1.0, float(lc.time[10]), 0.1))
+    assert out["built"] is False and out["overlap"] == 0.0 and out["n_cadences"] > 0, out
+    assert out["reason"] == "the unscrambled search found no signal"
+
+
 def test_own_transits_job_names_an_exception(tmp_path, monkeypatch):
     monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
     job = {"row": ROW, "star": SUN, "known": [], "seed": 3, "search": SEARCH.values}
     out = _own_transits_job(job)
     assert out["built"] is None and out["reason"].startswith("FileNotFoundError"), out
+    assert "$TESS_HUNT_DATA/lc/1.npz" in out["reason"] and str(tmp_path) not in out["reason"]
 
 
 # Four sectors, one of them recent, so the stars count as covered under search-v2.
@@ -358,35 +414,51 @@ def only_run(tmp_path, stage):
     return run
 
 
-def threshold_cli(tmp_path, targets, mask, null):
+def threshold_cli(tmp_path, targets, mask, null, *extra):
     argv = ["triage", "threshold", "--null", str(null), "--targets", str(targets)]
     argv += ["--catalogs", str(triage_snapshot(tmp_path, mask)), "--mask-catalogs", str(mask)]
-    assert main([*argv, "--workers", "1"]) == 0
+    assert main([*argv, "--workers", "1", *extra]) == 0
     run = only_run(tmp_path, "threshold")
     return json.loads((run / "threshold.json").read_text()), run
+
+
+def kept_signals(null):
+    """The null's signals less star 11's leftovers of its catalogued 3.7 d binary."""
+    signals = pd.read_parquet(null / "signals.parquet")
+    near = (signals["tic"] == 11) & signals["period"].map(lambda p: harmonic_of(p, 3.7))
+    return signals[~near], int(near.sum())
 
 
 def test_threshold_cli_drops_known_objects_and_traces_the_threshold_row(tmp_path, monkeypatch):
     targets, mask, null = null_run(tmp_path, monkeypatch)
     calls = []
-    passing = fake_leo(lambda star, eph: (LeoOutcome("PC"), "planet candidate"), calls)
-    monkeypatch.setattr(threshold_module, "leo_flux", passing)
+
+    def outcome(star, eph):
+        if star["tic"] == 12:
+            return LeoOutcome(None, [], [], ["chi"]), "tests not judged: chi"
+        return LeoOutcome("PC"), "planet candidate"
+
+    monkeypatch.setattr(threshold_module, "leo_flux", fake_leo(outcome, calls))
     result, run = threshold_cli(tmp_path, targets, mask, null)
-    signals = pd.read_parquet(null / "signals.parquet")
-    near = (signals["tic"] == 11) & signals["period"].map(lambda p: harmonic_of(p, 3.7))
-    kept = signals[~near]
-    assert result["excluded"] == near.sum() >= 1
+    kept, near = kept_signals(null)
+    assert result["excluded"] == near >= 1
     assert result["evaluated"] == len(kept) == len(calls)
     assert len(pd.read_parquet(run / "null_leo.parquet")) == len(kept)
-    # Every null signal passes here, so the highest one sets the threshold.
+    # Every null signal survives here, so the highest one sets the threshold.
     assert result["threshold"] == kept["sde"].max() and result["floor_used"] is False
     top = result["top"]
     assert [r["sde"] for r in top] == sorted(kept["sde"], reverse=True)
-    assert all(r["judged"] and r["why_unjudged"] == "" and "own_transits" in r for r in top)
+    assert all("own_transits" in r for r in top)
+    assert [(r["judged"], r["why_unjudged"]) for r in top if r["tic"] == 11] == [(True, "")] * 2
     row = result["threshold_row"]
     assert (row["tic"], row["rank"], row["sde"]) == (top[0]["tic"], top[0]["rank"], top[0]["sde"])
-    assert result["threshold_row_unjudged"] is False and result["unjudged"] == 0
-    assert result["unjudged_above_threshold_row"] == 0
+    assert result["threshold_row_unjudged"] is False
+    # Star 12's unjudged peak is the lowest, below the judged pass that sets the threshold.
+    noise = kept.loc[kept["tic"] == 12, "sde"]
+    assert noise.max() < kept.loc[kept["tic"] == 11, "sde"].min()
+    assert result["unjudged"] == len(noise) and result["unjudged_above_judged_pass"] == 0
+    assert result["highest_judged_pass_sde"] == result["threshold"]
+    assert result["why_no_judged_pass"] == ""
     # The seed leaves star 11's own transits evenly spaced at a period that is no harmonic of 3.7 d.
     assert row["tic"] == 11 and not harmonic_of(row["period"], 3.7)
     assert row["own_transits"]["built"] is True and harmonic_of(row["own_transits"]["period"], 3.7)
@@ -407,7 +479,7 @@ def test_threshold_cli_drops_known_objects_and_traces_the_threshold_row(tmp_path
     assert all_thresholds(tmp_path / "data" / "runs") == [result]
 
 
-def test_threshold_cli_counts_unjudged_signals_and_keeps_the_floor(tmp_path, monkeypatch):
+def test_threshold_cli_counts_unjudged_signals_and_keeps_the_floor(tmp_path, monkeypatch, capsys):
     targets, mask, null = null_run(tmp_path, monkeypatch)
 
     def outcome(star, eph):
@@ -417,8 +489,8 @@ def test_threshold_cli_counts_unjudged_signals_and_keeps_the_floor(tmp_path, mon
 
     monkeypatch.setattr(threshold_module, "leo_flux", fake_leo(outcome))
     result, _ = threshold_cli(tmp_path, targets, mask, null)
-    signals = pd.read_parquet(null / "signals.parquet")
-    noise = signals.loc[signals["tic"] == 12, "sde"]
+    kept, _ = kept_signals(null)
+    noise = kept.loc[kept["tic"] == 12, "sde"]
     # Star 12's null peaks are noise, below the provisional continue_sde the null ran at.
     floor = SEARCH["search"]["continue_sde"]
     assert noise.max() < floor
@@ -427,61 +499,112 @@ def test_threshold_cli_counts_unjudged_signals_and_keeps_the_floor(tmp_path, mon
     assert row["tic"] == 12 and row["sde"] == noise.max() and not row["judged"]
     assert row["why_unjudged"] == "a stellar value LEO-Vetter needs is missing"
     assert result["threshold_row_unjudged"] is True and result["unjudged"] == len(noise)
-    assert result["unjudged_above_threshold_row"] == 0
+    # No signal passed with LEO-Vetter's judgement, so every candidate was evaluated.
+    assert result["evaluated"] == len(kept) and result["highest_judged_pass_sde"] is None
+    assert result["why_no_judged_pass"] == f"no judged pass among {len(kept)} evaluated"
+    assert result["unjudged_above_judged_pass"] == len(noise)
     assert row["own_transits"]["built"] is False and result["threshold_row_own_transits"] is False
+    # Under the floor, that row does not set the threshold.
+    assert "the highest surviving null signal (TIC 12" in capsys.readouterr().out
 
 
-def null_provenance(tmp_path, monkeypatch, **fields):
+def test_threshold_cli_goes_past_an_unjudged_pass_to_a_judged_one(tmp_path, monkeypatch):
+    targets, mask, null = null_run(tmp_path, monkeypatch)
+    kept, _ = kept_signals(null)
+    first, second = kept.sort_values("sde", ascending=False).iloc[:2].to_dict("records")
+
+    def outcome(star, eph):
+        if eph.period == first["period"]:
+            return LeoOutcome(None, [], [], ["chi"]), "tests not judged: chi"
+        return LeoOutcome("PC"), "planet candidate"
+
+    monkeypatch.setattr(threshold_module, "leo_flux", fake_leo(outcome))
+    # One signal per batch, so the unjudged top signal fills a batch of its own.
+    text = (ROOT / "criteria" / "triage-v1.toml").read_text()
+    assert "batch = 200" in text
+    triage = tmp_path / "triage.toml"
+    triage.write_text(text.replace("batch = 200", "batch = 1"))
+    result, _ = threshold_cli(tmp_path, targets, mask, null, "--criteria-triage", str(triage))
+    assert result["evaluated"] == 2 < len(kept)
+    assert result["threshold"] == first["sde"] and result["threshold_row_unjudged"] is True
+    assert result["highest_judged_pass_sde"] == second["sde"] and result["why_no_judged_pass"] == ""
+    assert result["unjudged"] == result["unjudged_above_judged_pass"] == 1
+
+
+def null_provenance(tmp_path, monkeypatch, change=None):
+    """A finished null that the checkout can reproduce, with `change` applied to its provenance, and the
+    command line that computes its threshold."""
     monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
     monkeypatch.chdir(ROOT)
     mask = write_catalog_snapshot(tmp_path / "mask")
+    targets = tmp_path / "t.parquet"
+    pd.DataFrame({**SUN, "tic": [5, 6]}).to_parquet(targets)
     inputs = {
         name: {"sha256": sha256_file(mask / name)}
         for name in ("toi.csv", "ctoi.csv", "pscomppars.csv")
     }
     null = tmp_path / "null"
     null.mkdir()
-    base = {
+    provenance = {
         "ended_at": "2026-10-13T00:00:00+00:00",
         "scramble": 1,
-        "inputs": inputs,
+        "inputs": {**inputs, "targets": {"sha256": sha256_file(targets)}},
         "criteria": [{"file": "criteria/search-v2.toml", "sha256": SEARCH.sha256}],
-        "search_code_sha256": "0" * 64,
+        "search_code_sha256": search_code_sha256(ROOT),
     }
-    (null / "provenance.json").write_text(json.dumps({**base, **fields}))
-    argv = ["triage", "threshold", "--null", str(null), "--targets", str(tmp_path / "t.parquet")]
+    if change:
+        change(provenance)
+    (null / "provenance.json").write_text(json.dumps(provenance))
+    argv = ["triage", "threshold", "--null", str(null), "--targets", str(targets)]
     return [*argv, "--catalogs", str(mask), "--mask-catalogs", str(mask), "--workers", "1"]
 
 
+def null_tables(tmp_path, signal_tics, lc_sha256):
+    row = {"rank": 1, "period": 7.0, "t0": 1330.0, "duration": 0.1, "sde": 10.0, "control": False}
+    signals = pd.DataFrame([{**row, "tic": t} for t in signal_tics], columns=["tic", *row])
+    signals.to_parquet(tmp_path / "null" / "signals.parquet")
+    stars = [
+        {"tic": t, "control": False, "status": "ok", "lc_sha256": s} for t, s in lc_sha256.items()
+    ]
+    pd.DataFrame(stars).to_parquet(tmp_path / "null" / "stars.parquet")
+
+
 @pytest.mark.parametrize(
-    ("fields", "message"),
+    ("change", "message"),
     [
-        ({"scramble": None}, "not a finished null"),
-        ({"ended_at": None}, "not a finished null"),
-        ({"inputs": {}}, "mask-catalogs"),
-        ({"criteria": [{"file": "criteria/search-v2.toml", "sha256": "x"}]}, "criteria"),
-        ({}, "search code"),
+        (lambda p: p.update(scramble=None), "not a finished null"),
+        (lambda p: p.update(ended_at=None), "not a finished null"),
+        (lambda p: p["inputs"].pop("toi.csv"), "mask-catalogs"),
+        (lambda p: p["inputs"].update(targets={"sha256": "x"}), "targets"),
+        (lambda p: p["criteria"][0].update(sha256="x"), "criteria"),
+        (lambda p: p.update(search_code_sha256="0" * 64), "search code"),
     ],
 )
-def test_threshold_cli_refuses_a_null_it_cannot_reproduce(tmp_path, monkeypatch, fields, message):
+def test_threshold_cli_refuses_a_null_it_cannot_reproduce(tmp_path, monkeypatch, change, message):
     with pytest.raises(SystemExit, match=message):
-        main(null_provenance(tmp_path, monkeypatch, **fields))
+        main(null_provenance(tmp_path, monkeypatch, change))
     assert not (tmp_path / "data" / "runs").exists()
 
 
-@pytest.mark.parametrize(
-    ("signal_tics", "target_tics", "message"),
-    [([], [5], "no null signal"), ([5, 7], [5, 6], r"no row for null stars \[7\]")],
-)
-def test_threshold_cli_refuses_an_empty_null_or_targets_missing_its_stars(
-    tmp_path, monkeypatch, signal_tics, target_tics, message
+def test_threshold_cli_refuses_a_null_that_leaves_no_signal(tmp_path, monkeypatch):
+    argv = null_provenance(tmp_path, monkeypatch)
+    null_tables(tmp_path, [], {})
+    with pytest.raises(SystemExit, match="no null signal"):
+        main(argv)
+    assert not (tmp_path / "data" / "runs").exists()
+
+
+def test_threshold_cli_refuses_light_curves_other_than_the_ones_the_null_searched(
+    tmp_path, monkeypatch
 ):
-    argv = null_provenance(tmp_path, monkeypatch, search_code_sha256=search_code_sha256(ROOT))
-    row = {"rank": 1, "period": 7.0, "t0": 1330.0, "duration": 0.1, "sde": 10.0, "control": False}
-    columns = ["tic", *row]
-    signals = pd.DataFrame([{**row, "tic": t} for t in signal_tics], columns=columns)
-    signals.to_parquet(tmp_path / "null" / "signals.parquet")
-    pd.DataFrame({**SUN, "tic": target_tics}).to_parquet(tmp_path / "t.parquet")
-    with pytest.raises(SystemExit, match=message):
+    argv = null_provenance(tmp_path, monkeypatch)
+    for tic in (5, 6, 7):
+        save_star(tmp_path, monkeypatch, tic, sectors=(1,), seed=tic)
+    lc = tmp_path / "data" / "lc"
+    # Star 5 is as the null searched it; 6 was refetched since; 7 is gone.
+    same = sha256_file(lc / "5.npz")
+    null_tables(tmp_path, [5, 6, 7], {5: same, 6: "0" * 64, 7: sha256_file(lc / "7.npz")})
+    (lc / "7.npz").unlink()
+    with pytest.raises(SystemExit, match=r"2 null stars .*\[6, 7\]"):
         main(argv)
     assert not (tmp_path / "data" / "runs").exists()

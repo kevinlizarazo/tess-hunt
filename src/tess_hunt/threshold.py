@@ -18,7 +18,7 @@ from tess_hunt.ephemeris import Ephemeris, ephemeris_match, in_transit
 from tess_hunt.leo import leo_flux
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.pool import run_jobs
-from tess_hunt.provenance import repo_root, sha256_file, start_run
+from tess_hunt.provenance import repo_root, scrub, sha256_file, start_run
 from tess_hunt.search import (
     search_code_sha256,
     search_input,
@@ -26,6 +26,11 @@ from tess_hunt.search import (
     star_params,
     stellar_density,
 )
+
+# The share of a null signal's in-transit cadences that must lie in one real signal's transits for the
+# trace-back to call it made of them. The trace-back is evidence for the maintainer's review and decides
+# nothing, so this is not a criterion.
+OWN_TRANSITS_SHARE = 0.5
 
 # The trace-back's fields when it cannot say either way.
 UNTRACED = {
@@ -69,8 +74,10 @@ def compute_threshold(
     for start in range(0, len(rows), batch):
         results = evaluate(rows[start : start + batch])
         evaluated += results
-        # Every higher SDE has been judged by now, so the first batch with a pass holds the threshold.
-        if any(r["passes_fa"] for r in results):
+        # Every higher SDE has been judged by now, so the first batch with a pass holds the threshold. A
+        # signal LEO-Vetter could not judge counts as a pass, so evaluation goes on until a batch holds a
+        # judged one: the threshold as it would be if unjudged signals did not count.
+        if any(r["passes_fa"] and r["judged"] for r in results):
             break
     passing = [r["sde"] for r in evaluated if r["passes_fa"]]
     return (max(passing) if passing else None), pd.DataFrame(evaluated)
@@ -152,16 +159,16 @@ def _leo_job(job: dict) -> dict:
             fa_only=True,
         )
     except Exception as exc:  # a crash is no evidence that LEO-Vetter would reject the signal
-        return {**out, "why_unjudged": f"{type(exc).__name__}: {exc}"}
+        return {**out, "why_unjudged": scrub(f"{type(exc).__name__}: {exc}")}
     if outcome is None:
         # LEO-Vetter did not run: a stellar value is missing, nothing was left after detrending, or it raised.
-        return {**out, "why_unjudged": result.reason}
+        return {**out, "why_unjudged": scrub(result.reason)}
     judged = outcome.disposition == "PC" or bool(outcome.fa_failed)
     return {
         **out,
         "passes_fa": outcome.passes_fa,
         "judged": judged,
-        "why_unjudged": "" if judged else result.reason,
+        "why_unjudged": "" if judged else scrub(result.reason),
         "disposition": outcome.disposition,
         "fa_failed": outcome.fa_failed,
         "unknown": outcome.unknown,
@@ -175,8 +182,12 @@ def own_transits(
     of a planet's or binary's transits evenly spaced by chance, at a period that is no harmonic of the real
     one; the events agree with each other, so LEO-Vetter's false-alarm tests cannot reject the peak. The
     star is searched unscrambled as the production search searches it, and the null signal's in-transit
-    cadences are traced back through the scramble: built when half or more of them fall inside the transits
-    of one signal found there. Evidence for the maintainer's review; it changes no rule."""
+    cadences are traced back through the scramble: built when at least OWN_TRANSITS_SHARE of them fall
+    inside the transits of one signal found there. Evidence for the maintainer's review; it changes no rule.
+
+    The cadences are every unmasked one inside the null signal's transits on the scrambled light curve. For
+    a signal of rank 2 or lower they include cadences the null search had already masked for the star's
+    higher-ranked signals, which that search never saw."""
     rstar, mstar, _ = star_params(star)
     plain, exclude = search_input(lc, known, crit, None)
     flat = detrend(plain, crit["detrend"], exclude=exclude)
@@ -202,7 +213,7 @@ def own_transits(
     best = int(np.argmax(overlaps))
     return {
         **out,
-        "built": overlaps[best] >= 0.5,
+        "built": overlaps[best] >= OWN_TRANSITS_SHARE,
         "overlap": overlaps[best],
         "period": found[best].period,
         "sde": found[best].sde,
@@ -216,7 +227,12 @@ def _own_transits_job(job: dict) -> dict:
         eph = Ephemeris(row["period"], row["t0"], row["duration"])
         return own_transits(lc, job["star"], job["known"], job["search"], job["seed"], eph)
     except Exception as exc:  # a failed trace-back says nothing either way
-        return {**UNTRACED, "reason": f"{type(exc).__name__}: {exc}"}
+        return {**UNTRACED, "reason": scrub(f"{type(exc).__name__}: {exc}")}
+
+
+def _lc_sha256(tic: int) -> str | None:
+    path = lc_dir() / f"{tic}.npz"
+    return sha256_file(path) if path.exists() else None
 
 
 def add_parser(sub) -> None:
@@ -244,6 +260,8 @@ def cmd_threshold(args) -> int:
             raise SystemExit(
                 f"--mask-catalogs differs from the snapshot the null masked with ({name})"
             )
+    if null_prov["inputs"].get("targets", {}).get("sha256") != sha256_file(args.targets):
+        raise SystemExit("--targets differs from the targets the null searched")
     crit_search = load_criteria(Path(null_prov["criteria"][0]["file"]))
     if crit_search.sha256 != null_prov["criteria"][0]["sha256"]:
         raise SystemExit("the search criteria file changed since the null ran")
@@ -262,10 +280,20 @@ def cmd_threshold(args) -> int:
     candidates = signals[signals["excluded_by"] == ""]
     if candidates.empty:
         raise SystemExit(f"{args.null.name} leaves no null signal to judge")
+    # A refetch since the null changes the scramble's order and times, so LEO-Vetter would judge another
+    # light curve than the one the null searched.
+    null_stars = pd.read_parquet(args.null / "stars.parquet")
+    sample = null_stars[~null_stars["control"].astype(bool)]
+    searched = dict(zip(sample["tic"].astype(int), sample["lc_sha256"], strict=True))
+    tics = sorted({int(t) for t in candidates["tic"]})
+    now = run_jobs(_lc_sha256, tics, args.workers)
+    changed = [t for t, sha in zip(tics, now, strict=True) if sha is None or sha != searched.get(t)]
+    if changed:
+        raise SystemExit(
+            f"the light curves of {len(changed)} null stars differ from the ones the null searched: "
+            f"{changed[:10]}"
+        )
     stars = pd.read_parquet(args.targets).set_index("tic")
-    missing = sorted(int(t) for t in set(signals["tic"]) - set(stars.index))
-    if missing:
-        raise SystemExit(f"{args.targets} has no row for null stars {missing}")
     run = start_run("threshold", [crit_search, crit_triage], args.production, sys.argv)
     run.record_input("null_signals", args.null / "signals.parquet")
     run.record_input("targets", args.targets)
@@ -301,7 +329,7 @@ def cmd_threshold(args) -> int:
     value, evaluated = compute_threshold(candidates, evaluate, cfg["batch"])
     evaluated.to_parquet(run.path / "null_leo.parquet")
     passing = evaluated[evaluated["passes_fa"]]
-    # The null signal behind the threshold, before the floor: the highest one that survives.
+    # The highest surviving null signal; it sets the threshold unless the floor is higher.
     threshold_row = passing.loc[passing["sde"].idxmax()].to_dict() if len(passing) else None
     top = evaluated.head(cfg["report_top"]).to_dict("records")
     traced = {
@@ -322,10 +350,11 @@ def cmd_threshold(args) -> int:
     top = [with_trace(r) for r in top]
     threshold_row = with_trace(threshold_row) if threshold_row else None
     unjudged = ~evaluated["judged"].astype(bool)
-    above = evaluated["sde"] > (threshold_row["sde"] if threshold_row else -math.inf)
+    judged_passes = evaluated.loc[evaluated["passes_fa"] & ~unjudged, "sde"]
+    highest_judged = float(judged_passes.max()) if len(judged_passes) else None
+    above = evaluated["sde"] > (highest_judged if highest_judged is not None else -math.inf)
     floor = crit_search["search"]["continue_sde"]
-    null_stars = pd.read_parquet(args.null / "stars.parquet")
-    n_null = int(((null_stars["status"] == "ok") & ~null_stars["control"].astype(bool)).sum())
+    n_null = int((sample["status"] == "ok").sum())
     n_sample = len(stars)
     result = {
         "threshold": float(max(value, floor)) if value is not None else float(floor),
@@ -344,7 +373,12 @@ def cmd_threshold(args) -> int:
         if threshold_row is None
         else threshold_row["own_transits"]["built"],
         "unjudged": int(unjudged.sum()),
-        "unjudged_above_threshold_row": int((unjudged & above).sum()),
+        # The threshold as it would be if unjudged signals did not count, and how many sit above it.
+        "highest_judged_pass_sde": highest_judged,
+        "why_no_judged_pass": ""
+        if highest_judged is not None
+        else f"no judged pass among {len(evaluated)} evaluated",
+        "unjudged_above_judged_pass": int((unjudged & above).sum()),
         "search_criteria_sha256": null_prov["criteria"][0]["sha256"],
         "search_code_sha256": null_prov["search_code_sha256"],
         "snapshot": args.catalogs.name,
@@ -367,10 +401,12 @@ def cmd_threshold(args) -> int:
         f"threshold {result['threshold']:.2f} from {result['evaluated']} null signals -> {run.path}"
     )
     if threshold_row is not None:
-        where = f"TIC {int(threshold_row['tic'])} rank {int(threshold_row['rank'])}"
+        # Under the floor that signal does not set the threshold.
+        label = "the highest surviving null signal" if result["floor_used"] else "the threshold row"
+        where = f"{label} (TIC {int(threshold_row['tic'])} rank {int(threshold_row['rank'])})"
         if result["threshold_row_unjudged"]:
-            print(f"the threshold row ({where}) was not judged: {threshold_row['why_unjudged']}")
+            print(f"{where} was not judged: {threshold_row['why_unjudged']}")
         if result["threshold_row_own_transits"]:
             period = threshold_row["own_transits"]["period"]
-            print(f"the threshold row ({where}) is made of the star's own {period:.4f} d transits")
+            print(f"{where} is made of the star's own {period:.4f} d transits")
     return 0

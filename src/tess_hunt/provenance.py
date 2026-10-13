@@ -58,8 +58,8 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.UTC)
 
 
-def _scrub(arg: str) -> str:
-    # Provenance may be published under results/; it must not carry this machine's paths.
+def scrub(arg: str) -> str:
+    # Provenance and run outputs may be published under results/; they must not carry this machine's paths.
     return arg.replace(str(data_dir()), "$TESS_HUNT_DATA").replace(str(Path.home()), "~")
 
 
@@ -150,7 +150,7 @@ def start_run(
                 {"file": f, "sha256": c.sha256} for f, c in zip(files, criteria, strict=True)
             ],
             # argv[0] is wherever the checkout's venv put the script; only its name is reproducible.
-            "argv": [Path(argv[0]).name, *(_scrub(a) for a in argv[1:])],
+            "argv": [Path(argv[0]).name, *(scrub(a) for a in argv[1:])],
             "python": sys.version.split()[0],
             "inputs": {},
             "summary": None,
