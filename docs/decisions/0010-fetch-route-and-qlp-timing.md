@@ -39,8 +39,8 @@ files have not been redelivered; the files served are version `v01`.
   TOI ephemeris has drifted beyond the 40 minutes either side that the script searches. -20.50 min on TIC 22560356
   S100 is too noisy to count as a measured offset: it rests on 3 transits with a spread of 11.66 min, the star is
   faint and crowded, its SPOC 2-minute scatter per point exceeds its transit depth, and the same star reads -2.00 min
-  in S99 and +1.13 min in S101, which is also inside the affected window. The ephemeris drift and the scatter come
-  from build diagnostics that are not in the repo. The ephemeris-independent remeasurement,
+  in S99 and +1.13 min in S101, which is also inside the affected window. The ephemeris drift, the star's faintness
+  and the scatter come from build diagnostics that are not in the repo. The ephemeris-independent remeasurement,
   [benchmarks/qlp_timing_robust.py](../../benchmarks/qlp_timing_robust.py), picks its own 31 pairs (24 reliable),
   which share no star with the plan script's 8 pairs and so do not include those two. It times each QLP transit
   against that sector's own SPOC fit and puts every reliable pair's median offset under 10 minutes, the largest at
