@@ -1,7 +1,27 @@
+import json
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
+import pytest
+from astropy.table import Table
 
-from tess_hunt.targets import build_sample, covered, sample_hosts, select_known
+from tess_hunt import targets as targets_module
+from tess_hunt.cli import main
+from tess_hunt.targets import (
+    DEC_BANDS,
+    TIC_FIELDS,
+    TicQueryError,
+    build_sample,
+    covered,
+    covered_sources,
+    flame_cut,
+    query_tic_band,
+    sample_hosts,
+    select_known,
+)
 
+ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = {
     "teff_min": 5300.0,
     "teff_max": 6500.0,
@@ -63,6 +83,14 @@ def test_build_sample_filters_and_is_reproducible():
     assert list(a["tic"]) == list(b["tic"]) and len(a) == 2
 
 
+def test_build_sample_pick_ignores_row_order():
+    stars = pd.DataFrame([star(t) for t in range(1, 9)])
+    sectors = {t: [1, 2, 3, 98] for t in range(1, 9)}
+    a = build_sample(stars, sectors, SAMPLE, limit=3, seed=1)
+    b = build_sample(stars.iloc[::-1], sectors, SAMPLE, limit=3, seed=1)
+    assert list(a["tic"]) == list(b["tic"])
+
+
 def test_build_sample_handles_no_survivors():
     stars = pd.DataFrame([star(1, teff=4000.0)])
     assert len(build_sample(stars, {1: [1, 2, 3, 98]}, SAMPLE, 0, 1)) == 0
@@ -118,3 +146,178 @@ def test_sample_hosts_cuts_on_tic_values_and_keeps_forced():
     stars = pd.DataFrame([star(11), star(12, logg=float("nan")), star(261136679, teff=4000.0)])
     out = sample_hosts(toi, stars, SAMPLE)
     assert sorted(f"{v:.2f}" for v in out["TOI"]) == ["1001.01", "144.01"]
+
+
+def tic_table(n, dec=-70.0, start=1):
+    """A TIC query result: TIC column names, values from star(), the errors as NaN."""
+    rows = []
+    for i in range(n):
+        values = star(start + i)
+        rows.append(
+            {column: values.get(name, np.nan) for column, name in TIC_FIELDS.items()}
+            | {"dec": dec, "GAIA": "1000", "disposition": ""}
+        )
+    return Table.from_pandas(pd.DataFrame(rows))
+
+
+def test_bands_cover_the_sky_once():
+    assert DEC_BANDS[0] == (-90.0, -80.0) and DEC_BANDS[-1] == (80.0, 90.0) and len(DEC_BANDS) == 18
+
+
+def test_query_band_refuses_a_full_band():
+    with pytest.raises(TicQueryError, match="split"):
+        query_tic_band(SAMPLE, (-90.0, -80.0), query=lambda **kw: tic_table(3), row_cap=3)
+
+
+def test_query_band_retries():
+    calls = []
+
+    def flaky(**kw):
+        calls.append(kw["dec"])
+        if len(calls) == 1:
+            raise ConnectionError("MAST timeout")
+        return tic_table(2)
+
+    out = query_tic_band(SAMPLE, (-90.0, -80.0), query=flaky, backoff=0.0)
+    assert len(out) == 2 and calls == [[-90.0, -80.0], [-90.0, -80.0]]
+
+
+def test_flame_cut_keeps_missing_values():
+    stars = pd.DataFrame({"logg_flame": [4.2, 3.9, np.nan]})
+    assert list(flame_cut(stars, 4.0)) == [True, False, True]
+
+
+def test_covered_sources_counts_fetched_sectors():
+    assert covered_sources({"1": {}, "2": {}, "3": {}, "98": {}}, SAMPLE)
+    assert not covered_sources({"1": {}, "2": {}, "3": {}, "4": {}}, SAMPLE)
+
+
+def all_sky(tmp_path, monkeypatch, discover, resume=None):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    crit = tmp_path / "search.toml"
+    crit.write_text((ROOT / "criteria" / "search-v2.toml").read_text())
+    band_of = {band: i for i, band in enumerate(DEC_BANDS)}
+    monkeypatch.setattr(
+        targets_module,
+        "query_tic_band",
+        lambda sample, dec, **kw: targets_module._tic_frame(
+            tic_table(1, dec=dec[0] + 5.0, start=100 + band_of[tuple(dec)])
+        ),
+    )
+    monkeypatch.setattr(
+        targets_module,
+        "dr3_join",
+        lambda stars, **kw: pd.DataFrame(
+            {
+                "tic": stars["tic"],
+                "dr3_source_id": 1,
+                "angular_distance": 0.1,
+                "ruwe": 1.0,
+                "logg_gspphot": 4.4,
+                "mass_flame": 1.0,
+                "radius_flame": 1.0,
+                "logg_flame": 4.438,
+                "eb_frequency": np.where(stars["tic"] == 101, 0.5, np.nan),
+                "eb_reference_time": np.where(stars["tic"] == 101, 100.0, np.nan),
+            }
+        ),
+    )
+    monkeypatch.setattr(targets_module.mast, "discover", discover)
+    argv = ["targets", "sample", "--all-sky", "--criteria", str(crit)]
+    monkeypatch.chdir(ROOT)
+    return main(argv + (["--resume", resume] if resume else []))
+
+
+def products_for(tics):
+    rows = [
+        {
+            "tic": t,
+            "sector": s,
+            "provenance": "QLP",
+            "cadence_s": 200.0,
+            "filename": f"{t}-{s}.fits",
+            "data_uri": f"u{t}-{s}",
+            "size": 1,
+            "s3_key": f"k{t}-{s}",
+        }
+        for t in tics
+        for s in (1, 2, 3, 98)
+    ]
+    return pd.DataFrame(rows, columns=targets_module.mast.PRODUCT_COLUMNS)
+
+
+def latest_run(tmp_path):
+    return sorted((tmp_path / "data" / "runs").iterdir())[-1]
+
+
+def test_all_sky_writes_targets_products_and_eb(tmp_path, monkeypatch):
+    assert all_sky(tmp_path, monkeypatch, lambda tics, **kw: products_for(tics)) == 0
+    run = latest_run(tmp_path)
+    targets = pd.read_parquet(run / "targets.parquet")
+    assert len(targets) == 18 and {"ruwe", "logg_flame", "e_rad"} <= set(targets.columns)
+    assert list(pd.read_parquet(run / "dr3_eb.parquet")["tic"]) == [101]
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert summary["complete"] and summary["covered"] == 18
+
+
+def test_failed_batch_marks_run_incomplete(tmp_path, monkeypatch):
+    def discover(tics, failed=None, **kw):
+        if 100 in tics:
+            failed.extend(tics)
+            return products_for([])
+        return products_for(tics)
+
+    assert all_sky(tmp_path, monkeypatch, discover) == 1
+    run = latest_run(tmp_path)
+    assert json.loads((run / "provenance.json").read_text())["ended_at"] is None
+    assert json.loads((run / "products" / "dec-90_-80.failed.json").read_text()) == [100]
+    assert (
+        all_sky(tmp_path, monkeypatch, lambda tics, **kw: products_for(tics), resume=run.name) == 0
+    )
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert summary["covered"] == 18 and summary["complete"]
+
+
+def test_resume_redoes_a_band_whose_failed_list_never_landed(tmp_path, monkeypatch):
+    # A crash between a band's two checkpoint files must not drop the TICs that failed.
+    def discover(tics, failed=None, **kw):
+        if 100 in tics:
+            failed.extend(tics)
+            return products_for([])
+        return products_for(tics)
+
+    assert all_sky(tmp_path, monkeypatch, discover) == 1
+    run = latest_run(tmp_path)
+    (run / "products" / "dec-90_-80.failed.json").unlink()
+    assert (
+        all_sky(tmp_path, monkeypatch, lambda tics, **kw: products_for(tics), resume=run.name) == 0
+    )
+    assert json.loads((run / "provenance.json").read_text())["summary"]["covered"] == 18
+
+
+def test_resume_skips_finished_bands(tmp_path, monkeypatch):
+    seen = []
+
+    def crash_on_band_five(tics, failed=None, **kw):
+        seen.extend(tics)
+        if 105 in tics:
+            raise KeyboardInterrupt
+        return products_for(tics)
+
+    with pytest.raises(KeyboardInterrupt):
+        all_sky(tmp_path, monkeypatch, crash_on_band_five)
+    run_id = latest_run(tmp_path).name
+    seen.clear()
+    assert (
+        all_sky(
+            tmp_path,
+            monkeypatch,
+            lambda tics, **kw: seen.extend(tics) or products_for(tics),
+            resume=run_id,
+        )
+        == 0
+    )
+    assert 100 not in seen and 105 in seen
+    assert json.loads((tmp_path / "data" / "runs" / run_id / "provenance.json").read_text())[
+        "summary"
+    ]["complete"]

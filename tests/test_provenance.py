@@ -5,7 +5,7 @@ import subprocess
 import pytest
 
 from tess_hunt.config import load_criteria
-from tess_hunt.provenance import DirtyTreeError, start_run
+from tess_hunt.provenance import DirtyTreeError, ResumeError, resume_run, start_run
 
 
 def git(root, *args):
@@ -110,3 +110,36 @@ def test_finish_freezes_the_run(repo, tmp_path):
         run.write_json("added.json", {"n": 2})
     with pytest.raises(PermissionError):
         (run.path / "provenance.json").unlink()
+
+
+def resume(repo, tmp_path, run):
+    return resume_run(
+        run.path.name,
+        [load_criteria(repo / "criteria" / "c.toml")],
+        root=repo,
+        runs=tmp_path / "runs",
+    )
+
+
+def test_resume_reopens_an_unfinished_run(repo, tmp_path):
+    run = start(repo, tmp_path, production=False)
+    again = resume(repo, tmp_path, run)
+    assert again.path == run.path and len(again.provenance["resumed_at"]) == 1
+
+
+def test_resume_refuses_changed_criteria_or_code(repo, tmp_path):
+    run = start(repo, tmp_path, production=False)
+    (repo / "criteria" / "c.toml").write_text("[a]\nx = 2\n")
+    with pytest.raises(ResumeError, match="criteria"):
+        resume(repo, tmp_path, run)
+    (repo / "criteria" / "c.toml").write_text("[a]\nx = 1\n")
+    (repo / "src" / "a.py").write_text("x = 2\n")
+    with pytest.raises(ResumeError, match="tree"):
+        resume(repo, tmp_path, run)
+
+
+def test_resume_refuses_a_finished_run(repo, tmp_path):
+    run = start(repo, tmp_path, production=False)
+    run.finish()
+    with pytest.raises(ResumeError, match="finished"):
+        resume(repo, tmp_path, run)

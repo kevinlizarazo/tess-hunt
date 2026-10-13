@@ -154,3 +154,31 @@ def start_run(
     )
     run._save()
     return run
+
+
+class ResumeError(RuntimeError):
+    pass
+
+
+def resume_run(
+    run_id: str, criteria: list[Criteria], root: Path | None = None, runs: Path | None = None
+) -> Run:
+    """Reopen an unfinished run. Only the same commit, tree state and criteria may continue it, so a resumed
+    run never mixes two versions of the code."""
+    root = root or repo_root()
+    path = (runs or runs_dir()) / run_id
+    provenance = json.loads((path / "provenance.json").read_text())
+    if provenance["ended_at"] is not None:
+        raise ResumeError(f"run {run_id} has finished; finished runs are immutable")
+    # Criteria first: an edited criteria file also dirties the tree, and this message says more.
+    if [c.sha256 for c in criteria] != [c["sha256"] for c in provenance["criteria"]]:
+        raise ResumeError(f"run {run_id} was started with different criteria")
+    state = git_state(root)
+    if state != provenance["git"]:
+        raise ResumeError(
+            f"run {run_id} was started at {provenance['git']}, the tree is now {state}"
+        )
+    provenance.setdefault("resumed_at", []).append(_now().isoformat())
+    run = Run(path, provenance)
+    run._save()
+    return run

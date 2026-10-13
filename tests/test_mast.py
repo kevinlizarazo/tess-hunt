@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 import requests
+from astropy.table import Table
 from fakes import FakeResponse, FakeSession
 
 from tess_hunt import mast
@@ -84,3 +85,58 @@ def test_discover_and_download_pi_men():
     assert qlp["s3_key"] == list(URIS.values())[0]
     blob = mast.download(qlp["s3_key"], int(qlp["size"]), requests.Session())
     assert len(blob) == 80640
+
+
+class FakeObservations:
+    """query_criteria fails `failures` times, then returns one SPOC observation per TIC."""
+
+    def __init__(self, failures=0):
+        self.failures = failures
+
+    def query_criteria(self, target_name, **kw):
+        if self.failures:
+            self.failures -= 1
+            raise ConnectionError("MAST 503")
+        return Table(
+            {
+                "target_name": target_name,
+                "provenance_name": ["QLP"] * len(target_name),
+                "t_exptime": [200.0] * len(target_name),
+                "obs_id": [f"o{t}" for t in target_name],
+                "sequence_number": [98] * len(target_name),
+            }
+        )
+
+    def get_product_list(self, obs):
+        return Table(
+            {
+                "obs_id": list(obs["obs_id"]),
+                "productFilename": [
+                    f"hlsp_qlp_tess_ffi_s0098-{int(t):016d}_tess_v01_llc.fits"
+                    for t in obs["target_name"]
+                ],
+                "dataURI": [
+                    f"mast:HLSP/qlp/s0098/x/hlsp_qlp_tess_ffi_s0098-{int(t):016d}_tess_v01_llc.fits"
+                    for t in obs["target_name"]
+                ],
+                "size": [100] * len(obs),
+            }
+        )
+
+
+def test_discover_retries_a_failed_batch():
+    out = mast.discover([1, 2], observations=FakeObservations(failures=2), backoff=0.0)
+    assert sorted(out["tic"]) == [1, 2]
+
+
+def test_discover_records_failed_batches_when_asked():
+    failed = []
+    out = mast.discover(
+        [1, 2, 3], batch=2, observations=FakeObservations(failures=3), backoff=0.0, failed=failed
+    )
+    assert failed == [1, 2] and list(out["tic"]) == [3]
+
+
+def test_discover_raises_without_a_failed_list():
+    with pytest.raises(mast.DiscoverError):
+        mast.discover([1], observations=FakeObservations(failures=3), backoff=0.0)
