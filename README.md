@@ -17,7 +17,8 @@ planted false positive, and pass/fail criteria are committed before the data is 
 
 ## Setup
 
-Requires [uv](https://docs.astral.sh/uv/) on Linux or macOS (Windows through WSL).
+Requires [uv](https://docs.astral.sh/uv/) on Linux or macOS (Windows through WSL). Pixel vetting also needs `curl`
+and `unzip` on PATH.
 
     uv sync
     uv run tess-hunt --help

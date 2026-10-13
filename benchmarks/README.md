@@ -48,6 +48,30 @@ this signal, with the period, epoch and duration rounded on the command line; it
 arguments. [Decision 0006](../docs/decisions/0006-red-noise-depth-errors.md) describes the run. Later runs of the
 control should pass the file's full-precision values.
 
+## Nearby eclipsing-binary controls
+
+`pixel_controls.csv` holds the real-data controls for pixel vetting: three TOIs whose dips come from a nearby star.
+The network tests in `tests/test_pixels.py` run each through the pixel check and compare the outcome with `expected`.
+It is a control input, not a criterion.
+
+The rows are from the ExoFOP TOI table in the catalog snapshot of 2026-10-09 (UTC), converted the way the catalog
+loader converts them: the epoch from BJD to BTJD, the duration from hours to days and the position to degrees. The
+`sectors` column lists every sector in which MAST's product list holds a SPOC, TESS-SPOC or QLP light curve of the
+star. A short script wrote the file from the snapshot and `mast.discover`, not by hand.
+
+- TOI-1175.01 (TIC 30329585), `expected = fail`: TESS disposition EB, TFOPWG disposition FP, retired as a nearby
+  eclipsing binary offset to TIC 30329564.
+- TOI-1058.01 (TIC 31553893), `expected = fail`: EB and FP, retired as a nearby eclipsing binary, with its centroid
+  offset near TIC 31553886.
+- TOI-1399.01 (TIC 66783360), `expected = pass`: TESS disposition PC, TFOPWG disposition FP, with its centroid offset
+  on another star in SPOC's sector 57 search.
+
+In the M2 design's probe, LEO-Vetter's pixel test put most sectors of the first two at about 21" to 25" from the
+target. TOI-1399.01's offset was about 11", below the published 15" rule (`[pixels]` `max_offset_arcsec` in
+`criteria/triage-v1.toml`), so it passes the check: it is the rule's recorded miss.
+
+No `tess-hunt` stage reads the file; only the pixel tests do.
+
 ## Replay comparisons
 
 `compare_replay.py` regenerates a replay comparison, `results/benchmarks/<replay run id>-comparison.md`, from the

@@ -1549,6 +1549,15 @@ wheels = [
 ]
 
 [[package]]
+name = "scanf"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/94/1cd55ef834a49ec060a5b8e300f9d4f37224d0a5fa52bb577319067c0437/scanf-1.6.0.tar.gz", hash = "sha256:7671292b825eb1cbdbdcacf3e30e761fc482bf3671c835e216b8b6f14758a272", size = 6047, upload-time = "2025-02-15T15:03:00.517Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/4c/b5171f82b135bb79e80ae01af05f7a6571281109aa005b0eb6bb980ee766/scanf-1.6.0-py3-none-any.whl", hash = "sha256:30513e5fa01c9c7ceb837804cb0193a8ea1fbc3c47f319ac2029082238cb6bd2", size = 6292, upload-time = "2025-02-15T15:02:58.893Z" },
+]
+
+[[package]]
 name = "scikit-learn"
 version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1650,6 +1659,22 @@ wheels = [
 ]
 
 [[package]]
+name = "spiceypy"
+version = "8.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5e/80/b2b113e9efffb29faf6c231354643763ef3a204137aeada78d9e27a2e568/spiceypy-8.3.0.tar.gz", hash = "sha256:abe5223a80c253c5fa3318a52e80789807d0b1f4dbbc464dc92b35b83024b018", size = 652647, upload-time = "2026-10-11T21:21:21.69Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ff/36/071ce8f94f6ac9eca3a9cbb125cac186642543d36687ee547e41c3322e4e/spiceypy-8.3.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:b19e8d182907ee87f5526e06155ecd62ce21ab9aab109ba57d81cdefddc8d476", size = 2138979, upload-time = "2026-10-11T21:20:41.975Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/4d/4eb03083f0f20a58de4423064618b22302b0cb4ba693004e3d9501097a01/spiceypy-8.3.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:82b4975268d7acb7514ec0bc0f78500975ece13ee882f6382d0dbdfeead84623", size = 1911050, upload-time = "2026-10-11T21:20:43.779Z" },
+    { url = "https://files.pythonhosted.org/packages/73/41/edea4241c7b12c625581b3f9b8b505d123e03fac3a861548c83843a856b4/spiceypy-8.3.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:62168bd511e438040d7b2389c546e2635717410a6a108036febb3e1c1ca0cb7b", size = 2334729, upload-time = "2026-10-11T21:20:45.412Z" },
+    { url = "https://files.pythonhosted.org/packages/73/6b/892861d97617d164220402ddae2f797a592b2d1685fb4e9775988847caca/spiceypy-8.3.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4fe34342b561b01657573f925d5a602fff295d4cb0f81afdab3a7d0c9fbef6b2", size = 2427159, upload-time = "2026-10-11T21:20:47.184Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/5b/68c5df8f2951a0725997e33e5f13929fc0f031feaf47f397ff4e838099e2/spiceypy-8.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:94c6125ae9e78d39eb5f626d646854f9c3a8736184a0ba07294b5842c0e52309", size = 2009224, upload-time = "2026-10-11T21:20:49.034Z" },
+]
+
+[[package]]
 name = "tables"
 version = "3.11.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1687,6 +1712,8 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "setuptools" },
+    { name = "spiceypy" },
+    { name = "transit-diffimage" },
     { name = "transitleastsquares" },
     { name = "triceratops" },
     { name = "wotan" },
@@ -1713,6 +1740,8 @@ requires-dist = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "setuptools", specifier = "<81" },
+    { name = "spiceypy", specifier = "==8.3.0" },
+    { name = "transit-diffimage", git = "https://github.com/stevepur/transit-diffImage?rev=2b13199132ce67f437b8cd9bb4eb128bd78e0d81" },
     { name = "transitleastsquares", specifier = "==2.0" },
     { name = "triceratops", specifier = "==1.1.0" },
     { name = "wotan", specifier = "==1.10" },
@@ -1722,6 +1751,20 @@ requires-dist = [
 dev = [
     { name = "pytest" },
     { name = "ruff" },
+]
+
+[[package]]
+name = "tess-point"
+version = "0.9.5.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "astropy" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/77/b14495dc0b0165d15003f71bfad568a92d16991526b4f2437eaf6110073d/tess_point-0.9.5.post1.tar.gz", hash = "sha256:214d95117487f2e7a67f4b42ed4309a52a2c74463b643bf5924cae20d8f2472b", size = 23684, upload-time = "2026-09-10T21:13:44.327Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/c0/833639fc4098b637416626fb1ea246d36a3722b018ab571cfcc66c0210dd/tess_point-0.9.5.post1-py3-none-any.whl", hash = "sha256:531ba098885f107f86e060e00861dbeb3c635243fd56da05599d62cfab15123d", size = 25358, upload-time = "2026-09-10T21:13:43.398Z" },
 ]
 
 [[package]]
@@ -1760,6 +1803,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0d/ea/b2a5bd54b28a324dae8211928b2d730b6547500342c7e6c6dea08bd0a485/tqdm-4.70.1.tar.gz", hash = "sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4", size = 171846, upload-time = "2026-09-11T07:25:16.601Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/03/921a3d3c75785aca9ebfbfcabfbc3a1be12e2ab5265deb026d55a5a3f83e/tqdm-4.70.1-py3-none-any.whl", hash = "sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73", size = 80199, upload-time = "2026-09-11T07:25:14.599Z" },
+]
+
+[[package]]
+name = "transit-diffimage"
+version = "0.1"
+source = { git = "https://github.com/stevepur/transit-diffImage?rev=2b13199132ce67f437b8cd9bb4eb128bd78e0d81#2b13199132ce67f437b8cd9bb4eb128bd78e0d81" }
+dependencies = [
+    { name = "astropy" },
+    { name = "astroquery" },
+    { name = "scanf" },
+    { name = "scipy" },
+    { name = "tess-point" },
 ]
 
 [[package]]
