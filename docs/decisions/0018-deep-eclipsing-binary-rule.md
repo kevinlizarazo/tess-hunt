@@ -39,3 +39,7 @@ this check. Triage's pixel check can catch one whose eclipse sits on a resolved 
 - [tests/test_vet.py](../../tests/test_vet.py): `test_clean_planet_advances` (`radius` passes a clean synthetic
   planet), `test_no_cadence_inside_the_transits_leaves_shape_and_density_inconclusive` (radius too) and
   `test_vet_v1_gets_the_values_its_code_held` (vet-v1's bound stays 0.5).
+- M1's two real vets rerun under vet-v2 and published:
+  [Pi Men c](../../results/benchmarks/20261013T083805Z-vet-456ad38-309e/checks.json) passes `radius`. So does the
+  eclipsing binary [TOI-188.01](../../results/benchmarks/20261013T083805Z-vet-456ad38-a1cf/checks.json), whose
+  eclipses are shallow; the odd and even and density checks still fail it.

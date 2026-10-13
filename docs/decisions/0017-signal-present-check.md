@@ -34,3 +34,7 @@ read as support for a signal that isn't there.
   case through `vet_signal`: `signal_present` is inconclusive and the signal does not advance),
   `test_clean_planet_advances` (`signal_present` passes a clean synthetic planet) and
   `test_vet_v1_runs_neither_signal_present_nor_radius`.
+- M1's two real vets rerun under vet-v2 and published: `signal_present` passes
+  [Pi Men c](../../results/benchmarks/20261013T083805Z-vet-456ad38-309e/checks.json) and
+  [TOI-188.01](../../results/benchmarks/20261013T083805Z-vet-456ad38-a1cf/checks.json); the evidence carries each
+  combined depth and its statistic.

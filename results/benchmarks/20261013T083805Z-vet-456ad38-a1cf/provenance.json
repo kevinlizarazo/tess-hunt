@@ -1,0 +1,78 @@
+{
+  "argv": [
+    "tess-hunt",
+    "vet",
+    "--tic",
+    "280830734",
+    "--period",
+    "1.1619448085327084",
+    "--t0",
+    "3930.858938000165",
+    "--duration",
+    "0.026220943782107",
+    "--depth",
+    "0.0002426397341598413",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T083740Z-targets-456ad38-d327/targets.parquet",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-09",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    },
+    {
+      "file": "criteria/vet-v2.toml",
+      "sha256": "061fcd5c20506c9cf55d547624d046ee055978cc15ec762c846e6b2597a3c797"
+    }
+  ],
+  "ended_at": "2026-10-13T08:40:58.310949+00:00",
+  "git": {
+    "commit": "456ad38c33ba671555852d265ec06e623dac70bd",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "ctoi.csv": {
+      "file": "ctoi.csv",
+      "sha256": "1059ac9235aa11d4bf914153ddc0278431709f090607497325a9b7c208911bb4"
+    },
+    "light_curve": {
+      "file": "280830734.npz",
+      "sha256": "04dffc888a195fcd3b54cc515d9910504ad94d7a23dc6a54907b380fc9fafd67"
+    },
+    "pscomppars.csv": {
+      "file": "pscomppars.csv",
+      "sha256": "c7281981ad065f2b91fcc5871c449167051a80b187ffd63f4930090b1c74778a"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "6a57e9e48ccace4d7ac0c0be3d79b6b4d8d23843ad2bdda219bbcbd2c0a09705"
+    },
+    "toi.csv": {
+      "file": "toi.csv",
+      "sha256": "11e811899a9f77d1a6ab62790d039b61add1f12fce04cdfc8bcda9e12b0640f4"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261013T083805Z-vet-456ad38-a1cf",
+  "stage": "vet",
+  "started_at": "2026-10-13T08:38:05.197794+00:00",
+  "summary": {
+    "advances": false,
+    "outcomes": {
+      "density": "fail",
+      "holdout": "pass",
+      "novelty": "fail",
+      "odd_even": "fail",
+      "radius": "pass",
+      "secondary": "pass",
+      "sector_depth": "pass",
+      "shape": "pass",
+      "signal_present": "pass"
+    }
+  },
+  "uv_lock_sha256": "1ea0de8eb5e75372914ff2fd58de1aa4a06c55508ea1d7695d28c9b56e0764e7"
+}

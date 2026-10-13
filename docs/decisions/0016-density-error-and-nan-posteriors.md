@@ -33,3 +33,7 @@ it; a NaN log density gives a NaN tension, which compares False against the thre
 - [tests/test_vet.py](../../tests/test_vet.py): `test_clean_planet_still_advances_under_vet_v1_with_m1s_density_error`.
 - M1's published vets: [Pi Men c](../../results/benchmarks/20261009T190108Z-vet-c7a2625-fe36/checks.json) and
   [TOI-188.01](../../results/benchmarks/20261009T191134Z-vet-c7a2625-ce0e/checks.json).
+- The same two vets under vet-v2, published:
+  [Pi Men c](../../results/benchmarks/20261013T083805Z-vet-456ad38-309e/checks.json), where `density` passes, and
+  [TOI-188.01](../../results/benchmarks/20261013T083805Z-vet-456ad38-a1cf/checks.json), where it still fails with the
+  side facing the TIC value.
