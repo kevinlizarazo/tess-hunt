@@ -27,8 +27,9 @@ from tess_hunt.targets import covered_sources
 
 AU_PER_R_SUN = 215.032
 BLS_FIELDS = ("period", "power", "transit_time", "duration", "depth", "depth_snr")
-# Every module whose code decides which stars are searched and which signals a search emits. The null
-# threshold is only valid for a search that ran the same code, so its hash travels with both runs (design 4.5).
+# The search's own modules. The null threshold is only valid for a search that ran the same code, so their
+# hash travels with both runs (design 4.5). Some code that shapes the signals stays outside it: the
+# known-planet masks come from catalogs.py and the criteria are read by config.py.
 SEARCH_CODE = (
     "search.py",
     "detrend.py",
@@ -261,7 +262,25 @@ def read_threshold(path: Path) -> dict:
     for key in ("threshold", "search_criteria_sha256", "search_code_sha256"):
         if key not in data:
             raise SystemExit(f"{path} has no {key}; it is not a threshold.json")
+    value = data["threshold"]
+    # json reads NaN and Infinity as floats, and bool is an int; none of them is a threshold.
+    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
+        raise SystemExit(f"{path} has threshold {value!r}; it must be a finite number")
     return data
+
+
+def search_input(
+    lc: LightCurve, known: list[Ephemeris], crit: Mapping, seed: int | None
+) -> tuple[LightCurve, np.ndarray]:
+    """The light curve a search detrends and the cadences it must exclude. Known planets are masked on the
+    observed times; a null run (a seed) then scrambles the light curve, and the mask moves with its cadences."""
+    exclude = known_mask(lc.time, known, crit["detrend"]["known_mask_width"])
+    if seed is None:
+        return lc, exclude
+    scrambled, order = scramble(
+        lc, crit["null"]["segment_gap_days"], crit["null"]["placement_gap_days"], seed
+    )
+    return scrambled, exclude[order]
 
 
 def _search_status(result: SearchResult, min_points: int) -> str:
@@ -288,15 +307,7 @@ def _search_job(job: dict) -> tuple[dict, list[dict]]:
         # Controls are the known set, chosen on their own rule; only sample stars must stay covered.
         if not control and not covered_sources(lc.sources, crit["sample"]):
             return {**base, "status": "not_covered_after_fetch", "n_sectors": len(lc.sources)}, []
-        exclude = known_mask(lc.time, job["known"], crit["detrend"]["known_mask_width"])
-        if job["scramble"] is not None:
-            lc, order = scramble(
-                lc,
-                crit["null"]["segment_gap_days"],
-                crit["null"]["placement_gap_days"],
-                job["scramble"],
-            )
-            exclude = exclude[order]
+        lc, exclude = search_input(lc, job["known"], crit, job["scramble"])
         flat = detrend(lc, crit["detrend"], exclude=exclude)
         if len(flat.time) < cfg["min_points"]:
             return {**base, "status": "too_few_points", "n_points": len(flat.time)}, []
@@ -385,13 +396,29 @@ def cmd(args) -> int:
         if threshold["search_code_sha256"] != code:
             raise SystemExit(f"{args.threshold} came from other search code; rerun the null")
         cfg["continue_sde"] = float(threshold["threshold"])
+    planets = hosts = None
+    if args.controls:
+        planets = pd.read_csv(args.controls, dtype={"toi": str})
+        hosts = pd.read_parquet(args.control_targets).set_index("tic")
+        missing = sorted(int(t) for t in set(planets["tic"]) - set(hosts.index))
+        if missing:
+            raise SystemExit(f"{args.control_targets} has no row for control hosts {missing}")
     run = start_run("search", [criteria], args.production, sys.argv)
     run.record("search_code_sha256", search_code_sha256(repo_root()))
     run.record("scramble", args.scramble)
-    run.record(
-        "threshold",
-        None if threshold is None else {"value": cfg["continue_sde"], "file": args.threshold.name},
-    )
+    if threshold is None:
+        run.record("threshold", None)
+    else:
+        run.record_input("threshold", args.threshold)
+        run.record(
+            "threshold",
+            {
+                "value": cfg["continue_sde"],
+                "file": args.threshold.name,
+                # threshold.json sits in the run directory that computed it.
+                "run_id": args.threshold.resolve().parent.name,
+            },
+        )
     run.record_input("targets", args.targets)
     for name, path in snapshot_inputs(args.catalogs).items():
         run.record_input(name, path)
@@ -411,12 +438,9 @@ def cmd(args) -> int:
         }
 
     jobs = [job(s, False) for s in pd.read_parquet(args.targets).to_dict("records")]
-    planets = None
-    if args.controls:
+    if planets is not None:
         run.record_input("controls", args.controls)
         run.record_input("control_targets", args.control_targets)
-        planets = pd.read_csv(args.controls, dtype={"toi": str})
-        hosts = pd.read_parquet(args.control_targets).set_index("tic")
         jobs += [
             job({**hosts.loc[t].to_dict(), "tic": int(t)}, True)
             for t in sorted(set(planets["tic"]))
@@ -428,11 +452,15 @@ def cmd(args) -> int:
     pd.DataFrame(star_rows).to_parquet(run.path / "stars.parquet")
     signals = pd.DataFrame(signal_rows, columns=[*Signal.__dataclass_fields__, "engine", "control"])
     signals.to_parquet(run.path / "signals.parquet")
-    counts = pd.Series([r["status"] for r in star_rows]).value_counts().to_dict()
+    # The sample's counts; control hosts are searched again on purpose and counted apart.
+    sample = [r for r in star_rows if not r["control"]]
+    counts = pd.Series([r["status"] for r in sample]).value_counts().to_dict()
     summary = {
-        "stars": len(star_rows),
-        "signals": len(signal_rows),
+        "stars": len(sample),
+        "signals": sum(not r["control"] for r in signal_rows),
         **{f"status_{k}": int(v) for k, v in counts.items()},
+        "control_rows": len(star_rows) - len(sample),
+        "control_signals": sum(bool(r["control"]) for r in signal_rows),
     }
     code = 0
     if planets is not None:
@@ -451,5 +479,5 @@ def cmd(args) -> int:
         # Spec 5.6: a run that misses a required control is invalid, and triage refuses it.
         code = 1 if required_missed else 0
     run.finish(**summary)
-    print(f"search: {counts}, {len(signal_rows)} signals -> {run.path}")
+    print(f"search: {counts}, {summary['signals']} signals -> {run.path}")
     return code

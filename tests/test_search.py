@@ -7,12 +7,13 @@ import numpy as np
 import pandas as pd
 import pytest
 from scipy.ndimage import median_filter
-from synthetic import make_lc, relaxed_criteria, write_catalog_snapshot
+from synthetic import FAR_TOI, make_lc, relaxed_criteria, write_catalog_snapshot
 
 from tess_hunt import search as search_module
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
+from tess_hunt.provenance import sha256_file
 from tess_hunt.search import (
     SEARCH_CODE,
     SearchResult,
@@ -20,6 +21,7 @@ from tess_hunt.search import (
     allowed_durations,
     bin_lightcurve,
     central_duration,
+    read_threshold,
     repeat_periods,
     search_code_sha256,
     search_star,
@@ -147,7 +149,9 @@ def test_search_skips_a_star_not_covered_after_fetch(tmp_path, monkeypatch):
     )
 
 
-def test_scramble_run_records_its_seed_and_loses_the_planet(tmp_path, monkeypatch):
+def test_scramble_run_records_its_seed_and_no_signal_matches_the_planets_ephemeris(
+    tmp_path, monkeypatch
+):
     targets, snap = cli_star(tmp_path, monkeypatch, **{**PLANET_LC, "sectors": (1, 2, 3, 4, 5, 6)})
     _, run = search_cli(tmp_path, targets, snap, "--scramble", "1")
     assert json.loads((run / "provenance.json").read_text())["scramble"] == 1
@@ -158,14 +162,14 @@ def test_scramble_run_records_its_seed_and_loses_the_planet(tmp_path, monkeypatc
     assert rows and not found([Signal(**r) for r in rows], 3.7, 1326.1)
 
 
-def write_threshold(tmp_path, value, criteria_path):
+def write_threshold(tmp_path, value, criteria_path, code_sha256=None):
     path = tmp_path / "threshold.json"
     path.write_text(
         json.dumps(
             {
                 "threshold": value,
                 "search_criteria_sha256": load_criteria(criteria_path).sha256,
-                "search_code_sha256": search_code_sha256(ROOT),
+                "search_code_sha256": code_sha256 or search_code_sha256(ROOT),
             }
         )
     )
@@ -177,7 +181,13 @@ def test_threshold_sets_continue_sde(tmp_path, monkeypatch):
     threshold = write_threshold(tmp_path, 1000.0, relaxed_criteria(tmp_path))
     _, run = search_cli(tmp_path, targets, snap, "--threshold", str(threshold))
     assert len(pd.read_parquet(run / "signals.parquet")) == 1
-    assert json.loads((run / "provenance.json").read_text())["threshold"]["value"] == 1000.0
+    provenance = json.loads((run / "provenance.json").read_text())
+    assert provenance["threshold"] == {
+        "value": 1000.0,
+        "file": "threshold.json",
+        "run_id": tmp_path.name,
+    }
+    assert provenance["inputs"]["threshold"]["sha256"] == sha256_file(threshold)
 
 
 def test_threshold_from_other_criteria_is_refused(tmp_path, monkeypatch):
@@ -185,6 +195,23 @@ def test_threshold_from_other_criteria_is_refused(tmp_path, monkeypatch):
     threshold = write_threshold(tmp_path, 12.0, ROOT / "criteria" / "search-v1.toml")
     with pytest.raises(SystemExit, match="criteria"):
         search_cli(tmp_path, targets, snap, "--threshold", str(threshold))
+
+
+def test_threshold_from_other_search_code_is_refused(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch)
+    threshold = write_threshold(tmp_path, 12.0, relaxed_criteria(tmp_path), code_sha256="0" * 64)
+    with pytest.raises(SystemExit, match="other search code"):
+        search_cli(tmp_path, targets, snap, "--threshold", str(threshold))
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, "12.0", None, True])
+def test_a_threshold_that_is_not_a_finite_number_is_refused(tmp_path, value):
+    path = write_threshold(tmp_path, value, relaxed_criteria(tmp_path))
+    with pytest.raises(SystemExit, match="threshold.json has threshold"):
+        read_threshold(path)
+    assert (
+        read_threshold(write_threshold(tmp_path, 12, relaxed_criteria(tmp_path)))["threshold"] == 12
+    )
 
 
 def controls(tmp_path, required_period):
@@ -223,7 +250,42 @@ def test_controls_found_make_a_valid_run(tmp_path, monkeypatch):
     assert code == 0 and summary["controls_valid"] and summary["controls_missed"] == ["200.01"]
     rows = pd.read_csv(run / "controls.csv", dtype={"toi": str}).set_index("toi")
     assert bool(rows.loc["100.01", "recovered"])
-    assert pd.read_parquet(run / "signals.parquet")["control"].any()
+    signals = pd.read_parquet(run / "signals.parquet")
+    assert signals["control"].any()
+    # One row per sample target and one per control host; the summary counts the sample alone.
+    stars = pd.read_parquet(run / "stars.parquet")
+    assert sorted(stars.loc[~stars["control"], "tic"]) == [11, 12, 21]
+    assert list(stars.loc[stars["control"], "tic"]) == [21]
+    assert summary["stars"] == 3 and summary["control_rows"] == 1
+    assert summary["status_ok"] == 2 and summary["status_no_light_curve"] == 1
+    assert summary["signals"] == (~signals["control"]).sum()
+    assert summary["control_signals"] == signals["control"].sum()
+
+
+def test_controls_are_judged_at_the_threshold(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch, tics=(11, 21))
+    threshold = write_threshold(tmp_path, 1000.0, relaxed_criteria(tmp_path))
+    code, run = search_cli(
+        tmp_path, targets, snap, *controls(tmp_path, 3.7), "--threshold", str(threshold)
+    )
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert code == 1 and summary["controls_required_missed"] == ["100.01"]
+    row = pd.read_csv(run / "controls.csv", dtype={"toi": str}).set_index("toi").loc["100.01"]
+    # Found at its ephemeris, but below the run's threshold.
+    assert row["sde"] > 15 and not row["recovered"]
+
+
+def test_a_control_host_missing_from_control_targets_is_refused_before_the_run(
+    tmp_path, monkeypatch
+):
+    targets, snap = cli_star(tmp_path, monkeypatch, tics=(11, 21))
+    args = controls(tmp_path, 3.7)
+    pd.DataFrame({"tic": [22], "ra": 5.0, "dec": -70.0, "rad": 1.0, "mass": 1.0}).to_parquet(
+        args[-1]
+    )
+    with pytest.raises(SystemExit, match=r"control hosts \[21\]"):
+        search_cli(tmp_path, targets, snap, *args)
+    assert not (tmp_path / "data" / "runs").exists()
 
 
 def test_a_missed_required_control_invalidates_the_run(tmp_path, monkeypatch):
@@ -238,8 +300,45 @@ def test_a_control_host_without_a_light_curve_invalidates_the_run(tmp_path, monk
     targets, snap = cli_star(tmp_path, monkeypatch, tics=())
     code, run = search_cli(tmp_path, targets, snap, *controls(tmp_path, 3.7))
     summary = json.loads((run / "provenance.json").read_text())["summary"]
-    assert code == 1 and not summary["controls_valid"] and summary["signals"] == 0
+    assert code == 1 and not summary["controls_valid"]
+    assert summary["signals"] == summary["control_signals"] == 0
     assert summary["controls_required_missed"] == ["100.01"]
+
+
+def masked_snapshot(tmp_path):
+    """The catalog lists TIC 21's planet (PLANET_LC's) as a TOI, so a sample search masks it."""
+    toi = {
+        **FAR_TOI,
+        "TIC ID": 21,
+        "TOI": 100.01,
+        "Period (days)": 3.7,
+        "Epoch (BJD)": 2457000.0 + 1326.1,
+        "Duration (hours)": 0.12 * 24.0,
+    }
+    return write_catalog_snapshot(tmp_path / "masked", toi_rows=[toi])
+
+
+def near_planet(signals, tic):
+    rows = signals[(signals["tic"] == tic) & ~signals["control"]]
+    return ((rows["period"] - 3.7).abs() < 0.03).any()
+
+
+def test_a_sample_star_masks_its_known_planet_and_its_control_finds_it(tmp_path, monkeypatch):
+    targets, _ = cli_star(tmp_path, monkeypatch, tics=(21,))
+    code, run = search_cli(tmp_path, targets, masked_snapshot(tmp_path), *controls(tmp_path, 3.7))
+    assert not near_planet(pd.read_parquet(run / "signals.parquet"), 21)
+    rows = pd.read_csv(run / "controls.csv", dtype={"toi": str}).set_index("toi")
+    assert code == 0 and bool(rows.loc["100.01", "recovered"])
+
+
+def test_a_scrambled_star_keeps_its_known_planet_masked(tmp_path, monkeypatch):
+    targets, _ = cli_star(tmp_path, monkeypatch, tics=(21,))
+    _, run = search_cli(tmp_path, targets, masked_snapshot(tmp_path), "--scramble", "1")
+    # A mask left on the unscrambled cadences lets the planet's transits back in (3.6969 d at SDE
+    # 11.0 on this seed); masked, the top peak is noise below the provisional threshold (6.7).
+    assert not near_planet(pd.read_parquet(run / "signals.parquet"), 21)
+    top = pd.read_parquet(run / "stars.parquet").set_index("tic").loc[21, "top_sde"]
+    assert top < CFG["continue_sde"]
 
 
 def test_production_search_needs_threshold_and_controls(tmp_path, monkeypatch):

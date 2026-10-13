@@ -23,7 +23,9 @@ M1 ran the known set as a separate benchmark. The set is 20 planets on 18 hosts,
 ## Evidence
 
 Unit tests in [tests/test_search.py](../../tests/test_search.py): `test_controls_found_make_a_valid_run`,
+`test_a_sample_star_masks_its_known_planet_and_its_control_finds_it`, `test_controls_are_judged_at_the_threshold`,
 `test_a_missed_required_control_invalidates_the_run`,
-`test_a_control_host_without_a_light_curve_invalidates_the_run`, `test_production_search_needs_threshold_and_controls`
-and `test_search_skips_a_star_not_covered_after_fetch`. The production search's `controls.csv` (Task 15) is linked
-here when it exists.
+`test_a_control_host_without_a_light_curve_invalidates_the_run`,
+`test_a_control_host_missing_from_control_targets_is_refused_before_the_run`,
+`test_production_search_needs_threshold_and_controls` and `test_search_skips_a_star_not_covered_after_fetch`. The
+production search's `controls.csv` (Task 15) is linked here when it exists.
