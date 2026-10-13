@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from scipy.ndimage import median_filter
 from synthetic import make_lc, write_catalog_snapshot
 
 from tess_hunt import search as search_module
@@ -12,9 +13,11 @@ from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
 from tess_hunt.search import (
+    Signal,
     allowed_durations,
     bin_lightcurve,
     central_duration,
+    repeat_periods,
     search_star,
     star_params,
     stellar_density,
@@ -257,3 +260,73 @@ def test_too_few_bins_is_an_empty_result_with_its_count():
     # Enough raw cadences for the stage's own check, too few 30-minute bins to search (Task 8 marks it).
     assert len(short.time) >= CFG["min_points"] > result.n_bins > 0
     assert result.signals == [] and result.n_bls == 0
+
+
+def box_bound(period, rho):
+    return max(DURATIONS[0], CFG["duration_factor"] * central_duration(period, rho))
+
+
+def test_dense_star_bounds_every_box():
+    lc = make_lc(sectors=(1, 2, 3), noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 800e-6)], seed=1)
+    signals = search_star(lc, 1.0, 1.0, CFG, rho=10.0).signals
+    assert signals and all(s.duration <= box_bound(s.period, 10.0) for s in signals)
+    # Searched as a Sun, the planet takes a box that a star of ten solar densities cannot transit.
+    assert search_star(lc, 1.0, 1.0, CFG).signals[0].duration > box_bound(3.7, 10.0)
+
+
+def test_repeat_periods_agree_with_ephemeris_match_at_the_boundary():
+    emitted = Signal(1, 1, 3.7, 1326.1, 0.12, 1e-3, 10.0, 20.0, 15)
+    harmonics, sigma_p = tuple(CFG["repeat_harmonics"]), CFG["repeat_sigma_p"]
+    tolerance = math.erfc(sigma_p / math.sqrt(2.0))
+    grid, inside, outside = [], [], []
+    for h in harmonics:
+        centre = emitted.period * h
+        grid += list(centre * np.linspace(0.97, 1.03, 301))
+        # |P - centre| / P equals the tolerance at centre / (1 -+ tolerance), on either side.
+        for side in (-1.0, 1.0):
+            inside.append(centre / (1.0 - side * tolerance * (1.0 - 1e-6)))
+            outside.append(centre / (1.0 - side * tolerance * (1.0 + 1e-6)))
+    periods = np.array(grid + inside + outside)
+    flagged = repeat_periods(periods, [emitted], harmonics, sigma_p)
+    reference = replace(emitted.ephemeris(), t0=math.nan)
+    matched = [
+        ephemeris_match(Ephemeris(p, 1326.1, 0.12), reference, harmonics, sigma_p) is not None
+        for p in periods
+    ]
+    assert list(flagged) == matched
+    assert repeat_periods(np.array(inside), [emitted], harmonics, sigma_p).all()
+    assert not repeat_periods(np.array(outside), [emitted], harmonics, sigma_p).any()
+
+
+def test_sde_statistics_leave_out_the_excluded_periods(monkeypatch):
+    real = search_module._bls_spectrum
+    rng = np.random.default_rng(0)
+    planted = {}
+
+    def spectrum(lc, periods, durations, counts):
+        power = rng.normal(0.0, 1.0, len(periods))
+        if not planted:
+            planted["first"] = int(np.argmin(np.abs(periods - 3.7)))
+            power[planted["first"]] = 100.0
+        elif "second" not in planted:
+            first = Signal(1, 1, periods[planted["first"]], 0.0, 0.1, 0.0, 0.0, 0.0, 0)
+            excluded = repeat_periods(
+                periods, [first], CFG["repeat_harmonics"], CFG["repeat_sigma_p"]
+            )
+            # The first signal's harmonics stay the strongest peaks, as a variable star's do.
+            power[excluded] += 30.0
+            planted["second"] = int(np.argmin(np.abs(periods - 9.1)))
+            power[planted["second"]] = 20.0
+            planted.update(power=power, excluded=excluded, period=periods[planted["second"]])
+        return {**real(lc, periods, durations, counts), "power": power}
+
+    monkeypatch.setattr(search_module, "_bls_spectrum", spectrum)
+    lc = make_lc(sectors=(1, 2, 3), noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 800e-6)], seed=1)
+    second = search_star(lc, 1.0, 1.0, CFG).signals[1]
+    power, excluded = planted["power"], planted["excluded"]
+    detrended = power - median_filter(power, size=CFG["sde_kernel"], mode="nearest")
+    peak, kept = detrended[planted["second"]], detrended[~excluded]
+    assert second.period == planted["period"]
+    assert second.sde == pytest.approx((peak - kept.mean()) / kept.std(), rel=1e-9)
+    # Counted in the mean and spread, the excluded peaks would cut the SDE by more than half.
+    assert (peak - detrended.mean()) / detrended.std() < 0.5 * second.sde

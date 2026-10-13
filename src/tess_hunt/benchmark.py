@@ -18,7 +18,7 @@ from tess_hunt.catalogs import FILES, known_ephemerides, load_known  # noqa: E40
 from tess_hunt.config import lc_dir, load_criteria, runs_dir  # noqa: E402
 from tess_hunt.detrend import detrend  # noqa: E402
 from tess_hunt.ephemeris import Ephemeris  # noqa: E402
-from tess_hunt.inject import draw, inject  # noqa: E402
+from tess_hunt.inject import Injection, draw, inject  # noqa: E402
 from tess_hunt.lightcurve import LightCurve  # noqa: E402
 from tess_hunt.pool import process_pool  # noqa: E402
 from tess_hunt.provenance import repo_root, sha256_file, start_run  # noqa: E402
@@ -35,17 +35,33 @@ RADIUS_EDGES = [0.5, 1, 2, 4, 8, 16]
 SNR_EDGES = [0, 5, 7, 10, 15, 20, 50, np.inf]
 
 
+def _replayed(row: dict) -> Injection:
+    return Injection(
+        float(row["inj_period"]),
+        float(row["inj_t0"]),
+        float(row["inj_rp_rearth"]),
+        float(row["inj_b"]),
+        float(row["inj_rp_rs"]),
+        float(row["inj_a_rs"]),
+        float(row["inj_duration"]),
+    )
+
+
 def injection_job(job: tuple) -> list[dict]:
-    star, lc_path, known_ephs, crit, engines, per_star, seed = job
+    star, lc_path, known_ephs, crit, engines, per_star, seed, replay = job
     rng = np.random.default_rng(seed)
-    rstar, mstar, assumed = star_params(star)
-    rho = stellar_density(star, rstar, mstar)
     bench, search = crit["benchmark"], crit["search"]
     u = (bench["inject_u1"], bench["inject_u2"])
-    bases = [
-        {"tic": int(star["tic"]), "injection": k, "assumed_solar": assumed} for k in range(per_star)
-    ]
+    if replay:
+        bases = [{"tic": int(star["tic"]), "injection": int(r["injection"])} for r in replay]
+        draws = [_replayed(r) for r in replay]
+    else:
+        bases = [{"tic": int(star["tic"]), "injection": k} for k in range(per_star)]
+        draws = None
     try:
+        rstar, mstar, assumed = star_params(star)
+        rho = stellar_density(star, rstar, mstar)
+        bases = [{**base, "assumed_solar": assumed} for base in bases]
         # The cached light curve can be rewritten by a later fetch; the hash ties each row to its bytes.
         digest = sha256_file(lc_path)
         bases = [{**base, "lc_sha256": digest} for base in bases]
@@ -54,15 +70,19 @@ def injection_job(job: tuple) -> list[dict]:
         error = f"{type(exc).__name__}: {exc}"
         return [{**base, "status": "error", "error": error} for base in bases]
     rows = []
-    for base in bases:
-        inj = draw(
-            rng,
-            lc.time,
-            rstar,
-            mstar,
-            (search["period_min_days"], search["period_max_days"]),
-            (bench["inject_rp_min_rearth"], bench["inject_rp_max_rearth"]),
-            search["min_transits"],
+    for i, base in enumerate(bases):
+        inj = (
+            draws[i]
+            if draws
+            else draw(
+                rng,
+                lc.time,
+                rstar,
+                mstar,
+                (search["period_min_days"], search["period_max_days"]),
+                (bench["inject_rp_min_rearth"], bench["inject_rp_max_rearth"]),
+                search["min_transits"],
+            )
         )
         if inj is None:
             rows.append({**base, "status": "no_draw"})
@@ -82,7 +102,7 @@ def injection_job(job: tuple) -> list[dict]:
             scored = []
             for name in engines:
                 started = time.perf_counter()
-                signals = search_star(flat, rstar, mstar, {**search, **ENGINES[name]}, rho).signals
+                result = search_star(flat, rstar, mstar, {**search, **ENGINES[name]}, rho)
                 scored.append(
                     {
                         **base,
@@ -92,8 +112,9 @@ def injection_job(job: tuple) -> list[dict]:
                         **{f"inj_{key}": value for key, value in asdict(inj).items()},
                         "expected_snr": expected_snr,
                         **classify(
-                            inj.ephemeris(), signals, crit["match"], bench["provisional_sde"]
+                            inj.ephemeris(), result.signals, crit["match"], bench["provisional_sde"]
                         ),
+                        **result.diagnostics(),
                     }
                 )
             rows += scored
@@ -104,29 +125,27 @@ def injection_job(job: tuple) -> list[dict]:
 
 def known_job(job: tuple) -> dict:
     planet, star, lc_path, crit = job
-    rstar, mstar, assumed = star_params(star)
-    base = {
-        **{k: planet[k] for k in ("toi", "tic", "period", "depth_ppm", "planet_snr", "required")},
-        "assumed_solar": assumed,
-    }
+    base = {k: planet[k] for k in ("toi", "tic", "period", "depth_ppm", "planet_snr", "required")}
     missed = {"recovered": False, "alias": False}
-    if not Path(lc_path).exists():
-        return {**base, "status": "no_light_curve", **missed}
     try:
+        rstar, mstar, base["assumed_solar"] = star_params(star)
+        rho = stellar_density(star, rstar, mstar)
+        if not Path(lc_path).exists():
+            return {**base, "status": "no_light_curve", **missed}
         base["lc_sha256"] = sha256_file(lc_path)
         # Masks off: these planets are the positive controls.
         flat = detrend(LightCurve.load(lc_path), crit["detrend"])
         if len(flat.time) < crit["search"]["min_points"]:
             return {**base, "status": "too_few_points", "n_points": len(flat.time), **missed}
-        rho = stellar_density(star, rstar, mstar)
-        signals = search_star(flat, rstar, mstar, crit["search"], rho).signals
+        result = search_star(flat, rstar, mstar, crit["search"], rho)
     except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
         return {**base, "status": "error", "error": f"{type(exc).__name__}: {exc}", **missed}
     truth = Ephemeris(planet["period"], planet["t0"], planet["duration"])
     return {
         **base,
         "status": "ok",
-        **classify(truth, signals, crit["match"], crit["benchmark"]["provisional_sde"]),
+        **classify(truth, result.signals, crit["match"], crit["benchmark"]["provisional_sde"]),
+        **result.diagnostics(),
     }
 
 
@@ -231,6 +250,10 @@ def add_parser(sub) -> None:
     i.add_argument("--per-star", type=int, default=2)
     i.add_argument("--seed", type=int, default=7)
     i.add_argument("--limit", type=int, default=0)
+    i.add_argument(
+        "--replay", type=Path, help="injections.csv of an earlier run: inject exactly its planets"
+    )
+    i.add_argument("--replay-engine", default="bls30")
     i.set_defaults(func=cmd_inject)
     for mode in (k, i):
         mode.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
@@ -321,6 +344,15 @@ def cmd_inject(args) -> int:
         for s in pd.read_parquet(args.targets).to_dict("records")
         if (lc_dir() / f"{int(s['tic'])}.npz").exists()
     ]
+    replays: dict[int, list[dict]] = {}
+    if args.replay:
+        run.record_input("replay", args.replay)
+        published = pd.read_csv(args.replay)
+        published = published[
+            (published["engine"] == args.replay_engine) & (published["status"] == "ok")
+        ]
+        replays = {int(tic): rows.to_dict("records") for tic, rows in published.groupby("tic")}
+        stars = sorted((s for s in stars if int(s["tic"]) in replays), key=lambda s: int(s["tic"]))
     if args.limit:
         stars = stars[: args.limit]
     jobs = [
@@ -332,6 +364,7 @@ def cmd_inject(args) -> int:
             engines,
             args.per_star,
             args.seed + n,
+            replays.get(int(s["tic"])),
         )
         for n, s in enumerate(stars)
     ]
@@ -351,16 +384,16 @@ def cmd_inject(args) -> int:
         )
         .reset_index()
     )
-    lines = [
-        f"# Injection recovery ({run.provenance['run_id']})",
-        "",
-        md_table(overview),
-        "",
-        "## By expected SNR",
-        "",
-        md_table(by_snr),
-        "",
-    ]
+    lines = [f"# Injection recovery ({run.provenance['run_id']})", ""]
+    if args.replay:
+        replayed = sum(len(replays[int(s["tic"])]) for s in stars)
+        lines += [
+            f"Replay of an earlier run's `{args.replay.name}` (sha256 in provenance.json): {replayed} "
+            f"of its {len(published)} `{args.replay_engine}` injections with status ok. "
+            "`--per-star` and `--seed` are ignored.",
+            "",
+        ]
+    lines += [md_table(overview), "", "## By expected SNR", "", md_table(by_snr), ""]
     for engine in engines:
         table = completeness_map(rows, engine)
         table.to_csv(run.path / f"completeness_{engine}.csv", index=False)

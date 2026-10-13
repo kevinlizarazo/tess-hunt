@@ -11,7 +11,8 @@ run and a new approval.
 
 ### Selection rule
 
-All thresholds come from `criteria/search-v1.toml`.
+The thresholds below are those of `criteria/search-v1.toml`, which selected the set and scored M1's published benchmark
+tables. The M2 reruns score the same set under `criteria/search-v2.toml`.
 
 1. TOIs with TFOPWG disposition KP or CP, a period inside `[search]` `period_min_days` to `period_max_days`, and a
    catalog depth, epoch and duration.
