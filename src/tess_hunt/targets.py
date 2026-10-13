@@ -50,27 +50,30 @@ def _tic_frame(table) -> pd.DataFrame:
     return frame
 
 
-def query_tic_region(
-    sample: dict, ra: tuple[float, float], dec: tuple[float, float]
-) -> pd.DataFrame:
-    table = Catalogs.query_criteria(
-        catalog="Tic",
-        Tmag=[-5.0, sample["tmag_max"]],
-        Teff=[sample["teff_min"], sample["teff_max"]],
-        logg=[sample["logg_min"], sample["logg_max"]],
-        ra=list(ra),
-        dec=list(dec),
-        objType="STAR",
-    )
-    return _tic_frame(table)
-
-
-def query_tic_ids(tics: list[int]) -> pd.DataFrame:
-    return _tic_frame(Catalogs.query_criteria(catalog="Tic", ID=list(tics)))
+def _sample_criteria(sample: dict, ra: tuple[float, float], dec: tuple[float, float]) -> dict:
+    """Sample A's TIC query over a sky box. MAST ranges are inclusive, so in_sample() finishes the cut."""
+    return {
+        "Tmag": [-5.0, sample["tmag_max"]],
+        "Teff": [sample["teff_min"], sample["teff_max"]],
+        "logg": [sample["logg_min"], sample["logg_max"]],
+        "ra": list(ra),
+        "dec": list(dec),
+        "objType": "STAR",
+    }
 
 
 def _query_tic(**criteria):
     return Catalogs.query_criteria(catalog="Tic", **criteria)
+
+
+def query_tic_region(
+    sample: dict, ra: tuple[float, float], dec: tuple[float, float]
+) -> pd.DataFrame:
+    return _tic_frame(_query_tic(**_sample_criteria(sample, ra, dec)))
+
+
+def query_tic_ids(tics: list[int]) -> pd.DataFrame:
+    return _tic_frame(Catalogs.query_criteria(catalog="Tic", ID=list(tics)))
 
 
 def query_tic_band(
@@ -83,14 +86,7 @@ def query_tic_band(
 ) -> pd.DataFrame:
     query = query or _query_tic
     table = retry(
-        lambda: query(
-            Tmag=[-5.0, sample["tmag_max"]],
-            Teff=[sample["teff_min"], sample["teff_max"]],
-            logg=[sample["logg_min"], sample["logg_max"]],
-            ra=[0.0, 360.0],
-            dec=list(dec),
-            objType="STAR",
-        ),
+        lambda: query(**_sample_criteria(sample, (0.0, 360.0), dec)),
         attempts=attempts,
         backoff=backoff,
         # MAST answers outages with assorted exception types.
@@ -292,7 +288,8 @@ def _all_sky(run, sample: dict, seed: int) -> int:
     gaia_path = run.path / "gaia_dr3.parquet"
     if not gaia_path.exists():
         _write_atomic(dr3_join(candidates), gaia_path)
-    gaia = pd.read_parquet(gaia_path)
+    # DR3 ids pass 2**53, and the left merge below would make them float for any star without a match.
+    gaia = pd.read_parquet(gaia_path).astype({"dr3_source_id": "Int64"})
     eb = gaia.loc[np.isfinite(pd.to_numeric(gaia["eb_frequency"], errors="coerce"))]
     candidates = candidates.merge(
         gaia.drop(columns=["eb_frequency", "eb_reference_time"]), on="tic", how="left"
@@ -314,9 +311,13 @@ def _all_sky(run, sample: dict, seed: int) -> int:
     chosen = build_sample(kept, sectors_by_tic(products), sample, 0, seed)
     _write_targets(run, chosen, products)
     eb[["tic", "eb_frequency", "eb_reference_time"]].to_parquet(run.path / "dr3_eb.parquet")
+    flame_logg = pd.to_numeric(candidates["logg_flame"], errors="coerce")
     run.finish(
         queried=len(stars),
         in_sample=len(candidates),
+        # With these, a cut that matched nothing or found no FLAME values shows in the summary.
+        gaia_matched=int(candidates["dr3_source_id"].notna().sum()),
+        with_flame_logg=int(np.isfinite(flame_logg).sum()),
         after_flame_cut=len(kept),
         covered=len(chosen),
         complete=True,

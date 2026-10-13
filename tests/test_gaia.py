@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 import pytest
+from astropy.table import Table
 
-from tess_hunt.gaia import COLUMNS, GaiaError, dr3_join, logg_flame
+from tess_hunt.gaia import COLUMNS, QUERY, GaiaError, dr3_join, launch_gaia, logg_flame
 
 
 def stars(n=2):
@@ -82,3 +83,31 @@ def test_dr3_join_retries_then_fails():
     with pytest.raises(GaiaError, match="archive down"):
         dr3_join(stars(), launch=failing, attempts=3, backoff=0.0)
     assert len(attempts) == 3
+
+
+class FakeArchive:
+    """Runs every job; refuses to delete it."""
+
+    def __init__(self):
+        self.removed = []
+
+    def launch_job_async(self, query, upload_resource, **kw):
+        class Job:
+            jobid = "job-1"
+
+            def get_results(self):
+                return Table({"tic": upload_resource["tic"]})
+
+        return Job()
+
+    def remove_jobs(self, jobs):
+        self.removed.append(jobs)
+        raise ConnectionError("archive busy")
+
+
+def test_launch_keeps_the_result_when_cleanup_fails(capsys):
+    archive = FakeArchive()
+    out = launch_gaia(QUERY, Table({"tic": [7], "dr2": [1007]}), gaia=archive)
+    assert list(out["tic"]) == [7] and archive.removed == [["job-1"]]
+    err = capsys.readouterr().err
+    assert "job-1" in err and "ConnectionError: archive busy" in err

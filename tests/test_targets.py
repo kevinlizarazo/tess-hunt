@@ -182,6 +182,22 @@ def test_query_band_retries():
     assert len(out) == 2 and calls == [[-90.0, -80.0], [-90.0, -80.0]]
 
 
+def test_box_and_band_queries_send_the_same_sample_cut(monkeypatch):
+    sent = []
+
+    def query_criteria(catalog, **kw):
+        sent.append((catalog, kw))
+        return tic_table(1)
+
+    monkeypatch.setattr(targets_module.Catalogs, "query_criteria", query_criteria)
+    targets_module.query_tic_region(SAMPLE, (10.0, 20.0), (-90.0, -80.0))
+    query_tic_band(SAMPLE, (-90.0, -80.0))
+    (box_catalog, box), (band_catalog, band) = sent
+    assert box_catalog == band_catalog == "Tic"
+    assert band["ra"] == [0.0, 360.0] and box == band | {"ra": [10.0, 20.0]}
+    assert box["Teff"] == [5300.0, 6500.0] and box["objType"] == "STAR"
+
+
 def test_flame_cut_keeps_missing_values():
     stars = pd.DataFrame({"logg_flame": [4.2, 3.9, np.nan]})
     assert list(flame_cut(stars, 4.0)) == [True, False, True]
@@ -190,6 +206,29 @@ def test_flame_cut_keeps_missing_values():
 def test_covered_sources_counts_fetched_sectors():
     assert covered_sources({"1": {}, "2": {}, "3": {}, "98": {}}, SAMPLE)
     assert not covered_sources({"1": {}, "2": {}, "3": {}, "4": {}}, SAMPLE)
+
+
+DR3_BASE = 4623036865373793000  # real DR3 ids pass 2**53
+
+
+def fake_dr3_join(stars, **kw):
+    """101 is a Gaia EB, 102's FLAME log g fails the cut, 103 has no FLAME values, 104 has no DR3 match."""
+    tics = stars.loc[stars["tic"] != 104, "tic"].to_numpy()
+    no_flame = tics == 103
+    return pd.DataFrame(
+        {
+            "tic": tics,
+            "dr3_source_id": DR3_BASE + tics,
+            "angular_distance": 0.1,
+            "ruwe": 1.0,
+            "logg_gspphot": 4.4,
+            "mass_flame": np.where(no_flame, np.nan, 1.0),
+            "radius_flame": np.where(no_flame, np.nan, 1.0),
+            "logg_flame": np.select([tics == 102, no_flame], [3.9, np.nan], 4.438),
+            "eb_frequency": np.where(tics == 101, 0.5, np.nan),
+            "eb_reference_time": np.where(tics == 101, 100.0, np.nan),
+        }
+    )
 
 
 def all_sky(tmp_path, monkeypatch, discover, resume=None):
@@ -204,24 +243,7 @@ def all_sky(tmp_path, monkeypatch, discover, resume=None):
             tic_table(1, dec=dec[0] + 5.0, start=100 + band_of[tuple(dec)])
         ),
     )
-    monkeypatch.setattr(
-        targets_module,
-        "dr3_join",
-        lambda stars, **kw: pd.DataFrame(
-            {
-                "tic": stars["tic"],
-                "dr3_source_id": 1,
-                "angular_distance": 0.1,
-                "ruwe": 1.0,
-                "logg_gspphot": 4.4,
-                "mass_flame": 1.0,
-                "radius_flame": 1.0,
-                "logg_flame": 4.438,
-                "eb_frequency": np.where(stars["tic"] == 101, 0.5, np.nan),
-                "eb_reference_time": np.where(stars["tic"] == 101, 100.0, np.nan),
-            }
-        ),
-    )
+    monkeypatch.setattr(targets_module, "dr3_join", fake_dr3_join)
     monkeypatch.setattr(targets_module.mast, "discover", discover)
     argv = ["targets", "sample", "--all-sky", "--criteria", str(crit)]
     monkeypatch.chdir(ROOT)
@@ -254,10 +276,21 @@ def test_all_sky_writes_targets_products_and_eb(tmp_path, monkeypatch):
     assert all_sky(tmp_path, monkeypatch, lambda tics, **kw: products_for(tics)) == 0
     run = latest_run(tmp_path)
     targets = pd.read_parquet(run / "targets.parquet")
-    assert len(targets) == 18 and {"ruwe", "logg_flame", "e_rad"} <= set(targets.columns)
+    assert {"ruwe", "logg_flame", "e_rad"} <= set(targets.columns)
+    assert 102 not in set(targets["tic"]) and {103, 104} <= set(targets["tic"])
+    dr3 = targets.set_index("tic")["dr3_source_id"]
+    # int(): numpy compares a float64 with an int as floats, which hides the rounding.
+    assert int(dr3[103]) == DR3_BASE + 103 and pd.isna(dr3[104])
     assert list(pd.read_parquet(run / "dr3_eb.parquet")["tic"]) == [101]
-    summary = json.loads((run / "provenance.json").read_text())["summary"]
-    assert summary["complete"] and summary["covered"] == 18
+    assert json.loads((run / "provenance.json").read_text())["summary"] == {
+        "queried": 18,
+        "in_sample": 18,
+        "gaia_matched": 17,
+        "with_flame_logg": 16,
+        "after_flame_cut": 17,
+        "covered": 17,
+        "complete": True,
+    }
 
 
 def test_failed_batch_marks_run_incomplete(tmp_path, monkeypatch):
@@ -275,7 +308,7 @@ def test_failed_batch_marks_run_incomplete(tmp_path, monkeypatch):
         all_sky(tmp_path, monkeypatch, lambda tics, **kw: products_for(tics), resume=run.name) == 0
     )
     summary = json.loads((run / "provenance.json").read_text())["summary"]
-    assert summary["covered"] == 18 and summary["complete"]
+    assert summary["covered"] == 17 and summary["complete"]
 
 
 def test_resume_redoes_a_band_whose_failed_list_never_landed(tmp_path, monkeypatch):
@@ -292,7 +325,7 @@ def test_resume_redoes_a_band_whose_failed_list_never_landed(tmp_path, monkeypat
     assert (
         all_sky(tmp_path, monkeypatch, lambda tics, **kw: products_for(tics), resume=run.name) == 0
     )
-    assert json.loads((run / "provenance.json").read_text())["summary"]["covered"] == 18
+    assert json.loads((run / "provenance.json").read_text())["summary"]["covered"] == 17
 
 
 def test_resume_skips_finished_bands(tmp_path, monkeypatch):

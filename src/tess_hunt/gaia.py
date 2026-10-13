@@ -1,5 +1,6 @@
 """Gaia DR3 values for TIC stars, found through the TIC's Gaia DR2 ids."""
 
+import sys
 from functools import partial
 
 import numpy as np
@@ -36,15 +37,25 @@ class GaiaError(RuntimeError):
     pass
 
 
-def launch_gaia(query: str, ids: Table) -> pd.DataFrame:
-    from astroquery.gaia import Gaia
+def launch_gaia(query: str, ids: Table, gaia=None) -> pd.DataFrame:
+    if gaia is None:
+        # Importing astroquery.gaia contacts the archive, so only a real query pays for it.
+        from astroquery.gaia import Gaia
 
-    job = Gaia.launch_job_async(query, upload_resource=ids, upload_table_name="ids", verbose=False)
+        gaia = Gaia
+    job = gaia.launch_job_async(query, upload_resource=ids, upload_table_name="ids", verbose=False)
     try:
         return job.get_results().to_pandas()
     finally:
-        # Anonymous jobs count against a quota on the archive.
-        Gaia.remove_jobs([job.jobid])
+        # Anonymous jobs count against a quota on the archive, but a job left behind costs less than
+        # discarding its result and spending a retry.
+        try:
+            gaia.remove_jobs([job.jobid])
+        except Exception as exc:  # the archive answers outages with assorted exception types
+            print(
+                f"Gaia job {job.jobid} left on the archive: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
 
 
 def logg_flame(mass, radius) -> np.ndarray:

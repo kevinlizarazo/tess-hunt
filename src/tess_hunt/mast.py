@@ -1,6 +1,7 @@
 """Find TESS light-curve files at MAST and download them from the public S3 bucket."""
 
 import re
+import sys
 import time
 from functools import partial
 
@@ -115,9 +116,11 @@ def discover(
                 error=DiscoverError,
                 what=f"MAST discovery of {len(names)} TICs",
             )
-        except DiscoverError:
+        except DiscoverError as exc:
             if failed is None:
                 raise
+            # The cause tells an outage from a fault that retrying will never fix.
+            print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
             failed.extend(int(n) for n in names)
     frame = pd.DataFrame(rows, columns=PRODUCT_COLUMNS)
     return frame.drop_duplicates("data_uri").reset_index(drop=True)

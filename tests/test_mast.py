@@ -137,6 +137,27 @@ def test_discover_records_failed_batches_when_asked():
     assert failed == [1, 2] and list(out["tic"]) == [3]
 
 
+def test_discover_reports_why_a_batch_failed(capsys):
+    class UnknownProducts(FakeObservations):
+        def get_product_list(self, obs):
+            return Table(
+                {
+                    "obs_id": list(obs["obs_id"]),
+                    "productFilename": [f"x{t}_llc.fits" for t in obs["target_name"]],
+                    "dataURI": [f"mast:JWST/product/x{t}_llc.fits" for t in obs["target_name"]],
+                    "size": [100] * len(obs),
+                }
+            )
+
+    failed = []
+    mast.discover([1], observations=UnknownProducts(), backoff=0.0, failed=failed)
+    assert failed == [1]
+    assert (
+        "ValueError: unrecognised data URI: mast:JWST/product/x1_llc.fits"
+        in capsys.readouterr().err
+    )
+
+
 def test_discover_raises_without_a_failed_list():
     with pytest.raises(mast.DiscoverError):
         mast.discover([1], observations=FakeObservations(failures=3), backoff=0.0)
