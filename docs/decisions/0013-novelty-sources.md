@@ -21,6 +21,8 @@ unpromoted TCEs are real planets.
 - A match of any kind but `tce` fails novelty as known. A match only to `tce` rows (SPOC TCEs, ExoMiner++,
   eumemic's re-measured TCEs) is inconclusive with category `known_to_spoc`; triage lists those signals for the
   maintainer to promote by hand, and does not shortlist them.
+- `vet` applies the same rule under vet-v2, which lists `tce` in `[novelty] inconclusive_kinds`. vet-v1 has no such
+  key, so M1's vets still fail a TCE match.
 - One snapshot serves a triage run and its threshold; a fresh one is taken before M3.
 - Literature by TIC (Zenodo, arXiv, OpenAlex, all keyless) runs on shortlisted signals only, and its hits are evidence,
   not an outcome. ADS needs a token, so it is searched by hand in M3.
@@ -31,4 +33,5 @@ unpromoted TCEs are real planets.
 - Unit tests in [tests/test_sources.py](../../tests/test_sources.py), [tests/test_catalogs.py](../../tests/test_catalogs.py)
   (`test_failed_source_leaves_no_snapshot`) and [tests/test_novelty.py](../../tests/test_novelty.py)
   (`test_tce_only_match_is_inconclusive_known_to_spoc`).
+- [tests/test_vet.py](../../tests/test_vet.py): `test_tce_only_match_is_inconclusive_under_vet_v2_and_fails_under_v1`.
 - The production snapshot's manifest (Task 14) is linked here when it exists.

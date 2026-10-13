@@ -22,6 +22,7 @@ EB_AT_TWICE_THE_PERIOD = [(7.4, 1326.1, 0.12, 3000e-6), (7.4, 1326.1 + 3.7, 0.12
 DETREND = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "search-v1.toml").values[
     "detrend"
 ]
+RED = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v2.toml")["red_noise"]
 
 
 def test_box_depth_of_a_box():
@@ -139,14 +140,14 @@ def test_red_noise_beta_is_one_on_white_noise():
         signals=[PLANET],
         seed=11,
     )
-    three_hours = red_noise_beta(lc, EPH, 0.125)
+    three_hours = red_noise_beta(lc, EPH, 0.125, RED)
     assert set(three_hours) == {"1", "2", "3", "4"}
     assert all(abs(row["beta"] - 1.0) < 0.15 and "note" not in row for row in three_hours.values())
     # 72 minutes is 36 two-minute cadences but under three 30-minute ones.
-    short = red_noise_beta(lc, EPH, 0.05)
+    short = red_noise_beta(lc, EPH, 0.05, RED)
     assert all(abs(short[s]["beta"] - 1.0) < 0.15 and "note" not in short[s] for s in ("1", "2"))
     assert all(short[s]["beta"] == 1.0 and "note" in short[s] for s in ("3", "4"))
-    too_few_bins = red_noise_beta(lc, EPH, 0.125, min_bins=10_000)
+    too_few_bins = red_noise_beta(lc, EPH, 0.125, {**RED, "min_bins": 10_000})
     assert all(row["beta"] == 1.0 and "note" in row for row in too_few_bins.values())
 
 
@@ -160,7 +161,7 @@ def red_noise_lc(signals=(), seed=12):
 
 
 def test_red_noise_beta_sees_correlated_noise():
-    betas = red_noise_beta(red_noise_lc(), EPH, 0.5 * EPH.duration)
+    betas = red_noise_beta(red_noise_lc(), EPH, 0.5 * EPH.duration, RED)
     assert all(row["beta"] > 1.3 for row in betas.values()), betas
 
 
@@ -168,7 +169,7 @@ def test_sector_depth_red_noise_fails_on_white_errors_and_passes_inflated():
     lc = red_noise_lc(signals=[PLANET])
     white = sector_depths(lc, EPH, 0.5, 0.001, 5)
     red = sector_depths(
-        with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration)), EPH, 0.5, 0.001, 5
+        with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration, RED)), EPH, 0.5, 0.001, 5
     )
     assert white.outcome is Outcome.FAIL, white.evidence["p_value"]
     assert red.outcome is Outcome.PASS, red.evidence["p_value"]
@@ -176,7 +177,7 @@ def test_sector_depth_red_noise_fails_on_white_errors_and_passes_inflated():
 
 def inflated(lc):
     """The light curve with the errors vet_signal gives the depth checks."""
-    return with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration))
+    return with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration, RED))
 
 
 def test_odd_even_negative_control_fails_through_red_noise_inflation():

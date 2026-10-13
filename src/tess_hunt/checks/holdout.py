@@ -17,13 +17,13 @@ def season_labels(time: np.ndarray, gap_days: float) -> np.ndarray:
     return labels
 
 
-def refit_ephemeris(lc: LightCurve, eph: Ephemeris) -> Ephemeris:
+def refit_ephemeris(lc: LightCurve, eph: Ephemeris, cfg: dict) -> Ephemeris:
     """Best period and epoch near `eph` from these cadences alone."""
     baseline = float(lc.time.max() - lc.time.min())
-    # BLS period resolution is about P * duration / baseline; search five resolutions either side.
-    half_width = 5.0 * eph.period * eph.duration / max(baseline, eph.period)
-    periods = np.linspace(eph.period - half_width, eph.period + half_width, 801)
-    durations = eph.duration * np.array([0.75, 1.0, 1.25])
+    # BLS period resolution is about P * duration / baseline; search that many resolutions either side.
+    half_width = cfg["refit_resolutions"] * eph.period * eph.duration / max(baseline, eph.period)
+    periods = np.linspace(eph.period - half_width, eph.period + half_width, cfg["refit_points"])
+    durations = eph.duration * np.asarray(cfg["refit_duration_factors"], dtype=float)
     result = BoxLeastSquares(lc.time, lc.flux, dy=lc.flux_err).power(
         periods, durations, objective="likelihood"
     )
@@ -59,7 +59,7 @@ def holdout(lc: LightCurve, eph: Ephemeris, cfg: dict, core_fraction: float) -> 
                 }
             )
             continue
-        predicted = refit_ephemeris(lc.select(train), eph)
+        predicted = refit_ephemeris(lc.select(train), eph, cfg)
         depth, err, n = box_depth(
             lc.time[test], lc.flux[test], lc.flux_err[test], predicted, core_fraction
         )

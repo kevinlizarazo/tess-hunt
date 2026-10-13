@@ -1,18 +1,14 @@
+from pathlib import Path
+
 import numpy as np
 from synthetic import box, make_lc
 
 from tess_hunt.checks import Outcome
 from tess_hunt.checks.holdout import holdout, season_labels
+from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris
 
-CFG = {
-    "season_gap_days": 60.0,
-    "min_expected_snr": 4.0,
-    "min_sigma": 2.0,
-    "max_depth_tension": 3.0,
-    "min_points": 5,
-    "min_training_seasons": 2,
-}
+CFG = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v2.toml")["holdout"]
 SECTORS = (1, 2, 3, 14, 15, 16, 28, 29, 30)  # three seasons about a year apart
 EPH = Ephemeris(3.7, 1326.1, 0.12)
 

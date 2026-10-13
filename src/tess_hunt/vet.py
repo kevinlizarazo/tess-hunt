@@ -27,6 +27,33 @@ from tess_hunt.lightcurve import LightCurve
 from tess_hunt.novelty import check_novelty
 from tess_hunt.provenance import start_run
 
+# vet-v1 left these to the code (docs/decisions/0014-vet-constants-in-criteria.md). A vet-v1 file gets
+# them back, so M1's vets reproduce.
+VET_V1_CODE_VALUES = {
+    "red_noise": {
+        "exclude_width": 3.0,
+        "min_bins": 20,
+        "kept_bin_fraction": 0.8,
+        "min_cadences_per_bin": 3.0,
+    },
+    "holdout": {
+        "refit_resolutions": 5.0,
+        "refit_points": 801,
+        "refit_duration_factors": [0.75, 1.0, 1.25],
+    },
+    "fit": {"min_points": 20, "min_acceptance": 0.01},
+    "novelty": {"inconclusive_kinds": []},
+}
+
+
+def with_v1_code_values(crit_vet: dict) -> dict:
+    """vet-v1 in vet-v2's layout: the values its code held, and its fit window under the new name."""
+    out = {name: dict(section) for name, section in crit_vet.items()}
+    for name, values in VET_V1_CODE_VALUES.items():
+        out[name] = {**out.get(name, {}), **values}
+    out["fit"]["window_half_width_durations"] = out["fit"].pop("window_durations")
+    return out
+
 
 def other_known_transits(
     eph: Ephemeris,
@@ -61,6 +88,10 @@ def vet_signal(
     seed: int | None,
 ) -> tuple[dict, FitResult | None]:
     tic = int(star["tic"])
+    # Only vet-v1 names the fit window `window_durations` (docs/decisions/0015-fit-window-half-width.md).
+    v1 = "window_durations" in crit_vet["fit"]
+    if v1:
+        crit_vet = with_v1_code_values(crit_vet)
     harmonics = tuple(crit_vet["novelty"]["harmonics"])
     match = crit_search["match"]
     others = other_known_transits(eph, known, tic, harmonics, crit_search)
@@ -70,7 +101,7 @@ def vet_signal(
     # correlated over a transit, so depth errors would come out too small. The depth checks get
     # errors scaled by each sector's time-averaging beta at the core timescale (Pont et al. 2006;
     # Winn et al. 2008; docs/decisions/0006-red-noise-depth-errors.md). The fit keeps white errors.
-    betas = red_noise_beta(flat, eph, core * eph.duration)
+    betas = red_noise_beta(flat, eph, core * eph.duration, crit_vet["red_noise"])
     noisy = with_red_noise(flat, betas)
     results = [
         check_novelty(
@@ -83,6 +114,7 @@ def vet_signal(
             harmonics,
             match["sigma_p"],
             match["sigma_t"],
+            tuple(crit_vet["novelty"]["inconclusive_kinds"]),
         ),
         odd_even(
             noisy, eph, core, crit_vet["odd_even"]["max_sigma"], crit_vet["odd_even"]["min_points"]
@@ -116,6 +148,7 @@ def vet_signal(
                 star.get("e_rho"),
                 crit_vet["density"]["max_sigma"],
                 crit_vet["density"]["default_log_rho_error"],
+                symmetric_error=v1,
             ),
         ]
     report = {
@@ -139,8 +172,8 @@ def add_parser(sub) -> None:
     p.add_argument("--depth", type=float, default=float("nan"), help="fractional")
     p.add_argument("--targets", type=Path, required=True)
     p.add_argument("--catalogs", type=Path, required=True)
-    p.add_argument("--criteria-search", type=Path, default=Path("criteria/search-v1.toml"))
-    p.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v1.toml"))
+    p.add_argument("--criteria-search", type=Path, default=Path("criteria/search-v2.toml"))
+    p.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v2.toml"))
     p.add_argument("--production", action="store_true")
     p.set_defaults(func=cmd)
 

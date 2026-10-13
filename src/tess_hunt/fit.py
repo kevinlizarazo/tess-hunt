@@ -13,9 +13,6 @@ from tess_hunt.lightcurve import LightCurve
 from tess_hunt.transit import a_rs_from_density, density_from_duration, light_curve
 
 NAMES = ("t0", "period", "rp_rs", "b", "log_rho", "q1", "q2")
-# emcee neither moves nor raises when every walker sits outside the prior; it hands back the
-# starting ball, which the checks would read as a posterior. A healthy fit accepts about 0.3.
-MIN_ACCEPTANCE = 0.01
 
 
 @dataclass(frozen=True)
@@ -49,11 +46,13 @@ def fit_transit(
     its own prior."""
     if cfg["burn"] >= cfg["steps"]:
         raise ValueError(f"a burn-in of {cfg['burn']} leaves none of {cfg['steps']} steps")
-    near = np.abs(phase_days(lc.time, eph)) < cfg["window_durations"] * eph.duration
+    # A half-width: cadences within this many durations either side of mid-transit, unlike in_transit's
+    # full-width convention (decision 0015).
+    near = np.abs(phase_days(lc.time, eph)) < cfg["window_half_width_durations"] * eph.duration
     time, flux, err = lc.time[near], lc.flux[near], lc.flux_err[near]
     exposure = lc.exposure_days()[near]
-    if len(time) < 20:
-        raise ValueError(f"only {len(time)} cadences near transit; need 20 to fit")
+    if len(time) < cfg["min_points"]:
+        raise ValueError(f"only {len(time)} cadences near transit; need {cfg['min_points']} to fit")
     # With data around the transit but none in it, the posterior is the prior, which the shape and
     # density checks would read as a pass.
     if not in_transit(time, eph).any():
@@ -106,7 +105,11 @@ def fit_transit(
         sampler.random_state = np.random.RandomState(seed).get_state()
     sampler.run_mcmc(p0, cfg["steps"], progress=False)
     acceptance = float(np.mean(sampler.acceptance_fraction))
-    if acceptance < MIN_ACCEPTANCE:
-        raise ValueError(f"the walkers never moved (acceptance {acceptance:.3g}); no fit")
+    # emcee neither moves nor raises when every walker sits outside the prior; it hands back the
+    # starting ball, which the checks would read as a posterior. A healthy fit accepts about 0.3.
+    if acceptance < cfg["min_acceptance"]:
+        raise ValueError(
+            f"the walkers never moved (acceptance {acceptance:.3g}, need {cfg['min_acceptance']:g}); no fit"
+        )
     samples = sampler.get_chain(discard=cfg["burn"], flat=True)
     return FitResult(samples, acceptance, rho_prior)
