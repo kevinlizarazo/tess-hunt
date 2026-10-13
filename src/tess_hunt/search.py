@@ -1,5 +1,7 @@
 """Search: box least squares over every sector at once, up to three signals per star."""
 
+import hashlib
+import json
 import math
 import sys
 from collections.abc import Mapping
@@ -12,16 +14,30 @@ from astropy.timeseries import BoxLeastSquares
 from scipy.ndimage import median_filter
 from transitleastsquares import period_grid as tls_period_grid
 
-from tess_hunt.catalogs import FILES, known_ephemerides, load_known
+from tess_hunt.catalogs import known_ephemerides, load_known, snapshot_inputs
 from tess_hunt.config import lc_dir, load_criteria
-from tess_hunt.detrend import detrend
+from tess_hunt.detrend import detrend, known_mask
 from tess_hunt.ephemeris import Ephemeris, in_transit, transit_times_in_data
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.pool import process_pool
-from tess_hunt.provenance import sha256_file, start_run
+from tess_hunt.provenance import repo_root, sha256_file, start_run
+from tess_hunt.recovery import classify
+from tess_hunt.scramble import scramble
+from tess_hunt.targets import covered_sources
 
 AU_PER_R_SUN = 215.032
 BLS_FIELDS = ("period", "power", "transit_time", "duration", "depth", "depth_snr")
+# Every module whose code decides which stars are searched and which signals a search emits. The null
+# threshold is only valid for a search that ran the same code, so its hash travels with both runs (design 4.5).
+SEARCH_CODE = (
+    "search.py",
+    "detrend.py",
+    "scramble.py",
+    "lightcurve.py",
+    "ephemeris.py",
+    "recovery.py",
+    "targets.py",
+)
 
 
 @dataclass(frozen=True)
@@ -232,31 +248,98 @@ def search_star(
     return result
 
 
-def _search_job(job: tuple) -> tuple[dict, list[dict]]:
-    star, known_ephs, cfg_detrend, cfg_search = job
-    tic = int(star["tic"])
+def search_code_sha256(root: Path) -> str:
+    digest = hashlib.sha256()
+    for name in SEARCH_CODE:
+        digest.update(name.encode())
+        digest.update((root / "src" / "tess_hunt" / name).read_bytes())
+    return digest.hexdigest()
+
+
+def read_threshold(path: Path) -> dict:
+    data = json.loads(Path(path).read_text())
+    for key in ("threshold", "search_criteria_sha256", "search_code_sha256"):
+        if key not in data:
+            raise SystemExit(f"{path} has no {key}; it is not a threshold.json")
+    return data
+
+
+def _search_status(result: SearchResult, min_points: int) -> str:
+    if result.n_bins < min_points:
+        return "too_few_points"
+    # No finite peak was judged (a NaN spectrum, or no period to search), so the star was not searched.
+    if not np.isfinite(result.top_sde):
+        return "nonfinite_sde"
+    return "ok"
+
+
+def _search_job(job: dict) -> tuple[dict, list[dict]]:
+    star, crit, cfg = job["star"], job["criteria"], job["search"]
+    tic, control = int(star["tic"]), job["control"]
+    base = {"tic": tic, "control": control}
     path = lc_dir() / f"{tic}.npz"
     if not path.exists():
-        return {"tic": tic, "status": "no_light_curve"}, []
+        return {**base, "status": "no_light_curve"}, []
     try:
         rstar, mstar, assumed = star_params(star)
-        digest = sha256_file(path)
-        flat = detrend(LightCurve.load(path), cfg_detrend, known_ephs)
-        if len(flat.time) < cfg_search["min_points"]:
-            return {"tic": tic, "status": "too_few_points", "n_points": len(flat.time)}, []
         rho = stellar_density(star, rstar, mstar)
-        signals = search_star(flat, rstar, mstar, cfg_search, rho).signals
+        digest = sha256_file(path)
+        lc = LightCurve.load(path)
+        # Controls are the known set, chosen on their own rule; only sample stars must stay covered.
+        if not control and not covered_sources(lc.sources, crit["sample"]):
+            return {**base, "status": "not_covered_after_fetch", "n_sectors": len(lc.sources)}, []
+        exclude = known_mask(lc.time, job["known"], crit["detrend"]["known_mask_width"])
+        if job["scramble"] is not None:
+            lc, order = scramble(
+                lc,
+                crit["null"]["segment_gap_days"],
+                crit["null"]["placement_gap_days"],
+                job["scramble"],
+            )
+            exclude = exclude[order]
+        flat = detrend(lc, crit["detrend"], exclude=exclude)
+        if len(flat.time) < cfg["min_points"]:
+            return {**base, "status": "too_few_points", "n_points": len(flat.time)}, []
+        result = search_star(flat, rstar, mstar, cfg, rho)
     except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
-        return {"tic": tic, "status": "error", "error": f"{type(exc).__name__}: {exc}"}, []
+        return {**base, "status": "error", "error": f"{type(exc).__name__}: {exc}"}, []
+    suspect = sum(bool(info.get("timing_suspect")) for info in lc.sources.values())
     status = {
-        "tic": tic,
-        "status": "ok",
+        **base,
+        "status": _search_status(result, cfg["min_points"]),
         "n_points": len(flat.time),
         "n_sectors": int(len(np.unique(flat.sector))),
+        "timing_suspect_sectors": suspect,
         "assumed_solar": assumed,
+        "rho": rho,
         "lc_sha256": digest,
+        **result.diagnostics(),
     }
-    return status, [{**asdict(s), "engine": cfg_search["engine"]} for s in signals]
+    rows = [{**asdict(s), "engine": cfg["engine"], "control": control} for s in result.signals]
+    return status, rows
+
+
+def evaluate_controls(
+    known: pd.DataFrame, signals: pd.DataFrame, match: dict, threshold: float
+) -> pd.DataFrame:
+    rows = []
+    for planet in known.to_dict("records"):
+        found = signals[signals["tic"] == int(planet["tic"])]
+        found = [
+            Signal(**{k: r[k] for k in Signal.__dataclass_fields__})
+            for r in found.to_dict("records")
+        ]
+        truth = Ephemeris(planet["period"], planet["t0"], planet["duration"])
+        rows.append(
+            {
+                "toi": str(planet["toi"]),
+                "tic": int(planet["tic"]),
+                "period": planet["period"],
+                "required": bool(planet["required"]),
+                **classify(truth, found, match, threshold),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def add_parser(sub) -> None:
@@ -267,44 +350,106 @@ def add_parser(sub) -> None:
     )
     p.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
     p.add_argument(
-        "--unmask", action="store_true", help="keep known planets in (positive controls)"
+        "--scramble", type=int, help="null run: scramble each light curve with this seed"
     )
+    p.add_argument("--threshold", type=Path, help="threshold.json from `triage threshold`")
+    p.add_argument("--controls", type=Path, help="known planets searched with masks off")
+    p.add_argument("--control-targets", type=Path, help="targets table for the control hosts")
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--production", action="store_true")
     p.set_defaults(func=cmd)
 
 
-def cmd(args) -> int:
-    criteria = load_criteria(args.criteria)
-    run = start_run("search", [criteria], args.production, sys.argv)
-    run.record_input("targets", args.targets)
-    for name in FILES.values():
-        run.record_input(name, args.catalogs / name)
-    known = load_known(args.catalogs)
-    fallback = criteria["detrend"]["fallback_duration_days"]
-    stars = pd.read_parquet(args.targets).to_dict("records")
-    jobs = [
-        (
-            s,
-            [] if args.unmask else known_ephemerides(known, int(s["tic"]), fallback),
-            criteria["detrend"],
-            criteria["search"],
+def _check_arguments(args) -> None:
+    if args.scramble is not None and args.threshold is not None:
+        raise SystemExit(
+            "--scramble and --threshold exclude each other: the null runs at the provisional value"
         )
-        for s in stars
-    ]
+    if bool(args.controls) != bool(args.control_targets):
+        raise SystemExit("--controls and --control-targets go together")
+    if args.production and args.scramble is None and not (args.threshold and args.controls):
+        # Spec 5.6: a production search carries its positive controls, and its threshold comes from the null.
+        raise SystemExit("a production search needs --threshold, --controls and --control-targets")
+
+
+def cmd(args) -> int:
+    _check_arguments(args)
+    criteria = load_criteria(args.criteria)
+    cfg = dict(criteria["search"])
+    threshold = None
+    if args.threshold:
+        threshold = read_threshold(args.threshold)
+        code = search_code_sha256(repo_root())
+        if threshold["search_criteria_sha256"] != criteria.sha256:
+            raise SystemExit(f"{args.threshold} came from other search criteria; rerun the null")
+        if threshold["search_code_sha256"] != code:
+            raise SystemExit(f"{args.threshold} came from other search code; rerun the null")
+        cfg["continue_sde"] = float(threshold["threshold"])
+    run = start_run("search", [criteria], args.production, sys.argv)
+    run.record("search_code_sha256", search_code_sha256(repo_root()))
+    run.record("scramble", args.scramble)
+    run.record(
+        "threshold",
+        None if threshold is None else {"value": cfg["continue_sde"], "file": args.threshold.name},
+    )
+    run.record_input("targets", args.targets)
+    for name, path in snapshot_inputs(args.catalogs).items():
+        run.record_input(name, path)
+    known = load_known(args.catalogs)
+    mask_sources = tuple(criteria["detrend"]["mask_sources"])
+    fallback = criteria["detrend"]["fallback_duration_days"]
+
+    def job(star, control):
+        ephs = [] if control else known_ephemerides(known, int(star["tic"]), fallback, mask_sources)
+        return {
+            "star": star,
+            "control": control,
+            "known": ephs,
+            "criteria": criteria.values,
+            "search": cfg,
+            "scramble": args.scramble,
+        }
+
+    jobs = [job(s, False) for s in pd.read_parquet(args.targets).to_dict("records")]
+    planets = None
+    if args.controls:
+        run.record_input("controls", args.controls)
+        run.record_input("control_targets", args.control_targets)
+        planets = pd.read_csv(args.controls, dtype={"toi": str})
+        hosts = pd.read_parquet(args.control_targets).set_index("tic")
+        jobs += [
+            job({**hosts.loc[t].to_dict(), "tic": int(t)}, True)
+            for t in sorted(set(planets["tic"]))
+        ]
     with process_pool(args.workers) as pool:
         results = list(pool.map(_search_job, jobs, chunksize=2))
     star_rows = [r[0] for r in results]
     signal_rows = [row for r in results for row in r[1]]
     pd.DataFrame(star_rows).to_parquet(run.path / "stars.parquet")
-    pd.DataFrame(signal_rows, columns=[*Signal.__dataclass_fields__, "engine"]).to_parquet(
-        run.path / "signals.parquet"
-    )
+    signals = pd.DataFrame(signal_rows, columns=[*Signal.__dataclass_fields__, "engine", "control"])
+    signals.to_parquet(run.path / "signals.parquet")
     counts = pd.Series([r["status"] for r in star_rows]).value_counts().to_dict()
-    run.finish(
-        stars=len(star_rows),
-        signals=len(signal_rows),
+    summary = {
+        "stars": len(star_rows),
+        "signals": len(signal_rows),
         **{f"status_{k}": int(v) for k, v in counts.items()},
-    )
+    }
+    code = 0
+    if planets is not None:
+        level = cfg["continue_sde"] if threshold else criteria["benchmark"]["provisional_sde"]
+        # With no signals at all the column is empty object dtype, which pandas would read as a
+        # column list, not a mask.
+        controls = signals[signals["control"].astype(bool)]
+        table = evaluate_controls(planets, controls, criteria["match"], level)
+        table.to_csv(run.path / "controls.csv", index=False)
+        required_missed = sorted(table.loc[table["required"] & ~table["recovered"], "toi"])
+        summary |= {
+            "controls_valid": not required_missed,
+            "controls_required_missed": required_missed,
+            "controls_missed": sorted(table.loc[~table["required"] & ~table["recovered"], "toi"]),
+        }
+        # Spec 5.6: a run that misses a required control is invalid, and triage refuses it.
+        code = 1 if required_missed else 0
+    run.finish(**summary)
     print(f"search: {counts}, {len(signal_rows)} signals -> {run.path}")
-    return 0
+    return code

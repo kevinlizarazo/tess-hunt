@@ -1,3 +1,4 @@
+import json
 import math
 from dataclasses import replace
 from pathlib import Path
@@ -6,18 +7,21 @@ import numpy as np
 import pandas as pd
 import pytest
 from scipy.ndimage import median_filter
-from synthetic import make_lc, write_catalog_snapshot
+from synthetic import make_lc, relaxed_criteria, write_catalog_snapshot
 
 from tess_hunt import search as search_module
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
 from tess_hunt.search import (
+    SEARCH_CODE,
+    SearchResult,
     Signal,
     allowed_durations,
     bin_lightcurve,
     central_duration,
     repeat_periods,
+    search_code_sha256,
     search_star,
     star_params,
     stellar_density,
@@ -97,42 +101,217 @@ def test_shallow_planet_over_long_baseline():
     assert found(signals[:1], 5.3, 1327.0, 0.15) and signals[0].sde > 15
 
 
-def test_search_cli_writes_signals_and_records_missing_stars(tmp_path, monkeypatch):
+PLANET_LC = dict(sectors=(1, 2, 3), noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 800e-6)])
+
+
+def cli_star(tmp_path, monkeypatch, tics=(11,), **lc):
     monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
-    make_lc(sectors=(1, 2, 3), noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 800e-6)], tic=11).save(
-        tmp_path / "data" / "lc" / "11.npz"
-    )
+    for tic in tics:
+        make_lc(tic=tic, **(lc or PLANET_LC)).save(tmp_path / "data" / "lc" / f"{tic}.npz")
     targets = tmp_path / "targets.parquet"
     pd.DataFrame(
-        {
-            "tic": [11, 12],
-            "ra": [1.0, 2.0],
-            "dec": [-70.0, -70.0],
-            "rad": [1.0, 1.0],
-            "mass": [1.0, 1.0],
-        }
+        {"tic": [*tics, 12], "ra": 1.0, "dec": -70.0, "rad": 1.0, "mass": 1.0, "rho": 1.0}
     ).to_parquet(targets)
-    snap = write_catalog_snapshot(tmp_path / "snap")
     monkeypatch.chdir(ROOT)
-    assert (
-        main(["search", "--targets", str(targets), "--catalogs", str(snap), "--workers", "1"]) == 0
-    )
+    return targets, write_catalog_snapshot(tmp_path / "snap")
+
+
+def search_cli(tmp_path, targets, snap, *extra):
+    argv = ["search", "--targets", str(targets), "--catalogs", str(snap), "--workers", "1"]
+    code = main([*argv, "--criteria", str(relaxed_criteria(tmp_path)), *extra])
     run = sorted((tmp_path / "data" / "runs").iterdir())[-1]
+    return code, run
+
+
+def test_search_cli_writes_signals_and_records_missing_stars(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch)
+    code, run = search_cli(tmp_path, targets, snap)
+    assert code == 0
     stars = pd.read_parquet(run / "stars.parquet").set_index("tic")
     assert stars.loc[11, "status"] == "ok" and stars.loc[12, "status"] == "no_light_curve"
+    assert stars.loc[11, "top_sde"] > 15 and stars.loc[11, "few_transits"] == 0
+    # Every searched star records the search's diagnostics (decision 0008).
+    assert set(SearchResult().diagnostics()) <= set(stars.columns)
     signals = pd.read_parquet(run / "signals.parquet")
-    assert abs(signals.iloc[0]["period"] - 3.7) < 0.01
+    assert abs(signals.iloc[0]["period"] - 3.7) < 0.01 and not signals["control"].any()
+    provenance = json.loads((run / "provenance.json").read_text())
+    assert provenance["search_code_sha256"] == search_code_sha256(ROOT)
+
+
+def test_search_skips_a_star_not_covered_after_fetch(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch, sectors=(1, 2), noise_ppm=300.0)
+    _, run = search_cli(tmp_path, targets, snap)
+    assert (
+        pd.read_parquet(run / "stars.parquet").set_index("tic").loc[11, "status"]
+        == "not_covered_after_fetch"
+    )
+
+
+def test_scramble_run_records_its_seed_and_loses_the_planet(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch, **{**PLANET_LC, "sectors": (1, 2, 3, 4, 5, 6)})
+    _, run = search_cli(tmp_path, targets, snap, "--scramble", "1")
+    assert json.loads((run / "provenance.json").read_text())["scramble"] == 1
+    signals = pd.read_parquet(run / "signals.parquet")
+    # Each orbit keeps its own transits in phase, so a weaker peak can stay near 3.7 d; what the
+    # scramble loses is the planet's ephemeris, period and epoch together.
+    rows = signals[list(Signal.__dataclass_fields__)].to_dict("records")
+    assert rows and not found([Signal(**r) for r in rows], 3.7, 1326.1)
+
+
+def write_threshold(tmp_path, value, criteria_path):
+    path = tmp_path / "threshold.json"
+    path.write_text(
+        json.dumps(
+            {
+                "threshold": value,
+                "search_criteria_sha256": load_criteria(criteria_path).sha256,
+                "search_code_sha256": search_code_sha256(ROOT),
+            }
+        )
+    )
+    return path
+
+
+def test_threshold_sets_continue_sde(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch)
+    threshold = write_threshold(tmp_path, 1000.0, relaxed_criteria(tmp_path))
+    _, run = search_cli(tmp_path, targets, snap, "--threshold", str(threshold))
+    assert len(pd.read_parquet(run / "signals.parquet")) == 1
+    assert json.loads((run / "provenance.json").read_text())["threshold"]["value"] == 1000.0
+
+
+def test_threshold_from_other_criteria_is_refused(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch)
+    threshold = write_threshold(tmp_path, 12.0, ROOT / "criteria" / "search-v1.toml")
+    with pytest.raises(SystemExit, match="criteria"):
+        search_cli(tmp_path, targets, snap, "--threshold", str(threshold))
+
+
+def controls(tmp_path, required_period):
+    known = tmp_path / "known.csv"
+    pd.DataFrame(
+        [
+            {
+                "toi": "100.01",
+                "tic": 21,
+                "period": required_period,
+                "t0": 1326.1,
+                "duration": 0.12,
+                "required": True,
+            },
+            {
+                "toi": "200.01",
+                "tic": 21,
+                "period": 9.9,
+                "t0": 1327.0,
+                "duration": 0.12,
+                "required": False,
+            },
+        ]
+    ).to_csv(known, index=False)
+    control_targets = tmp_path / "control_targets.parquet"
+    pd.DataFrame(
+        {"tic": [21], "ra": 5.0, "dec": -70.0, "rad": 1.0, "mass": 1.0, "rho": 1.0}
+    ).to_parquet(control_targets)
+    return ["--controls", str(known), "--control-targets", str(control_targets)]
+
+
+def test_controls_found_make_a_valid_run(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch, tics=(11, 21))
+    code, run = search_cli(tmp_path, targets, snap, *controls(tmp_path, 3.7))
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert code == 0 and summary["controls_valid"] and summary["controls_missed"] == ["200.01"]
+    rows = pd.read_csv(run / "controls.csv", dtype={"toi": str}).set_index("toi")
+    assert bool(rows.loc["100.01", "recovered"])
+    assert pd.read_parquet(run / "signals.parquet")["control"].any()
+
+
+def test_a_missed_required_control_invalidates_the_run(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch, tics=(11, 21))
+    code, run = search_cli(tmp_path, targets, snap, *controls(tmp_path, 5.1))
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert code == 1 and not summary["controls_valid"]
+    assert summary["controls_required_missed"] == ["100.01"]
+
+
+def test_a_control_host_without_a_light_curve_invalidates_the_run(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch, tics=())
+    code, run = search_cli(tmp_path, targets, snap, *controls(tmp_path, 3.7))
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert code == 1 and not summary["controls_valid"] and summary["signals"] == 0
+    assert summary["controls_required_missed"] == ["100.01"]
+
+
+def test_production_search_needs_threshold_and_controls(tmp_path, monkeypatch):
+    targets, snap = cli_star(tmp_path, monkeypatch)
+    with pytest.raises(SystemExit, match="--threshold"):
+        main(["search", "--targets", str(targets), "--catalogs", str(snap), "--production"])
+    with pytest.raises(SystemExit, match="exclude each other"):
+        main(
+            [
+                "search",
+                "--targets",
+                str(targets),
+                "--catalogs",
+                str(snap),
+                "--scramble",
+                "1",
+                "--threshold",
+                "x",
+            ]
+        )
+
+
+def test_search_code_covers_the_search_path():
+    assert {"search.py", "detrend.py", "scramble.py", "recovery.py", "targets.py"} <= set(
+        SEARCH_CODE
+    )
+
+
+def search_job(tmp_path, star, control=False, crit=None):
+    crit = crit or load_criteria(relaxed_criteria(tmp_path))
+    job = {
+        "star": star,
+        "control": control,
+        "known": [],
+        "criteria": crit.values,
+        "search": CFG,
+        "scramble": None,
+    }
+    return search_module._search_job(job)
 
 
 def test_search_job_records_a_bad_star_row(tmp_path, monkeypatch):
     monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path))
     make_lc(sectors=(1,), tic=5).save(tmp_path / "lc" / "5.npz")
-    crit = load_criteria(ROOT / "criteria" / "search-v1.toml")
-    status, signals = search_module._search_job(
-        ({"tic": 5, "rad": "not a number"}, [], crit["detrend"], CFG)
-    )
+    crit = load_criteria(ROOT / "criteria" / "search-v2.toml")
+    status, signals = search_job(tmp_path, {"tic": 5, "rad": "not a number"}, crit=crit)
     assert status["status"] == "error" and status["error"].startswith("ValueError")
     assert signals == []
+
+
+def test_a_nonfinite_top_sde_is_never_ok(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path))
+    make_lc(tic=5, **PLANET_LC).save(tmp_path / "lc" / "5.npz")
+    real = search_module._bls_spectrum
+    monkeypatch.setattr(
+        search_module,
+        "_bls_spectrum",
+        lambda *args: {**real(*args), "power": np.full(len(args[1]), np.nan)},
+    )
+    status, signals = search_job(tmp_path, {"tic": 5})
+    assert status["status"] == "nonfinite_sde" and signals == []
+    assert status["n_bins"] >= CFG["min_points"] and math.isnan(status["top_sde"])
+
+
+def test_too_few_bins_make_a_too_few_points_star(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path))
+    lc = make_lc(sectors=(1,), cadence_min=2.0, noise_ppm=300.0, tic=5)
+    lc.select(lc.time < lc.time[0] + 3.0).save(tmp_path / "lc" / "5.npz")
+    # A control skips the coverage rule, so one short sector reaches the search.
+    status, signals = search_job(tmp_path, {"tic": 5}, control=True)
+    assert status["status"] == "too_few_points" and signals == []
+    assert status["n_points"] >= CFG["min_points"] > status["n_bins"]
 
 
 def sinusoid(lc, period, amplitude_ppm):
@@ -188,6 +367,32 @@ def test_single_eclipse_never_becomes_a_signal(seed):
     assert result.few_transits >= 1 and not result.budget_exhausted
     assert all(s.n_transits >= CFG["min_transits"] for s in result.signals)
     assert found(result.signals, 3.7, 1326.1)
+
+
+def third_transit_with(binned_points: int):
+    """Three 3-hour transits on one sector; the third keeps only the given number of 30-minute bins."""
+    centre = 1346.01
+    lc = make_lc(sectors=(1,), noise_ppm=300.0, signals=[(8.5, 1329.01, 0.125, 2000e-6)], seed=1)
+    near = np.abs(lc.time - centre) < 0.5
+    # Nothing else within half a day, so the box at the third transit holds only the kept cadences;
+    # an hour apart, they never share a bin.
+    offsets = (0.0,) if binned_points == 1 else (-0.5 / 24, 0.5 / 24)
+    kept = [int(np.argmin(np.abs(lc.time - (centre + o)))) for o in offsets]
+    near[kept] = False
+    lc = lc.select(~near)
+    binned = bin_lightcurve(lc, CFG["bin_minutes"])
+    assert (np.abs(binned.time - centre) < 0.0625).sum() == binned_points
+    return lc
+
+
+def test_a_transit_on_data_needs_two_binned_points():
+    assert CFG["min_points_per_transit"] == 2
+    one, two = (search_star(third_transit_with(n), 1.0, 1.0, CFG) for n in (1, 2))
+    # The planet is the first peak both times (the grid steps 0.024 d near 8.5 d); with one bin its
+    # third transit does not count.
+    assert abs(one.top_period - 8.5) < 0.05 and abs(two.top_period - 8.5) < 0.05
+    assert one.few_transits >= 1 and not found(one.signals, 8.5, 1329.01, 0.125)
+    assert found(two.signals[:1], 8.5, 1329.01, 0.125) and two.signals[0].n_transits == 3
 
 
 def test_few_transit_peak_is_masked_and_the_search_retried(monkeypatch):

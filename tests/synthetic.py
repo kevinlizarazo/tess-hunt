@@ -181,3 +181,21 @@ def make_transit_lc(
     )
     lc.flux = lc.flux * model
     return lc
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def relaxed_criteria(tmp_path: Path) -> Path:
+    """search-v2.toml with sample A's coverage rule relaxed so a three-sector synthetic star counts."""
+    text = (ROOT / "criteria" / "search-v2.toml").read_text()
+    for old, new in (
+        ("min_sectors = 4", "min_sectors = 3"),
+        ("recent_sector_min = 97", "recent_sector_min = 1"),
+        ("recent_sector_max = 107", "recent_sector_max = 3"),
+    ):
+        assert old in text
+        text = text.replace(old, new)
+    path = tmp_path / "search.toml"
+    path.write_text(text)
+    return path

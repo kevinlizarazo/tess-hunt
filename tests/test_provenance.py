@@ -143,3 +143,9 @@ def test_resume_refuses_a_finished_run(repo, tmp_path):
     run.finish()
     with pytest.raises(ResumeError, match="finished"):
         resume(repo, tmp_path, run)
+
+
+def test_record_adds_a_field(repo, tmp_path):
+    run = start(repo, tmp_path, production=False)
+    run.record("scramble", 7)
+    assert json.loads((run.path / "provenance.json").read_text())["scramble"] == 7

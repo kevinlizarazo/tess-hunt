@@ -87,6 +87,10 @@ class Run:
         }
         self._save()
 
+    def record(self, key: str, value: Any) -> None:
+        self.provenance[key] = value
+        self._save()
+
     def finish(self, **summary: Any) -> None:
         self.provenance["ended_at"] = _now().isoformat()
         self.provenance["summary"] = summary

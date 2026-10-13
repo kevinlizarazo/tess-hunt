@@ -143,13 +143,24 @@ def load_known(snapshot: Path) -> pd.DataFrame:
     return pd.concat(parts, ignore_index=True)[KNOWN_COLUMNS]
 
 
-def known_ephemerides(known: pd.DataFrame, tic: int, fallback_duration: float) -> list[Ephemeris]:
+def snapshot_inputs(snapshot: Path) -> dict[str, Path]:
+    """The files that identify a snapshot in a run's provenance."""
+    if (snapshot / "known.parquet").exists():
+        return {"known": snapshot / "known.parquet", "catalog_manifest": snapshot / "manifest.json"}
+    return {name: snapshot / name for name in FILES.values()}
+
+
+def known_ephemerides(
+    known: pd.DataFrame, tic: int, fallback_duration: float, sources: tuple[str, ...] | None = None
+) -> list[Ephemeris]:
     rows = known[
         (known["tic"] == tic)
         & np.isfinite(known["period"])
         & (known["period"] > 0)
         & np.isfinite(known["t0"])
     ]
+    if sources is not None:
+        rows = rows[rows["source"].isin(sources)]
     return [
         Ephemeris(
             float(r.period),

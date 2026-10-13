@@ -52,4 +52,4 @@ control should pass the file's full-precision values.
 
 `compare_replay.py` regenerates a replay comparison, `results/benchmarks/<replay run id>-comparison.md`, from the
 replayed run's published `injections.csv` and the replay's, run from the repository root:
-`uv run python benchmarks/compare_replay.py OLD_CSV NEW_CSV > out.md`.
+`uv run python benchmarks/compare_replay.py OLD_CSV NEW_CSV > results/benchmarks/<replay run id>-comparison.md`.

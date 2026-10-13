@@ -12,6 +12,7 @@ from tess_hunt.catalogs import (
     normalise_archive,
     normalise_ctoi,
     normalise_toi,
+    snapshot_inputs,
 )
 
 TOI_CSV = (
@@ -128,3 +129,48 @@ def test_known_ephemerides_skip_rows_without_period_and_fill_duration():
     )
     ephs = known_ephemerides(known, 5, fallback_duration=0.25)
     assert len(ephs) == 1 and ephs[0].period == 2.0 and ephs[0].duration == 0.25
+
+
+def test_known_ephemerides_can_keep_only_mask_sources():
+    known = pd.DataFrame(
+        [
+            {
+                "source": "TOI",
+                "name": "TOI-1.01",
+                "tic": 1,
+                "ra": 0.0,
+                "dec": 0.0,
+                "period": 3.0,
+                "t0": 100.0,
+                "duration": 0.1,
+                "depth_ppm": 500.0,
+            },
+            {
+                "source": "SPOC-TCE",
+                "name": "t",
+                "tic": 1,
+                "ra": 0.0,
+                "dec": 0.0,
+                "period": 7.0,
+                "t0": 101.0,
+                "duration": 0.1,
+                "depth_ppm": 500.0,
+            },
+        ]
+    )
+    ephs = known_ephemerides(known, 1, 0.25, sources=("TOI", "CTOI", "archive"))
+    assert [e.period for e in ephs] == [3.0]
+
+
+def test_snapshot_inputs_follow_the_snapshot_version(tmp_path):
+    v1 = write_catalog_snapshot(tmp_path / "v1")
+    assert snapshot_inputs(v1) == {
+        name: v1 / name for name in ("toi.csv", "ctoi.csv", "pscomppars.csv")
+    }
+    v2 = tmp_path / "v2"
+    v2.mkdir()
+    (v2 / "known.parquet").touch()
+    assert snapshot_inputs(v2) == {
+        "known": v2 / "known.parquet",
+        "catalog_manifest": v2 / "manifest.json",
+    }

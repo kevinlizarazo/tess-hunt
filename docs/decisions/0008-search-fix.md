@@ -61,7 +61,11 @@ candidates.
     `test_repeat_periods_agree_with_ephemeris_match_at_the_boundary`,
     `test_sde_statistics_leave_out_the_excluded_periods`;
   - transits on data: `test_single_eclipse_never_becomes_a_signal`,
-    `test_few_transit_peak_is_masked_and_the_search_retried`, `test_retry_budget_ends_a_search_of_few_transit_peaks`;
-  - non-finite SDE: `test_nan_sde_stops_the_search`;
+    `test_few_transit_peak_is_masked_and_the_search_retried`, `test_retry_budget_ends_a_search_of_few_transit_peaks`,
+    `test_a_transit_on_data_needs_two_binned_points`;
+  - non-finite SDE: `test_nan_sde_stops_the_search`, `test_a_nonfinite_top_sde_is_never_ok`;
   - TLS: `test_only_bls_is_searched`;
-  - recorded fields: `test_search_reports_its_diagnostics`.
+  - recorded fields: `test_search_reports_its_diagnostics`, and per searched star in the search stage's
+    `stars.parquet`: `test_search_cli_writes_signals_and_records_missing_stars`.
+- Recorded fields in the benchmark rows: `test_replay_injects_the_listed_planets` in
+  [tests/test_benchmark.py](../../tests/test_benchmark.py).
