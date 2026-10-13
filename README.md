@@ -25,7 +25,9 @@ and `unzip` on PATH.
 
 Light curves are read anonymously from the public TESS bucket on AWS (`s3://stpubdata`) and cached in
 `$TESS_HUNT_DATA` (default `~/.cache/tess-hunt`). Stellar parameters come from the TIC via MAST, and known planets and
-candidates from ExoFOP and the NASA Exoplanet Archive, all without credentials.
+candidates from ExoFOP and the NASA Exoplanet Archive, all without credentials. Pixel vetting keeps
+transit-diffImage's difference images (pickle files) and records their sha256; transit-diffImage deletes the TESScut
+cutouts it builds them from.
 
 ## Licenses
 

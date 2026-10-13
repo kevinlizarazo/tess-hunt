@@ -66,9 +66,10 @@ star. A short script wrote the file from the snapshot and `mast.discover`, not b
 - TOI-1399.01 (TIC 66783360), `expected = pass`: TESS disposition PC, TFOPWG disposition FP, with its centroid offset
   on another star in SPOC's sector 57 search.
 
-In the M2 design's probe, LEO-Vetter's pixel test put most sectors of the first two at about 21" to 25" from the
-target. TOI-1399.01's offset was about 11", below the published 15" rule (`[pixels]` `max_offset_arcsec` in
-`criteria/triage-v1.toml`), so it passes the check: it is the rule's recorded miss.
+TOI-1399.01 is the published offset rule's recorded miss (`[pixels]` `max_offset_arcsec` in
+`criteria/triage-v1.toml`): a nearby-star false positive whose offset the M2 design expects to fall inside the rule,
+so its row expects a pass. The offsets are measured by the pixel control run (Task 18 of the M2 plan), which is
+published; none are quoted here.
 
 No `tess-hunt` stage reads the file; only the pixel tests do.
 
