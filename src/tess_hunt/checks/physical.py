@@ -1,10 +1,12 @@
-"""Checks on the fitted transit: is it grazing, and does its duration fit the star?"""
+"""Checks on the fitted transit: is it grazing, does its duration fit the star, how big is it?"""
 
 import numpy as np
 
 from tess_hunt.checks import CheckResult, failed, inconclusive, passed
 from tess_hunt.fit import FitResult
 from tess_hunt.transit import RHO_SUN_GCC
+
+R_EARTH_PER_R_SUN = 109.076
 
 
 def shape(fit: FitResult, max_grazing_probability: float) -> CheckResult:
@@ -79,3 +81,17 @@ def density(
             **evidence,
         )
     return passed("density", f"transit and TIC densities agree ({tension:.1f} sigma)", **evidence)
+
+
+def radius(fit: FitResult, rad_tic_solar: float | None, max_rearth: float) -> CheckResult:
+    if not (rad_tic_solar is not None and np.isfinite(rad_tic_solar) and rad_tic_solar > 0):
+        return inconclusive("radius", "the TIC gives no stellar radius")
+    rp_rs = fit.column("rp_rs")
+    if len(rp_rs) == 0 or not np.isfinite(rp_rs).all():
+        return inconclusive("radius", "the Rp/R* posterior is empty or has non-finite samples")
+    median = float(np.median(rp_rs))
+    rp = median * rad_tic_solar * R_EARTH_PER_R_SUN
+    evidence = {"rp_rearth": rp, "rp_rs_median": median, "rad_tic": float(rad_tic_solar)}
+    if rp > max_rearth:
+        return failed("radius", f"{rp:.1f} Earth radii, above {max_rearth:g}", **evidence)
+    return passed("radius", f"{rp:.1f} Earth radii", **evidence)

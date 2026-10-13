@@ -106,3 +106,17 @@ def test_vet_v1s_symmetric_density_error_still_fails_the_long_tail():
     assert result.outcome is Outcome.FAIL, result.evidence
     minus, plus = result.evidence["fit_log_rho_minus"], result.evidence["fit_log_rho_plus"]
     assert result.evidence["fit_log_rho_sd"] == pytest.approx((minus + plus) / 2)
+
+
+from tess_hunt.checks.physical import radius  # noqa: E402
+
+
+def test_radius_negative_control_eclipsing_binary_fails():
+    result = radius(fake_fit(rp_rs=0.6), 1.0, 22.0)
+    assert result.outcome is Outcome.FAIL and result.evidence["rp_rearth"] > 60
+
+
+def test_radius_of_a_planet_passes_and_missing_tic_radius_is_inconclusive():
+    assert radius(fake_fit(rp_rs=0.03), 1.0, 22.0).outcome is Outcome.PASS
+    assert radius(fake_fit(), float("nan"), 22.0).outcome is Outcome.INCONCLUSIVE
+    assert radius(fake_fit(), None, 22.0).outcome is Outcome.INCONCLUSIVE

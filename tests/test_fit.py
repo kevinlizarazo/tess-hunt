@@ -11,8 +11,8 @@ from tess_hunt.ephemeris import Ephemeris, in_transit, phase_days
 from tess_hunt.fit import fit_transit
 
 FIT = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v2.toml")["fit"]
-CFG = {**FIT, "max_rp_rs": 0.5, "steps": 3000, "burn": 1500}
-SMALL = {**FIT, "max_rp_rs": 0.5, "walkers": 16, "steps": 200, "burn": 100}
+CFG = {**FIT, "steps": 3000, "burn": 1500}
+SMALL = {**FIT, "walkers": 16, "steps": 200, "burn": 100}
 
 
 @pytest.mark.slow
@@ -87,3 +87,11 @@ def test_fit_whose_walkers_never_move_raises():
     white_dwarf_prior = (6.0, 0.1)
     with pytest.raises(ValueError, match="acceptance"):
         fit_transit(lc, Ephemeris(5.0, 1326.1, 0.13, 0.0008), SMALL, white_dwarf_prior, seed=1)
+
+
+@pytest.mark.slow
+def test_deep_eclipse_is_not_pinned_at_the_bound():
+    lc = make_transit_lc(rp_rs=0.6, b=0.0, noise_ppm={1: 600.0, 2: 600.0, 64: 150.0})
+    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.3, 0.3), CFG, seed=3)
+    rp_rs = fit.column("rp_rs")
+    assert np.median(rp_rs) > 0.52 and np.mean(rp_rs > 0.495) > 0.5

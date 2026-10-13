@@ -203,3 +203,24 @@ def test_with_red_noise_scales_each_sectors_errors():
         noisy.flux_err / lc.flux_err, np.select([lc.sector == 1, lc.sector == 2], [2.0, 1.5], 1.0)
     )
     assert np.array_equal(noisy.flux, lc.flux) and np.allclose(lc.flux_err, 300e-6)
+
+
+from tess_hunt.checks.photometry import signal_present  # noqa: E402
+
+
+def test_signal_present_passes_a_planet():
+    lc = make_lc(sectors=(1, 2), noise_ppm=300.0, signals=[PLANET], seed=13)
+    result = signal_present(lc, EPH, 0.5, 7.0, 5)
+    assert result.outcome is Outcome.PASS and result.evidence["snr"] > 20
+
+
+def test_signal_present_negative_control_noise_is_inconclusive():
+    lc = make_lc(sectors=(1, 2, 3, 4, 5, 6, 7, 8, 9), noise_ppm=300.0, seed=14)
+    result = signal_present(lc, Ephemeris(4.21, 1327.3, 0.12), 0.5, 7.0, 5)
+    assert result.outcome is Outcome.INCONCLUSIVE and abs(result.evidence["snr"]) < 7.0
+
+
+def test_signal_present_without_cadences_is_inconclusive():
+    lc = make_lc(sectors=(1,), seed=15)
+    result = signal_present(lc.select(lc.time > 5000), EPH, 0.5, 7.0, 5)
+    assert result.outcome is Outcome.INCONCLUSIVE

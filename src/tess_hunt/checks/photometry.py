@@ -1,4 +1,4 @@
-"""Light-curve checks: odd and even depths, secondary eclipse, depth by sector."""
+"""Light-curve checks: a dip at all, odd and even depths, secondary eclipse, depth by sector."""
 
 from dataclasses import replace
 
@@ -67,6 +67,27 @@ def box_depth(time, flux, err, eph: Ephemeris, fraction: float) -> tuple[float, 
         return float("nan"), float("nan"), 0
     w = 1.0 / err[inside] ** 2
     return float(1.0 - np.sum(w * flux[inside]) / np.sum(w)), float(1.0 / np.sqrt(np.sum(w))), n
+
+
+def signal_present(
+    lc: LightCurve, eph: Ephemeris, core_fraction: float, min_snr: float, min_points: int
+) -> CheckResult:
+    """Is there a dip at this ephemeris at all? The depth checks compare depths and pass when there is
+    nothing to compare (the M1 final review's R9), so they are judged alongside this one."""
+    depth, err, n = box_depth(lc.time, lc.flux, lc.flux_err, eph, core_fraction)
+    snr = depth / err if n else float("nan")
+    evidence = {"depth": depth, "err": err, "snr": snr, "n": n}
+    if n < min_points:
+        return inconclusive(
+            "signal_present", f"fewer than {min_points} in-transit cadences", **evidence
+        )
+    if not np.isfinite(snr):
+        return inconclusive("signal_present", "statistic is not finite", **evidence)
+    if snr < min_snr:
+        return inconclusive(
+            "signal_present", f"combined depth is {snr:.1f} sigma, below {min_snr:g}", **evidence
+        )
+    return passed("signal_present", f"combined depth is {snr:.1f} sigma", **evidence)
 
 
 def odd_even(

@@ -63,7 +63,7 @@ def fit_transit(
         if not (
             abs(t0 - eph.t0) < 0.5 * eph.duration
             and abs(period - eph.period) < 0.01 * eph.period
-            and 0.001 < rp_rs < 0.5
+            and 0.001 < rp_rs < cfg["max_rp_rs"]
             and 0.0 <= b < 1.0 + rp_rs
             and -3.0 < log_rho < 2.0
             and 0.0 < q1 < 1.0
@@ -89,8 +89,8 @@ def fit_transit(
         [
             eph.t0,
             eph.period,
-            # An eclipse deeper than 25% would start every walker beyond the rp_rs < 0.5 bound.
-            np.clip(np.sqrt(depth), 0.002, 0.45),
+            # An eclipse deeper than the bound allows would start every walker outside the prior.
+            np.clip(np.sqrt(depth), 0.002, 0.9 * cfg["max_rp_rs"]),
             0.3,
             rho_prior[0] if rho_prior else start_log_rho,
             0.36,

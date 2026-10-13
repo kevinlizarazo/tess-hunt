@@ -16,9 +16,10 @@ from tess_hunt.checks.photometry import (
     red_noise_beta,
     secondary,
     sector_depths,
+    signal_present,
     with_red_noise,
 )
-from tess_hunt.checks.physical import density, shape
+from tess_hunt.checks.physical import density, radius, shape
 from tess_hunt.config import lc_dir, load_criteria
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
@@ -41,9 +42,16 @@ VET_V1_CODE_VALUES = {
         "refit_points": 801,
         "refit_duration_factors": [0.75, 1.0, 1.25],
     },
-    "fit": {"min_points": 20, "min_acceptance": 0.01},
+    "fit": {"min_points": 20, "min_acceptance": 0.01, "max_rp_rs": 0.5},
     "novelty": {"inconclusive_kinds": []},
 }
+
+
+def _number(value) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
 
 
 def with_v1_code_values(crit_vet: dict) -> dict:
@@ -131,6 +139,18 @@ def vet_signal(
         ),
         holdout(noisy, eph, crit_vet["holdout"], core),
     ]
+    # vet-v1 has neither section, so M1's vets keep their seven checks (decisions 0017 and 0018).
+    if "signal_present" in crit_vet:
+        results.append(
+            signal_present(
+                noisy,
+                eph,
+                core,
+                crit_vet["signal_present"]["min_snr"],
+                crit_vet["signal_present"]["min_points"],
+            )
+        )
+    with_radius = "radius" in crit_vet
     fit = None
     try:
         fit = fit_transit(flat, eph, crit_vet["fit"], rho_prior=None, seed=seed)
@@ -139,6 +159,8 @@ def vet_signal(
             inconclusive("shape", f"no fit: {exc}"),
             inconclusive("density", f"no fit: {exc}"),
         ]
+        if with_radius:
+            results.append(inconclusive("radius", f"no fit: {exc}"))
     if fit is not None:
         results += [
             shape(fit, crit_vet["shape"]["max_grazing_probability"]),
@@ -151,6 +173,8 @@ def vet_signal(
                 symmetric_error=v1,
             ),
         ]
+        if with_radius:
+            results.append(radius(fit, _number(star.get("rad")), crit_vet["radius"]["max_rearth"]))
     report = {
         "tic": tic,
         "ephemeris": asdict(eph),
@@ -204,7 +228,7 @@ def cmd(args) -> int:
     if fit is not None:
         np.savez_compressed(run.path / "fit_samples.npz", samples=fit.samples)
     for c in report["checks"]:
-        print(f"{c['check']:13s} {c['outcome']:13s} {c['reason']}")
+        print(f"{c['check']:14s} {c['outcome']:13s} {c['reason']}")
     print(f"advances: {report['advances']} -> {run.path}")
     run.finish(
         advances=report["advances"], outcomes={c["check"]: c["outcome"] for c in report["checks"]}
