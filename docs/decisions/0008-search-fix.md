@@ -69,3 +69,6 @@ candidates.
     `stars.parquet`: `test_search_cli_writes_signals_and_records_missing_stars`.
 - Recorded fields in the benchmark rows: `test_replay_injects_the_listed_planets` in
   [tests/test_benchmark.py](../../tests/test_benchmark.py).
+- Triage's LEO-Vetter calls a sinusoidal variable's dip a false alarm at its own period and at four times it:
+  `test_leo_sinusoid_is_false_alarm` and `test_leo_sinusoid_at_four_times_its_period_is_false_alarm` in
+  [tests/test_leo.py](../../tests/test_leo.py).
