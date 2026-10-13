@@ -30,6 +30,7 @@ from tess_hunt.threshold import (
     check_reproducible,
     check_search,
     cmd_threshold,
+    load_v2_catalog,
 )
 
 STEPS = ("novelty", "leo_flux", "pixels")
@@ -174,18 +175,6 @@ def _refuse(args, search_prov: dict, threshold: dict, crit_triage: Criteria) -> 
     return crit_search
 
 
-def _novelty_catalog(snapshot: Path) -> pd.DataFrame:
-    # A v1 snapshot holds only TOIs, CTOIs and archive planets, so a signal SPOC or a binary catalog
-    # already has would pass novelty as new.
-    if not (snapshot / "known.parquet").exists():
-        raise SystemExit(f"--catalogs {snapshot.name} is not a v2 snapshot (no known.parquet)")
-    known = load_known(snapshot)
-    missing = sorted({"tce", "eb"} - set(known["kind"]))
-    if missing:
-        raise SystemExit(f"--catalogs {snapshot.name} has no rows of kind {', '.join(missing)}")
-    return known
-
-
 def _counts(table: pd.DataFrame, leo_unknown: Counter) -> dict:
     reached = table["novelty"].eq("pass") & table["leo_flux"].eq("pass")
 
@@ -278,7 +267,7 @@ def cmd_run(args) -> int:
     threshold = read_threshold(args.threshold / "threshold.json")
     crit_triage = load_criteria(args.criteria_triage)
     crit_search = _refuse(args, search_prov, threshold, crit_triage)
-    known = _novelty_catalog(args.catalogs)
+    known = load_v2_catalog(args.catalogs)
     value = float(threshold["threshold"])
     signals = pd.read_parquet(args.search / "signals.parquet")
     # With no signals at all the column is empty object dtype, which `~` cannot negate.

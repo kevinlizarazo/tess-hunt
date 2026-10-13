@@ -3,9 +3,12 @@
 
 [threshold]
 # The null threshold (decision 0019): the highest SDE among scrambled signals that pass LEO-Vetter's
-# false-alarm tests, after dropping null signals that match a known object on their own star.
+# false-alarm tests, after two exclusions: null signals that match a known object of any kind on their
+# own star at one of exclude_harmonics, and every null signal on a star that hosts a catalogued object of
+# one of exclude_host_kinds (stars with only TCEs stay).
 rule = "null_max_after_leo_fa"
 exclude_harmonics = [1.0, 0.5, 2.0, 0.3333333333333333, 3.0]
+exclude_host_kinds = ["planet", "candidate", "community", "eb"]
 batch = 200
 report_top = 20
 

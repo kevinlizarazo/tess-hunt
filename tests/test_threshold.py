@@ -387,23 +387,18 @@ def null_run(tmp_path, monkeypatch):
     return targets, mask, only_run(tmp_path, "search")
 
 
-def triage_snapshot(tmp_path, mask):
-    """The mask snapshot's rows plus a catalogued binary on star 11 at the planet's period."""
-    eb = {
-        "source": "Prsa2022",
-        "kind": "eb",
-        "name": "EB-11",
-        "tic": 11,
-        "ra": 10.0,
-        "dec": -60.0,
-        "period": 3.7,
-        "t0": 1326.1,
-        "duration": 0.12,
-        "depth_ppm": 1500.0,
-    }
+def triage_snapshot(tmp_path, mask, kind="tce"):
+    """The mask snapshot's rows, a catalogued object of `kind` on star 11 at the planet's period, and a
+    TCE and a binary on stars outside the sample, so the snapshot holds both as a v2 snapshot does."""
+    base = {"ra": 10.0, "dec": -60.0, "t0": 1326.1, "duration": 0.12, "depth_ppm": 1500.0}
+    rows = [
+        {**base, "source": "catalog", "kind": kind, "name": f"{kind}-11", "tic": 11, "period": 3.7},
+        {**base, "source": "catalog", "kind": "tce", "name": "far TCE", "tic": 995, "period": 4.5},
+        {**base, "source": "catalog", "kind": "eb", "name": "far EB", "tic": 996, "period": 5.5},
+    ]
     snap = tmp_path / "triage-snap"
     snap.mkdir()
-    known = pd.concat([load_known(mask), pd.DataFrame([eb])], ignore_index=True)
+    known = pd.concat([load_known(mask), pd.DataFrame(rows)], ignore_index=True)
     known[KNOWN_COLUMNS].to_parquet(snap / "known.parquet")
     (snap / "manifest.json").write_text("{}\n")
     return snap
@@ -414,16 +409,16 @@ def only_run(tmp_path, stage):
     return run
 
 
-def threshold_cli(tmp_path, targets, mask, null, *extra):
+def threshold_cli(tmp_path, targets, mask, null, *extra, kind="tce"):
     argv = ["triage", "threshold", "--null", str(null), "--targets", str(targets)]
-    argv += ["--catalogs", str(triage_snapshot(tmp_path, mask)), "--mask-catalogs", str(mask)]
+    argv += ["--catalogs", str(triage_snapshot(tmp_path, mask, kind)), "--mask-catalogs", str(mask)]
     assert main([*argv, "--workers", "1", *extra]) == 0
     run = only_run(tmp_path, "threshold")
     return json.loads((run / "threshold.json").read_text()), run
 
 
 def kept_signals(null):
-    """The null's signals less star 11's leftovers of its catalogued 3.7 d binary."""
+    """The null's signals less star 11's leftovers of its catalogued 3.7 d object."""
     signals = pd.read_parquet(null / "signals.parquet")
     near = (signals["tic"] == 11) & signals["period"].map(lambda p: harmonic_of(p, 3.7))
     return signals[~near], int(near.sum())
@@ -442,6 +437,11 @@ def test_threshold_cli_drops_known_objects_and_traces_the_threshold_row(tmp_path
     result, run = threshold_cli(tmp_path, targets, mask, null)
     kept, near = kept_signals(null)
     assert result["excluded"] == near >= 1
+    # Star 11's only catalogued object is a TCE, so it stays in the null and can set the threshold.
+    assert (result["excluded_host_stars"], result["excluded_host_signals"]) == (0, 0)
+    dropped = pd.read_parquet(run / "null_dropped.parquet")
+    assert list(dropped["reason"]) == ["harmonic"] * near
+    assert set(dropped["detail"]) == {"tce-11"} and set(dropped["tic"]) == {11}
     assert result["evaluated"] == len(kept) == len(calls)
     assert len(pd.read_parquet(run / "null_leo.parquet")) == len(kept)
     # Every null signal survives here, so the highest one sets the threshold.
@@ -477,6 +477,56 @@ def test_threshold_cli_drops_known_objects_and_traces_the_threshold_row(tmp_path
     assert provenance["summary"]["threshold"] == result["threshold"]
     assert provenance["inputs"]["null_signals"]["sha256"] == sha256_file(null / "signals.parquet")
     assert all_thresholds(tmp_path / "data" / "runs") == [result]
+
+
+@pytest.mark.parametrize("kind", ["planet", "candidate", "community", "eb"])
+def test_threshold_cli_drops_every_signal_on_a_star_that_hosts_a_catalogued_object(
+    tmp_path, monkeypatch, kind
+):
+    targets, mask, null = null_run(tmp_path, monkeypatch)
+    judged = []
+
+    def outcome(star, eph):
+        judged.append(int(star["tic"]))
+        return LeoOutcome("PC"), "planet candidate"
+
+    monkeypatch.setattr(threshold_module, "leo_flux", fake_leo(outcome))
+    result, run = threshold_cli(tmp_path, targets, mask, null, kind=kind)
+    signals = pd.read_parquet(null / "signals.parquet")
+    host = signals[signals["tic"] == 11]
+    noise = signals[signals["tic"] == 12]
+    _, near = kept_signals(null)
+    assert 1 <= near < len(host) and len(noise) >= 1
+    # Star 11's leftovers at its object's period count once, under the harmonic exclusion; the rest of its
+    # signals count as host signals.
+    assert result["excluded"] == near
+    assert (result["excluded_host_stars"], result["excluded_host_signals"]) == (
+        1,
+        len(host) - near,
+    )
+    assert sorted(judged) == [12] * len(noise) and result["evaluated"] == len(noise)
+    # Only star 12 is left in the null; its noise peaks are below the floor.
+    assert (result["n_null_stars"], result["n_sample"], result["expected_false_alarms"]) == (
+        1,
+        2,
+        2.0,
+    )
+    assert result["floor_used"] is True and result["threshold_row"]["tic"] == 12
+    dropped = pd.read_parquet(run / "null_dropped.parquet")
+    assert list(dropped.columns) == ["tic", "rank", "period", "sde", "reason", "detail"]
+    assert sorted(dropped["rank"]) == sorted(host["rank"]) and set(dropped["tic"]) == {11}
+    assert dropped["reason"].value_counts().to_dict() == {
+        "harmonic": near,
+        "host": len(host) - near,
+    }
+    assert set(dropped.loc[dropped["reason"] == "harmonic", "detail"]) == {f"{kind}-11"}
+    assert set(dropped.loc[dropped["reason"] == "host", "detail"]) == {kind}
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert (summary["excluded_host_stars"], summary["excluded_host_signals"]) == (
+        1,
+        len(host) - near,
+    )
+    assert summary["n_null_stars"] == 1
 
 
 def test_threshold_cli_counts_unjudged_signals_and_keeps_the_floor(tmp_path, monkeypatch, capsys):
@@ -556,7 +606,8 @@ def null_provenance(tmp_path, monkeypatch, change=None):
         change(provenance)
     (null / "provenance.json").write_text(json.dumps(provenance))
     argv = ["triage", "threshold", "--null", str(null), "--targets", str(targets)]
-    return [*argv, "--catalogs", str(mask), "--mask-catalogs", str(mask), "--workers", "1"]
+    argv += ["--catalogs", str(triage_snapshot(tmp_path, mask)), "--mask-catalogs", str(mask)]
+    return [*argv, "--workers", "1"]
 
 
 def null_tables(tmp_path, signal_tics, lc_sha256):
@@ -583,6 +634,31 @@ def null_tables(tmp_path, signal_tics, lc_sha256):
 def test_threshold_cli_refuses_a_null_it_cannot_reproduce(tmp_path, monkeypatch, change, message):
     with pytest.raises(SystemExit, match=message):
         main(null_provenance(tmp_path, monkeypatch, change))
+    assert not (tmp_path / "data" / "runs").exists()
+
+
+def drop_eb_rows(tmp_path):
+    known = pd.read_parquet(tmp_path / "triage-snap" / "known.parquet")
+    known[known["kind"] != "eb"].to_parquet(tmp_path / "triage-snap" / "known.parquet")
+
+
+@pytest.mark.parametrize(
+    ("catalogs", "change", "message"),
+    [
+        # The v1 mask snapshot: TOIs, CTOIs and archive planets only, so no binary star is a host.
+        ("mask", lambda tmp_path: None, "mask is not a v2 snapshot"),
+        ("triage-snap", drop_eb_rows, "no rows of kind eb"),
+    ],
+)
+def test_threshold_cli_refuses_catalogs_without_tce_or_binary_rows(
+    tmp_path, monkeypatch, catalogs, change, message
+):
+    argv = null_provenance(tmp_path, monkeypatch)
+    null_tables(tmp_path, [5], {5: "0" * 64})
+    change(tmp_path)
+    argv[argv.index("--catalogs") + 1] = str(tmp_path / catalogs)
+    with pytest.raises(SystemExit, match=message):
+        main(argv)
     assert not (tmp_path / "data" / "runs").exists()
 
 

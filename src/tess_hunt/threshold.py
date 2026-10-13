@@ -275,6 +275,19 @@ def check_light_curves(
         )
 
 
+def load_v2_catalog(snapshot: Path) -> pd.DataFrame:
+    # A v1 snapshot holds only TOIs, CTOIs and archive planets: triage's novelty would pass a signal SPOC
+    # or a binary catalog already has as new, and the threshold would keep catalogued binaries' null
+    # signals.
+    if not (snapshot / "known.parquet").exists():
+        raise SystemExit(f"--catalogs {snapshot.name} is not a v2 snapshot (no known.parquet)")
+    known = load_known(snapshot)
+    missing = sorted({"tce", "eb"} - set(known["kind"]))
+    if missing:
+        raise SystemExit(f"--catalogs {snapshot.name} has no rows of kind {', '.join(missing)}")
+    return known
+
+
 def cmd_threshold(args) -> int:
     null_prov = json.loads((args.null / "provenance.json").read_text())
     if null_prov["ended_at"] is None or null_prov.get("scramble") is None:
@@ -286,11 +299,26 @@ def cmd_threshold(args) -> int:
     signals = pd.read_parquet(args.null / "signals.parquet")
     # With no signals at all the column is empty object dtype, which `~` cannot negate.
     signals = signals[~signals["control"].astype(bool)].reset_index(drop=True)
-    known = load_known(args.catalogs)
+    known = load_v2_catalog(args.catalogs)
     signals["excluded_by"] = exclude_known(
         signals, known, tuple(cfg["exclude_harmonics"]), crit_search["match"]["sigma_p"]
     )
-    candidates = signals[signals["excluded_by"] == ""]
+    # The scramble can leave a real object's transits evenly spaced by chance at a period no harmonic
+    # matches, so every null signal on a star that hosts a catalogued object of these kinds is dropped. A
+    # signal both rules drop counts under the harmonic exclusion, which is recorded first, so `excluded`
+    # keeps its meaning and the host counts give what the host rule adds.
+    hosts = (
+        known[known["kind"].isin(cfg["exclude_host_kinds"])]
+        .groupby("tic")["kind"]
+        .agg(lambda kinds: ", ".join(sorted(set(kinds))))
+    )
+    harmonic = signals["excluded_by"] != ""
+    on_host = ~harmonic & signals["tic"].isin(hosts.index)
+    dropped = signals.loc[harmonic | on_host, ["tic", "rank", "period", "sde"]].assign(
+        reason=harmonic.map({True: "harmonic", False: "host"}),
+        detail=signals["excluded_by"].where(harmonic, signals["tic"].map(hosts)),
+    )
+    candidates = signals[~(harmonic | on_host)]
     if candidates.empty:
         raise SystemExit(f"{args.null.name} leaves no null signal to judge")
     # A refetch since the null also changes the scramble's order.
@@ -305,6 +333,7 @@ def cmd_threshold(args) -> int:
     run.record_input("targets", args.targets)
     for name, path in snapshot_inputs(args.catalogs).items():
         run.record_input(name, path)
+    dropped.to_parquet(run.path / "null_dropped.parquet", index=False)
     masks = load_known(args.mask_catalogs)
     mask_sources = tuple(crit_search["detrend"]["mask_sources"])
     fallback = crit_search["detrend"]["fallback_duration_days"]
@@ -360,7 +389,9 @@ def cmd_threshold(args) -> int:
     highest_judged = float(judged_passes.max()) if len(judged_passes) else None
     above = evaluated["sde"] > (highest_judged if highest_judged is not None else -math.inf)
     floor = crit_search["search"]["continue_sde"]
-    n_null = int((sample["status"] == "ok").sum())
+    ok = sample.loc[sample["status"] == "ok", "tic"].astype(int)
+    host_stars = int(ok.isin(hosts.index).sum())
+    n_null = len(ok) - host_stars
     n_sample = len(stars)
     result = {
         "threshold": float(max(value, floor)) if value is not None else float(floor),
@@ -370,7 +401,9 @@ def cmd_threshold(args) -> int:
         "n_null_stars": n_null,
         "n_sample": n_sample,
         "expected_false_alarms": n_sample / n_null if n_null else None,
-        "excluded": int((signals["excluded_by"] != "").sum()),
+        "excluded": int(harmonic.sum()),
+        "excluded_host_stars": host_stars,
+        "excluded_host_signals": int(on_host.sum()),
         "evaluated": len(evaluated),
         "top": top,
         "threshold_row": threshold_row,
@@ -399,6 +432,8 @@ def cmd_threshold(args) -> int:
                 "n_null_stars",
                 "expected_false_alarms",
                 "excluded",
+                "excluded_host_stars",
+                "excluded_host_signals",
                 "evaluated",
             )
         }

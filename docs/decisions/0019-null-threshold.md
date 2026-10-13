@@ -23,6 +23,15 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
 - Null signals that match, on period at any harmonic, a known object on their own star in the triage snapshot (any
   kind, TCEs and catalogued eclipsing binaries included) are dropped: real signals that survive scrambling are not false
   alarms. Nothing is removed by hand.
+- Every null signal on a star that hosts a catalogued object of kind `planet`, `candidate`, `community` or `eb` in the
+  triage snapshot (`[threshold] exclude_host_kinds`) is dropped as well, whatever its period. The maintainer chose this
+  on 2026-10-13, after the scramble probe (Evidence) found null peaks made of a synthetic planet's own transits at
+  periods that are no harmonic of it, which passed every false-alarm test. Stars whose only rows are `tce` stay in the
+  null: many are variables, and their peaks are the false alarms the null exists to measure. A signal both exclusions
+  drop counts once, under the harmonic one, so the harmonic count keeps its meaning. The threshold run writes every
+  dropped signal, with the rule that dropped it, to `null_dropped.parquet`, and records in `threshold.json` how many
+  of the null's sample stars and signals the host exclusion dropped. It refuses a `--catalogs` that is not a v2
+  snapshot with TCE and binary rows.
 - The rest are run through LEO-Vetter's false-alarm tests (`criteria/triage-v1.toml` `[leo]`) from the highest SDE
   down. The threshold is the highest SDE among those that no false-alarm test rejects. A signal LEO-Vetter cannot judge
   (an exception, a missing stellar value, a false-alarm test it cannot evaluate) counts as passing, so an unknown can
@@ -37,8 +46,9 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
 - The threshold run rebuilds the null's scrambled light curves, so it refuses a null it cannot reproduce: another mask
   snapshot, targets file, search criteria or search code, or a light curve that changed since the null searched it.
 - The expected number of false alarms in the production search is the sample size over the null's size, recorded with
-  the threshold. It is an upper bound: the sample size counts every target, including those the search will not
-  search (no light curve, not covered after fetch, too few points).
+  the threshold. The null's size counts the sample stars the null searched that the host exclusion did not drop. It
+  is an upper bound: the sample size counts every target, including those the search will not search (no light curve,
+  not covered after fetch, too few points).
 - The production search takes the threshold as its `continue_sde`. Triage refuses a search whose criteria or search
   code differ from the null's, whose `continue_sde` is not a finite number at least the threshold it ran with, or whose
   `continue_sde` is below the highest threshold computed for the same criteria and code.
@@ -48,19 +58,24 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
 - The scramble keeps part of a real periodic signal: each segment keeps its own transits in phase, so a weaker peak can
   remain near the real period. The decoherence test (`test_scramble_decoheres_a_planet`) bounds it only from above: on
   a synthetic planet, the median over seeds 1 to 5 of the top scrambled SDE over the unscrambled SDE must stay below one
-  half. The exclusion above drops such a peak when the object is catalogued and the peak lies within the match
-  tolerance of one of its harmonics.
+  half. The harmonic exclusion drops such a peak when the object is catalogued and the peak lies within the match
+  tolerance of one of its harmonics; the host exclusion drops it when the star hosts a catalogued object of a listed
+  kind.
 - The scramble can also leave some of a real planet's or binary's own transits evenly spaced by chance, enough for the
   search's `min_transits`. That peak sits at a period that is no harmonic of the real one, and its events are real
-  transits of one depth and shape, so the false-alarm tests that compare events have nothing to reject. The exclusion
-  matches on period harmonics and misses it. Only `[detrend] mask_sources` objects are masked before the scramble, so
-  an uncatalogued planet or binary, a TCE or a catalogued eclipsing binary keeps its transits in the null. One such
-  star can set the threshold. The rule stays as decided. For each of the top null signals and the highest surviving
-  one, the threshold run searches the star unscrambled (the same detrend, masks and search criteria), traces the null
-  signal's in-transit cadences back through the scramble, and records in `threshold.json` whether half or more of them
-  fall inside the transits of one signal found there, with that signal's period and SDE and the share. For a signal of
-  rank 2 or lower the traced cadences include some the null search had masked for the star's higher-ranked signals.
-  The maintainer reviews those rows before the threshold stands.
+  transits of one depth and shape, so the false-alarm tests that compare events have nothing to reject. The harmonic
+  exclusion misses it. Only `[detrend] mask_sources` objects are masked before the scramble, so an uncatalogued planet
+  or binary, a TCE or a catalogued eclipsing binary keeps its transits in the null. The host exclusion drops the null
+  signals of stars with a catalogued planet, candidate, community object or binary, but an uncatalogued real signal,
+  or a real signal on a star whose only rows are TCEs, can still leave such a peak, and one such star can set the
+  threshold. For each of the top null signals and the highest surviving one, the threshold run searches the star
+  unscrambled (the same detrend, masks and search criteria), traces the null signal's in-transit cadences back through
+  the scramble, and records in `threshold.json` whether half or more of them fall inside the transits of one signal
+  found there, with that signal's period and SDE and the share. For a signal of rank 2 or lower the traced cadences
+  include some the null search had masked for the star's higher-ranked signals. The maintainer reviews those rows
+  before the threshold stands.
+- The production search still searches host stars, and the threshold applies to them, though the null no longer
+  measures false alarms on those stars.
 
 ## Evidence
 
@@ -69,7 +84,11 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   `test_exclude_known_matches_period_only_on_the_same_star`, `test_check_search_refuses_other_hashes_and_a_grown_null`,
   `test_check_search_refuses_a_continue_sde_below_its_threshold_or_not_a_finite_number`,
   `test_threshold_cli_refuses_a_null_it_cannot_reproduce`,
-  `test_threshold_cli_refuses_light_curves_other_than_the_ones_the_null_searched`), unjudged signals
+  `test_threshold_cli_refuses_light_curves_other_than_the_ones_the_null_searched`,
+  `test_threshold_cli_refuses_catalogs_without_tce_or_binary_rows`), the host exclusion
+  (`test_threshold_cli_drops_every_signal_on_a_star_that_hosts_a_catalogued_object`, for each listed kind, and its
+  negative control, the star with only a TCE that sets the threshold in
+  `test_threshold_cli_drops_known_objects_and_traces_the_threshold_row`), unjudged signals
   (`test_leo_job_counts_an_unjudged_signal_as_surviving_and_says_why`,
   `test_an_unjudged_pass_sets_the_threshold_and_evaluation_goes_on_to_a_judged_one`), the trace-back
   (`test_a_null_peak_made_of_the_stars_own_transits_traces_back_to_them` and its negative control
@@ -77,6 +96,17 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   (`test_threshold_cli_drops_known_objects_and_traces_the_threshold_row`,
   `test_threshold_cli_counts_unjudged_signals_and_keeps_the_floor`,
   `test_threshold_cli_goes_past_an_unjudged_pass_to_a_judged_one`).
+- The scramble probe behind the host exclusion, [benchmarks/scramble_leo_probe.py](../../benchmarks/scramble_leo_probe.py),
+  and its output, [results/benchmarks/scramble-leo-probe-2026-10-13.json](../../results/benchmarks/scramble-leo-probe-2026-10-13.json).
+  It searches a synthetic planet star (3.7 d) on 8 and on 4 sectors, TOI-188.01 (an eclipsing binary) and Pi Men c
+  as null stars, for scramble seeds 1 to 5 and once unscrambled, and judges every signal with LEO-Vetter's
+  false-alarm tests as the threshold run does. Of the 59 scrambled signals, none of the 18 at a harmonic of the true
+  period passed. Four on the synthetic star passed every false-alarm test at periods that are no harmonic of 3.7 d:
+  37.47 d at SDE 19.52 on 8 sectors, and 16.94 d at 10.15, 19.84 d at 10.35 and 23.53 d at 8.75 on 4 sectors. No
+  scrambled signal on TOI-188.01 or Pi Men c passed. The rerun on 2026-10-13 reproduced the first run (at e4047f1)
+  signal for signal: the same 69 signals with the same periods, SDEs, outcomes and failed tests.
+  `test_a_null_peak_made_of_the_stars_own_transits_traces_back_to_them` shows the scramble building such a peak from
+  the star's own transits.
 - The scramble's tests in [tests/test_scramble.py](../../tests/test_scramble.py), with its negative control
   `test_scramble_decoheres_a_planet` and `test_placement_gap_outlasts_detrend_break_tolerance`.
 - The threshold run's `threshold.json` (Task 14, Step 6), published under `results/` and linked here when it exists.
