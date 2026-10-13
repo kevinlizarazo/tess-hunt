@@ -439,7 +439,7 @@ def test_threshold_cli_drops_known_objects_and_traces_the_threshold_row(tmp_path
     assert result["excluded"] == near >= 1
     # Star 11's only catalogued object is a TCE, so it stays in the null and can set the threshold.
     assert (result["excluded_host_stars"], result["excluded_host_signals"]) == (0, 0)
-    dropped = pd.read_parquet(run / "null_dropped.parquet")
+    dropped = pd.read_csv(run / "null_dropped.csv")
     assert list(dropped["reason"]) == ["harmonic"] * near
     assert set(dropped["detail"]) == {"tce-11"} and set(dropped["tic"]) == {11}
     assert result["evaluated"] == len(kept) == len(calls)
@@ -512,7 +512,7 @@ def test_threshold_cli_drops_every_signal_on_a_star_that_hosts_a_catalogued_obje
         2.0,
     )
     assert result["floor_used"] is True and result["threshold_row"]["tic"] == 12
-    dropped = pd.read_parquet(run / "null_dropped.parquet")
+    dropped = pd.read_csv(run / "null_dropped.csv")
     assert list(dropped.columns) == ["tic", "rank", "period", "sde", "reason", "detail"]
     assert sorted(dropped["rank"]) == sorted(host["rank"]) and set(dropped["tic"]) == {11}
     assert dropped["reason"].value_counts().to_dict() == {
@@ -610,12 +610,28 @@ def null_provenance(tmp_path, monkeypatch, change=None):
     return [*argv, "--workers", "1"]
 
 
-def null_tables(tmp_path, signal_tics, lc_sha256):
-    row = {"rank": 1, "period": 7.0, "t0": 1330.0, "duration": 0.1, "sde": 10.0, "control": False}
+def null_tables(tmp_path, signal_tics, lc_sha256, status=None, controls=()):
+    """The null's signals and stars tables; every star is an ok sample star unless `status` or `controls`
+    says otherwise."""
+    row = {
+        "rank": 1,
+        "period": 7.0,
+        "t0": 1330.0,
+        "duration": 0.1,
+        "depth": 0.001,
+        "sde": 10.0,
+        "control": False,
+    }
     signals = pd.DataFrame([{**row, "tic": t} for t in signal_tics], columns=["tic", *row])
     signals.to_parquet(tmp_path / "null" / "signals.parquet")
     stars = [
-        {"tic": t, "control": False, "status": "ok", "lc_sha256": s} for t, s in lc_sha256.items()
+        {
+            "tic": t,
+            "control": t in controls,
+            "status": (status or {}).get(t, "ok"),
+            "lc_sha256": s,
+        }
+        for t, s in lc_sha256.items()
     ]
     pd.DataFrame(stars).to_parquet(tmp_path / "null" / "stars.parquet")
 
@@ -684,3 +700,56 @@ def test_threshold_cli_refuses_light_curves_other_than_the_ones_the_null_searche
     with pytest.raises(SystemExit, match=r"2 null stars .*\[6, 7\]"):
         main(argv)
     assert not (tmp_path / "data" / "runs").exists()
+
+
+def test_threshold_cli_counts_ok_sample_hosts_and_checks_only_candidates_light_curves(
+    tmp_path, monkeypatch
+):
+    argv = null_provenance(tmp_path, monkeypatch)
+    snap = tmp_path / "triage-snap" / "known.parquet"
+    base = {"source": "catalog", "ra": 1.0, "dec": -70.0, "period": 11.0, "t0": 1330.0}
+    hosts = {6: "candidate", 7: "eb", 8: "planet", 10: "community"}
+    rows = [
+        {**base, "kind": k, "name": f"{k}-{t}", "tic": t, "duration": 0.1, "depth_ppm": 1000.0}
+        for t, k in hosts.items()
+    ]
+    known = pd.concat([pd.read_parquet(snap), pd.DataFrame(rows)], ignore_index=True)
+    known[KNOWN_COLUMNS].to_parquet(snap)
+    save_star(tmp_path, monkeypatch, 5, sectors=(1,), seed=5)
+    # Star 6 is a host whose light curve changed since the null: the run must not refuse over a star whose
+    # signals it does not judge. 7 is an ok host with no signal, 8 a host the null could not search, 10 a
+    # control on a host star, and 9 an ok star with no signal and no catalogued object.
+    null_tables(
+        tmp_path,
+        [5, 6],
+        {
+            5: sha256_file(tmp_path / "data" / "lc" / "5.npz"),
+            6: "0" * 64,
+            7: "0" * 64,
+            8: None,
+            9: "0" * 64,
+            10: "0" * 64,
+        },
+        status={8: "no_light_curve"},
+        controls=(10,),
+    )
+    judged = []
+
+    def outcome(star, eph):
+        judged.append(int(star["tic"]))
+        return LeoOutcome("PC"), "planet candidate"
+
+    monkeypatch.setattr(threshold_module, "leo_flux", fake_leo(outcome))
+    assert main(argv) == 0
+    run = only_run(tmp_path, "threshold")
+    result = json.loads((run / "threshold.json").read_text())
+    assert judged == [5]
+    # The ok sample stars are 5, 6, 7 and 9; the hosts among them are 6 and 7.
+    assert (result["excluded_host_stars"], result["excluded_host_signals"]) == (2, 1)
+    assert (result["n_null_stars"], result["n_sample"], result["expected_false_alarms"]) == (
+        2,
+        2,
+        1.0,
+    )
+    dropped = pd.read_csv(run / "null_dropped.csv")
+    assert dropped[["tic", "reason", "detail"]].values.tolist() == [[6, "host", "candidate"]]

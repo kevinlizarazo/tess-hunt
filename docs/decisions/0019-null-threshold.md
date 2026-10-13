@@ -1,7 +1,8 @@
 # 0019: The detection threshold is the highest null SDE that survives LEO-Vetter's false-alarm tests
 
 - Date: 2026-10-12
-- Status: Accepted (approved by the maintainer in the M2 design)
+- Status: Accepted (approved by the maintainer in the M2 design); amended 2026-10-13 with the host exclusion, the
+  maintainer's choice
 
 ## Context
 
@@ -25,11 +26,11 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   alarms. Nothing is removed by hand.
 - Every null signal on a star that hosts a catalogued object of kind `planet`, `candidate`, `community` or `eb` in the
   triage snapshot (`[threshold] exclude_host_kinds`) is dropped as well, whatever its period. The maintainer chose this
-  on 2026-10-13, after the scramble probe (Evidence) found null peaks made of a synthetic planet's own transits at
-  periods that are no harmonic of it, which passed every false-alarm test. Stars whose only rows are `tce` stay in the
-  null: many are variables, and their peaks are the false alarms the null exists to measure. A signal both exclusions
-  drop counts once, under the harmonic one, so the harmonic count keeps its meaning. The threshold run writes every
-  dropped signal, with the rule that dropped it, to `null_dropped.parquet`, and records in `threshold.json` how many
+  on 2026-10-13, after the scramble probe (Evidence) found null peaks on a synthetic planet star at periods that are no
+  harmonic of the planet's, which passed every false-alarm test. Stars whose only rows are `tce` stay in the null:
+  many are variables, and their peaks are the false alarms the null exists to measure. A signal both exclusions drop
+  counts once, under the harmonic one, so the harmonic count keeps its meaning. The threshold run writes every
+  dropped signal, with the rule that dropped it, to `null_dropped.csv`, and records in `threshold.json` how many
   of the null's sample stars and signals the host exclusion dropped. It refuses a `--catalogs` that is not a v2
   snapshot with TCE and binary rows.
 - The rest are run through LEO-Vetter's false-alarm tests (`criteria/triage-v1.toml` `[leo]`) from the highest SDE
@@ -76,6 +77,8 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   before the threshold stands.
 - The production search still searches host stars, and the threshold applies to them, though the null no longer
   measures false alarms on those stars.
+- Every TOI and CTOI has kind `candidate` whatever its disposition, so a star whose only catalogued object is a TOI
+  dispositioned a false positive or false alarm also leaves the null.
 
 ## Evidence
 
@@ -88,7 +91,8 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   `test_threshold_cli_refuses_catalogs_without_tce_or_binary_rows`), the host exclusion
   (`test_threshold_cli_drops_every_signal_on_a_star_that_hosts_a_catalogued_object`, for each listed kind, and its
   negative control, the star with only a TCE that sets the threshold in
-  `test_threshold_cli_drops_known_objects_and_traces_the_threshold_row`), unjudged signals
+  `test_threshold_cli_drops_known_objects_and_traces_the_threshold_row`, and
+  `test_threshold_cli_counts_ok_sample_hosts_and_checks_only_candidates_light_curves`), unjudged signals
   (`test_leo_job_counts_an_unjudged_signal_as_surviving_and_says_why`,
   `test_an_unjudged_pass_sets_the_threshold_and_evaluation_goes_on_to_a_judged_one`), the trace-back
   (`test_a_null_peak_made_of_the_stars_own_transits_traces_back_to_them` and its negative control
@@ -103,8 +107,9 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   false-alarm tests as the threshold run does. Of the 59 scrambled signals, none of the 18 at a harmonic of the true
   period passed. Four on the synthetic star passed every false-alarm test at periods that are no harmonic of 3.7 d:
   37.47 d at SDE 19.52 on 8 sectors, and 16.94 d at 10.15, 19.84 d at 10.35 and 23.53 d at 8.75 on 4 sectors. No
-  scrambled signal on TOI-188.01 or Pi Men c passed. The rerun on 2026-10-13 reproduced the first run (at e4047f1)
-  signal for signal: the same 69 signals with the same periods, SDEs, outcomes and failed tests.
+  scrambled signal on TOI-188.01 or Pi Men c passed. This output is a rerun on 2026-10-13; the first run, at e4047f1,
+  is recorded only in build notes outside the repository, and the rerun matched its table of all 69 signals in
+  period, SDE, outcome and failed tests.
   `test_a_null_peak_made_of_the_stars_own_transits_traces_back_to_them` shows the scramble building such a peak from
   the star's own transits.
 - The scramble's tests in [tests/test_scramble.py](../../tests/test_scramble.py), with its negative control

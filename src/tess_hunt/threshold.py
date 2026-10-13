@@ -333,7 +333,8 @@ def cmd_threshold(args) -> int:
     run.record_input("targets", args.targets)
     for name, path in snapshot_inputs(args.catalogs).items():
         run.record_input(name, path)
-    dropped.to_parquet(run.path / "null_dropped.parquet", index=False)
+    # CSV, so `benchmark publish` copies it beside threshold.json.
+    dropped.to_csv(run.path / "null_dropped.csv", index=False)
     masks = load_known(args.mask_catalogs)
     mask_sources = tuple(crit_search["detrend"]["mask_sources"])
     fallback = crit_search["detrend"]["fallback_duration_days"]
