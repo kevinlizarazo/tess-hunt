@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -17,6 +18,21 @@ from tess_hunt.config import lc_dir, load_criteria
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.pool import process_pool
 from tess_hunt.provenance import sha256_file, start_run
+
+_VERSION = re.compile(r"_(v\d+)_")
+
+
+def timing_suspect(provenance: str, sector: int, filename: str, rules: list[dict]) -> bool:
+    """Products whose timestamps the producer has announced as wrong (decision 0010). A product in an
+    affected provenance and sector whose version can't be read from its name counts as suspect."""
+    match = _VERSION.search(filename)
+    version = match.group(1) if match else None
+    return any(
+        provenance == rule["provenance"]
+        and sector in rule["sectors"]
+        and (version is None or version == rule["version"])
+        for rule in rules
+    )
 
 
 def _plain(column) -> np.ndarray:
@@ -35,11 +51,18 @@ def read_product(path: Path, provenance: str) -> tuple[np.ndarray, np.ndarray, n
         lc = lk.read(path, quality_bitmask="default")
         good = np.ones(len(lc), dtype=bool)
     time, flux, err = _plain(lc.time.value), _plain(lc.flux), _plain(lc.flux_err)
-    good &= np.isfinite(time) & np.isfinite(flux) & np.isfinite(err) & (err > 0)
-    time, flux, err = time[good], flux[good], err[good]
     facts = {
         k.lower(): float(lc.meta[k]) for k in ("CROWDSAP", "FLFRCSAP") if lc.meta.get(k) is not None
     }
+    usable = good & np.isfinite(time) & np.isfinite(flux)
+    if usable.any() and not np.any(np.isfinite(err[usable]) & (err[usable] > 0)):
+        # Some QLP products ship an all-NaN error column. Detrend replaces errors with the sector's
+        # scatter anyway, so the scatter stands in here and the manifest says so.
+        level = np.median(flux[usable])
+        err = np.full(len(flux), 1.4826 * np.median(np.abs(flux[usable] - level)))
+        facts["errors_from_scatter"] = True
+    good &= np.isfinite(time) & np.isfinite(flux) & np.isfinite(err) & (err > 0)
+    time, flux, err = time[good], flux[good], err[good]
     if len(flux) == 0:
         return time, flux, err, facts
     scale = np.median(flux)
@@ -48,26 +71,38 @@ def read_product(path: Path, provenance: str) -> tuple[np.ndarray, np.ndarray, n
 
 def _manifest_sources(sources: dict) -> dict:
     # lc/<tic>.npz is overwritten by --refresh or a newly ranked product, so the run keeps its own copy.
-    keys = ("provenance", "cadence_s", "s3_key", "sha256")
-    return {sector: {k: info[k] for k in keys} for sector, info in sources.items()}
+    keys = (
+        "provenance",
+        "cadence_s",
+        "s3_key",
+        "sha256",
+        "route",
+        "timing_suspect",
+        "errors_from_scatter",
+    )
+    return {sector: {k: info[k] for k in keys if k in info} for sector, info in sources.items()}
 
 
 def fetch_star(
     tic: int,
     products: pd.DataFrame,
     out_dir: Path,
-    min_good: int,
+    cfg_fetch: dict,
     session=None,
     refresh: bool = False,
 ) -> dict[str, Any]:
     """Write out_dir/<tic>.npz from the best usable product per sector. Failures are recorded per sector."""
     session = session or requests.Session()
+    min_good = cfg_fetch["min_good_cadences"]
+    rules = cfg_fetch.get("timing_suspect", [])
     ranked = mast.rank(products[products["tic"] == tic])
     target = out_dir / f"{tic}.npz"
     if target.exists() and not refresh:
         existing = LightCurve.load(target)
         best_keys = set(ranked.drop_duplicates("sector")["s3_key"])
-        if {v["s3_key"] for v in existing.sources.values()} == best_keys:
+        # Files written before the timing flag existed would hide a suspect sector as unflagged.
+        flagged = all("timing_suspect" in v for v in existing.sources.values())
+        if flagged and {v["s3_key"] for v in existing.sources.values()} == best_keys:
             return {
                 "tic": tic,
                 "status": "cached",
@@ -81,7 +116,9 @@ def fetch_star(
         for sector, options in ranked.groupby("sector", sort=True):
             for row in options.itertuples():
                 try:
-                    blob = mast.download(row.s3_key, int(row.size), session)
+                    blob, route = mast.download(
+                        row.s3_key, int(row.size), session, data_uri=row.data_uri
+                    )
                 except mast.DownloadError as exc:
                     problems.setdefault(str(sector), []).append(f"{row.provenance}: {exc}")
                     continue
@@ -107,6 +144,10 @@ def fetch_star(
                     "s3_key": row.s3_key,
                     "sha256": hashlib.sha256(blob).hexdigest(),
                     "n_good": int(len(time)),
+                    "route": route,
+                    "timing_suspect": timing_suspect(
+                        row.provenance, int(sector), row.filename, rules
+                    ),
                     **facts,
                 }
                 break
@@ -128,22 +169,32 @@ def fetch_star(
 
 
 def _fetch_job(job: tuple) -> dict[str, Any]:
-    tic, products, out_dir, min_good, refresh = job
-    return fetch_star(tic, products, out_dir, min_good, refresh=refresh)
+    tic, products, out_dir, cfg_fetch, refresh = job
+    return fetch_star(tic, products, out_dir, cfg_fetch, refresh=refresh)
 
 
 def add_parser(sub) -> None:
     p = sub.add_parser("fetch", help="download light curves for a targets table")
     p.add_argument("--targets", type=Path, required=True)
     p.add_argument("--products", type=Path, help="products table from the targets run")
-    p.add_argument("--criteria", type=Path, default=Path("criteria/search-v1.toml"))
-    p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
+    p.add_argument("--workers", type=int, default=4)
     p.add_argument("--refresh", action="store_true")
     p.add_argument("--production", action="store_true")
     p.set_defaults(func=cmd)
 
 
+def _require_finished_targets(targets: Path) -> None:
+    provenance = targets.parent / "provenance.json"
+    if not provenance.exists() or json.loads(provenance.read_text()).get("ended_at") is None:
+        raise SystemExit(
+            f"{targets} comes from a targets run that is not finished; resume or rerun it first"
+        )
+
+
 def cmd(args) -> int:
+    if args.production:
+        _require_finished_targets(args.targets)
     criteria = load_criteria(args.criteria)
     run = start_run("fetch", [criteria], args.production, sys.argv)
     run.record_input("targets", args.targets)
@@ -156,8 +207,9 @@ def cmd(args) -> int:
         products.to_parquet(run.path / "products.parquet")
     out_dir = lc_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
-    min_good = criteria["fetch"]["min_good_cadences"]
-    jobs = [(t, products[products["tic"] == t], out_dir, min_good, args.refresh) for t in tics]
+    jobs = [
+        (t, products[products["tic"] == t], out_dir, criteria["fetch"], args.refresh) for t in tics
+    ]
     with process_pool(args.workers) as pool:
         entries = list(pool.map(_fetch_job, jobs, chunksize=4))
     with open(run.path / "fetch_manifest.jsonl", "w") as fh:

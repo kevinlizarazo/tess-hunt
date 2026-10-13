@@ -47,17 +47,17 @@ def test_rank_prefers_spoc_then_tess_spoc_then_qlp():
 
 def test_download_retries_server_errors():
     session = FakeSession(sequence=[FakeResponse(500), FakeResponse(200, b"abc")])
-    assert mast.download("k", 3, session, backoff=0) == b"abc"
+    assert mast.download("k", 3, session, backoff=0) == (b"abc", "s3")
 
 
 def test_download_retries_short_body():
     session = FakeSession(sequence=[FakeResponse(200, b"ab"), FakeResponse(200, b"abc")])
-    assert mast.download("k", 3, session, backoff=0) == b"abc"
+    assert mast.download("k", 3, session, backoff=0) == (b"abc", "s3")
 
 
 def test_download_retries_connection_errors():
     session = FakeSession(sequence=[requests.ConnectionError("reset"), FakeResponse(200, b"abc")])
-    assert mast.download("k", 3, session, backoff=0) == b"abc"
+    assert mast.download("k", 3, session, backoff=0) == (b"abc", "s3")
 
 
 def test_download_gives_up_after_attempts():
@@ -75,6 +75,33 @@ def test_missing_product_does_not_retry():
     assert session.urls == [mast.S3_BASE + "k"]
 
 
+URI = "mast:HLSP/qlp/s0100/0000/0001/6850/6068/hlsp_qlp_tess_ffi_s0100-0000000168506068_tess_v01_llc.fits"
+
+
+def test_bucket_404_falls_through_to_the_mast_api():
+    session = FakeSession(routes={mast.MAST_API + URI: b"abc"})
+    assert mast.download("k", 3, session, backoff=0, data_uri=URI) == (b"abc", "mast_api")
+    assert session.urls == [mast.S3_BASE + "k", mast.MAST_API + URI]
+
+
+def test_missing_everywhere_is_a_missing_product():
+    session = FakeSession()
+    with pytest.raises(mast.MissingProduct):
+        mast.download("k", 3, session, backoff=0, data_uri=URI)
+    assert session.urls == [mast.S3_BASE + "k", mast.MAST_API + URI]
+
+
+@pytest.mark.network
+def test_mast_api_serves_a_qlp_file_missing_from_the_bucket():
+    blob, route = mast.download(
+        "mast/hlsp/qlp/s0100/0000/0001/6850/6068/hlsp_qlp_tess_ffi_s0100-0000000168506068_tess_v01_llc.fits",
+        679680,
+        requests.Session(),
+        data_uri=URI,
+    )
+    assert route == "mast_api" and len(blob) == 679680
+
+
 @pytest.mark.network
 def test_discover_and_download_pi_men():
     products = mast.discover([261136679])
@@ -83,7 +110,7 @@ def test_discover_and_download_pi_men():
     assert not products["filename"].str.contains("fast").any()
     qlp = s1[s1["provenance"] == "QLP"].iloc[0]
     assert qlp["s3_key"] == list(URIS.values())[0]
-    blob = mast.download(qlp["s3_key"], int(qlp["size"]), requests.Session())
+    blob = mast.download(qlp["s3_key"], int(qlp["size"]), requests.Session())[0]
     assert len(blob) == 80640
 
 

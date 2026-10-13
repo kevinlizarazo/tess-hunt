@@ -1,8 +1,7 @@
-"""Find TESS light-curve files at MAST and download them from the public S3 bucket."""
+"""Find TESS light-curve files at MAST and download them from the public S3 bucket or MAST."""
 
 import re
 import sys
-import time
 from functools import partial
 
 import numpy as np
@@ -15,6 +14,7 @@ from tess_hunt.retry import retry
 PROVENANCES = ("SPOC", "TESS-SPOC", "QLP")
 PREFERENCE = {"SPOC": 0, "TESS-SPOC": 1, "QLP": 2}
 S3_BASE = "https://stpubdata.s3.amazonaws.com/"
+MAST_API = "https://mast.stsci.edu/api/v0.1/Download/file?uri="
 PRODUCT_COLUMNS = [
     "tic",
     "sector",
@@ -34,6 +34,10 @@ class DownloadError(RuntimeError):
 
 class MissingProduct(DownloadError):
     pass
+
+
+class BadResponse(RuntimeError):
+    """A reply worth retrying: a server error or a truncated body."""
 
 
 class DiscoverError(RuntimeError):
@@ -137,27 +141,41 @@ def best(products: pd.DataFrame) -> pd.DataFrame:
     return rank(products).drop_duplicates(["tic", "sector"]).reset_index(drop=True)
 
 
+def _get(url: str, expected_size: int, session) -> bytes:
+    response = session.get(url, timeout=60)
+    if response.status_code == 404:
+        raise MissingProduct(f"not found: {url}")
+    if response.status_code != 200:
+        raise BadResponse(f"HTTP {response.status_code}")
+    if expected_size and len(response.content) != expected_size:
+        raise BadResponse(f"got {len(response.content)} bytes, expected {expected_size}")
+    return response.content
+
+
+def _fetch(url: str, expected_size: int, session, attempts: int, backoff: float) -> bytes:
+    return retry(
+        partial(_get, url, expected_size, session),
+        attempts=attempts,
+        backoff=backoff,
+        retry_on=(requests.RequestException, BadResponse),
+        error=DownloadError,
+        what=url,
+    )
+
+
 def download(
-    key: str, expected_size: int, session, attempts: int = 3, backoff: float = 2.0
-) -> bytes:
-    url = S3_BASE + key
-    problem = ""
-    for attempt in range(attempts):
-        if attempt:
-            time.sleep(backoff * attempt)
-        try:
-            response = session.get(url, timeout=60)
-        except requests.RequestException as exc:
-            problem = f"{type(exc).__name__}: {exc}"
-            continue
-        if response.status_code == 404:
-            # New products can be listed at MAST before they reach the bucket.
-            raise MissingProduct(f"not in bucket: {key}")
-        if response.status_code != 200:
-            problem = f"HTTP {response.status_code}"
-            continue
-        if expected_size and len(response.content) != expected_size:
-            problem = f"got {len(response.content)} bytes, expected {expected_size}"
-            continue
-        return response.content
-    raise DownloadError(f"{key}: {problem}")
+    key: str,
+    expected_size: int,
+    session,
+    attempts: int = 3,
+    backoff: float = 2.0,
+    data_uri: str | None = None,
+) -> tuple[bytes, str]:
+    """The file's bytes and the route that served them. Products listed at MAST can be missing from the
+    bucket (QLP S99 to S104 in 2026-10), so a bucket 404 falls through to MAST's own download API."""
+    try:
+        return _fetch(S3_BASE + key, expected_size, session, attempts, backoff), "s3"
+    except MissingProduct:
+        if not data_uri:
+            raise
+    return _fetch(MAST_API + data_uri, expected_size, session, attempts, backoff), "mast_api"
