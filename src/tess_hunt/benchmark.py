@@ -23,7 +23,14 @@ from tess_hunt.lightcurve import LightCurve  # noqa: E402
 from tess_hunt.pool import process_pool  # noqa: E402
 from tess_hunt.provenance import repo_root, sha256_file, start_run  # noqa: E402
 from tess_hunt.recovery import classify  # noqa: E402
-from tess_hunt.search import search_star, star_params, stellar_density  # noqa: E402
+from tess_hunt.search import (  # noqa: E402
+    read_threshold,
+    search_code_sha256,
+    search_star,
+    star_params,
+    stellar_density,
+)
+from tess_hunt.targets import covered_sources  # noqa: E402
 from tess_hunt.transit import light_curve  # noqa: E402
 
 ENGINES = {
@@ -33,6 +40,15 @@ ENGINES = {
 PERIOD_EDGES = [1, 2, 4, 8, 16, 40]
 RADIUS_EDGES = [0.5, 1, 2, 4, 8, 16]
 SNR_EDGES = [0, 5, 7, 10, 15, 20, 50, np.inf]
+SEARCHED_COLUMNS = [
+    "engine",
+    "expected_snr",
+    "inj_period",
+    "inj_rp_rearth",
+    "recovered",
+    "alias",
+    "runtime_s",
+]
 
 
 def _replayed(row: dict) -> Injection:
@@ -48,8 +64,9 @@ def _replayed(row: dict) -> Injection:
 
 
 def injection_job(job: tuple) -> list[dict]:
-    star, lc_path, known_ephs, crit, engines, per_star, seed, replay = job
-    rng = np.random.default_rng(seed)
+    star, lc_path, known_ephs, crit, engines, per_star, seed, replay, level = job
+    # Seeded per star, so two runs inject the same planets into a star whatever its place in the list.
+    rng = np.random.default_rng([seed, int(star["tic"])])
     bench, search = crit["benchmark"], crit["search"]
     u = (bench["inject_u1"], bench["inject_u2"])
     if replay:
@@ -66,6 +83,10 @@ def injection_job(job: tuple) -> list[dict]:
         digest = sha256_file(lc_path)
         bases = [{**base, "lc_sha256": digest} for base in bases]
         lc = LightCurve.load(lc_path)
+        # The search stage skips a star whose fetch kept too few sectors; injecting into it would
+        # measure a different sample.
+        if not covered_sources(lc.sources, crit["sample"]):
+            return [{**base, "status": "not_covered_after_fetch"} for base in bases]
     except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
         error = f"{type(exc).__name__}: {exc}"
         return [{**base, "status": "error", "error": error} for base in bases]
@@ -111,9 +132,7 @@ def injection_job(job: tuple) -> list[dict]:
                         "runtime_s": time.perf_counter() - started,
                         **{f"inj_{key}": value for key, value in asdict(inj).items()},
                         "expected_snr": expected_snr,
-                        **classify(
-                            inj.ephemeris(), result.signals, crit["match"], bench["provisional_sde"]
-                        ),
+                        **classify(inj.ephemeris(), result.signals, crit["match"], level),
                         **result.diagnostics(),
                     }
                 )
@@ -149,8 +168,15 @@ def known_job(job: tuple) -> dict:
     }
 
 
-def completeness(rows: pd.DataFrame, column: str, edges) -> pd.DataFrame:
+def searched(rows: pd.DataFrame) -> pd.DataFrame:
+    """The rows that reached the search. Only they carry an engine and its scores, so a run where none
+    did gets an empty frame with those columns: empty tables and maps, not a KeyError."""
     ok = rows[rows["status"] == "ok"]
+    return ok if len(ok) else pd.DataFrame(columns=SEARCHED_COLUMNS, dtype=float)
+
+
+def completeness(rows: pd.DataFrame, column: str, edges) -> pd.DataFrame:
+    ok = searched(rows)
     out = []
     for engine, g in ok.groupby("engine"):
         bins = pd.cut(g[column], edges, right=False)
@@ -168,7 +194,8 @@ def completeness(rows: pd.DataFrame, column: str, edges) -> pd.DataFrame:
 
 
 def completeness_map(rows: pd.DataFrame, engine: str) -> pd.DataFrame:
-    g = rows[(rows["status"] == "ok") & (rows["engine"] == engine)]
+    ok = searched(rows)
+    g = ok[ok["engine"] == engine]
     p = pd.cut(g["inj_period"], PERIOD_EDGES, right=False)
     r = pd.cut(g["inj_rp_rearth"], RADIUS_EDGES, right=False)
     stats = g.groupby([r, p], observed=False)["recovered"].agg(["sum", "count"]).reset_index()
@@ -254,6 +281,12 @@ def add_parser(sub) -> None:
         "--replay", type=Path, help="injections.csv of an earlier run: inject exactly its planets"
     )
     i.add_argument("--replay-engine", default="bls30")
+    i.add_argument(
+        "--threshold",
+        type=Path,
+        help="threshold.json: classify and stop at the production threshold",
+    )
+    i.add_argument("--sample", type=int, default=0, help="draw this many stars at random")
     i.set_defaults(func=cmd_inject)
     for mode in (k, i):
         mode.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
@@ -331,7 +364,28 @@ def cmd_inject(args) -> int:
     unknown = set(engines) - set(ENGINES)
     if unknown:
         raise SystemExit(f"unknown engines: {sorted(unknown)}")
+    search = dict(criteria["search"])
+    level = criteria["benchmark"]["provisional_sde"]
+    if args.threshold:
+        threshold = read_threshold(args.threshold)
+        hashes = (threshold["search_criteria_sha256"], threshold["search_code_sha256"])
+        if hashes != (criteria.sha256, search_code_sha256(repo_root())):
+            raise SystemExit(f"{args.threshold} belongs to other search criteria or code")
+        search["continue_sde"] = level = float(threshold["threshold"])
     run = start_run("benchmark-inject", [criteria], args.production, sys.argv)
+    if args.threshold:
+        run.record_input("threshold", args.threshold)
+        run.record(
+            "threshold",
+            {
+                "value": level,
+                "file": args.threshold.name,
+                # threshold.json sits in the run directory that computed it.
+                "run_id": args.threshold.resolve().parent.name,
+            },
+        )
+    else:
+        run.record("threshold", None)
     run.record_input("targets", args.targets)
     for name, path in snapshot_inputs(args.catalogs).items():
         run.record_input(name, path)
@@ -339,6 +393,7 @@ def cmd_inject(args) -> int:
         run.record_input("fetch_manifest", args.manifest)
     known = load_known(args.catalogs)
     fallback = criteria["detrend"]["fallback_duration_days"]
+    mask_sources = tuple(criteria["detrend"]["mask_sources"])
     stars = [
         s
         for s in pd.read_parquet(args.targets).to_dict("records")
@@ -356,36 +411,38 @@ def cmd_inject(args) -> int:
         stars = sorted((s for s in stars if int(s["tic"]) in replays), key=lambda s: int(s["tic"]))
     if args.limit:
         stars = stars[: args.limit]
+    if args.sample and len(stars) > args.sample:
+        picks = np.random.default_rng(args.seed).choice(len(stars), size=args.sample, replace=False)
+        stars = [stars[i] for i in sorted(picks)]
+    crit = {**criteria.values, "search": search}
     jobs = [
         (
             s,
             lc_dir() / f"{int(s['tic'])}.npz",
-            known_ephemerides(known, int(s["tic"]), fallback),
-            criteria.values,
+            known_ephemerides(known, int(s["tic"]), fallback, mask_sources),
+            crit,
             engines,
             args.per_star,
-            args.seed + n,
+            args.seed,
             replays.get(int(s["tic"])),
+            level,
         )
-        for n, s in enumerate(stars)
+        for s in stars
     ]
     with process_pool(args.workers) as pool:
         rows = pd.DataFrame([row for batch in pool.map(injection_job, jobs) for row in batch])
     rows.to_csv(run.path / "injections.csv", index=False)
     by_snr = completeness(rows, "expected_snr", SNR_EDGES)
     by_snr.to_csv(run.path / "completeness_snr.csv", index=False)
-    ok = rows[rows["status"] == "ok"]
-    overview = (
-        ok.groupby("engine")
-        .agg(
-            injections=("recovered", "size"),
-            recovered=("recovered", "mean"),
-            alias=("alias", "mean"),
-            median_runtime_s=("runtime_s", "median"),
-        )
-        .reset_index()
-    )
-    lines = [f"# Injection recovery ({run.provenance['run_id']})", ""]
+    ok = searched(rows)
+    statuses = rows["status"].value_counts()
+    source = f"the threshold in `{args.threshold.name}`" if args.threshold else "`provisional_sde`"
+    lines = [
+        f"# Injection recovery ({run.provenance['run_id']})",
+        "",
+        f"Recovered: a signal at the injected ephemeris with SDE {level:g} or above ({source}).",
+        "",
+    ]
     if args.replay:
         replayed = sum(len(replays[int(s["tic"])]) for s in stars)
         lines += [
@@ -394,18 +451,38 @@ def cmd_inject(args) -> int:
             "`--per-star` and `--seed` are ignored.",
             "",
         ]
-    lines += [md_table(overview), "", "## By expected SNR", "", md_table(by_snr), ""]
+    if ok.empty:
+        counts = ", ".join(f"{status} {n}" for status, n in statuses.items())
+        lines += [
+            f"No injection reached the search ({counts}); the tables and maps below are empty.",
+            "",
+        ]
+    else:
+        overview = (
+            ok.groupby("engine")
+            .agg(
+                injections=("recovered", "size"),
+                recovered=("recovered", "mean"),
+                alias=("alias", "mean"),
+                median_runtime_s=("runtime_s", "median"),
+            )
+            .reset_index()
+        )
+        lines += [md_table(overview), ""]
+    lines += ["## By expected SNR", "", md_table(by_snr), ""]
     for engine in engines:
         table = completeness_map(rows, engine)
         table.to_csv(run.path / f"completeness_{engine}.csv", index=False)
         plot_map(table, engine, run.path / f"completeness_{engine}.png")
         lines += [f"![{engine}](completeness_{engine}.png)", ""]
     (run.path / "summary.md").write_text("\n".join(lines))
-    statuses = rows["status"].value_counts()
     run.finish(
         stars=len(stars),
         injections=int(len(ok)),
-        **{s: int(statuses.get(s, 0)) for s in ("no_draw", "too_few_points", "error")},
+        **{
+            s: int(statuses.get(s, 0))
+            for s in ("no_draw", "too_few_points", "not_covered_after_fetch", "error")
+        },
     )
     print("\n".join(lines))
     return 0
