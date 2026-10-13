@@ -4,7 +4,7 @@ import numpy as np
 from synthetic import make_lc
 
 from tess_hunt.config import load_criteria
-from tess_hunt.detrend import detrend
+from tess_hunt.detrend import detrend, known_mask
 from tess_hunt.ephemeris import Ephemeris, in_transit
 
 CFG = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "search-v1.toml")["detrend"]
@@ -80,6 +80,16 @@ def test_exclude_drops_cadences_like_a_mask():
     flat = detrend(lc, CFG, exclude=exclude)
     assert not np.any((flat.time > 1330.0) & (flat.time < 1331.0))
     assert len(flat.time) >= len(lc.time) - exclude.sum() - 200  # only orbit-edge cuts besides
+
+
+def test_exclude_matches_an_ephemeris_mask():
+    # The null maps the known-planet mask through the scramble and passes it as exclude.
+    lc = make_lc(sectors=(1, 2), signals=[PLANET], seed=1)
+    eph = Ephemeris(*PLANET[:3])
+    by_mask = detrend(lc, CFG, [eph])
+    by_exclude = detrend(lc, CFG, exclude=known_mask(lc.time, [eph], CFG["known_mask_width"]))
+    for field in ("time", "flux", "flux_err", "sector"):
+        np.testing.assert_array_equal(getattr(by_mask, field), getattr(by_exclude, field))
 
 
 def test_hold_out_keeps_the_transit_and_its_depth():
