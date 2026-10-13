@@ -37,7 +37,8 @@ PLANET = {
     "planet_snr": 40.0,
     "required": True,
 }
-# completeness_map's interval grouping warns, as in test_benchmark_records_the_fetch_manifest.
+# Grouping completeness_map's two interval columns, pandas fails to hash the intervals and falls
+# back through a cast that warns.
 INTERVAL_CAST = pytest.mark.filterwarnings(
     "ignore:invalid value encountered in cast:RuntimeWarning"
 )
@@ -71,6 +72,21 @@ def test_injection_job_gates_a_light_curve_too_short_to_search(tmp_path):
     rows = injection_job((SUN, path, [], {**CRIT, "sample": sample}, ["bls30"], 1, 11, None, LEVEL))
     assert [r["status"] for r in rows] == ["too_few_points"] and rows[0]["n_points"] == 0
     assert rows[0]["lc_sha256"] == sha256_file(path)
+
+
+def test_injection_job_gates_too_few_bins_as_the_search_does(tmp_path):
+    path = tmp_path / "1.npz"
+    # Three days of 2-min cadence: enough points to detrend, under min_points once binned to 30 min,
+    # as in test_search's test_too_few_bins_make_a_too_few_points_star.
+    lc = make_lc(sectors=(1,), cadence_min=2.0, noise_ppm=300.0)
+    lc.select(lc.time < lc.time[0] + 3.0).save(path)
+    sample = {**CRIT["sample"], "min_sectors": 1, "recent_sector_min": 1, "recent_sector_max": 1}
+    # Short periods, so three transits land in three days and the draw succeeds.
+    search = {**CRIT["search"], "period_max_days": 1.4}
+    crit = {**CRIT, "sample": sample, "search": search}
+    rows = injection_job((SUN, path, [], crit, ["bls30"], 1, 11, None, LEVEL))
+    assert [r["status"] for r in rows] == ["too_few_points"]
+    assert rows[0]["n_bins"] < CRIT["search"]["min_points"]
 
 
 def test_injection_job_records_a_bad_star_row(tmp_path):
@@ -127,14 +143,7 @@ def test_known_job_records_a_bad_star_row_as_a_required_miss(tmp_path, monkeypat
     "mode",
     [
         "known",
-        # Grouping completeness_map's two interval columns, pandas fails to hash the intervals and
-        # falls back through a cast that warns.
-        pytest.param(
-            "inject",
-            marks=pytest.mark.filterwarnings(
-                "ignore:invalid value encountered in cast:RuntimeWarning"
-            ),
-        ),
+        pytest.param("inject", marks=INTERVAL_CAST),
     ],
 )
 def test_benchmark_records_the_fetch_manifest(mode, tmp_path, monkeypatch):
@@ -291,8 +300,7 @@ def test_publish_never_overwrites(tmp_path, monkeypatch):
         publish("r2", tmp_path, monkeypatch)
 
 
-# completeness_map's interval grouping warns, as in test_benchmark_records_the_fetch_manifest.
-@pytest.mark.filterwarnings("ignore:invalid value encountered in cast:RuntimeWarning")
+@INTERVAL_CAST
 def test_replay_injects_the_listed_planets(tmp_path, monkeypatch):
     data = tmp_path / "data"
     monkeypatch.setenv("TESS_HUNT_DATA", str(data))
@@ -382,7 +390,17 @@ def inject_cli(tmp_path, monkeypatch, *extra, tics=(1, 2)):
 
 @INTERVAL_CAST
 def test_inject_threshold_sets_the_classification_level(tmp_path, monkeypatch):
-    criteria = relaxed_criteria(tmp_path)
+    # Planets of 8 to 10 Earth radii, which the provisional level recovers, as in
+    # test_injection_job_recovers_a_large_planet.
+    text = relaxed_criteria(tmp_path).read_text()
+    for old, new in (
+        ("inject_rp_min_rearth = 0.5", "inject_rp_min_rearth = 8.0"),
+        ("inject_rp_max_rearth = 16.0", "inject_rp_max_rearth = 10.0"),
+    ):
+        assert old in text
+        text = text.replace(old, new)
+    criteria = tmp_path / "large.toml"
+    criteria.write_text(text)
     threshold = tmp_path / "threshold.json"
     threshold.write_text(
         json.dumps(
@@ -393,9 +411,25 @@ def test_inject_threshold_sets_the_classification_level(tmp_path, monkeypatch):
             }
         )
     )
-    rows, provenance, _ = inject_cli(tmp_path, monkeypatch, "--threshold", str(threshold))
+    # Each --criteria is given after inject_cli's own, so it wins. The default seed draws a 31-day
+    # planet that the search finds at half its period; seed 3 draws two it recovers.
+    args = ("--criteria", str(criteria), "--seed", "3")
+    provisional, _, _ = inject_cli(tmp_path / "a", monkeypatch, *args)
+    assert provisional["recovered"].all() and (provisional["masked_fraction"] > 0).all()
+    rows, provenance, _ = inject_cli(
+        tmp_path / "b", monkeypatch, *args, "--threshold", str(threshold)
+    )
     assert not rows["recovered"].any()
+    # Below continue_sde the search stops before masking its first signal.
+    assert (rows["masked_fraction"] == 0).all()
     assert provenance["threshold"]["value"] == 1000.0
+
+
+def test_production_inject_needs_a_threshold(tmp_path, monkeypatch):
+    with pytest.raises(SystemExit, match="production injection run needs --threshold"):
+        inject_cli(tmp_path, monkeypatch, "--production")
+    # Refused before start_run: no run directory is left behind.
+    assert not (tmp_path / "data" / "runs").exists()
 
 
 @pytest.mark.parametrize("other", ["criteria", "code"])

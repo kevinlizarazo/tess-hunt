@@ -24,6 +24,8 @@ from tess_hunt.pool import process_pool  # noqa: E402
 from tess_hunt.provenance import repo_root, sha256_file, start_run  # noqa: E402
 from tess_hunt.recovery import classify  # noqa: E402
 from tess_hunt.search import (  # noqa: E402
+    # The production search's status gate; search.py is frozen, so it keeps its private name.
+    _search_status,
     read_threshold,
     search_code_sha256,
     search_star,
@@ -127,7 +129,9 @@ def injection_job(job: tuple) -> list[dict]:
                 scored.append(
                     {
                         **base,
-                        "status": "ok",
+                        # As in the search, too few bins or a non-finite top SDE take the
+                        # injection out of the sample.
+                        "status": _search_status(result, search["min_points"]),
                         "engine": name,
                         "runtime_s": time.perf_counter() - started,
                         **{f"inj_{key}": value for key, value in asdict(inj).items()},
@@ -364,6 +368,9 @@ def cmd_inject(args) -> int:
     unknown = set(engines) - set(ENGINES)
     if unknown:
         raise SystemExit(f"unknown engines: {sorted(unknown)}")
+    if args.production and not args.threshold:
+        # As the production search does (spec 5.6): production is judged at the null's threshold.
+        raise SystemExit("a production injection run needs --threshold")
     search = dict(criteria["search"])
     level = criteria["benchmark"]["provisional_sde"]
     if args.threshold:
@@ -448,7 +455,7 @@ def cmd_inject(args) -> int:
         lines += [
             f"Replay of an earlier run's `{args.replay.name}` (sha256 in provenance.json): {replayed} "
             f"of its {len(published)} `{args.replay_engine}` injections with status ok. "
-            "`--per-star` and `--seed` are ignored.",
+            "`--per-star` is ignored, and `--seed` only chooses the stars for `--sample`.",
             "",
         ]
     if ok.empty:
@@ -481,7 +488,13 @@ def cmd_inject(args) -> int:
         injections=int(len(ok)),
         **{
             s: int(statuses.get(s, 0))
-            for s in ("no_draw", "too_few_points", "not_covered_after_fetch", "error")
+            for s in (
+                "no_draw",
+                "too_few_points",
+                "nonfinite_sde",
+                "not_covered_after_fetch",
+                "error",
+            )
         },
     )
     print("\n".join(lines))
