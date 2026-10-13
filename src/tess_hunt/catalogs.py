@@ -111,7 +111,8 @@ def refresh(
 
 
 def number(series) -> np.ndarray:
-    return pd.to_numeric(series, errors="coerce").to_numpy(dtype=float)
+    # The newer sources also pass arrays and lists, which pd.to_numeric hands back as arrays.
+    return pd.to_numeric(pd.Series(series), errors="coerce").to_numpy(dtype=float)
 
 
 def btjd(bjd) -> np.ndarray:

@@ -2,7 +2,10 @@
 table."""
 
 import hashlib
+import io
+import json
 import re
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
@@ -17,6 +20,7 @@ from tess_hunt.catalogs import (
     ARCHIVE_URL,
     CTOI_URL,
     KNOWN_COLUMNS,
+    MAX_DURATION_DAYS,
     TOI_URL,
     btjd,
     days,
@@ -42,6 +46,35 @@ PS_QUERY = (
     "from ps where tic_id is not null and pl_tranmid is not null"
 )
 TIC_LOOKUP = "mast:Catalogs.query_criteria(catalog=Tic, ID=<tics>)"
+EUMEMIC_REPO = "eumemic/exoplanets"
+EUMEMIC_FILES = (
+    "candidates/ephemerides.csv",
+    "results_public/candidates_allsky.csv",
+    "results_public/all_signals_tce.csv.gz",
+)
+CAO = (23193828, "table1_catalog.csv")
+RAVEN = (19661443, "nsfp09_table.csv")
+T16_URL = "https://dataverse.harvard.edu/api/access/datafile/13605255"
+PRSA_URL = "https://archive.stsci.edu/hlsps/tess-ebs/hlsp_tess-ebs_tess_lcf-ffi_s0001-s0026_tess_v1.0_cat.csv"
+# Kostov 2025 tables 3 and 4, then Justesen and Albrecht 2021: (catalog, period column, epoch column).
+VIZIER_EBS = (
+    ("J/ApJS/279/50/table3", "Per", "T0-pri"),
+    ("J/ApJS/279/50/table4", "Per-TESS", "T0-TESS"),
+    ("J/ApJ/912/123/table2", "Per", "t1"),
+)
+TH0RGAL_REPO = "Th0rgal/open-exoplanet-hunt"
+# Single-object community records: (Zenodo record, file, parser, TIC when the file doesn't carry it).
+# tess-transit-hunter publishes HTML only; the literature search on shortlisted TICs covers it.
+RECORDS = [
+    (23271302, "candidate.json", "flat_json", None),
+    (23271252, "candidate.json", "flat_json", None),
+    (23293798, "TIC458191673_candidate.json", "nested_json", None),
+    (23118499, "TIC257484419_ephemeris.csv", "quantity_value_csv", 257484419),
+    (23289148, "TIC257484419_ephemeris.csv", "quantity_value_csv", 257484419),
+    (23257784, "252721481_predicted_transits.csv", "predicted_csv", 252721481),
+    (23257784, "370612437_predicted_transits.csv", "predicted_csv", 370612437),
+    (23175179, "tic4206066_S110_prereg_final.zip", "rabtsevich_json", 4206066),
+]
 
 
 class SourceError(RuntimeError):
@@ -120,6 +153,7 @@ def frame(
     source: str, kind: str, tic, name, period, t0, duration, depth_ppm, ra=np.nan, dec=np.nan
 ) -> pd.DataFrame:
     """The known table's columns from one source's arrays; epochs and durations pass M1's bounds."""
+    duration = number(duration)
     out = pd.DataFrame(
         {
             "source": source,
@@ -130,7 +164,7 @@ def frame(
             "dec": dec,
             "period": number(period),
             "t0": btjd(t0),
-            "duration": duration,
+            "duration": np.where(duration <= MAX_DURATION_DAYS, duration, np.nan),
             "depth_ppm": number(depth_ppm),
         }
     )
@@ -239,6 +273,354 @@ def fetch_exominer(ctx: Context) -> pd.DataFrame:
     return pd.concat(parts, ignore_index=True)
 
 
+def _github_head(ctx: Context, repo: str) -> str:
+    # Raw files are read at one commit, so the snapshot names exactly what it read.
+    path = ctx.download(
+        repo.replace("/", "_"), f"https://api.github.com/repos/{repo}/commits/main", "head.json"
+    )
+    return json.loads(path.read_text())["sha"]
+
+
+def normalise_eumemic(eph: pd.DataFrame, allsky: pd.DataFrame, tce: pd.DataFrame, commit: str):
+    return (
+        frame(
+            "eumemic",
+            "community",
+            eph["TIC"],
+            [f"eumemic {commit[:7]} {t}" for t in eph["TIC"]],
+            eph["period_d"],
+            eph["T0_BJD_TDB"],
+            days(eph["duration_h"]),
+            eph["depth_ppm"],
+            number(eph["ra"]),
+            number(eph["dec"]),
+        ),
+        frame(
+            "eumemic",
+            "community",
+            allsky["TIC"],
+            [f"eumemic-allsky {commit[:7]} {t}" for t in allsky["TIC"]],
+            allsky["P_d"],
+            allsky["T0_BJD"],
+            days(allsky["T14_h"]),
+            allsky["depth_ppm"],
+        ),
+        frame(
+            "eumemic-tce",
+            "tce",
+            tce["tic"],
+            [f"eumemic-tce {commit[:7]} {t}" for t in tce["tic"]],
+            tce["period"],
+            tce["t0"],
+            days(tce["duration_h"]),
+            tce["bls_depth_ppm"],
+        ),
+    )
+
+
+def fetch_eumemic(ctx: Context) -> pd.DataFrame:
+    commit = _github_head(ctx, EUMEMIC_REPO)
+    tables = [
+        _rows(
+            ctx.download(
+                "eumemic",
+                f"https://raw.githubusercontent.com/{EUMEMIC_REPO}/{commit}/{name}",
+                name.replace("/", "_"),
+            )
+        )
+        for name in EUMEMIC_FILES
+    ]
+    return pd.concat(normalise_eumemic(*tables, commit), ignore_index=True)
+
+
+def normalise_cao(table: pd.DataFrame) -> pd.DataFrame:
+    # The table's epoch errors are order-of-magnitude estimates (median 0.36 d), too loose for the
+    # epoch test, so the rows match on period alone, which errs toward calling a signal known
+    # (decision 0002).
+    nan = np.full(len(table), np.nan)
+    return frame(
+        "Cao",
+        "community",
+        table["tic_id"],
+        table["dossier_name"],
+        table["period_days"],
+        nan,
+        nan,
+        table["depth_ppm"],
+    )
+
+
+def fetch_cao(ctx: Context) -> pd.DataFrame:
+    record, name = CAO
+    path = ctx.download("Cao", ZENODO_FILE.format(record=record, name=name), name)
+    return normalise_cao(_csv(path, comment="#"))
+
+
+def normalise_raven(table: pd.DataFrame) -> pd.DataFrame:
+    # bls_tdur is in hours: read as days, over a third of the rows would last as long as their
+    # period.
+    return frame(
+        "RAVEN",
+        "candidate",
+        table["ticid"],
+        [f"RAVEN {t}" for t in table["ticid"]],
+        table["bls_per"],
+        table["bls_t0"],
+        days(table["bls_tdur"]),
+        table["bls_depth"],
+        number(table["ra"]),
+        number(table["dec"]),
+    )
+
+
+def fetch_raven(ctx: Context) -> pd.DataFrame:
+    record, name = RAVEN
+    return normalise_raven(
+        _csv(ctx.download("RAVEN", ZENODO_FILE.format(record=record, name=name), name))
+    )
+
+
+def normalise_t16(table: pd.DataFrame) -> pd.DataFrame:
+    period = number(table["P_med"])
+    return frame(
+        "T16",
+        "candidate",
+        table["TICID"],
+        [f"T16 {t}" for t in table["TICID"]],
+        period,
+        table["Tc_med"],
+        number(table["qtran"]) * period,
+        np.full(len(table), np.nan),
+        number(table["ra"]),
+        number(table["dec"]),
+    )
+
+
+def fetch_t16(ctx: Context) -> pd.DataFrame:
+    return normalise_t16(_csv(ctx.download("T16", T16_URL, "candidate_table.tab"), sep="\t"))
+
+
+def _row(tic, period, t0, duration_days=np.nan, depth_ppm=np.nan, name=None) -> dict:
+    return {
+        "tic": int(tic),
+        "period": float(period),
+        "t0": float(t0),
+        "duration": duration_days,
+        "depth_ppm": depth_ppm,
+        "name": name or f"TIC {int(tic)}",
+    }
+
+
+def parse_record(fmt: str, content: bytes, tic: int | None = None) -> list[dict]:
+    """Rows of one community record; t0 comes back in BTJD."""
+    if fmt == "flat_json":
+        d = json.loads(content)
+        t0 = btjd([d["t0_BJD_TDB"]])[0]
+        return [_row(d["TIC"], d["period_d"], t0, d["duration_hr"] / 24.0, d["depth_ppm"])]
+    if fmt == "nested_json":
+        d = json.loads(content)
+        e, t = d["ephemeris"], d["transit"]
+        t0 = btjd([e["t0_bjd_tdb"]])[0]
+        duration = t["duration_hr"] / 24.0
+        return [_row(d["host"]["tic"], e["period_d"], t0, duration, t["depth_ppm"], d.get("name"))]
+    if fmt == "quantity_value_csv":
+        # The depth's quantity name holds an unquoted comma ("transit depth (model, fit B)"), so each
+        # line splits from the right into quantity, value, uncertainty and unit.
+        lines = content.decode().splitlines()[1:]
+        values = dict(line.rsplit(",", 3)[:2] for line in lines if line)
+        period, t0, duration, depth = (
+            float(next(v for k, v in values.items() if k.startswith(prefix)))
+            for prefix in ("period", "mid-transit time", "transit duration", "transit depth")
+        )
+        return [_row(tic, period, btjd([t0])[0], duration / 24.0, depth)]
+    if fmt == "predicted_csv":
+        p = pd.read_csv(io.BytesIO(content))
+        period, intercept = np.polyfit(p["epoch"].astype(float), p["mid_BJD_TDB"].astype(float), 1)
+        duration = float(p["duration_hr"].iloc[0]) / 24.0
+        return [_row(tic, period, btjd([intercept])[0], duration, float(p["depth_ppm"].iloc[0]))]
+    if fmt == "rabtsevich_json":
+        d = json.loads(content)
+        return [
+            _row(tic, s["P"], s["T0"], s["T14"], np.nan, f"TIC {tic} signal {k}")
+            for k, s in d.items()
+            if isinstance(s, dict) and "P" in s
+        ]
+    if fmt == "certificate_json":
+        d = json.loads(content)
+        e = d["primary_signal"]["ephemeris"]
+        duration = e["duration_h"] / 24.0
+        return [_row(d["tic_id"], e["period_d"], e["t0_btjd"], duration, e["bls_box_depth_ppm"])]
+    raise SourceError(f"unknown record format {fmt}")
+
+
+def fetch_records(ctx: Context) -> pd.DataFrame:
+    rows = []
+    for record, name, fmt, tic in RECORDS:
+        saved = f"{record}_{name}"
+        path = ctx.download("records", ZENODO_FILE.format(record=record, name=name), saved)
+        content = path.read_bytes()
+        if name.endswith(".zip"):
+            with zipfile.ZipFile(io.BytesIO(content)) as z:
+                member = next(m for m in z.namelist() if m.endswith("ephemeris_final.json"))
+                content = z.read(member)
+        parsed = parse_record(fmt, content, tic)
+        # As with a multi-file source's empty file, a record without rows would hide its object.
+        if not parsed:
+            raise SourceError(f"records: {saved} has no rows")
+        rows += [{**r, "source": f"zenodo-{record}"} for r in parsed]
+    head = _github_head(ctx, TH0RGAL_REPO)
+    tree = ctx.download(
+        "records",
+        f"https://api.github.com/repos/{TH0RGAL_REPO}/git/trees/{head}?recursive=1",
+        "th0rgal_tree.json",
+    )
+    listing = json.loads(tree.read_text())
+    if listing["truncated"]:
+        raise SourceError("records: GitHub truncated the Th0rgal tree listing")
+    paths = sorted(p["path"] for p in listing["tree"] if p["path"].endswith("certificate.json"))
+    if not paths:
+        raise SourceError("records: the Th0rgal tree lists no certificates")
+    for path in paths:
+        url = f"https://raw.githubusercontent.com/{TH0RGAL_REPO}/{head}/{path}"
+        content = ctx.download("records", url, path.replace("/", "_")).read_bytes()
+        rows += [{**r, "source": "th0rgal"} for r in parse_record("certificate_json", content)]
+    table = pd.DataFrame(rows)
+    return frame(
+        table["source"],
+        "community",
+        table["tic"],
+        table["name"],
+        table["period"],
+        table["t0"],
+        table["duration"],
+        table["depth_ppm"],
+    )
+
+
+def normalise_prsa(table: pd.DataFrame) -> pd.DataFrame:
+    nan = np.full(len(table), np.nan)
+    return frame(
+        "Prsa2022",
+        "eb",
+        table["tess_id"],
+        [f"TESS EB {t}" for t in table["tess_id"]],
+        table["period"],
+        table["bjd0"],
+        nan,
+        nan,
+        number(table["ra"]),
+        number(table["dec"]),
+    )
+
+
+def _vizier(catalog: str, columns: list[str]) -> pd.DataFrame:
+    from astroquery.vizier import Vizier
+
+    return Vizier(columns=columns, row_limit=-1).get_catalogs(catalog)[0].to_pandas()
+
+
+def fetch_tess_eb(ctx: Context) -> pd.DataFrame:
+    parts = [normalise_prsa(_rows(ctx.download("TESS-EB", PRSA_URL, "prsa2022.csv")))]
+    for catalog, period, t0 in VIZIER_EBS:
+        table = retry(
+            partial(_vizier, catalog, ["TIC", period, t0]),
+            attempts=ctx.attempts,
+            backoff=ctx.backoff,
+            # astroquery reports outages with assorted exception types.
+            retry_on=Exception,
+            error=SourceError,
+            what=f"TESS-EB: VizieR {catalog}",
+        )
+        name = catalog.replace("/", "_") + ".csv"
+        content = table.to_csv(index=False).encode()
+        # Read back from the kept file, so the rows are exactly what the snapshot holds.
+        table = _rows(ctx.keep("TESS-EB", name, content, f"vizier:{catalog}"))
+        nan = np.full(len(table), np.nan)
+        names = [f"{catalog} {t}" for t in table["TIC"]]
+        parts.append(frame(catalog, "eb", table["TIC"], names, table[period], table[t0], nan, nan))
+    return pd.concat(parts, ignore_index=True)
+
+
+def _targets_file(ctx: Context, name: str) -> Path:
+    if ctx.targets_run is None:
+        raise SourceError(f"{name} needs the targets run: refresh with --targets <run dir>")
+    return Path(ctx.targets_run) / name
+
+
+def normalise_gaia_eb(table: pd.DataFrame) -> pd.DataFrame:
+    # The reference time is not an eclipse time, so the rows match on period alone.
+    nan = np.full(len(table), np.nan)
+    return frame(
+        "Gaia-EB",
+        "eb",
+        table["tic"],
+        [f"Gaia DR3 EB {t}" for t in table["tic"]],
+        1.0 / number(table["eb_frequency"]),
+        nan,
+        nan,
+        nan,
+    )
+
+
+def fetch_gaia_eb(ctx: Context) -> pd.DataFrame:
+    path = _targets_file(ctx, "dr3_eb.parquet")
+    ctx.keep(
+        "Gaia-EB", "dr3_eb.parquet", path.read_bytes(), f"targets run {Path(ctx.targets_run).name}"
+    )
+    return normalise_gaia_eb(pd.read_parquet(path))
+
+
+def normalise_vsx(table: pd.DataFrame) -> pd.DataFrame:
+    # Types starting with E are eclipsing, except ELL (ellipsoidal), EXOR (an EX Lupi eruptive) and
+    # EP (a transiting planet, already in the planet tables).
+    keep = table["Type"].fillna("").str.strip().str.match(r"E(?!LL|XOR|P\b)")
+    t = table.loc[keep]
+    nan = np.full(len(t), np.nan)
+    return frame(
+        "VSX",
+        "eb",
+        t["tic"],
+        [f"VSX {n}" for n in t["Name"]],
+        t["Period"],
+        nan,
+        nan,
+        nan,
+        number(t["ra"]),
+        number(t["dec"]),
+    )
+
+
+def fetch_vsx(ctx: Context) -> pd.DataFrame:
+    import astropy.units as u
+    from astropy.table import Table
+    from astroquery.xmatch import XMatch
+
+    targets = pd.read_parquet(_targets_file(ctx, "targets.parquet"), columns=["tic", "ra", "dec"])
+    query = partial(
+        XMatch.query,
+        cat1=Table.from_pandas(targets),
+        cat2="vizier:B/vsx/vsx",
+        max_distance=5 * u.arcsec,
+        colRA1="ra",
+        colDec1="dec",
+    )
+    result = retry(
+        query,
+        attempts=ctx.attempts,
+        backoff=ctx.backoff,
+        retry_on=Exception,
+        error=SourceError,
+        what="VSX: CDS XMatch",
+    ).to_pandas()
+    ctx.keep(
+        "VSX",
+        "xmatch.csv",
+        result.to_csv(index=False).encode(),
+        "xmatch:vizier:B/vsx/vsx within 5 arcsec",
+    )
+    return normalise_vsx(result)
+
+
 SOURCES: list[Source] = [
     Source("TOI", "candidate", fetch_toi),
     Source("CTOI", "candidate", fetch_ctoi),
@@ -246,6 +628,14 @@ SOURCES: list[Source] = [
     Source("archive_ps", "planet", fetch_archive_ps),
     Source("SPOC-TCE", "tce", fetch_spoc_tce),
     Source("ExoMiner", "tce", fetch_exominer),
+    Source("eumemic", "community", fetch_eumemic),
+    Source("Cao", "community", fetch_cao),
+    Source("RAVEN", "candidate", fetch_raven),
+    Source("T16", "candidate", fetch_t16),
+    Source("records", "community", fetch_records),
+    Source("TESS-EB", "eb", fetch_tess_eb),
+    Source("Gaia-EB", "eb", fetch_gaia_eb),
+    Source("VSX", "eb", fetch_vsx),
 ]
 
 

@@ -1,4 +1,7 @@
+import gzip
 import io
+import json
+import zipfile
 
 import numpy as np
 import pandas as pd
@@ -195,3 +198,362 @@ def test_context_download_records_the_query_with_the_url(tmp_path):
     ctx = sources.Context(FakeSession(routes={"https://x/tap": b"a\n1\n"}), tmp_path, None)
     ctx.download("archive", "https://x/tap", "t.csv", {"query": "select a from t", "format": "csv"})
     assert ctx.files[0]["url"] == "https://x/tap?query=select+a+from+t&format=csv"
+
+
+EUMEMIC_EPH = "TIC,tier,ra,dec,Tmag,period_d,period_err_d,T0_BJD_TDB,T0_err_min,duration_h,depth_ppm\n137499615,A,132.3,78.6,11.63,0.9919109,3.5e-06,2459606.43305,2.6,1.2,484\n"
+EUMEMIC_ALLSKY = (
+    "TIC,P_d,P_err,T0_BJD,T14_h,depth_ppm,tier\n270771873,2.331034,5e-06,2458519.55951,2.31,652,A\n"
+)
+EUMEMIC_TCE = "rank,period,t0,duration_h,bls_depth_ppm,tic\n1,12.761,1393.7675,1.34,488.2,3894266\n"
+CAO = "# Table 1\n# t0_bjd = t0_mid_transit_bjd (BTJD) + 2457000.\ntic_id,dossier_name,period_days,t0_bjd,depth_ppm\n1006872,Dossier_1006872,9.733853,2458550.327331,6834.3\n"
+RAVEN = "ticid,candidate,ra,dec,bls_per,bls_t0,bls_tdur,bls_depth\n17361,1,219.33,-24.95,3.6065,2336.301,1.4426,8986.4\n"
+T16 = 'TICID\tP_med\tTc_med\tqtran\tra\tdec\n126747090\t4.5515\t1326.3306\t0.01185\t"315.95"\t"-46.94"\n'
+# Zenodo 23289148 as published: CRLF lines, and an unquoted comma inside the depth's quantity name.
+OZTURK = b"quantity,value,uncertainty,unit\r\nperiod,4.353304,0.000006,days\r\nmid-transit time (BJD_TDB),2459494.5967,0.0016,days\r\ntransit depth (model, fit B),1235,159,ppm\r\ntransit duration (fit B),1.46,0.09,hours\r\nplanet radius (fit B),2.49,0.16,Earth radii\r\nimpact parameter (fit B),0.82,0.06,\r\n"
+
+
+def test_eumemic_files_normalise_with_kinds():
+    tables = (pd.read_csv(io.StringIO(t)) for t in (EUMEMIC_EPH, EUMEMIC_ALLSKY, EUMEMIC_TCE))
+    eph, allsky, tce = sources.normalise_eumemic(*tables, "abc123")
+    assert (
+        eph.iloc[0]["t0"] == pytest.approx(2459606.43305 - 2457000.0)
+        and eph.iloc[0]["kind"] == "community"
+    )
+    assert allsky.iloc[0]["period"] == pytest.approx(2.331034)
+    assert tce.iloc[0]["kind"] == "tce" and tce.iloc[0]["t0"] == pytest.approx(1393.7675)
+    assert "abc123" in eph.iloc[0]["name"]
+
+
+def test_cao_epochs_load_as_missing():
+    out = sources.normalise_cao(pd.read_csv(io.StringIO(CAO), comment="#"))
+    assert out.iloc[0]["tic"] == 1006872 and np.isnan(out.iloc[0]["t0"])
+
+
+def test_raven_durations_are_hours():
+    out = sources.normalise_raven(pd.read_csv(io.StringIO(RAVEN)))
+    assert out.iloc[0]["duration"] == pytest.approx(1.4426 / 24) and out.iloc[0][
+        "ra"
+    ] == pytest.approx(219.33)
+
+
+def test_t16_duration_from_qtran():
+    out = sources.normalise_t16(pd.read_csv(io.StringIO(T16), sep="\t"))
+    assert out.iloc[0]["duration"] == pytest.approx(0.01185 * 4.5515) and out.iloc[0][
+        "dec"
+    ] == pytest.approx(-46.94)
+
+
+def test_durations_over_a_day_count_as_missing():
+    table = pd.read_csv(io.StringIO(T16), sep="\t").assign(P_med=14.5, qtran=0.12)
+    assert np.isnan(sources.normalise_t16(table).iloc[0]["duration"])
+
+
+def test_record_parsers():
+    flat = sources.parse_record(
+        "flat_json",
+        json.dumps(
+            {
+                "TIC": 156733696,
+                "period_d": 1.817187,
+                "t0_BJD_TDB": 2458468.48094,
+                "duration_hr": 3.26,
+                "depth_ppm": 465.6,
+            }
+        ).encode(),
+    )
+    assert flat[0]["tic"] == 156733696 and flat[0]["t0"] == pytest.approx(1468.48094)
+    nested = sources.parse_record(
+        "nested_json",
+        json.dumps(
+            {
+                "name": "TIC 458191673.01",
+                "host": {"tic": 458191673},
+                "ephemeris": {"period_d": 2.5706872, "t0_bjd_tdb": 2458571.21248},
+                "transit": {"duration_hr": 1.681, "depth_ppm": 802},
+            }
+        ).encode(),
+    )
+    assert nested[0]["period"] == pytest.approx(2.5706872)
+    qv = sources.parse_record("quantity_value_csv", OZTURK, tic=257484419)
+    assert qv[0]["period"] == pytest.approx(4.353304) and qv[0]["duration"] == pytest.approx(
+        1.46 / 24
+    )
+    assert qv[0]["t0"] == pytest.approx(2494.5967) and qv[0]["depth_ppm"] == pytest.approx(1235)
+    predicted = sources.parse_record(
+        "predicted_csv",
+        b"sector,epoch,mid_BJD_TDB,depth_ppm,duration_hr\n122,594,2461671.18018,279,1.59\n122,595,2461676.11371,279,1.59\n122,596,2461681.04725,279,1.59\n",
+        tic=252721481,
+    )
+    assert predicted[0]["period"] == pytest.approx(4.93353, abs=1e-4)
+    rab = sources.parse_record(
+        "rabtsevich_json",
+        json.dumps(
+            {
+                "A": {"P": 3.18278, "T0": 3998.7348, "T14": 0.0779},
+                "B": {"P": 11.13275, "T0": 4000.8659, "T14": 0.0691},
+            }
+        ).encode(),
+        tic=4206066,
+    )
+    assert [r["period"] for r in rab] == pytest.approx([3.18278, 11.13275])
+    cert = sources.parse_record(
+        "certificate_json",
+        json.dumps(
+            {
+                "tic_id": 125757128,
+                "primary_signal": {
+                    "ephemeris": {
+                        "period_d": 1.938344,
+                        "t0_btjd": 2475.42348,
+                        "duration_h": 3.36,
+                        "bls_box_depth_ppm": 151.7,
+                    }
+                },
+            }
+        ).encode(),
+    )
+    assert cert[0]["t0"] == pytest.approx(2475.42348)
+
+
+def test_eb_rows_match_on_period_only():
+    prsa = sources.normalise_prsa(
+        pd.DataFrame(
+            {"tess_id": [1], "period": [2.5], "bjd0": [1544.16], "ra": [1.0], "dec": [2.0]}
+        )
+    )
+    assert prsa.iloc[0]["kind"] == "eb" and prsa.iloc[0]["t0"] == pytest.approx(1544.16)
+    gaia = sources.normalise_gaia_eb(
+        pd.DataFrame({"tic": [5], "eb_frequency": [0.5], "eb_reference_time": [100.0]})
+    )
+    assert gaia.iloc[0]["period"] == pytest.approx(2.0) and np.isnan(gaia.iloc[0]["t0"])
+    vsx = sources.normalise_vsx(
+        pd.DataFrame(
+            {
+                "tic": [6, 7, 8],
+                "Name": ["a", "b", "c"],
+                "Type": ["EA", "EP", "ELL"],
+                "Period": [3.0, 4.0, 5.0],
+                "ra": [0.0] * 3,
+                "dec": [0.0] * 3,
+            }
+        )
+    )
+    assert list(vsx["tic"]) == [6]
+
+
+def test_vsx_keeps_eclipsing_types_only():
+    # Real VSX types: eclipsing ones first, then ellipsoidal, EX Lupi eruptives, planets and the rest.
+    types = [
+        "E",
+        "EA:",
+        "EW",
+        "EB|EW",
+        "ESD|EC",
+        "E-DO",
+        "ELL",
+        "ELL+SR",
+        "EXOR",
+        "EXOR:",
+        "EP",
+        "EP+ROT",
+        "EP:",
+        "ROT",
+        "",
+        None,
+    ]
+    table = pd.DataFrame(
+        {
+            "tic": range(len(types)),
+            "Name": list("abcdefghijklmnop"),
+            "Type": types,
+            "Period": 1.0,
+            "ra": 0.0,
+            "dec": 0.0,
+        }
+    )
+    assert list(sources.normalise_vsx(table)["tic"]) == [0, 1, 2, 3, 4, 5]
+
+
+def test_sample_sources_need_a_targets_run(tmp_path):
+    ctx = sources.Context(FakeSession(), tmp_path, None)
+    with pytest.raises(sources.SourceError, match="--targets"):
+        sources.fetch_gaia_eb(ctx)
+    with pytest.raises(sources.SourceError, match="--targets"):
+        sources.fetch_vsx(ctx)
+
+
+def eumemic_routes(commit: str) -> dict:
+    raw = f"https://raw.githubusercontent.com/{sources.EUMEMIC_REPO}/{commit}/"
+    eph, allsky, tce = sources.EUMEMIC_FILES
+    return {
+        f"https://api.github.com/repos/{sources.EUMEMIC_REPO}/commits/main": json.dumps(
+            {"sha": commit}
+        ).encode(),
+        raw + eph: EUMEMIC_EPH.encode(),
+        raw + allsky: EUMEMIC_ALLSKY.encode(),
+        raw + tce: gzip.compress(EUMEMIC_TCE.encode()),
+    }
+
+
+def test_an_empty_eumemic_file_fails_the_source(tmp_path):
+    commit = "0123456789abcdef" * 2
+    routes = eumemic_routes(commit)
+    out = sources.fetch_eumemic(sources.Context(FakeSession(routes), tmp_path / "full", None))
+    assert list(out["kind"]) == ["community", "community", "tce"]
+    assert list(out["tic"]) == [137499615, 270771873, 3894266]
+    allsky = f"https://raw.githubusercontent.com/{sources.EUMEMIC_REPO}/{commit}/{sources.EUMEMIC_FILES[1]}"
+    routes[allsky] = header_only(EUMEMIC_ALLSKY)
+    with pytest.raises(sources.SourceError, match="candidates_allsky.csv has no rows"):
+        sources.fetch_eumemic(sources.Context(FakeSession(routes), tmp_path / "empty", None))
+
+
+def zipped(member: str, content: dict) -> bytes:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr(member, json.dumps(content))
+    return archive.getvalue()
+
+
+def test_records_fail_on_a_record_or_tree_without_rows(tmp_path, monkeypatch):
+    records = [
+        (1, "candidate.json", "flat_json", None),
+        (2, "prereg.zip", "rabtsevich_json", 4206066),
+    ]
+    monkeypatch.setattr(sources, "RECORDS", records)
+    repo, head = sources.TH0RGAL_REPO, "f" * 40
+    tree_url = f"https://api.github.com/repos/{repo}/git/trees/{head}?recursive=1"
+    certificate = "candidates/TIC-9/certificate.json"
+    prereg = sources.ZENODO_FILE.format(record=2, name="prereg.zip")
+    routes = {
+        sources.ZENODO_FILE.format(record=1, name="candidate.json"): json.dumps(
+            {
+                "TIC": 7,
+                "period_d": 1.8,
+                "t0_BJD_TDB": 2458468.48,
+                "duration_hr": 3.3,
+                "depth_ppm": 466.0,
+            }
+        ).encode(),
+        prereg: zipped(
+            "prereg/ephemeris_final.json",
+            {"note": "frozen", "A": {"P": 3.18, "T0": 3998.73, "T14": 0.078}},
+        ),
+        f"https://api.github.com/repos/{repo}/commits/main": json.dumps({"sha": head}).encode(),
+        tree_url: json.dumps(
+            {"truncated": False, "tree": [{"path": "README.md"}, {"path": certificate}]}
+        ).encode(),
+        f"https://raw.githubusercontent.com/{repo}/{head}/{certificate}": json.dumps(
+            {
+                "tic_id": 9,
+                "primary_signal": {
+                    "ephemeris": {
+                        "period_d": 1.9,
+                        "t0_btjd": 2475.4,
+                        "duration_h": 3.4,
+                        "bls_box_depth_ppm": 150.0,
+                    }
+                },
+            }
+        ).encode(),
+    }
+    out = sources.fetch_records(sources.Context(FakeSession(routes), tmp_path / "full", None))
+    assert list(out["source"]) == ["zenodo-1", "zenodo-2", "th0rgal"] and list(out["tic"]) == [
+        7,
+        4206066,
+        9,
+    ]
+    assert set(out["kind"]) == {"community"}
+    no_signals = {**routes, prereg: zipped("prereg/ephemeris_final.json", {"note": "frozen"})}
+    with pytest.raises(sources.SourceError, match="2_prereg.zip has no rows"):
+        sources.fetch_records(sources.Context(FakeSession(no_signals), tmp_path / "record", None))
+    no_certificates = {
+        **routes,
+        tree_url: json.dumps({"truncated": False, "tree": [{"path": "README.md"}]}).encode(),
+    }
+    with pytest.raises(sources.SourceError, match="no certificates"):
+        sources.fetch_records(
+            sources.Context(FakeSession(no_certificates), tmp_path / "tree", None)
+        )
+    truncated = {
+        **routes,
+        tree_url: json.dumps({"truncated": True, "tree": [{"path": certificate}]}).encode(),
+    }
+    with pytest.raises(sources.SourceError, match="truncated"):
+        sources.fetch_records(sources.Context(FakeSession(truncated), tmp_path / "truncated", None))
+
+
+def test_tess_eb_retries_vizier_and_refuses_an_empty_table(tmp_path, monkeypatch):
+    calls = []
+
+    def vizier(catalog, columns):
+        calls.append(catalog)
+        if len(calls) == 1:
+            raise ConnectionError("VizieR hiccup")
+        return pd.DataFrame({c: [7] if c == "TIC" else [1500.5] for c in columns})
+
+    monkeypatch.setattr(sources, "_vizier", vizier)
+    session = FakeSession(
+        {sources.PRSA_URL: b"tess_id,period,bjd0,ra,dec\n1,2.5,1544.16,1.0,2.0\n"}
+    )
+    out = sources.fetch_tess_eb(sources.Context(session, tmp_path / "full", None, backoff=0))
+    assert list(out["source"]) == [
+        "Prsa2022",
+        "J/ApJS/279/50/table3",
+        "J/ApJS/279/50/table4",
+        "J/ApJ/912/123/table2",
+    ]
+    assert set(out["kind"]) == {"eb"} and list(out["t0"][1:]) == [1500.5] * 3 and len(calls) == 4
+
+    def table4_empty(catalog, columns):
+        return (
+            pd.DataFrame(columns=columns)
+            if catalog.endswith("table4")
+            else vizier(catalog, columns)
+        )
+
+    monkeypatch.setattr(sources, "_vizier", table4_empty)
+    with pytest.raises(sources.SourceError, match="table4.csv has no rows"):
+        sources.fetch_tess_eb(sources.Context(session, tmp_path / "empty", None, backoff=0))
+
+
+def test_sample_sources_read_the_targets_run(tmp_path, monkeypatch):
+    from astropy.table import Table
+    from astroquery.xmatch import XMatch
+
+    run = tmp_path / "20261013T000000Z-targets-abc1234-0000"
+    run.mkdir()
+    pd.DataFrame({"tic": [5], "eb_frequency": [0.25], "eb_reference_time": [100.0]}).to_parquet(
+        run / "dr3_eb.parquet"
+    )
+    pd.DataFrame({"tic": [6, 7], "ra": [10.0, 20.0], "dec": [-5.0, -6.0]}).to_parquet(
+        run / "targets.parquet"
+    )
+    hiccups = [ConnectionError("CDS hiccup")]
+
+    def xmatch(**kwargs):
+        if hiccups:
+            raise hiccups.pop()
+        assert kwargs["cat2"] == "vizier:B/vsx/vsx" and list(kwargs["cat1"]["tic"]) == [6, 7]
+        return Table(
+            {
+                "angDist": [0.1, 0.2],
+                "tic": [6, 7],
+                "ra": [10.0, 20.0],
+                "dec": [-5.0, -6.0],
+                "Name": ["V1", "V2"],
+                "Type": ["EA", "RRAB"],
+                "Period": [1.5, 0.6],
+            }
+        )
+
+    monkeypatch.setattr(XMatch, "query", xmatch)
+    ctx = sources.Context(FakeSession(), tmp_path / "raw", run, backoff=0)
+    gaia = sources.fetch_gaia_eb(ctx)
+    vsx = sources.fetch_vsx(ctx)
+    assert (
+        list(gaia["period"]) == [4.0]
+        and list(vsx["tic"]) == [6]
+        and list(vsx["name"]) == ["VSX V1"]
+    )
+    assert [f["file"] for f in ctx.files] == ["Gaia-EB/dr3_eb.parquet", "VSX/xmatch.csv"]
+    assert ctx.files[0]["url"] == f"targets run {run.name}"
