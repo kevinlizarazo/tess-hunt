@@ -4,9 +4,9 @@ import argparse
 import logging
 from importlib.metadata import version
 
-from tess_hunt import benchmark, catalogs, fetch, search, targets, vet
+from tess_hunt import benchmark, catalogs, fetch, search, targets, threshold, vet
 
-COMMANDS: list = [catalogs, targets, fetch, search, benchmark, vet]
+COMMANDS: list = [catalogs, targets, fetch, search, benchmark, vet, threshold]
 
 
 def build_parser() -> argparse.ArgumentParser:
