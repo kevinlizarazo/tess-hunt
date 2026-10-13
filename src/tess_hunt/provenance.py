@@ -3,9 +3,11 @@
 import datetime as dt
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -158,6 +160,30 @@ def start_run(
     )
     run._save()
     return run
+
+
+def publish_run(run_id: str, root: Path, kind: str, files: Callable[[Path], list[Path]]) -> Path:
+    """Copy a finished run's `files(run directory)` into results/<kind>/<run id> under `root`."""
+    source = runs_dir() / run_id
+    provenance = source / "provenance.json"
+    if not provenance.exists():
+        raise SystemExit(f"no run {run_id} under the data directory")
+    if json.loads(provenance.read_text())["ended_at"] is None:
+        raise SystemExit(f"run {run_id} has not finished; only finished runs are evidence")
+    dest = root / "results" / kind / run_id
+    if dest.exists():
+        raise SystemExit(f"{dest} exists; published results are never overwritten")
+    paths = files(source)
+    # Checked before the copy starts, so a refusal leaves no partial publication behind.
+    missing = [p.name for p in paths if not p.is_file()]
+    if missing:
+        raise SystemExit(f"run {run_id} has no {', '.join(missing)}")
+    dest.mkdir(parents=True)
+    for path in paths:
+        shutil.copy(path, dest / path.name)
+        (dest / path.name).chmod(0o644)
+    print(f"published {run_id} -> {dest.relative_to(root)}")
+    return dest
 
 
 class ResumeError(RuntimeError):

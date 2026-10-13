@@ -1,7 +1,5 @@
 """Benchmarks: recover known planets and injected transits, and compare search engines."""
 
-import json
-import shutil
 import sys
 import time
 from dataclasses import asdict
@@ -15,13 +13,13 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from tess_hunt.catalogs import known_ephemerides, load_known, snapshot_inputs  # noqa: E402
-from tess_hunt.config import lc_dir, load_criteria, runs_dir  # noqa: E402
+from tess_hunt.config import lc_dir, load_criteria  # noqa: E402
 from tess_hunt.detrend import detrend  # noqa: E402
 from tess_hunt.ephemeris import Ephemeris  # noqa: E402
 from tess_hunt.inject import Injection, draw, inject  # noqa: E402
 from tess_hunt.lightcurve import LightCurve  # noqa: E402
 from tess_hunt.pool import process_pool  # noqa: E402
-from tess_hunt.provenance import repo_root, sha256_file, start_run  # noqa: E402
+from tess_hunt.provenance import publish_run, repo_root, sha256_file, start_run  # noqa: E402
 from tess_hunt.recovery import classify  # noqa: E402
 from tess_hunt.search import (  # noqa: E402
     # The production search's status gate; search.py is frozen, so it keeps its private name.
@@ -502,19 +500,8 @@ def cmd_inject(args) -> int:
 
 
 def cmd_publish(args) -> int:
-    source = runs_dir() / args.run
-    provenance = source / "provenance.json"
-    if not provenance.exists():
-        raise SystemExit(f"no run {args.run} under the data directory")
-    if json.loads(provenance.read_text())["ended_at"] is None:
-        raise SystemExit(f"run {args.run} has not finished; only finished runs are evidence")
-    dest = repo_root() / "results" / "benchmarks" / args.run
-    if dest.exists():
-        raise SystemExit(f"{dest} exists; published results are never overwritten")
-    dest.mkdir(parents=True)
-    for path in source.iterdir():
-        if path.suffix in (".md", ".csv", ".png", ".json"):
-            shutil.copy(path, dest / path.name)
-            (dest / path.name).chmod(0o644)
-    print(f"published {args.run} -> {dest.relative_to(repo_root())}")
+    def files(source: Path) -> list[Path]:
+        return [p for p in source.iterdir() if p.suffix in (".md", ".csv", ".png", ".json")]
+
+    publish_run(args.run, repo_root(), "benchmarks", files)
     return 0

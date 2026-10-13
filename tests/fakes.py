@@ -10,6 +10,11 @@ class FakeResponse:
         self.text = content.decode("utf-8", errors="replace")
         self.headers = headers or {}
 
+    def json(self):
+        import json
+
+        return json.loads(self.content)
+
 
 class FakeSession:
     """Serves `sequence` in order first, then `routes` by URL; anything else is a 404."""

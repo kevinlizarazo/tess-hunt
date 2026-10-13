@@ -235,31 +235,21 @@ def _lc_sha256(tic: int) -> str | None:
     return sha256_file(path) if path.exists() else None
 
 
-def add_parser(sub) -> None:
-    p = sub.add_parser("triage", help="the null threshold, and triage of a search's signals")
-    modes = p.add_subparsers(dest="mode", required=True)
-    t = modes.add_parser("threshold", help="the detection threshold from a null (scrambled) search")
-    t.add_argument("--null", type=Path, required=True, help="the null search's run directory")
-    t.add_argument("--targets", type=Path, required=True)
-    t.add_argument("--catalogs", type=Path, required=True, help="a v2 snapshot (kinds, TCEs, EBs)")
-    t.add_argument(
-        "--mask-catalogs", type=Path, required=True, help="the snapshot the null masked with"
-    )
-    t.add_argument("--criteria-triage", type=Path, default=Path("criteria/triage-v1.toml"))
-    t.add_argument("--workers", type=int, default=8)
-    t.add_argument("--production", action="store_true")
-    t.set_defaults(func=cmd_threshold)
+def check_mask_snapshot(provenance: dict, snapshot: Path, masked_by: str) -> None:
+    """Refuse a --mask-catalogs other than the snapshot the run behind `provenance` masked with: LEO-Vetter
+    must see the light curve with the same known objects masked."""
+    for name, path in snapshot_inputs(snapshot).items():
+        if provenance["inputs"].get(name, {}).get("sha256") != sha256_file(path):
+            raise SystemExit(
+                f"--mask-catalogs differs from the snapshot the {masked_by} masked with ({name})"
+            )
 
 
 def cmd_threshold(args) -> int:
     null_prov = json.loads((args.null / "provenance.json").read_text())
     if null_prov["ended_at"] is None or null_prov.get("scramble") is None:
         raise SystemExit(f"{args.null.name} is not a finished null (scrambled) search")
-    for name, path in snapshot_inputs(args.mask_catalogs).items():
-        if null_prov["inputs"].get(name, {}).get("sha256") != sha256_file(path):
-            raise SystemExit(
-                f"--mask-catalogs differs from the snapshot the null masked with ({name})"
-            )
+    check_mask_snapshot(null_prov, args.mask_catalogs, "null")
     if null_prov["inputs"].get("targets", {}).get("sha256") != sha256_file(args.targets):
         raise SystemExit("--targets differs from the targets the null searched")
     crit_search = load_criteria(Path(null_prov["criteria"][0]["file"]))
