@@ -347,7 +347,8 @@ def cmd_inject(args) -> int:
     replays: dict[int, list[dict]] = {}
     if args.replay:
         run.record_input("replay", args.replay)
-        published = pd.read_csv(args.replay)
+        # The default parser is not correctly rounded; it would move M1's planets by a few ULP.
+        published = pd.read_csv(args.replay, float_precision="round_trip")
         published = published[
             (published["engine"] == args.replay_engine) & (published["status"] == "ok")
         ]

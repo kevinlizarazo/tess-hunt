@@ -258,13 +258,15 @@ def test_replay_injects_the_listed_planets(tmp_path, monkeypatch):
     targets = tmp_path / "targets.parquet"
     pd.DataFrame([{**SUN, "ra": 30.0, "dec": -40.0}]).to_parquet(targets)
     published = tmp_path / "injections.csv"
+    # pandas' default float parser reads these 17-digit values one ULP off; a replay must not.
+    period, t0 = 4.3008701448475755, 1325.9997328314087
     row = {
         "tic": 1,
         "injection": 4,
         "engine": "bls30",
         "status": "ok",
-        "inj_period": 4.3,
-        "inj_t0": 1326.0,
+        "inj_period": period,
+        "inj_t0": t0,
         "inj_rp_rearth": 9.0,
         "inj_b": 0.2,
         "inj_rp_rs": 0.0824,
@@ -290,8 +292,9 @@ def test_replay_injects_the_listed_planets(tmp_path, monkeypatch):
     ]
     assert main(argv) == 0
     run = sorted((data / "runs").iterdir())[-1]
-    out = pd.read_csv(run / "injections.csv")
-    assert list(out["injection"]) == [4] and out.iloc[0]["inj_period"] == 4.3
+    out = pd.read_csv(run / "injections.csv", float_precision="round_trip")
+    assert list(out["injection"]) == [4]
+    assert out.iloc[0]["inj_period"] == period and out.iloc[0]["inj_t0"] == t0
     assert out.iloc[0]["recovered"] and "few_transits" in out.columns
     inputs = json.loads((run / "provenance.json").read_text())["inputs"]
     assert inputs["replay"]["sha256"] == sha256_file(published)
