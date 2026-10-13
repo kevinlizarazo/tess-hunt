@@ -315,7 +315,31 @@ def test_record_parsers():
     assert cert[0]["t0"] == pytest.approx(2475.42348)
 
 
-def test_eb_rows_match_on_period_only():
+def test_certificates_keep_their_secondary_candidates():
+    # Th0rgal's TIC 4206066 certificate (schema_version 1), trimmed to what the parser reads.
+    def signal(period, t0, duration_h, depth):
+        return {
+            "period_d": period,
+            "t0_btjd": t0,
+            "duration_h": duration_h,
+            "bls_box_depth_ppm": depth,
+        }
+
+    certificate = {
+        "schema_version": 1,
+        "tic_id": 4206066,
+        "primary_signal": {"ephemeris": signal(3.182785, 1468.42382, 1.73, 410.8)},
+        "secondary_candidates": [
+            {"label": "TIC 4206066.02", "ephemeris": signal(11.1327415, 1473.73182, 1.66, 300.0)}
+        ],
+    }
+    rows = sources.parse_record("certificate_json", json.dumps(certificate).encode())
+    assert [r["name"] for r in rows] == ["TIC 4206066", "TIC 4206066.02"]
+    assert [r["period"] for r in rows] == pytest.approx([3.182785, 11.1327415])
+    assert [r["t0"] for r in rows] == pytest.approx([1468.42382, 1473.73182])
+
+
+def test_prsa_rows_keep_their_epoch_and_gaia_rows_are_period_only():
     prsa = sources.normalise_prsa(
         pd.DataFrame(
             {"tess_id": [1], "period": [2.5], "bjd0": [1544.16], "ra": [1.0], "dec": [2.0]}
@@ -342,7 +366,8 @@ def test_eb_rows_match_on_period_only():
 
 
 def test_vsx_keeps_eclipsing_types_only():
-    # Real VSX types: eclipsing ones first, then ellipsoidal, EX Lupi eruptives, planets and the rest.
+    # Real VSX types: eclipsing in any |, + or / token first, then ellipsoidal, EX Lupi eruptives,
+    # planets and the rest.
     types = [
         "E",
         "EA:",
@@ -350,12 +375,18 @@ def test_vsx_keeps_eclipsing_types_only():
         "EB|EW",
         "ESD|EC",
         "E-DO",
+        "DSCT|EC",
+        "UG+E",
+        "DPV/EA",
+        "ROT+EA/RS",
         "ELL",
         "ELL+SR",
+        "CV+ELL",
         "EXOR",
         "EXOR:",
         "EP",
         "EP+ROT",
+        "ROT+EP",
         "EP:",
         "ROT",
         "",
@@ -364,14 +395,14 @@ def test_vsx_keeps_eclipsing_types_only():
     table = pd.DataFrame(
         {
             "tic": range(len(types)),
-            "Name": list("abcdefghijklmnop"),
+            "Name": [f"V{i}" for i in range(len(types))],
             "Type": types,
             "Period": 1.0,
             "ra": 0.0,
             "dec": 0.0,
         }
     )
-    assert list(sources.normalise_vsx(table)["tic"]) == [0, 1, 2, 3, 4, 5]
+    assert list(sources.normalise_vsx(table)["tic"]) == list(range(10))
 
 
 def test_sample_sources_need_a_targets_run(tmp_path):
@@ -379,6 +410,17 @@ def test_sample_sources_need_a_targets_run(tmp_path):
     with pytest.raises(sources.SourceError, match="--targets"):
         sources.fetch_gaia_eb(ctx)
     with pytest.raises(sources.SourceError, match="--targets"):
+        sources.fetch_vsx(ctx)
+    run = tmp_path / "20261013T000000Z-targets-abc1234-0000"
+    run.mkdir()
+    ctx = sources.Context(FakeSession(), tmp_path / "raw", run)
+    with pytest.raises(
+        sources.SourceError, match=f"dr3_eb.parquet is not in targets run {run.name}"
+    ):
+        sources.fetch_gaia_eb(ctx)
+    with pytest.raises(
+        sources.SourceError, match=f"targets.parquet is not in targets run {run.name}"
+    ):
         sources.fetch_vsx(ctx)
 
 
@@ -480,6 +522,24 @@ def test_records_fail_on_a_record_or_tree_without_rows(tmp_path, monkeypatch):
     }
     with pytest.raises(sources.SourceError, match="truncated"):
         sources.fetch_records(sources.Context(FakeSession(truncated), tmp_path / "truncated", None))
+
+
+def test_a_malformed_record_names_itself(tmp_path, monkeypatch):
+    no_period = b"\r\n".join(
+        line for line in OZTURK.split(b"\r\n") if not line.startswith(b"period")
+    )
+    routes = {
+        sources.ZENODO_FILE.format(record=3, name="ephemeris.csv"): no_period,
+        sources.ZENODO_FILE.format(record=4, name="prereg.zip"): zipped("prereg/README.json", {}),
+    }
+    monkeypatch.setattr(sources, "RECORDS", [(3, "ephemeris.csv", "quantity_value_csv", 257484419)])
+    with pytest.raises(
+        sources.SourceError, match="3_ephemeris.csv: .*no quantity starting with 'period'"
+    ):
+        sources.fetch_records(sources.Context(FakeSession(routes), tmp_path / "csv", None))
+    monkeypatch.setattr(sources, "RECORDS", [(4, "prereg.zip", "rabtsevich_json", 4206066)])
+    with pytest.raises(sources.SourceError, match="4_prereg.zip has no ephemeris_final.json"):
+        sources.fetch_records(sources.Context(FakeSession(routes), tmp_path / "zip", None))
 
 
 def test_tess_eb_retries_vizier_and_refuses_an_empty_table(tmp_path, monkeypatch):

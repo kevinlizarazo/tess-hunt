@@ -428,10 +428,13 @@ def parse_record(fmt: str, content: bytes, tic: int | None = None) -> list[dict]
         # line splits from the right into quantity, value, uncertainty and unit.
         lines = content.decode().splitlines()[1:]
         values = dict(line.rsplit(",", 3)[:2] for line in lines if line)
-        period, t0, duration, depth = (
-            float(next(v for k, v in values.items() if k.startswith(prefix)))
-            for prefix in ("period", "mid-transit time", "transit duration", "transit depth")
-        )
+        picked = []
+        for prefix in ("period", "mid-transit time", "transit duration", "transit depth"):
+            found = [v for k, v in values.items() if k.startswith(prefix)]
+            if not found:
+                raise SourceError(f"no quantity starting with '{prefix}'")
+            picked.append(float(found[0]))
+        period, t0, duration, depth = picked
         return [_row(tic, period, btjd([t0])[0], duration / 24.0, depth)]
     if fmt == "predicted_csv":
         p = pd.read_csv(io.BytesIO(content))
@@ -447,10 +450,25 @@ def parse_record(fmt: str, content: bytes, tic: int | None = None) -> list[dict]
         ]
     if fmt == "certificate_json":
         d = json.loads(content)
-        e = d["primary_signal"]["ephemeris"]
-        duration = e["duration_h"] / 24.0
-        return [_row(d["tic_id"], e["period_d"], e["t0_btjd"], duration, e["bls_box_depth_ppm"])]
+        rows = []
+        for signal in [d["primary_signal"], *d.get("secondary_candidates", [])]:
+            e = signal["ephemeris"]
+            duration, depth = e["duration_h"] / 24.0, e["bls_box_depth_ppm"]
+            name = signal.get("label")
+            rows.append(_row(d["tic_id"], e["period_d"], e["t0_btjd"], duration, depth, name))
+        return rows
     raise SourceError(f"unknown record format {fmt}")
+
+
+def _parse(saved: str, fmt: str, content: bytes, tic: int | None = None) -> list[dict]:
+    try:
+        rows = parse_record(fmt, content, tic)
+    except Exception as exc:  # whatever breaks in a malformed record, the error names the record
+        raise SourceError(f"records: {saved}: {type(exc).__name__}: {exc}") from exc
+    # As with a multi-file source's empty file, a record without rows would hide its object.
+    if not rows:
+        raise SourceError(f"records: {saved} has no rows")
+    return rows
 
 
 def fetch_records(ctx: Context) -> pd.DataFrame:
@@ -461,13 +479,11 @@ def fetch_records(ctx: Context) -> pd.DataFrame:
         content = path.read_bytes()
         if name.endswith(".zip"):
             with zipfile.ZipFile(io.BytesIO(content)) as z:
-                member = next(m for m in z.namelist() if m.endswith("ephemeris_final.json"))
-                content = z.read(member)
-        parsed = parse_record(fmt, content, tic)
-        # As with a multi-file source's empty file, a record without rows would hide its object.
-        if not parsed:
-            raise SourceError(f"records: {saved} has no rows")
-        rows += [{**r, "source": f"zenodo-{record}"} for r in parsed]
+                members = [m for m in z.namelist() if m.endswith("ephemeris_final.json")]
+                if not members:
+                    raise SourceError(f"records: {saved} has no ephemeris_final.json")
+                content = z.read(members[0])
+        rows += [{**r, "source": f"zenodo-{record}"} for r in _parse(saved, fmt, content, tic)]
     head = _github_head(ctx, TH0RGAL_REPO)
     tree = ctx.download(
         "records",
@@ -482,8 +498,9 @@ def fetch_records(ctx: Context) -> pd.DataFrame:
         raise SourceError("records: the Th0rgal tree lists no certificates")
     for path in paths:
         url = f"https://raw.githubusercontent.com/{TH0RGAL_REPO}/{head}/{path}"
-        content = ctx.download("records", url, path.replace("/", "_")).read_bytes()
-        rows += [{**r, "source": "th0rgal"} for r in parse_record("certificate_json", content)]
+        saved = path.replace("/", "_")
+        content = ctx.download("records", url, saved).read_bytes()
+        rows += [{**r, "source": "th0rgal"} for r in _parse(saved, "certificate_json", content)]
     table = pd.DataFrame(rows)
     return frame(
         table["source"],
@@ -544,7 +561,10 @@ def fetch_tess_eb(ctx: Context) -> pd.DataFrame:
 def _targets_file(ctx: Context, name: str) -> Path:
     if ctx.targets_run is None:
         raise SourceError(f"{name} needs the targets run: refresh with --targets <run dir>")
-    return Path(ctx.targets_run) / name
+    path = Path(ctx.targets_run) / name
+    if not path.exists():
+        raise SourceError(f"{name} is not in targets run {path.parent.name}")
+    return path
 
 
 def normalise_gaia_eb(table: pd.DataFrame) -> pd.DataFrame:
@@ -571,9 +591,10 @@ def fetch_gaia_eb(ctx: Context) -> pd.DataFrame:
 
 
 def normalise_vsx(table: pd.DataFrame) -> pd.DataFrame:
-    # Types starting with E are eclipsing, except ELL (ellipsoidal), EXOR (an EX Lupi eruptive) and
+    # A type joins alternatives (|), components (+) and subtypes (/); a row stays when any token is
+    # eclipsing. Tokens starting with E are, except ELL (ellipsoidal), EXOR (an EX Lupi eruptive) and
     # EP (a transiting planet, already in the planet tables).
-    keep = table["Type"].fillna("").str.strip().str.match(r"E(?!LL|XOR|P\b)")
+    keep = table["Type"].fillna("").str.contains(r"(?:^|[|+/])\s*E(?!LL|XOR|P\b)")
     t = table.loc[keep]
     nan = np.full(len(t), np.nan)
     return frame(
