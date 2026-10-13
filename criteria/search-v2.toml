@@ -1,0 +1,69 @@
+# Search criteria, version 2 (M2).
+# Changing a value after any result exists needs a docs/decisions entry first.
+
+[sample]
+teff_min = 5300.0        # exclusive
+teff_max = 6500.0
+tmag_max = 10.5
+logg_min = 4.0
+logg_max = 5.5
+min_sectors = 4
+recent_sector_min = 97
+recent_sector_max = 107
+flame_logg_min = 4.0     # Gaia DR3 FLAME log g, where it exists (decision 0009)
+
+[fetch]
+min_good_cadences = 100
+
+# Products whose timestamps the producer has announced as wrong: kept for detection, flagged so
+# timing work can leave them out (decision 0010).
+[[fetch.timing_suspect]]
+provenance = "QLP"
+sectors = [99, 100, 101, 102, 103, 104]
+version = "v01"
+
+[detrend]
+window_days = 1.2               # 3x the longest searched duration (Hippke et al. 2019)
+edge_cutoff_days = 0.5
+break_tolerance_days = 0.5
+clip_sigma = 3.0                # upward outliers only
+min_points_per_sector = 100
+known_mask_width = 2.0          # multiples of the catalog duration
+fallback_duration_days = 0.25   # known planets with no catalog duration
+mask_sources = ["TOI", "CTOI", "archive"]   # known planets and candidates; other snapshot rows are novelty evidence only
+
+[search]
+engine = "bls"
+bin_minutes = 30.0
+period_min_days = 1.0
+period_max_days = 40.0
+min_transits = 3
+min_points_per_transit = 2      # binned points; one bin is not a transit (decision 0008)
+oversampling = 2
+durations_hours = [1.0, 1.5, 2.0, 3.0, 4.5, 6.0, 8.0, 10.0]
+duration_factor = 2.0           # boxes up to this x the central transit duration at each period (0008)
+repeat_harmonics = [1.0, 0.5, 2.0, 0.3333333333333333, 3.0]
+repeat_sigma_p = 2.5            # the period tolerance of [match] sigma_p
+max_retries = 3                 # few-transit peaks masked and retried before the star stops (0008)
+sde_kernel = 1001
+max_signals = 3
+continue_sde = 9.0              # provisional; production runs take the null threshold (0019)
+iter_mask_width = 2.0
+min_points = 100
+
+[null]
+segment_gap_days = 0.5          # a sector splits into segments at every internal gap longer than this
+placement_gap_days = 1.0        # the gap left between moved segments
+
+[match]
+sigma_p = 2.5                   # Coughlin et al. 2014
+sigma_t = 2.0
+
+[benchmark]
+provisional_sde = 9.0           # replaced by the null-calibrated threshold in production
+required_recovery_snr = 12.0    # TOI "Planet SNR" at or above this must be recovered
+known_count = 20
+inject_rp_min_rearth = 0.5
+inject_rp_max_rearth = 16.0
+inject_u1 = 0.40
+inject_u2 = 0.21

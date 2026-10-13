@@ -17,71 +17,29 @@ import pandas as pd  # noqa: E402
 from tess_hunt.catalogs import FILES, known_ephemerides, load_known  # noqa: E402
 from tess_hunt.config import lc_dir, load_criteria, runs_dir  # noqa: E402
 from tess_hunt.detrend import detrend  # noqa: E402
-from tess_hunt.ephemeris import Ephemeris, ephemeris_match  # noqa: E402
+from tess_hunt.ephemeris import Ephemeris  # noqa: E402
 from tess_hunt.inject import draw, inject  # noqa: E402
 from tess_hunt.lightcurve import LightCurve  # noqa: E402
 from tess_hunt.pool import process_pool  # noqa: E402
 from tess_hunt.provenance import repo_root, sha256_file, start_run  # noqa: E402
-from tess_hunt.search import search_star, star_params  # noqa: E402
+from tess_hunt.recovery import classify  # noqa: E402
+from tess_hunt.search import search_star, star_params, stellar_density  # noqa: E402
 from tess_hunt.transit import light_curve  # noqa: E402
 
 ENGINES = {
     "bls30": {"engine": "bls", "bin_minutes": 30.0},
     "bls10": {"engine": "bls", "bin_minutes": 10.0},
-    "tls": {"engine": "tls", "bin_minutes": 30.0},
 }
-ALIASES = (0.5, 2.0, 1 / 3, 3.0)
 PERIOD_EDGES = [1, 2, 4, 8, 16, 40]
 RADIUS_EDGES = [0.5, 1, 2, 4, 8, 16]
 SNR_EDGES = [0, 5, 7, 10, 15, 20, 50, np.inf]
-
-
-def classify(truth: Ephemeris, signals, match_cfg: dict, threshold: float) -> dict:
-    """Recovered: a signal at the true ephemeris at or above the threshold. Alias: only a harmonic matches."""
-    sp, st = match_cfg["sigma_p"], match_cfg["sigma_t"]
-
-    # Over a long baseline the catalog period can be the less precise one, so the epochs may line
-    # up only when carried with the signal's period. ALIASES is closed under inversion, so the
-    # reversed order keeps the alias test's meaning.
-    def matches(s, ratios) -> bool:
-        found = s.ephemeris()
-        return (
-            ephemeris_match(found, truth, ratios, sp, st) is not None
-            or ephemeris_match(truth, found, ratios, sp, st) is not None
-        )
-
-    for s in signals:
-        if matches(s, (1.0,)):
-            return {
-                "recovered": bool(s.sde >= threshold),
-                "alias": False,
-                "found_period": s.period,
-                "sde": s.sde,
-                "rank": s.rank,
-            }
-    for s in signals:
-        if matches(s, ALIASES):
-            return {
-                "recovered": False,
-                "alias": True,
-                "found_period": s.period,
-                "sde": s.sde,
-                "rank": s.rank,
-            }
-    top = signals[0] if signals else None
-    return {
-        "recovered": False,
-        "alias": False,
-        "found_period": top.period if top else np.nan,
-        "sde": top.sde if top else np.nan,
-        "rank": 0,
-    }
 
 
 def injection_job(job: tuple) -> list[dict]:
     star, lc_path, known_ephs, crit, engines, per_star, seed = job
     rng = np.random.default_rng(seed)
     rstar, mstar, assumed = star_params(star)
+    rho = stellar_density(star, rstar, mstar)
     bench, search = crit["benchmark"], crit["search"]
     u = (bench["inject_u1"], bench["inject_u2"])
     bases = [
@@ -124,7 +82,7 @@ def injection_job(job: tuple) -> list[dict]:
             scored = []
             for name in engines:
                 started = time.perf_counter()
-                signals = search_star(flat, rstar, mstar, {**search, **ENGINES[name]})
+                signals = search_star(flat, rstar, mstar, {**search, **ENGINES[name]}, rho).signals
                 scored.append(
                     {
                         **base,
@@ -160,7 +118,8 @@ def known_job(job: tuple) -> dict:
         flat = detrend(LightCurve.load(lc_path), crit["detrend"])
         if len(flat.time) < crit["search"]["min_points"]:
             return {**base, "status": "too_few_points", "n_points": len(flat.time), **missed}
-        signals = search_star(flat, rstar, mstar, crit["search"])
+        rho = stellar_density(star, rstar, mstar)
+        signals = search_star(flat, rstar, mstar, crit["search"], rho).signals
     except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
         return {**base, "status": "error", "error": f"{type(exc).__name__}: {exc}", **missed}
     truth = Ephemeris(planet["period"], planet["t0"], planet["duration"])
@@ -274,7 +233,7 @@ def add_parser(sub) -> None:
     i.add_argument("--limit", type=int, default=0)
     i.set_defaults(func=cmd_inject)
     for mode in (k, i):
-        mode.add_argument("--criteria", type=Path, default=Path("criteria/search-v1.toml"))
+        mode.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
         mode.add_argument(
             "--manifest", type=Path, help="the fetch run's fetch_manifest.jsonl, to record"
         )

@@ -6,15 +6,16 @@ import pandas as pd
 import pytest
 from synthetic import make_lc, write_catalog_snapshot
 
-from tess_hunt.benchmark import classify, completeness, injection_job, known_job, md_table
+from tess_hunt.benchmark import completeness, injection_job, known_job, md_table
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris
 from tess_hunt.provenance import sha256_file
+from tess_hunt.recovery import classify
 from tess_hunt.search import Signal
 
 ROOT = Path(__file__).resolve().parents[1]
-CRIT = load_criteria(ROOT / "criteria" / "search-v1.toml").values
+CRIT = load_criteria(ROOT / "criteria" / "search-v2.toml").values
 MATCH = CRIT["match"]
 SUN = {"tic": 1, "rad": 1.0, "mass": 1.0}
 PLANET = {

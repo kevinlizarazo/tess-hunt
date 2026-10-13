@@ -1,8 +1,9 @@
 """Search: box least squares over every sector at once, up to three signals per star."""
 
+import math
 import sys
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +11,6 @@ import pandas as pd
 from astropy.timeseries import BoxLeastSquares
 from scipy.ndimage import median_filter
 from transitleastsquares import period_grid as tls_period_grid
-from transitleastsquares import transitleastsquares
 
 from tess_hunt.catalogs import FILES, known_ephemerides, load_known
 from tess_hunt.config import lc_dir, load_criteria
@@ -19,6 +19,9 @@ from tess_hunt.ephemeris import Ephemeris, in_transit, transit_times_in_data
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.pool import process_pool
 from tess_hunt.provenance import sha256_file, start_run
+
+AU_PER_R_SUN = 215.032
+BLS_FIELDS = ("period", "power", "transit_time", "duration", "depth", "depth_snr")
 
 
 @dataclass(frozen=True)
@@ -37,6 +40,24 @@ class Signal:
         return Ephemeris(self.period, self.t0, self.duration, self.depth)
 
 
+@dataclass
+class SearchResult:
+    """The emitted signals, and what the search did on the way (decision 0008)."""
+
+    signals: list[Signal] = field(default_factory=list)
+    n_bins: int = 0  # points the search started from, after binning
+    few_transits: int = 0  # peaks rejected for too few transits on data
+    budget_exhausted: bool = False
+    n_bls: int = 0
+    top_period: float = math.nan  # the first peak, before any rejection
+    top_q: float = math.nan
+    top_sde: float = math.nan
+    masked_fraction: float = 0.0  # share of binned points masked when the search stopped
+
+    def diagnostics(self) -> dict:
+        return {k: v for k, v in asdict(self).items() if k != "signals"}
+
+
 def star_params(star: Mapping) -> tuple[float, float, bool]:
     """TIC radius and mass in solar units; solar values, flagged, when the TIC has none."""
 
@@ -50,6 +71,41 @@ def star_params(star: Mapping) -> tuple[float, float, bool]:
         float(m) if usable(m) else 1.0,
         not (usable(r) and usable(m)),
     )
+
+
+def stellar_density(star: Mapping, rstar: float, mstar: float) -> float:
+    """Mean density in solar units: the TIC's own value, else from the radius and mass in use."""
+    rho = star.get("rho")
+    if rho is not None and np.isfinite(float(rho)) and float(rho) > 0:
+        return float(rho)
+    return mstar / rstar**3
+
+
+def central_duration(periods: np.ndarray, rho: float) -> np.ndarray:
+    """Duration of a central transit on a circular orbit around a star of density rho (solar)."""
+    a_rs = AU_PER_R_SUN * rho ** (1 / 3) * (periods / 365.25) ** (2 / 3)
+    return periods / np.pi * np.arcsin(np.minimum(1.0, 1.0 / a_rs))
+
+
+def allowed_durations(
+    periods: np.ndarray, durations: np.ndarray, rho: float, factor: float
+) -> np.ndarray:
+    """How many of the ascending durations each period may use: those up to factor x the central
+    duration, and never fewer than the shortest."""
+    bound = factor * central_duration(periods, rho)
+    return np.maximum(np.searchsorted(durations, bound, side="right"), 1)
+
+
+def repeat_periods(
+    periods: np.ndarray, signals: list[Signal], harmonics, sigma_p: float
+) -> np.ndarray:
+    """Periods that ephemeris_match would call a harmonic of an emitted signal, on period alone."""
+    tolerance = math.erfc(sigma_p / math.sqrt(2.0))
+    out = np.zeros(len(periods), dtype=bool)
+    for s in signals:
+        for h in harmonics:
+            out |= np.abs(periods - s.period * h) / periods < tolerance
+    return out
 
 
 def bin_lightcurve(lc: LightCurve, minutes: float) -> LightCurve:
@@ -91,86 +147,89 @@ def period_grid(span_days: float, rstar: float, mstar: float, cfg: Mapping) -> n
     return np.sort(np.asarray(grid, dtype=float))
 
 
-def _bls_peak(lc: LightCurve, periods: np.ndarray, durations: np.ndarray, kernel: int) -> dict:
-    result = BoxLeastSquares(lc.time, lc.flux, dy=lc.flux_err).power(
-        periods, durations, objective="likelihood"
-    )
-    # BLS power drifts with period; judge each peak against its neighbours, as TLS does.
-    power = result.power - median_filter(result.power, size=kernel, mode="nearest")
-    sde = (power - power.mean()) / power.std()
-    i = int(np.argmax(sde))
-    return {
-        "period": float(result.period[i]),
-        "t0": float(result.transit_time[i]),
-        "duration": float(result.duration[i]),
-        "depth": float(result.depth[i]),
-        "depth_snr": float(result.depth_snr[i]),
-        "sde": float(sde[i]),
-    }
+def _bls_spectrum(
+    lc: LightCurve, periods: np.ndarray, durations: np.ndarray, counts: np.ndarray
+) -> dict:
+    """BLS over the grid; each run of periods that share their allowed durations is one call."""
+    bls = BoxLeastSquares(lc.time, lc.flux, dy=lc.flux_err)
+    starts = np.r_[0, np.flatnonzero(np.diff(counts)) + 1]
+    ends = np.r_[starts[1:], len(periods)]
+    parts = [
+        bls.power(periods[s:e], durations[: counts[s]], objective="likelihood")
+        for s, e in zip(starts, ends, strict=True)
+    ]
+    return {f: np.concatenate([np.asarray(p[f], dtype=float) for p in parts]) for f in BLS_FIELDS}
 
 
-def _tls_peak(lc: LightCurve, rstar: float, mstar: float, cfg: Mapping) -> dict:
-    result = transitleastsquares(lc.time, lc.flux, lc.flux_err).power(
-        period_min=cfg["period_min_days"],
-        period_max=cfg["period_max_days"],
-        n_transits_min=cfg["min_transits"],
-        oversampling_factor=cfg["oversampling"],
-        R_star=rstar,
-        M_star=mstar,
-        R_star_min=min(0.13, rstar),
-        R_star_max=max(3.5, rstar),
-        M_star_min=min(0.1, mstar),
-        M_star_max=max(1.0, mstar),
-        use_threads=1,
-        show_progress_bar=False,
-    )
-    return {
-        "period": float(result.period),
-        "t0": float(result.T0),
-        "duration": float(result.duration),
-        "depth": float(1.0 - result.depth),
-        "depth_snr": float(result.snr),
-        "sde": float(result.SDE),
-    }
+def search_star(
+    lc: LightCurve, rstar: float, mstar: float, cfg: Mapping, rho: float = 1.0
+) -> SearchResult:
+    """Up to max_signals signals, each with at least min_transits transits on data.
 
-
-def search_star(lc: LightCurve, rstar: float, mstar: float, cfg: Mapping) -> list[Signal]:
-    if cfg["engine"] not in ("bls", "tls"):
+    Boxes are bounded by the star (C1): at most duration_factor x the central transit duration at
+    each period. Harmonics of an emitted signal leave the argmax and the SDE statistics, so a
+    variable star cannot fill every rank with itself. A peak with too few transits (C2) is masked
+    and the search retried, at most max_retries times."""
+    if cfg["engine"] != "bls":
         raise ValueError(f"unknown engine {cfg['engine']!r}")
     data = bin_lightcurve(lc, cfg["bin_minutes"]) if cfg["bin_minutes"] > 0 else lc
-    if len(data.time) < cfg["min_points"]:
-        return []
+    n0 = len(data.time)
+    result = SearchResult(n_bins=n0)
+    if n0 < cfg["min_points"]:
+        return result
     periods = period_grid(float(data.time.max() - data.time.min()), rstar, mstar, cfg)
     if len(periods) == 0:
-        return []
-    durations = np.asarray(cfg["durations_hours"], dtype=float) / 24.0
-    signals: list[Signal] = []
-    for rank in range(1, cfg["max_signals"] + 1):
-        if len(data.time) < cfg["min_points"]:
-            break
-        if cfg["engine"] == "bls":
-            peak = _bls_peak(data, periods, durations, cfg["sde_kernel"])
-        else:
-            peak = _tls_peak(data, rstar, mstar, cfg)
-        eph = Ephemeris(peak["period"], peak["t0"], peak["duration"], peak["depth"])
-        signals.append(
-            Signal(
-                lc.tic,
-                rank,
-                eph.period,
-                eph.t0,
-                eph.duration,
-                eph.depth,
-                peak["depth_snr"],
-                peak["sde"],
-                len(transit_times_in_data(data.time, eph)),
-            )
+        return result
+    durations = np.sort(np.asarray(cfg["durations_hours"], dtype=float) / 24.0)
+    counts = allowed_durations(periods, durations, rho, cfg["duration_factor"])
+    retries = 0
+    while len(result.signals) < cfg["max_signals"] and len(data.time) >= cfg["min_points"]:
+        spectrum = _bls_spectrum(data, periods, durations, counts)
+        result.n_bls += 1
+        keep = ~repeat_periods(
+            periods, result.signals, cfg["repeat_harmonics"], cfg["repeat_sigma_p"]
         )
-        # A NaN SDE compares False against any threshold; stop rather than mask around a meaningless peak.
-        if not peak["sde"] >= cfg["continue_sde"]:
+        # BLS power drifts with period; judge each peak against its neighbours, as TLS does.
+        power = spectrum["power"] - median_filter(
+            spectrum["power"], size=cfg["sde_kernel"], mode="nearest"
+        )
+        sde = (power - power[keep].mean()) / power[keep].std()
+        i = int(np.flatnonzero(keep)[np.argmax(sde[keep])])
+        eph = Ephemeris(
+            *(float(spectrum[f][i]) for f in ("period", "transit_time", "duration", "depth"))
+        )
+        if result.n_bls == 1:
+            result.top_period, result.top_q = eph.period, eph.duration / eph.period
+            result.top_sde = float(sde[i])
+        # A NaN SDE compares False against any threshold; stop rather than emit a meaningless peak.
+        if not np.isfinite(sde[i]):
             break
+        n_transits = len(transit_times_in_data(data.time, eph, cfg["min_points_per_transit"]))
+        if n_transits < cfg["min_transits"]:
+            result.few_transits += 1
+            if retries == cfg["max_retries"]:
+                result.budget_exhausted = True
+                break
+            retries += 1
+        else:
+            result.signals.append(
+                Signal(
+                    lc.tic,
+                    len(result.signals) + 1,
+                    eph.period,
+                    eph.t0,
+                    eph.duration,
+                    eph.depth,
+                    float(spectrum["depth_snr"][i]),
+                    float(sde[i]),
+                    n_transits,
+                )
+            )
+            if sde[i] < cfg["continue_sde"]:
+                break
         data = data.select(~in_transit(data.time, eph, cfg["iter_mask_width"]))
-    return signals
+    result.masked_fraction = 1.0 - len(data.time) / n0
+    return result
 
 
 def _search_job(job: tuple) -> tuple[dict, list[dict]]:
@@ -185,7 +244,8 @@ def _search_job(job: tuple) -> tuple[dict, list[dict]]:
         flat = detrend(LightCurve.load(path), cfg_detrend, known_ephs)
         if len(flat.time) < cfg_search["min_points"]:
             return {"tic": tic, "status": "too_few_points", "n_points": len(flat.time)}, []
-        signals = search_star(flat, rstar, mstar, cfg_search)
+        rho = stellar_density(star, rstar, mstar)
+        signals = search_star(flat, rstar, mstar, cfg_search, rho).signals
     except Exception as exc:  # one bad star must not stop the run; it is recorded, not hidden
         return {"tic": tic, "status": "error", "error": f"{type(exc).__name__}: {exc}"}, []
     status = {
@@ -205,7 +265,7 @@ def add_parser(sub) -> None:
     p.add_argument(
         "--catalogs", type=Path, required=True, help="snapshot dir for masking known planets"
     )
-    p.add_argument("--criteria", type=Path, default=Path("criteria/search-v1.toml"))
+    p.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
     p.add_argument(
         "--unmask", action="store_true", help="keep known planets in (positive controls)"
     )
