@@ -115,4 +115,4 @@ for tic, sector in pairs:
         f"TIC {tic} S{sector}: SPOC CROWDSAP {crowd:.3f}; depth SPOC PDCSAP {ds * 1e6:.0f} ppm, "
         f"QLP sap_flux {dq * 1e6:.0f} ppm; QLP/SPOC {dq / ds:.3f}"
     )
-print(f"checked {checked} pairs, {crowded} with CROWDSAP <= 0.85")
+print(f"checked {checked} pairs, {crowded} with CROWDSAP and both depths measured")

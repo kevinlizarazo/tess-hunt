@@ -24,4 +24,7 @@ FLAME module gives each star a mass and radius from its luminosity and temperatu
 - Unit tests in [tests/test_gaia.py](../../tests/test_gaia.py) (`test_dr3_join_keeps_the_nearest_neighbour`,
   `test_logg_flame_is_solar_for_one_solar_mass_and_radius`) and
   [tests/test_targets.py](../../tests/test_targets.py) (`test_flame_cut_keeps_missing_values`).
-- The production targets run's summary (Task 6) gives the counts; its id is added here when it finishes.
+- The production targets run `20261013T031523Z-targets-cce2f6e-b0d4` (Task 6), from its summary: the TIC query
+  returned 142,378 stars, 142,347 in sample. All 142,347 matched a Gaia DR3 source and 130,822 have a FLAME log g. The
+  cut kept 139,237, dropping 3,110. Of those kept, 30,195 pass the coverage rule and form sample A. The run is marked
+  complete.
