@@ -47,3 +47,9 @@ The published vet run
 this signal, with the period, epoch and duration rounded on the command line; its `provenance.json` records the
 arguments. [Decision 0006](../docs/decisions/0006-red-noise-depth-errors.md) describes the run. Later runs of the
 control should pass the file's full-precision values.
+
+## Replay comparisons
+
+`compare_replay.py` regenerates a replay comparison, `results/benchmarks/<replay run id>-comparison.md`, from the
+replayed run's published `injections.csv` and the replay's, run from the repository root:
+`uv run python benchmarks/compare_replay.py OLD_CSV NEW_CSV > out.md`.
