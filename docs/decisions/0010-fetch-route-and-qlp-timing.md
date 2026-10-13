@@ -22,8 +22,9 @@ files have not been redelivered; the files served are version `v01`.
   is flagged too. Search and triage use it: an error of minutes is small against 30-minute bins and boxes of an hour or
   more. M3's fits and held-out-season check and M4's predicted windows exclude flagged sectors until MAST redelivers
   them or a correction is validated.
-- A redelivery changes the product's key, so the next fetch replaces the file. A light curve written before the flag
-  existed is fetched again, so no cached sector goes unflagged.
+- A redelivery changes the product's key, so the next fetch replaces the file. As an implementation detail of the
+  fetch, added during the build and not part of the approved design, a cached light curve whose sources lack
+  `timing_suspect` is fetched again, so no cached sector goes unflagged.
 
 ## Evidence
 
@@ -32,5 +33,20 @@ files have not been redelivered; the files served are version `v01`.
   `test_qlp_v01_late_sectors_are_timing_suspect`,
   `test_unreadable_version_in_an_affected_sector_is_timing_suspect`, `test_new_product_key_refetches`,
   `test_cached_file_without_timing_flags_refetches`, `test_all_nan_errors_become_scatter_errors`).
-- The measured QLP timing offset (Task 6, Step 1) is added here when measured.
+- QLP timing offset (Task 6, Step 1). The plan's script, [benchmarks/qlp_timing.py](../../benchmarks/qlp_timing.py),
+  read two QLP minus SPOC medians above 10 minutes
+  ([output](../../results/benchmarks/qlp-timing-2026-10-13.txt)), and both are artifacts: +75.00 min on TIC 7439481
+  S102, where the TOI ephemeris has drifted beyond the 40 minutes either side that the script searches, and -20.50
+  min on TIC 22560356 S100, a faint star whose scatter exceeds its transit depth. The ephemeris-independent
+  remeasurement, [benchmarks/qlp_timing_robust.py](../../benchmarks/qlp_timing_robust.py), times each QLP transit
+  against that sector's own SPOC fit and puts every reliable pair under 10 minutes, the largest at -6.50 min
+  ([output](../../results/benchmarks/qlp-timing-robust-2026-10-13.txt)).
+- On 2026-10-13 the maintainer ruled that QLP S99 to S104 is used for detection, flagged `timing_suspect`, as
+  designed.
+- QLP dilution (Task 6, Step 1b). The header of a QLP S100 light curve carries no crowding or dilution keyword. QLP
+  Data Release Notes 004 (https://arxiv.org/abs/2603.22236) say the TGLC method forward models the FFIs with the
+  ePSF "to remove contamination from nearby stars", and that it "is implemented as of Sector 94 in QLP light curves".
+  The depth comparison, [benchmarks/qlp_dilution.py](../../benchmarks/qlp_dilution.py)
+  ([output](../../results/benchmarks/qlp-dilution-2026-10-13.txt)), shows QLP `sap_flux` depths in S99 to S103
+  reading shallower than SPOC PDCSAP depths on crowded stars, so the removal is incomplete there.
 - https://archive.stsci.edu/hlsp/qlp, "Corrected timestamps for QLP Sectors 99-104", read 2026-10-12.
