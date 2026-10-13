@@ -22,8 +22,15 @@ from tess_hunt.novelty import check_novelty
 from tess_hunt.pixels import pixel_check
 from tess_hunt.pool import run_jobs
 from tess_hunt.provenance import publish_run, repo_root, scrub, sha256_file, start_run
-from tess_hunt.search import read_threshold, search_code_sha256
-from tess_hunt.threshold import all_thresholds, check_mask_snapshot, check_search, cmd_threshold
+from tess_hunt.search import read_threshold
+from tess_hunt.threshold import (
+    all_thresholds,
+    check_light_curves,
+    check_mask_snapshot,
+    check_reproducible,
+    check_search,
+    cmd_threshold,
+)
 
 STEPS = ("novelty", "leo_flux", "pixels")
 OUTCOMES = ("pass", "fail", "inconclusive")
@@ -115,7 +122,7 @@ def _pixel_job(job: dict) -> dict:
         return inconclusive("pixels", f"raised {type(exc).__name__}: {exc}").to_dict()
 
 
-def _refuse(args, search_prov: dict, threshold: dict) -> Criteria:
+def _refuse(args, search_prov: dict, threshold: dict, crit_triage: Criteria) -> Criteria:
     """Stops on any reason not to triage the search; otherwise returns its criteria."""
     if search_prov.get("ended_at") is None:
         raise SystemExit(f"{args.search.name} has not finished")
@@ -124,14 +131,29 @@ def _refuse(args, search_prov: dict, threshold: dict) -> Criteria:
         raise SystemExit(
             f"{args.search.name} is invalid: its positive controls failed or did not run"
         )
-    if json.loads((args.threshold / "provenance.json").read_text())["ended_at"] is None:
+    if args.production and not search_prov.get("production"):
+        raise SystemExit(
+            f"{args.search.name} is not a production search; production triage needs one"
+        )
+    threshold_prov = json.loads((args.threshold / "provenance.json").read_text())
+    if threshold_prov["ended_at"] is None:
         raise SystemExit(f"{args.threshold.name} has not finished; only finished runs are evidence")
-    crit_search = load_criteria(Path(search_prov["criteria"][0]["file"]))
-    if crit_search.sha256 != search_prov["criteria"][0]["sha256"]:
-        raise SystemExit("the search criteria file changed since the search ran")
-    # LEO-Vetter's light curve goes through detrend.py, as it did when the threshold was computed.
-    if search_code_sha256(repo_root()) != search_prov.get("search_code_sha256"):
-        raise SystemExit("the search code changed since the search ran")
+    used = threshold_prov["criteria"][1]
+    if used["sha256"] != crit_triage.sha256:
+        # The threshold counts null signals that pass LEO-Vetter's false-alarm tests, so triage must run
+        # those tests as the threshold run did; other sections may differ.
+        path = Path(used["file"])
+        before = load_criteria(path) if path.exists() else None
+        if (
+            before is None
+            or before.sha256 != used["sha256"]
+            or any(before[s] != crit_triage[s] for s in ("leo", "leo_metrics"))
+        ):
+            raise SystemExit(
+                f"--criteria-triage must set [leo] and [leo_metrics] as {used['file']} did when "
+                f"{args.threshold.name} ran"
+            )
+    crit_search = check_reproducible(search_prov, args.targets, "search")
     thresholds = all_thresholds(runs_dir())
     problems = check_search(search_prov, threshold, thresholds)
     if problems:
@@ -149,27 +171,19 @@ def _refuse(args, search_prov: dict, threshold: dict) -> Criteria:
             f"threshold {max(same)}"
         )
     check_mask_snapshot(search_prov, args.mask_catalogs, "search")
-    if search_prov["inputs"].get("targets", {}).get("sha256") != sha256_file(args.targets):
-        raise SystemExit("--targets differs from the targets the search searched")
     return crit_search
 
 
-def _refuse_changed_light_curves(search: Path, tics: list[int]) -> None:
-    # LEO-Vetter and the transit counts must see the light curves the search found the signals in.
-    stars = pd.read_parquet(search / "stars.parquet")
-    sample = stars[~stars["control"].astype(bool)]
-    searched = dict(zip(sample["tic"].astype(int), sample["lc_sha256"], strict=True))
-    changed = [
-        tic
-        for tic in tics
-        if not (lc_dir() / f"{tic}.npz").exists()
-        or sha256_file(lc_dir() / f"{tic}.npz") != searched.get(tic)
-    ]
-    if changed:
-        raise SystemExit(
-            f"the light curves of {len(changed)} stars with signals differ from the ones the "
-            f"search searched: {changed[:10]}"
-        )
+def _novelty_catalog(snapshot: Path) -> pd.DataFrame:
+    # A v1 snapshot holds only TOIs, CTOIs and archive planets, so a signal SPOC or a binary catalog
+    # already has would pass novelty as new.
+    if not (snapshot / "known.parquet").exists():
+        raise SystemExit(f"--catalogs {snapshot.name} is not a v2 snapshot (no known.parquet)")
+    known = load_known(snapshot)
+    missing = sorted({"tce", "eb"} - set(known["kind"]))
+    if missing:
+        raise SystemExit(f"--catalogs {snapshot.name} has no rows of kind {', '.join(missing)}")
+    return known
 
 
 def _counts(table: pd.DataFrame, leo_unknown: Counter) -> dict:
@@ -262,14 +276,17 @@ def _summary(
 def cmd_run(args) -> int:
     search_prov = json.loads((args.search / "provenance.json").read_text())
     threshold = read_threshold(args.threshold / "threshold.json")
-    crit_search = _refuse(args, search_prov, threshold)
     crit_triage = load_criteria(args.criteria_triage)
+    crit_search = _refuse(args, search_prov, threshold, crit_triage)
+    known = _novelty_catalog(args.catalogs)
     value = float(threshold["threshold"])
     signals = pd.read_parquet(args.search / "signals.parquet")
     # With no signals at all the column is empty object dtype, which `~` cannot negate.
     sample = signals[~signals["control"].astype(bool)]
     signals = sample[sample["sde"] >= value].reset_index(drop=True)
-    _refuse_changed_light_curves(args.search, sorted({int(t) for t in signals["tic"]}))
+    # LEO-Vetter and the transit counts must see the light curves the search found the signals in.
+    tics = sorted({int(t) for t in signals["tic"]})
+    check_light_curves(pd.read_parquet(args.search / "stars.parquet"), tics, args.workers, "search")
     run = start_run("triage", [crit_search, crit_triage], args.production, sys.argv)
     run.record("search_run", args.search.resolve().name)
     run.record(
@@ -285,7 +302,6 @@ def cmd_run(args) -> int:
     for name, path in snapshot_inputs(args.mask_catalogs).items():
         run.record_input(f"mask_{name}", path)
     stars = pd.read_parquet(args.targets).set_index("tic")
-    known = load_known(args.catalogs)
     novelty_cfg, match = crit_triage["novelty"], crit_search["match"]
     evidence: dict[tuple[int, int], dict] = {}
     rows = []
@@ -310,7 +326,7 @@ def cmd_run(args) -> int:
                 **s,
                 "novelty": str(result.outcome),
                 "novelty_category": result.evidence.get("category", ""),
-                "novelty_reason": result.reason,
+                "novelty_reason": scrub(result.reason),
             }
         )
     masks = load_known(args.mask_catalogs)
@@ -370,7 +386,7 @@ def cmd_run(args) -> int:
                 "leo_flux": flux["leo"]["outcome"],
                 "leo_disposition": flux["leo"]["evidence"].get("disposition"),
                 "leo_reason": scrub(flux["leo"]["reason"]),
-                "leo_unknown": ", ".join(flux["unknown"]),
+                "leo_unknown": scrub(", ".join(flux["unknown"])),
                 "pixels": pix["outcome"],
                 "pixels_reason": scrub(pix["reason"]),
                 "timing_suspect_transits": flux["timing_suspect_transits"],

@@ -1,5 +1,7 @@
 """A stand-in for requests.Session that serves canned responses."""
 
+import json
+
 import requests
 
 
@@ -11,8 +13,6 @@ class FakeResponse:
         self.headers = headers or {}
 
     def json(self):
-        import json
-
         return json.loads(self.content)
 
 

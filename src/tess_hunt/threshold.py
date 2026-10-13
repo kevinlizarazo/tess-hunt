@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from tess_hunt.catalogs import known_ephemerides, load_known, snapshot_inputs
-from tess_hunt.config import lc_dir, load_criteria
+from tess_hunt.config import Criteria, lc_dir, load_criteria
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match, in_transit
 from tess_hunt.leo import leo_flux
@@ -245,19 +245,42 @@ def check_mask_snapshot(provenance: dict, snapshot: Path, masked_by: str) -> Non
             )
 
 
+def check_reproducible(provenance: dict, targets: Path, ran: str) -> Criteria:
+    """Refuse a --targets, search criteria file or search code other than the ones the run behind
+    `provenance` used, and return its search criteria. Search code runs again on that run's light curves
+    (the null's scramble, the detrend LEO-Vetter sees), so it must be the code the run ran."""
+    if provenance["inputs"].get("targets", {}).get("sha256") != sha256_file(targets):
+        raise SystemExit(f"--targets differs from the targets the {ran} searched")
+    crit_search = load_criteria(Path(provenance["criteria"][0]["file"]))
+    if crit_search.sha256 != provenance["criteria"][0]["sha256"]:
+        raise SystemExit(f"the search criteria file changed since the {ran} ran")
+    if search_code_sha256(repo_root()) != provenance.get("search_code_sha256"):
+        raise SystemExit(f"the search code changed since the {ran} ran")
+    return crit_search
+
+
+def check_light_curves(
+    stars: pd.DataFrame, tics: list[int], workers: int, searched_by: str
+) -> None:
+    """Refuse when the light curve of any of `tics` is gone or differs from the one the run whose stars
+    table is `stars` searched: a refetch changes the times and fluxes LEO-Vetter would judge."""
+    sample = stars[~stars["control"].astype(bool)]
+    searched = dict(zip(sample["tic"].astype(int), sample["lc_sha256"], strict=True))
+    now = run_jobs(_lc_sha256, tics, workers)
+    changed = [t for t, sha in zip(tics, now, strict=True) if sha is None or sha != searched.get(t)]
+    if changed:
+        raise SystemExit(
+            f"the light curves of {len(changed)} {searched_by} stars differ from the ones the "
+            f"{searched_by} searched: {changed[:10]}"
+        )
+
+
 def cmd_threshold(args) -> int:
     null_prov = json.loads((args.null / "provenance.json").read_text())
     if null_prov["ended_at"] is None or null_prov.get("scramble") is None:
         raise SystemExit(f"{args.null.name} is not a finished null (scrambled) search")
     check_mask_snapshot(null_prov, args.mask_catalogs, "null")
-    if null_prov["inputs"].get("targets", {}).get("sha256") != sha256_file(args.targets):
-        raise SystemExit("--targets differs from the targets the null searched")
-    crit_search = load_criteria(Path(null_prov["criteria"][0]["file"]))
-    if crit_search.sha256 != null_prov["criteria"][0]["sha256"]:
-        raise SystemExit("the search criteria file changed since the null ran")
-    # The null's light curves are scrambled again here, so this checkout must scramble as the null did.
-    if search_code_sha256(repo_root()) != null_prov["search_code_sha256"]:
-        raise SystemExit("the search code changed since the null ran")
+    crit_search = check_reproducible(null_prov, args.targets, "null")
     crit_triage = load_criteria(args.criteria_triage)
     cfg = crit_triage["threshold"]
     signals = pd.read_parquet(args.null / "signals.parquet")
@@ -270,19 +293,12 @@ def cmd_threshold(args) -> int:
     candidates = signals[signals["excluded_by"] == ""]
     if candidates.empty:
         raise SystemExit(f"{args.null.name} leaves no null signal to judge")
-    # A refetch since the null changes the scramble's order and times, so LEO-Vetter would judge another
-    # light curve than the one the null searched.
+    # A refetch since the null also changes the scramble's order.
     null_stars = pd.read_parquet(args.null / "stars.parquet")
     sample = null_stars[~null_stars["control"].astype(bool)]
-    searched = dict(zip(sample["tic"].astype(int), sample["lc_sha256"], strict=True))
-    tics = sorted({int(t) for t in candidates["tic"]})
-    now = run_jobs(_lc_sha256, tics, args.workers)
-    changed = [t for t, sha in zip(tics, now, strict=True) if sha is None or sha != searched.get(t)]
-    if changed:
-        raise SystemExit(
-            f"the light curves of {len(changed)} null stars differ from the ones the null searched: "
-            f"{changed[:10]}"
-        )
+    check_light_curves(
+        null_stars, sorted({int(t) for t in candidates["tic"]}), args.workers, "null"
+    )
     stars = pd.read_parquet(args.targets).set_index("tic")
     run = start_run("threshold", [crit_search, crit_triage], args.production, sys.argv)
     run.record_input("null_signals", args.null / "signals.parquet")

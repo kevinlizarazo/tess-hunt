@@ -48,6 +48,7 @@ def setup(
     threshold=10.0,
     suspect=(),
     masks_known=None,
+    rows=SIGNALS,
     **target_columns,
 ):
     data = tmp_path / "data"
@@ -93,7 +94,7 @@ def setup(
                 "engine": "bls",
                 "control": False,
             }
-            for t, r, p, t0, s in SIGNALS
+            for t, r, p, t0, s in rows
         ]
     )
     hashes = {
@@ -121,7 +122,11 @@ def setup(
             {"tic": [11, 12, 13, 14], "status": "ok", "control": False, "lc_sha256": lc_sha256}
         ),
     )
-    thr = write_run(data / "runs" / THRESHOLD_RUN, {})
+    criteria = [
+        {"file": "criteria/search-v2.toml", "sha256": CRITERIA.sha256},
+        {"file": "criteria/triage-v1.toml", "sha256": TRIAGE.sha256},
+    ]
+    thr = write_run(data / "runs" / THRESHOLD_RUN, {"criteria": criteria})
     (thr / "threshold.json").write_text(json.dumps({"threshold": threshold, **hashes}))
     snap = tmp_path / "snap"
     snap.mkdir()
@@ -135,6 +140,7 @@ def setup(
                 ("archive", "planet", "far3", 997, 4.5, 100.0),
                 ("SPOC-TCE", "tce", "TCE s0098 x", 11, 3.0, 1326.0),
                 ("TOI", "candidate", "TOI-5.01", 12, 4.0, 1327.0),
+                ("TESS-EB", "eb", "far EB", 996, 5.5, 100.0),
             ]
         ]
     )[KNOWN_COLUMNS]
@@ -202,10 +208,12 @@ def test_triage_shortlists_only_new_signals(tmp_path, monkeypatch):
 
 
 def test_triage_two_signals_on_one_star(tmp_path, monkeypatch):
-    argv, calls = setup(tmp_path, monkeypatch)
+    # The star's third signal is below the threshold: neither vetted nor dropped from the others.
+    argv, calls = setup(tmp_path, monkeypatch, rows=[*SIGNALS, (13, 3, 9.1, 1330.0, 5.0)])
     main(argv)
     by_period = {p: others for tic, p, others in calls if tic == 13}
     assert by_period[5.0] == [7.3] and by_period[7.3] == [5.0]
+    assert 9.1 not in by_period
 
 
 def test_triage_refuses_an_invalid_search(tmp_path, monkeypatch):
@@ -518,9 +526,16 @@ def test_triage_with_no_signal_above_the_threshold_writes_empty_tables(tmp_path,
         ),
         (
             lambda tmp: make_lc(sectors=(1, 2, 98), tic=13, seed=1).save(tmp / "data/lc/13.npz"),
-            r"light curves of 1 star.*\[13\]",
+            r"light curves of 1 search stars .*\[13\]",
         ),
-        (lambda tmp: (tmp / "data/lc/12.npz").unlink(), r"light curves of 1 star.*\[12\]"),
+        (lambda tmp: (tmp / "data/lc/12.npz").unlink(), r"light curves of 1 search stars .*\[12\]"),
+        (
+            lambda tmp: edit_json(
+                tmp / "data/runs" / THRESHOLD_RUN / "provenance.json",
+                lambda p: p["criteria"][1].update(sha256="0" * 64),
+            ),
+            r"\[leo\] and \[leo_metrics\]",
+        ),
     ],
 )
 def test_triage_refuses_a_run_it_cannot_trust(tmp_path, monkeypatch, change, message):
@@ -548,6 +563,61 @@ def test_triage_refuses_a_threshold_below_the_current_null(tmp_path, monkeypatch
         SystemExit, match=f"{THRESHOLD_RUN} sets 10.0, below the current null threshold 12.5"
     ):
         main(argv)
+    assert no_triage_run(tmp_path)
+
+
+def drop_eb_rows(tmp: Path) -> None:
+    known = pd.read_parquet(tmp / "snap" / "known.parquet")
+    known[known["kind"] != "eb"].to_parquet(tmp / "snap" / "known.parquet")
+
+
+@pytest.mark.parametrize(
+    ("catalogs", "change", "message"),
+    [
+        # The v1 mask snapshot: TOIs, CTOIs and archive planets only.
+        ("masks", lambda tmp: None, "masks is not a v2 snapshot"),
+        ("snap", drop_eb_rows, "no rows of kind eb"),
+    ],
+)
+def test_triage_refuses_a_novelty_catalog_without_tce_or_binary_rows(
+    tmp_path, monkeypatch, catalogs, change, message
+):
+    argv, _ = setup(tmp_path, monkeypatch)
+    change(tmp_path)
+    argv[argv.index("--catalogs") + 1] = str(tmp_path / catalogs)
+    with pytest.raises(SystemExit, match=message):
+        main(argv)
+    assert no_triage_run(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "refused"),
+    [
+        ("\nMES = 6.2\n", "\nMES = 7.1\n", True),
+        ("max_offset_arcsec = 15.0", "max_offset_arcsec = 20.0", False),
+    ],
+)
+def test_triage_takes_only_the_leo_settings_the_threshold_was_counted_under(
+    tmp_path, monkeypatch, old, new, refused
+):
+    argv, _ = setup(tmp_path, monkeypatch)
+    text = (ROOT / "criteria" / "triage-v1.toml").read_text()
+    assert old in text
+    criteria = tmp_path / "triage.toml"
+    criteria.write_text(text.replace(old, new))
+    argv += ["--criteria-triage", str(criteria)]
+    if refused:
+        with pytest.raises(SystemExit, match=r"\[leo\] and \[leo_metrics\]"):
+            main(argv)
+        assert no_triage_run(tmp_path)
+    else:
+        assert main(argv) == 0
+
+
+def test_production_triage_refuses_a_search_that_was_not_production(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch)
+    with pytest.raises(SystemExit, match="s1 is not a production search"):
+        main([*argv, "--production"])
     assert no_triage_run(tmp_path)
 
 
