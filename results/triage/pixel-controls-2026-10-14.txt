@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0 -- /home/kevin/code/tess-hunt/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kevin/code/tess-hunt
+configfile: pyproject.toml
+plugins: platformdirs-4.12.4, anyio-4.15.1
+collecting ... collected 24 items / 21 deselected / 3 selected
+
+tests/test_pixels.py::test_real_nearby_eb_controls[1058.01] PASSED       [ 33%]
+tests/test_pixels.py::test_real_nearby_eb_controls[1175.01] PASSED       [ 66%]
+tests/test_pixels.py::test_real_nearby_eb_controls[1399.01] PASSED       [100%]
+
+=============================== warnings summary ===============================
+tests/test_pixels.py::test_real_nearby_eb_controls[1058.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1175.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1399.01]
+  /home/kevin/code/tess-hunt/.venv/lib/python3.12/site-packages/transitDiffImage/tessDiffImage.py:462: RuntimeWarning: Mean of empty slice
+    meanInTransit = np.nanmean(pixelData["flux"][inTransitIndices,::-1,:], axis=0)
+
+tests/test_pixels.py::test_real_nearby_eb_controls[1058.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1175.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1399.01]
+  /home/kevin/code/tess-hunt/.venv/lib/python3.12/site-packages/transitDiffImage/tessDiffImage.py:463: RuntimeWarning: invalid value encountered in divide
+    meanInTransitSigma = np.sqrt(np.sum(pixelData["fluxErr"][inTransitIndices,::-1,:]**2, axis=0)/len(inTransitIndices))
+
+tests/test_pixels.py::test_real_nearby_eb_controls[1058.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1175.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1399.01]
+  /home/kevin/code/tess-hunt/.venv/lib/python3.12/site-packages/transitDiffImage/tessDiffImage.py:464: RuntimeWarning: Mean of empty slice
+    meanOutTransit = np.nanmean(pixelData["flux"][outTransitIndices,::-1,:], axis=0)
+
+tests/test_pixels.py::test_real_nearby_eb_controls[1058.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1175.01]
+tests/test_pixels.py::test_real_nearby_eb_controls[1399.01]
+  /home/kevin/code/tess-hunt/.venv/lib/python3.12/site-packages/transitDiffImage/tessDiffImage.py:465: RuntimeWarning: invalid value encountered in divide
+    meanOutTransitSigma = np.sqrt(np.sum(pixelData["fluxErr"][outTransitIndices,::-1,:]**2, axis=0)/len(outTransitIndices))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========== 3 passed, 21 deselected, 12 warnings in 291.62s (0:04:51) ===========

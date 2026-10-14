@@ -49,6 +49,13 @@ signal seen mainly in QLP sectors, LEO-Vetter's radius tests (`large` and `vshap
   `test_leo_deep_eclipsing_binary_is_a_false_alarm_on_its_individual_transits` and
   `test_leo_eclipsing_binary_at_twice_the_period_is_a_false_positive` in [tests/test_leo.py](../../tests/test_leo.py).
 - Kunimoto et al. 2025, https://arxiv.org/abs/2509.10619, sections 3, 4.5 and 6.2.
-- The published pixel control runs (Task 18) are linked here when they exist, with the pixel-timing check: after
-  2020-10-26 transit-diffImage's bundled ephemeris gives no barycentric correction, so its pixel times are minutes
-  off TESScut's and its in-transit window moves by that much.
+- The pixel controls against TESScut on 2026-10-14,
+  [results/triage/pixel-controls-2026-10-14.txt](../../results/triage/pixel-controls-2026-10-14.txt)
+  (`test_real_nearby_eb_controls`, controls in [benchmarks/pixel_controls.csv](../../benchmarks/pixel_controls.csv)):
+  TOI-1058.01 and TOI-1175.01 fail the pixel check as expected, and TOI-1399.01 passes, the 15" rule's recorded miss.
+- The pixel-timing check on the same runs' files,
+  [results/triage/pixel-timing-2026-10-14.txt](../../results/triage/pixel-timing-2026-10-14.txt): after 2020-10-26
+  transit-diffImage's bundled ephemeris gives no barycentric correction, so in the 12 control sectors after that date
+  its pixel times sit 4.83 to 8.28 minutes off TESScut's barycentric times (0.09 to 0.58 minutes in the 3 before), and
+  2.6% to 11.0% of the in-transit cadences differ between its in-transit window and the one on TESScut's times. The
+  check would have stopped above a fifth.

@@ -1,0 +1,15 @@
+tic31553893 S13: valid correction 1.00, max shift 0.12 min, duration 7.05 h, in-transit cadences 26, moved 0
+tic31553893 S27: valid correction 1.00, max shift 0.09 min, duration 7.05 h, in-transit cadences 78, moved 0
+tic31553893 S67: valid correction 0.00, max shift 8.21 min, duration 7.05 h, in-transit cadences 290, moved 14
+tic31553893 S92: valid correction 0.00, max shift 6.55 min, duration 7.05 h, in-transit cadences 230, moved 6
+tic31553893 S94: valid correction 0.00, max shift 8.28 min, duration 7.05 h, in-transit cadences 230, moved 10
+tic30329585 S41: valid correction 0.00, max shift 4.83 min, duration 2.60 h, in-transit cadences 60, moved 6
+tic30329585 S54: valid correction 0.00, max shift 5.64 min, duration 2.60 h, in-transit cadences 38, moved 2
+tic30329585 S74: valid correction 0.00, max shift 4.87 min, duration 2.60 h, in-transit cadences 172, moved 8
+tic30329585 S80: valid correction 0.00, max shift 5.49 min, duration 2.60 h, in-transit cadences 172, moved 16
+tic30329585 S81: valid correction 0.00, max shift 5.53 min, duration 2.60 h, in-transit cadences 172, moved 16
+tic66783360 S17: valid correction 1.00, max shift 0.58 min, duration 2.40 h, in-transit cadences 86, moved 0
+tic66783360 S57: valid correction 0.00, max shift 5.39 min, duration 2.40 h, in-transit cadences 718, moved 52
+tic66783360 S77: valid correction 0.00, max shift 4.95 min, duration 2.40 h, in-transit cadences 527, moved 36
+tic66783360 S83: valid correction 0.00, max shift 5.38 min, duration 2.40 h, in-transit cadences 698, moved 77
+tic66783360 S84: valid correction 0.00, max shift 5.40 min, duration 2.40 h, in-transit cadences 687, moved 54
