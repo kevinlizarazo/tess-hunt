@@ -1,0 +1,67 @@
+{
+  "argv": [
+    "tess-hunt",
+    "triage",
+    "threshold",
+    "--null",
+    "$TESS_HUNT_DATA/runs/20261013T151227Z-search-b76fd0b-6c16",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-b0d4/targets.parquet",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-13T163454Z",
+    "--mask-catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-13",
+    "--workers",
+    "20",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    },
+    {
+      "file": "criteria/triage-v1.toml",
+      "sha256": "a4b1afbaccc08556151b976582bcac80c0dbbc4f69c124437cd06c924a9b9473"
+    }
+  ],
+  "ended_at": "2026-10-14T19:38:48.569101+00:00",
+  "git": {
+    "commit": "0d6748e64b38c43d88e3e904b9be06d0dfd73bbd",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "catalog_manifest": {
+      "file": "manifest.json",
+      "sha256": "5fecac30d23d7afc143bae3c0c3d5ca56a055e0be73c7b4fe3c051bd4e497a75"
+    },
+    "known": {
+      "file": "known.parquet",
+      "sha256": "8b21e82ba0fd6a5f0b4be271b0eb77a34c112d0fd91cd334a2d8412a431db867"
+    },
+    "null_signals": {
+      "file": "signals.parquet",
+      "sha256": "a0d285711dc63300872dacc118d8ecd02e8887673a0a2779150bf65dd22dfc4b"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "04029fd9f9172976d43bf9669938072560a92c900bb1d2f29d06fed27f333dbb"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261014T175116Z-threshold-0d6748e-40ac",
+  "stage": "threshold",
+  "started_at": "2026-10-14T17:51:16.875287+00:00",
+  "summary": {
+    "evaluated": 1200,
+    "excluded": 877,
+    "excluded_host_signals": 1574,
+    "excluded_host_stars": 832,
+    "expected_false_alarms": 1.0290358859012372,
+    "floor_used": false,
+    "n_null_stars": 29343,
+    "threshold": 20.24494315641701
+  },
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a"
+}

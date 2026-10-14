@@ -19,5 +19,14 @@ Published runs are never edited; a correction is a new run.
   planet; `summary.md` is the table.
 - `benchmark-inject`: injection-recovery. `injections.csv` has one row per injected planet and search engine; the
   `completeness_*.csv` tables and `completeness_*.png` maps bin the recovered fraction; `summary.md` collects them.
+- `threshold`: the detection threshold from the null search ([decision 0019](../docs/decisions/0019-null-threshold.md)).
+  `threshold.json` holds the threshold, the counts behind it and the highest null signals with their LEO-Vetter
+  outcomes; `null_dropped.csv` lists every null signal left out and the rule that dropped it.
 - `vet`: every vetting check on one signal. `checks.json` holds each check's outcome and evidence, the per-sector
   red-noise factors and the transit-fit summary.
+
+## Catalog snapshots
+
+Each directory under `catalogs/` holds the manifest of one novelty-source snapshot
+([decision 0013](../docs/decisions/0013-novelty-sources.md)): each file's URL, size, sha256 and Last-Modified. The
+downloaded files themselves are not republished here.

@@ -34,4 +34,7 @@ unpromoted TCEs are real planets.
   (`test_failed_source_leaves_no_snapshot`) and [tests/test_novelty.py](../../tests/test_novelty.py)
   (`test_tce_only_match_is_inconclusive_known_to_spoc`).
 - [tests/test_vet.py](../../tests/test_vet.py): `test_tce_only_match_is_inconclusive_under_vet_v2_and_fails_under_v1`.
-- The production snapshot's manifest (Task 14) is linked here when it exists.
+- The production snapshot's manifest,
+  [results/catalogs/2026-10-13T163454Z/manifest.json](../../results/catalogs/2026-10-13T163454Z/manifest.json): every
+  source file's URL, size, sha256 and Last-Modified, the rows per source and the TICs the TIC could not place (none).
+  The threshold run records the same file's sha256 among its inputs.
