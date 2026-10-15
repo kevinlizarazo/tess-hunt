@@ -19,6 +19,9 @@ Published runs are never edited; a correction is a new run.
   planet; `summary.md` is the table.
 - `benchmark-inject`: injection-recovery. `injections.csv` has one row per injected planet and search engine; the
   `completeness_*.csv` tables and `completeness_*.png` maps bin the recovered fraction; `summary.md` collects them.
+- `search`: a production search. `controls.csv` has one row per positive control, the known-planet set searched
+  alongside the sample ([decision 0011](../docs/decisions/0011-positive-controls-in-production.md)); the signals
+  themselves stay in the run directory.
 - `threshold`: the detection threshold from the null search ([decision 0019](../docs/decisions/0019-null-threshold.md)).
   `threshold.json` holds the threshold, the counts behind it and the highest null signals with their LEO-Vetter
   outcomes; `null_dropped.csv` lists every null signal left out and the rule that dropped it.
