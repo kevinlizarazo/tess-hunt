@@ -30,8 +30,9 @@ unpromoted TCEs are real planets.
 
 ## Evidence
 
-- Unit tests in [tests/test_sources.py](../../tests/test_sources.py), [tests/test_catalogs.py](../../tests/test_catalogs.py)
-  (`test_failed_source_leaves_no_snapshot`) and [tests/test_novelty.py](../../tests/test_novelty.py)
+- Unit tests in [tests/test_sources.py](../../tests/test_sources.py),
+  [tests/test_catalogs.py](../../tests/test_catalogs.py) (`test_failed_source_leaves_no_snapshot`) and
+  [tests/test_novelty.py](../../tests/test_novelty.py)
   (`test_tce_only_match_is_inconclusive_known_to_spoc`).
 - [tests/test_vet.py](../../tests/test_vet.py): `test_tce_only_match_is_inconclusive_under_vet_v2_and_fails_under_v1`.
 - The production snapshot's manifest,

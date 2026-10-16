@@ -26,8 +26,8 @@ Search criteria version 2 (`criteria/search-v2.toml`, `[search]`) fills a star's
   fourth ends the star's search with `budget_exhausted`.
 - A non-finite SDE ends the search without emitting the peak.
 - TLS leaves the search; 0007 chose `bls30`.
-- Every searched star records `n_bins`, `few_transits`, `budget_exhausted`, `n_bls`, `top_period`, `top_q`, `top_sde` and
-  `masked_fraction`.
+- Every searched star records `n_bins`, `few_transits`, `budget_exhausted`, `n_bls`, `top_period`, `top_q`,
+  `top_sde` and `masked_fraction`.
 
 The factor is 2, not 1.5: injections are drawn with the TIC's own density on circular orbits, so they cannot show what
 a tighter bound costs when the density is wrong or the orbit eccentric. A factor of 2 allows a density 8 times lower

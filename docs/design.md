@@ -546,8 +546,11 @@ period. It meets the same bar as M2 and M3.
 Facts marked [R], [L] and [T] were fetched on 2026-10-08. The [L] and [T] numbers come from unpublished working notes,
 which is why they have gaps; only the URLs listed here are the sources.
 
-- [R1] Reddit thread "I think I found a planet nobody knew existed", and https://x.com/p_rabtsevich/status/2107803696058822742
-- [R2] https://gist.github.com/MrBoostie/b7a34b9ec96fbfb37e8fd250ba6debba; preprint https://doi.org/10.5281/zenodo.22967456; predictions https://doi.org/10.5281/zenodo.23175179; https://tess.mit.edu/science/ddt/
+- [R1] Reddit thread "I think I found a planet nobody knew existed", and
+  https://x.com/p_rabtsevich/status/2107803696058822742
+- [R2] https://gist.github.com/MrBoostie/b7a34b9ec96fbfb37e8fd250ba6debba; preprint
+  https://doi.org/10.5281/zenodo.22967456; predictions https://doi.org/10.5281/zenodo.23175179;
+  https://tess.mit.edu/science/ddt/
 - [R3] https://exofop.ipac.caltech.edu/tess/news.php
 - [R4] https://exofop.ipac.caltech.edu/tess/candidate_help.php
 - [R5] https://journals.aas.org/research-notes/

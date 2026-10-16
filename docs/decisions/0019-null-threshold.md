@@ -100,8 +100,9 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   (`test_threshold_cli_drops_known_objects_and_traces_the_threshold_row`,
   `test_threshold_cli_counts_unjudged_signals_and_keeps_the_floor`,
   `test_threshold_cli_goes_past_an_unjudged_pass_to_a_judged_one`).
-- The scramble probe behind the host exclusion, [benchmarks/scramble_leo_probe.py](../../benchmarks/scramble_leo_probe.py),
-  and its output, [results/benchmarks/scramble-leo-probe-2026-10-13.json](../../results/benchmarks/scramble-leo-probe-2026-10-13.json).
+- The scramble probe behind the host exclusion,
+  [benchmarks/scramble_leo_probe.py](../../benchmarks/scramble_leo_probe.py), and its output,
+  [results/benchmarks/scramble-leo-probe-2026-10-13.json](../../results/benchmarks/scramble-leo-probe-2026-10-13.json).
   It searches a synthetic planet star (3.7 d) on 8 and on 4 sectors, TOI-188.01 (an eclipsing binary) and Pi Men c
   as null stars, for scramble seeds 1 to 5 and once unscrambled, and judges every signal with LEO-Vetter's
   false-alarm tests as the threshold run does. Of the 59 scrambled signals, none of the 18 at a harmonic of the true

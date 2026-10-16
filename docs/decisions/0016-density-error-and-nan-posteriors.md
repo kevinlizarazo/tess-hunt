@@ -26,8 +26,9 @@ it; a NaN log density gives a NaN tension, which compares False against the thre
 
 ## Evidence
 
-- [tests/test_physical_checks.py](../../tests/test_physical_checks.py): `test_density_uses_the_side_facing_the_tic_value`
-  (a posterior with a long low tail and the TIC value inside it passes, where the symmetric error fails it),
+- [tests/test_physical_checks.py](../../tests/test_physical_checks.py):
+  `test_density_uses_the_side_facing_the_tic_value` (a posterior with a long low tail and the TIC value inside it
+  passes, where the symmetric error fails it),
   `test_density_still_fails_on_the_short_side`, `test_nan_samples_are_inconclusive` (a NaN impact parameter makes both
   checks inconclusive) and `test_vet_v1s_symmetric_density_error_still_fails_the_long_tail`.
 - [tests/test_vet.py](../../tests/test_vet.py): `test_clean_planet_still_advances_under_vet_v1_with_m1s_density_error`.

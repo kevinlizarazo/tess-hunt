@@ -1,5 +1,8 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below. Results under results/ are CC BY 4.0 (see results/LICENSE), except the ruwe column of the triage tables, which is Gaia DR3 data under ESA's CC BY-NC 3.0 IGO terms; see results/README.md."
+message: >-
+  If you use this software, please cite it as below. Results under results/ are CC BY 4.0 (see results/LICENSE),
+  except the ruwe column of the triage tables, which is Gaia DR3 data under ESA's CC BY-NC 3.0 IGO terms; see
+  results/README.md.
 type: software
 title: "tess-hunt"
 version: "0.1.0"
