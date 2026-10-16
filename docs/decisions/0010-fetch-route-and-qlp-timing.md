@@ -33,7 +33,7 @@ files have not been redelivered; the files served are version `v01`.
   `test_qlp_v01_late_sectors_are_timing_suspect`,
   `test_unreadable_version_in_an_affected_sector_is_timing_suspect`, `test_new_product_key_refetches`,
   `test_cached_file_without_timing_flags_refetches`, `test_all_nan_errors_become_scatter_errors`).
-- QLP timing offset (Task 6, Step 1). The plan's script, [benchmarks/qlp_timing.py](../../benchmarks/qlp_timing.py),
+- QLP timing offset. [benchmarks/qlp_timing.py](../../benchmarks/qlp_timing.py)
   read two QLP minus SPOC medians above 10 minutes
   ([output](../../results/benchmarks/qlp-timing-2026-10-13.txt)). +75.00 min on TIC 7439481 S102 is an artifact: the
   TOI ephemeris has drifted beyond the 40 minutes either side that the script searches. -20.50 min on TIC 22560356
@@ -42,13 +42,13 @@ files have not been redelivered; the files served are version `v01`.
   in S99 and +1.13 min in S101, which is also inside the affected window. The ephemeris drift, the star's faintness
   and the scatter come from build diagnostics that are not in the repo. The ephemeris-independent remeasurement,
   [benchmarks/qlp_timing_robust.py](../../benchmarks/qlp_timing_robust.py), picks its own 31 pairs (24 reliable),
-  which share no star with the plan script's 8 pairs and so do not include those two. It times each QLP transit
+  which share no star with qlp_timing.py's 8 pairs and so do not include those two. It times each QLP transit
   against that sector's own SPOC fit and puts every reliable pair's median offset under 10 minutes, the largest at
   -6.50 min ([output](../../results/benchmarks/qlp-timing-robust-2026-10-13.txt)). Single transits in reliable pairs
   reach +35.25 min.
 - On 2026-10-13 the maintainer ruled that QLP S99 to S104 is used for detection, flagged `timing_suspect`, as
   designed.
-- QLP dilution (Task 6, Step 1b). The header of a QLP S100 light curve carries no crowding or dilution keyword. QLP
+- QLP dilution. The header of a QLP S100 light curve carries no crowding or dilution keyword. QLP
   Data Release Notes 004 (https://arxiv.org/abs/2603.22236) say the TGLC method forward models the FFIs with the
   ePSF "to remove contamination from nearby stars", and that it "is implemented as of Sector 94 in QLP light curves".
   The depth comparison, [benchmarks/qlp_dilution.py](../../benchmarks/qlp_dilution.py)

@@ -30,5 +30,7 @@ Unit tests in [tests/test_search.py](../../tests/test_search.py): `test_controls
 `test_production_search_needs_threshold_and_controls` and `test_search_skips_a_star_not_covered_after_fetch`. The
 production search's [controls.csv](../../results/benchmarks/20261014T205855Z-search-fe29585-cdf2/controls.csv)
 (run `20261014T205855Z-search-fe29585-cdf2`, threshold SDE 20.24): all 15 required controls recovered and 17 of 20 in
-all; the three missed, TOI-451.02, TOI-451.03 and TOI-1097.02, are not required, and Task 3's known-set rerun missed
-the same three.
+all; the three missed, TOI-451.02, TOI-451.03 and TOI-1097.02, are not required, and the known-set rerun under
+`criteria/search-v2.toml`
+([20261013T012650Z-benchmark-known-b62e857-936d](../../results/benchmarks/20261013T012650Z-benchmark-known-b62e857-936d/summary.md))
+missed the same three.

@@ -523,7 +523,7 @@ period. It meets the same bar as M2 and M3.
   ([0012](decisions/0012-leo-vetter-configuration.md)).
 - **transit-diffImage's timing:** its bundled SPICE ephemeris ends on 2020-10-26, so for later sectors its in-transit
   window sits minutes off TESScut's barycentric times. On the pixel controls it moved at most 77 of a sector's 698
-  in-transit cadences, below the fifth that would have stopped the build
+  in-transit cadences, below the limit of a fifth set before the check
   ([output](../results/triage/pixel-timing-2026-10-14.txt), [0012](decisions/0012-leo-vetter-configuration.md)).
 - **The pixel rule's known miss:** TOI-1399.01, a nearby-eclipsing-binary false positive, passes the 15" rule at a
   best-quality offset of 11.63" ([output](../results/triage/pixel-controls-2026-10-16.txt),

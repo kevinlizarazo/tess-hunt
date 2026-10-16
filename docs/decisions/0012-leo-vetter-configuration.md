@@ -43,7 +43,8 @@ signal seen mainly in QLP sectors, LEO-Vetter's radius tests (`large` and `vshap
   `test_evaluate_judges_a_branch_only_where_it_can_change_the_verdict`,
   `test_leo_star_density_is_the_tic_value_else_mass_over_radius_cubed` and the synthetic controls
   `test_leo_clean_planet_is_a_candidate`, `test_leo_sinusoid_is_false_alarm` and
-  `test_leo_sinusoid_at_four_times_its_period_is_false_alarm`; the pixel tests in Task 16.
+  `test_leo_sinusoid_at_four_times_its_period_is_false_alarm`; the pixel tests in
+  [tests/test_pixels.py](../../tests/test_pixels.py).
 - A deep eclipsing binary searched at half its period is rejected as a false alarm by the individual-transit test
   (`invalid_transits`), and a shallower one as a false positive by `odd_even`:
   `test_leo_deep_eclipsing_binary_is_a_false_alarm_on_its_individual_transits` and
@@ -60,7 +61,8 @@ signal seen mainly in QLP sectors, LEO-Vetter's radius tests (`large` and `vshap
   transit-diffImage's bundled ephemeris gives no barycentric correction, so in the 12 control sectors after that date
   its pixel times sit 4.83 to 8.28 minutes off TESScut's barycentric times (0.09 to 0.58 minutes in the 3 before), and
   2.6% to 11.0% of the in-transit cadences differ between its in-transit window and the one on TESScut's times. The
-  check would have stopped above a fifth.
+  limit, set before the check, was a fifth of a sector's in-transit cadences. The file is the output of
+  [benchmarks/pixel_timing.py](../../benchmarks/pixel_timing.py).
 - The production triage run,
   [results/triage/20261015T155441Z-triage-7b12e25-3f57](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md):
   of the 2,993 signals at or above the threshold, LEO-Vetter passed 57, failed 2,932 (2,825 as false alarms, 107 as

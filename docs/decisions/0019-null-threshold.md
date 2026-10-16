@@ -14,7 +14,7 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
 
 ## Decision
 
-- Every sample star is scrambled once (`search --scramble <seed>`, design 4.5) and searched with the production code at
+- Every sample star is scrambled once (`search --scramble <seed>`, spec 5.4) and searched with the production code at
   the provisional `continue_sde`.
 - The scramble splits each sector into segments at every internal gap longer than `[null] segment_gap_days`, shuffles
   the segments within each sector and then the sectors. Each sector keeps its slot's start, and the segments within it
@@ -125,7 +125,8 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   the 1,200 highest remaining signals, none unjudged. The threshold is SDE 20.24 (TIC 309963553 at 39.39 d, 5
   transits), above the floor of 9.0; it does not trace back to the star's own transits. Every one of the 20 highest
   null signals failed a false-alarm test.
-- The sector structure the scramble splits (Task 6 Step 6),
+- The sector structure the scramble splits, on 500 random fetched stars, from
+  [benchmarks/sector_structure.py](../../benchmarks/sector_structure.py):
   [results/benchmarks/sector-structure-2026-10-13.txt](../../results/benchmarks/sector-structure-2026-10-13.txt).
 - The production triage run cut at this threshold and published with the same `threshold.json`,
   [results/triage/20261015T155441Z-triage-7b12e25-3f57](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md):

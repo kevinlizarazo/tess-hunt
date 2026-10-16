@@ -30,6 +30,7 @@ FLAME module gives each star a mass and radius from its luminosity and temperatu
   130,822 have a FLAME log g. The cut kept 139,237, dropping 3,110. Of those kept, 30,195 pass the coverage rule and
   form sample A. The run is marked complete.
 - Sector 1751, TESS's special pointing at the comet 3I/ATLAS ([0010](0010-fetch-route-and-qlp-timing.md)), counts
-  toward the four-sector minimum as coded, so 56 of these stars (55 after the fetch) reach four sectors only with it.
-  On 2026-10-13 the build controller ruled that they stay in sample A, because the targets code is frozen and the null
-  and production searches use the same sample.
+  toward the four-sector minimum, because the targets code counts every sector MAST lists for the star. 56 of these
+  stars (55 after the fetch) reach four sectors only with it. The rule was kept as coded rather than changed after the
+  targets run: the targets code is part of the hashed search code, frozen from the null search to the production
+  search, and both searches use the same sample.
