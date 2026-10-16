@@ -1,5 +1,6 @@
-# Criteria are hashed into every run; a CRLF checkout would change the hash.
+# Criteria and the search code are hashed into every run; a CRLF checkout would change the hash.
 criteria/*.toml text eol=lf
+*.py text eol=lf
 *.fits binary
 *.npz binary
 *.parquet binary
