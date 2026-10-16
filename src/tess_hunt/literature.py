@@ -1,4 +1,4 @@
-"""Has anyone written about this star? Keyless searches by TIC (design 4.7). Hits are evidence for the
+"""Has anyone written about this star? Keyless searches by TIC (docs/design.md, section 4.1). Hits are evidence for the
 maintainer to read, not an outcome."""
 
 import time

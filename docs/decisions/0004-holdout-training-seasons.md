@@ -37,7 +37,7 @@ problems.
 ## Evidence
 
 Unit tests in [tests/test_holdout.py](../../tests/test_holdout.py): `test_two_seasons_are_untestable_not_fail` (a
-clean planet in two seasons is inconclusive with both seasons untestable). The task brief's tests pass unchanged under
+clean planet in two seasons is inconclusive with both seasons untestable). The earlier tests pass unchanged under
 the training-only reference: `test_planet_in_every_season_is_predicted`,
 `test_negative_control_signal_missing_from_one_season`, `test_single_season_is_inconclusive` and
 `test_underpowered_seasons_are_inconclusive_not_fail`.

@@ -45,5 +45,5 @@ the epoch.
   `test_classify_recovers_when_catalog_period_drifts` (the TOI-396.01 ephemeris and the signal the search found for
   it), `test_classify_recovers_when_search_period_drifts` (the mirror case, where only the truth's period carries
   the epoch onto the signal) and `test_classify_still_rejects_wrong_phase` (a signal at the true period, half a period off, is neither
-  recovered nor an alias). The task brief's tests pass unchanged: `test_classify_recovered`,
+  recovered nor an alias). The earlier tests pass unchanged: `test_classify_recovered`,
   `test_classify_below_threshold_is_not_recovery`, `test_classify_alias_is_not_recovery` and `test_classify_missed`.

@@ -1,5 +1,5 @@
 """Triage: a valid production search's signals through the threshold, novelty, LEO-Vetter, pixels and a
-literature search, down to a shortlist (design 4.7)."""
+literature search, down to a shortlist (docs/design.md, section 4.1)."""
 
 import json
 import sys

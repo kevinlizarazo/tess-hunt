@@ -561,7 +561,7 @@ def test_too_few_bins_is_an_empty_result_with_its_count():
     lc = make_lc(sectors=(1,), cadence_min=2.0, noise_ppm=300.0)
     short = lc.select(lc.time < lc.time[0] + 0.5)
     result = search_star(short, 1.0, 1.0, CFG)
-    # Enough raw cadences for the stage's own check, too few 30-minute bins to search (Task 8 marks it).
+    # Enough raw cadences for the stage's own check, too few 30-minute bins to search (status too_few_points).
     assert len(short.time) >= CFG["min_points"] > result.n_bins > 0
     assert result.signals == [] and result.n_bls == 0
 

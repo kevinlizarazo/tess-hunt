@@ -71,7 +71,7 @@ The three CSV files share these columns. Times are BTJD (BJD_TDB - 2457000).
 - `period` (days), `t0` (mid-transit epoch, BTJD), `duration` (days): the search's box ephemeris.
 - `depth`: the box depth as a fraction of the flux, not ppm. `depth_snr`: the depth over its error, from the box fit.
 - `sde`: the peak's signal detection efficiency, the statistic the threshold cuts. `n_transits`: transits with
-  enough cadences on data.
+  at least `min_points_per_transit` binned points on data (`criteria/search-v2.toml`).
 - `engine`: the search engine (`bls`). `control`: whether the star is a positive control (`False` on every row).
 - `novelty`: `pass`, `fail` or `inconclusive`. `novelty_category`, empty on a pass: `known` (matches a catalogued
   object), `stale_catalog_epoch` (the period matches but the epoch does not), `no_period_object` (the star hosts a

@@ -2,8 +2,8 @@
 false-alarm tests?
 
 Each case is searched as search._search_job searches a null star (search_input, detrend, search_star; search-v2,
-continue_sde 9.0, masks off) for scramble seeds 1 to 5 and once unscrambled. Every emitted signal is judged as the
-plan's Task 14 _leo_job judges a null signal: leo_flux on the scrambled native-cadence light curve, the star's other
+continue_sde 9.0, masks off) for scramble seeds 1 to 5 and once unscrambled. Every emitted signal is judged as
+threshold._leo_job judges a null signal: leo_flux on the scrambled native-cadence light curve, the star's other
 signals dropped, fa_only=True.
 
 First run at e4047f1. Run from the repo root (it reads criteria/ and tests/synthetic.py there); the two real
@@ -83,7 +83,7 @@ def harmonic(period: float, true: float) -> str:
 
 
 def judge(lc_raw, star, signal, others, seed, crit, triage) -> dict:
-    """Task 14's _leo_job; seed None is the unscrambled reference."""
+    """threshold._leo_job's judgement; seed None is the unscrambled reference."""
     exclude = known_mask(lc_raw.time, [], crit["detrend"]["known_mask_width"])
     if seed is None:
         lc, order = lc_raw, np.arange(len(lc_raw.time))

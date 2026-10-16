@@ -1,6 +1,6 @@
 """QLP minus SPOC 2-min transit mid-times in the sectors whose QLP timestamps MAST says are wrong.
 
-The plan's script (Task 6, Step 1). Each transit is fitted within +-40 min of the TOI ephemeris's prediction.
+Each transit is fitted within +-40 min of the TOI ephemeris's prediction.
 
 Usage: uv run python benchmarks/qlp_timing.py > results/benchmarks/qlp-timing-2026-10-13.txt
 """

@@ -74,7 +74,7 @@ def series(tic, sector, provenance):
 
 
 def mid_time(time, flux, guess, duration, span=SPAN):
-    """The plan's box fit (local line through out-of-transit points, 0.25 min grid), with the depth fitted rather
+    """qlp_timing.py's box fit (local line through out-of-transit points, 0.25 min grid), with the depth fitted rather
     than fixed and the grid widened to +-span. NaN unless both edges and both baselines are covered and the best
     centre is off the grid's ends. Returns (mid-time, fitted depth)."""
     pad = span / 1440.0
