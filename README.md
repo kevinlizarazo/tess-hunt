@@ -8,9 +8,9 @@ other observers confirm it. The known planets under `results/benchmarks/` are po
 M2 searched the whole sample. `targets` builds it from the TIC with a Gaia DR3 dwarf cut, `fetch` reads the light
 curves, a search of scrambled light curves sets the detection threshold, and the production search runs with the
 known planets as positive controls. `triage` checks every signal above the threshold for novelty against published
-catalogs, with LEO-Vetter's flux tests and with pixel centroids, and shortlists the signals that pass all three. The
-[shortlist](results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md) is the input to M3's vetting; none of its
-signals has been vetted yet.
+catalogs and with LEO-Vetter's flux tests, runs pixel centroids on the signals that pass both, and shortlists those
+that pass all three. The [shortlist](results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md) is the input to
+M3's vetting; none of its signals has been vetted yet.
 
 Published results ([results/README.md](results/README.md)):
 - `results/benchmarks/`: M1's runs, the search fix's reruns, the null threshold, the production search's positive
@@ -42,6 +42,8 @@ cutouts it builds them from.
 
 ## Licenses
 
-Code: MIT ([LICENSE](LICENSE)). Results in `results/`: CC BY 4.0 ([results/LICENSE](results/LICENSE)). The FITS files
+Code: MIT ([LICENSE](LICENSE)). Results in `results/`: CC BY 4.0 ([results/LICENSE](results/LICENSE)), except the
+`ruwe` column of the triage tables, which is Gaia DR3 data under ESA's CC BY-NC 3.0 IGO terms
+([licence](https://www.cosmos.esa.int/web/gaia-users/license)). The FITS files
 under `tests/fixtures/` are TESS data products under CC BY 4.0 ([tests/fixtures/README.md](tests/fixtures/README.md)).
 Data credits and required acknowledgements: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).

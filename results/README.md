@@ -1,12 +1,15 @@
 # Results
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
-this directory).
+this directory). The one exception is the `ruwe` column of the published triage tables: it is Gaia DR3 data (credit:
+ESA/Gaia/DPAC) and stays under ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not
+CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
-These files are derived from TESS light curves, from the TESS Input Catalog, and from the ExoFOP and NASA Exoplanet
-Archive catalogs. Reuse must also carry the acknowledgements in [../ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md).
+These files are derived from TESS light curves, from the TESS Input Catalog, from Gaia DR3, and from the ExoFOP and
+NASA Exoplanet Archive catalogs. Reuse must also carry the acknowledgements in
+[../ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md).
 
 ## Runs
 

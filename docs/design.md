@@ -36,8 +36,8 @@ RNAAS is not peer reviewed and is limited to 1,500 words with one figure or tabl
 
 Consequences for this design:
 - The endpoint is the Zenodo, preregistration and DDT route, not a CTOI.
-- Methods stay close to published tools in their published configurations (TLS, LEO-Vetter, TRICERATOPS). A later
-  RNAAS can then cite them.
+- Methods stay close to published tools in their published configurations (LEO-Vetter, TRICERATOPS). A later RNAAS
+  can then cite them. The search is BLS ([0007](decisions/0007-search-engine.md)).
 - Whether a pipeline assembled from published tools satisfies the RNAAS clause is unknown. M4 asks
   exofop-support@ipac.caltech.edu before anyone writes a note.
 
@@ -162,7 +162,8 @@ from a run directory and writes its own.
     retried.
 - The search goes on to a further rank only while the SDE is at least `continue_sde`, which production takes from
   the null threshold (section 5.4).
-- Budget: a mean of 52 s per typical star, measured in the M2 design session (2026-10-12).
+- Budget: in the typical-star injection run, each search of a random production target took a median of 38 s
+  ([summary.md](../results/benchmarks/20261015T131443Z-benchmark-inject-fe29585-8496/summary.md)).
 
 **triage**
 - **Threshold:** detection threshold from our own null (section 5.4). Triage takes the sample signals at or above it.
@@ -187,10 +188,11 @@ from a run directory and writes its own.
     through the CDS cross-match service
 
   Matching covers the same TIC and TIC neighbors within 2.5', period harmonics and epoch consistency. Rows without a
-  usable epoch match on period alone: Gaia DR3's eclipsing binaries (their reference time is not an eclipse time),
-  VSX, and Cao, whose epochs are estimates. A match of any kind but tce kills the signal as "known", with the match
-  recorded. A match only to tce rows is inconclusive: the signal is not shortlisted and goes to a "known to SPOC"
-  table that the maintainer can promote by hand ([0013](decisions/0013-novelty-sources.md)).
+  usable epoch match on period alone ([0002](decisions/0002-catalog-data-quality.md)): Gaia DR3's eclipsing binaries
+  (their reference time is not an eclipse time), VSX, and Cao, whose epochs are estimates. A match of any kind but
+  tce kills the signal as "known", with the match recorded. A match only to tce rows is inconclusive: the signal is
+  not shortlisted and goes to a "known to SPOC" table that the maintainer can promote by hand
+  ([0013](decisions/0013-novelty-sources.md)).
 - **Literature:** Zenodo, arXiv and OpenAlex, searched by TIC without keys, for shortlisted signals only. Hits are
   evidence for M3, not an outcome. ADS needs a token and is searched by hand in M3
   ([0013](decisions/0013-novelty-sources.md)).
@@ -275,13 +277,20 @@ Each check ships with a negative-control test on synthetic data that must make i
 | Check | Planted failure |
 |---|---|
 | Odd/even, secondary | Eclipsing binary at twice the period |
-| Centroids (triage's pixel check) | A 16" offset; the real nearby eclipsing binaries TOI-1175.01 and TOI-1058.01, run as network tests ([0012](decisions/0012-leo-vetter-configuration.md)) |
+| Centroids (triage's pixel check) | Offset blend (below) |
 | Held-out season | Wrong period |
 | Novelty | A known TOI |
 | Duration vs density | A giant-star host |
-| LEO-Vetter flux tests (triage) | A sinusoidal variable (false alarm); a deep eclipsing binary, rejected by the individual-transit test (false alarm); a shallower one at twice its period, rejected by odd/even (false positive) ([0012](decisions/0012-leo-vetter-configuration.md)) |
+| LEO-Vetter flux tests (triage) | A variable; eclipsing binaries (below) |
 | Radius | A deep eclipse with true Rp/R* 0.6 ([0018](decisions/0018-deep-eclipsing-binary-rule.md)) |
-| Positive controls | A run missing a required planet is invalid ([0011](decisions/0011-positive-controls-in-production.md)) |
+| Positive controls | A run missing a required planet (below) |
+
+Triage's pixel check fails a 16" offset, and the real nearby eclipsing binaries TOI-1175.01 and TOI-1058.01 in
+network tests. LEO-Vetter's flux tests reject a sinusoidal variable as a false alarm. Of two eclipsing binaries
+searched at half their period, they reject a deep one as a false alarm through the individual-transit test, and a
+shallower one as a false positive through odd/even ([0012](decisions/0012-leo-vetter-configuration.md)). A
+production search that misses a required positive control is invalid
+([0011](decisions/0011-positive-controls-in-production.md)).
 
 One exception: `signal_present` never fails, because a weak dip is a lack of evidence for a planet, not evidence
 against one. Its negative control, pure noise at an arbitrary ephemeris, is inconclusive rather than a fail. The
@@ -303,7 +312,8 @@ A check without a passing negative-control test is not merged.
   expected false-alarm count) is fixed in the criteria file. The threshold is recomputed whenever the null set grows,
   and a run fails if its threshold sits below the current null's value.
 - **Scramble (M2):** as in the LEO-Vetter paper [T49], each sector is split into segments at every internal gap
-  longer than `[null] segment_gap_days` (in most sectors, its two orbits), the segments are shuffled within the
+  longer than `[null] segment_gap_days` (in most sectors, its two orbits; the fetched stars'
+  [sector structure](../results/benchmarks/sector-structure-2026-10-13.txt)), the segments are shuffled within the
   sector, and then the sectors are shuffled. The "time offsets" are the shifts that move each segment into its new
   slot. Segments within a sector are placed a fixed `[null] placement_gap_days` apart (1.0 d in
   `criteria/search-v2.toml`), above detrend's 0.5 d break tolerance, so moved segments are detrended apart as orbits
@@ -380,8 +390,8 @@ tess-hunt/
 ```
 
 ### 6.1 Environment
-Python 3.12 with a uv lockfile. Resolution was checked with uv 0.12.10 on Linux x86_64 [T]. Nothing has been
-imported or run yet; M1 confirms the environment by running it.
+Python 3.12 with a uv lockfile. Resolution was checked with uv 0.12.10 on Linux x86_64 [T]. M1 confirmed the
+environment by running it, and CI installs it from the lockfile.
 
 | Package | Pin | Note |
 |---|---|---|
@@ -391,10 +401,14 @@ imported or run yet; M1 confirms the environment by running it.
 | astroquery | 0.4.11 | |
 | wotan | 1.10 | Dormant since 2021; install scikit-learn, not `sklearn` |
 | leo-vetter | 1.2.0 | Pixel vetting needs transit-diffImage. GPL-3.0 |
-| transit-diffImage | git commit `2b13199` | Not on PyPI. Declare its undeclared imports (spiceypy, lightkurve, pandas, matplotlib, requests); it brings tess-point. It shells out to curl, unzip and rm, so `curl` and `unzip` are system requirements, and its PRF URL is plain http, which redirects to https. GPL-3.0 |
+| transit-diffImage | git commit `2b13199` | Not on PyPI; GPL-3.0; see below |
 | batman-package | 2.5.3 | |
 | emcee | 3.1.6 | |
 | numba | 0.68.0 | Requires numpy<2.6 |
+
+transit-diffImage's undeclared imports (spiceypy, lightkurve, pandas, matplotlib, requests) are declared in
+`pyproject.toml`, and it brings tess-point. It shells out to curl, unzip and rm, so `curl` and `unzip` are system
+requirements, and its PRF URL is plain http, which redirects to https.
 
 Without the triceratops pin, uv silently falls back to triceratops 1.0.21. Supported platforms are Linux and macOS;
 Windows is supported through WSL only. LEO-Vetter and transit-diffImage are GPL-3.0; tess-hunt's code is MIT and
@@ -413,7 +427,8 @@ imports them.
     QLP team member co-authorship
   - TESS-SPOC's citation (Caldwell 2020) [T24]
   - the acknowledgement or citation each source M2 added asks for: Gaia DR3, CDS's VizieR and cross-match service,
-    VSX, the eclipsing-binary and novelty catalogs, LEO-Vetter, transit-diffImage, tess-point and TESScut
+    VSX, the eclipsing-binary and novelty catalogs, arXiv and OpenAlex, LEO-Vetter, transit-diffImage, tess-point,
+    TESScut, SpiceyPy and SPICE
 - **Raw data never enters git.** Only small results go under `results/`.
 
 ### 6.3 CI
@@ -514,8 +529,9 @@ period. It meets the same bar as M2 and M3.
   ([0010](decisions/0010-fetch-route-and-qlp-timing.md)). The Gaia archive may be unstable before DR4; the targets
   stage retries each chunk and fails the run rather than write a partial join.
 - **Gaia data licence:** Gaia DR3 data are distributed under CC BY-NC 3.0 IGO, not CC BY 4.0. The eclipsing-binary
-  rows only drop null signals and fail novelty, and are not republished. The triage tables under `results/triage/`
-  carry each star's Gaia RUWE ([ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md)).
+  rows only drop null signals and fail novelty, and are not republished. The `ruwe` column of the published triage
+  tables is Gaia DR3 data, so it is the one exception to the CC BY 4.0 licence of `results/` and stays under ESA's
+  terms ([results/README.md](../results/README.md), [ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md)).
 - **Fragile dependencies:** wotan is dormant and transit-diffImage is unpackaged. If either breaks on the pinned
   stack, the fallback is a decision-log entry, not a silent swap.
 - **RNAAS eligibility** is unknown until exofop-support answers.

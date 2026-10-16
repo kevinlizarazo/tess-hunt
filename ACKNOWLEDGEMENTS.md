@@ -17,7 +17,7 @@ contract NAS5–26555.
 | SPOC DV reports (single, multi-sector) | 10.17909/t9-2tc5-a751, 10.17909/t9-yjj5-4t42 | Jenkins et al. 2016 |
 | TESS-SPOC FFI light curves (CC BY 4.0) | 10.17909/t9-wpz1-8s54 | Caldwell et al. 2020 |
 | QLP light curves (CC BY 4.0) | 10.17909/t9-r086-e880 | Huang et al. 2020a, 2020b; Kunimoto et al. 2021, 2022 |
-| Calibrated full-frame images, cut out through TESScut for pixel vetting | 10.17909/0cp4-2j79 | Brasseur et al. 2019 (TESScut, under Software) |
+| Calibrated FFIs (pixel vetting, through TESScut) | 10.17909/0cp4-2j79 | Brasseur et al. 2019 |
 
 QLP asks users of Sector 27 and later data to consider offering a QLP team member co-authorship (invited, not
 required).
@@ -60,8 +60,15 @@ DR3 papers (https://www.cosmos.esa.int/web/gaia/dr3-papers):
 - Mowlavi et al. 2023, Gaia Data Release 3: The first catalogue of Gaia eclipsing binaries - Candidate identification
   (A&A 674, A16)
 
+The triage tables publish each star's RUWE, which comes from Gaia's astrometric solution. The credit page lists the
+paper on that solution among those describing Gaia EDR3, the early instalment of DR3:
+
+- Lindegren, L., Klioner, S., Hernández, J., et al. 2021b, Gaia Early Data Release 3. The astrometric solution
+  (A&A 649, A2; doi:10.1051/0004-6361/202039709)
+
 Gaia data are distributed under the CC BY-NC 3.0 IGO license (https://www.cosmos.esa.int/web/gaia-users/license),
-with credit to "ESA/Gaia/DPAC". The `ruwe` column in the triage tables under `results/triage/` is Gaia DR3 data.
+with credit to "ESA/Gaia/DPAC". The `ruwe` column in the triage tables under `results/triage/` is Gaia DR3 data and
+stays under those terms, not CC BY 4.0.
 
 ## ExoFOP
 
@@ -117,7 +124,7 @@ The null threshold drops, and the novelty check fails, signals that match a cata
   J/ApJ/912/123, table 2).
 - VSX, the AAVSO International Variable Star Index (VizieR B/vsx): Watson C., Henden A.A., Price A. 2006
   (2006SASS...25...47W). VSX's acknowledgments page (https://www.aavso.org/vsx/index.php?view=about.acknowledgments)
-  asks for this text:
+  says this text "would be appreciated":
 
   This research has made use of the International Variable Star Index (VSX) database, operated at AAVSO, Cambridge,
   Massachusetts, USA.
@@ -136,7 +143,8 @@ Each citation is the one the record's Zenodo or Dataverse page gives. Every Zeno
 - RAVEN: Lafarga, M., Armstrong, D., Cui, K., Hadjigeorghiou, A., Kunovac, V., Doyle, L., Bryant, E., Díaz, R.,
   Nieto, L. A., & Osborn, A. (2026). Online material for article Automatic search for transiting planets in TESS-SPOC
   FFIs with RAVEN: over 100 newly validated planets and over 2000 vetted candidates [Dataset]. In Monthly Notices of
-  the Royal Astronomical Society. Zenodo. https://doi.org/10.1093/mnras/stag512
+  the Royal Astronomical Society. Zenodo. https://doi.org/10.1093/mnras/stag512. That DOI is the article's; the data
+  deposit the snapshot reads is Zenodo record 19661443 (https://zenodo.org/records/19661443).
 - T16 (CC0 1.0): Roth, Joshua; Hartman, Joel; Bakos, Gaspar, 2026, "T16 Transit Search Cycle 1 Candidates Vetting
   Plots", https://doi.org/10.7910/DVN/CWEUGW, Harvard Dataverse, V3, UNF:6:jPC6JLw9EXUTM9mp7MgVnw== [fileUNF]
 - Cao: Cao, E. (2026). Data deposit: 1,467 new transiting planet candidates from TESS [Dataset]. Zenodo.
@@ -162,12 +170,26 @@ Each citation is the one the record's Zenodo or Dataverse page gives. Every Zeno
   - Th0rgal/open-exoplanet-hunt (https://github.com/Th0rgal/open-exoplanet-hunt), MIT: its candidate certificates,
     read at a commit the snapshot's manifest records. Its README asks for no citation.
 
+## Literature search
+
+Triage searches Zenodo, arXiv and OpenAlex by TIC for shortlisted signals.
+
+- arXiv's API page (https://info.arxiv.org/help/api/index.html) asks all API users: "Acknowledge arXiv data usage with
+  this statement on your product":
+
+  Thank you to arXiv for use of its open access interoperability.
+
+- OpenAlex's "Citing OpenAlex" page (https://help.openalex.org/how-to/citing-openalex/) asks for: Priem, J.,
+  Piwowar, H., & Orr, R. (2022). OpenAlex: A fully-open index of scholarly works, authors, venues, institutions, and
+  concepts. ArXiv. https://arxiv.org/abs/2205.01833
+
 ## Software
 
 lightkurve (Lightkurve Collaboration 2018), astropy (Astropy Collaboration 2013, 2018, 2022), astroquery
 (Ginsburg et al. 2019), numpy, scipy, pandas, wotan (Hippke et al. 2019), transitleastsquares (Hippke & Heller
 2019), batman (Kreidberg 2015), emcee (Foreman-Mackey et al. 2013), TRICERATOPS (Giacalone et al. 2021),
-LEO-Vetter (Kunimoto et al. 2025), transit-diffImage, tess-point (Burke et al. 2020).
+LEO-Vetter (Kunimoto et al. 2025), transit-diffImage, tess-point (Burke et al. 2020), SpiceyPy (Annex et al. 2020)
+and the SPICE toolkit (Acton 1996; Acton et al. 2017).
 
 - LEO-Vetter (GPL-3.0). Its README (https://github.com/mkunimoto/LEO-Vetter) asks users to cite its paper:
   Kunimoto, M., Bryson, S., Jaffee, D., et al. (2025) The Astronomical Journal, 170, 280
@@ -180,3 +202,13 @@ LEO-Vetter (Kunimoto et al. 2025), transit-diffImage, tess-point (Burke et al. 2
   for your work, please cite Brasseur et al. 2019". Its ASCL entry (https://ascl.net/1905.007): Brasseur, C. E.;
   Phillip, Carlita; Fleming, Scott W.; Mullally, S. E.; White, Richard L., Astrocut: Tools for creating cutouts of
   TESS images, ascl:1905.007 (2019ascl.soft05007B). Astrocut is BSD-3.
+- SpiceyPy, which transit-diffImage uses for its barycentric correction. Its README
+  (https://github.com/AndrewAnnex/SpiceyPy) says: "If you are publishing work that uses SpiceyPy, please cite
+  SpiceyPy and the SPICE toolkit." Its citation: Annex et al., (2020). SpiceyPy: a Pythonic Wrapper for the SPICE
+  Toolkit. Journal of Open Source Software, 5(46), 2050, https://doi.org/10.21105/joss.02050
+- The SPICE toolkit, from NASA's Navigation and Ancillary Information Facility (NAIF). Its credit page
+  (https://naif.jpl.nasa.gov/naif/credit.html) lists these references for NAIF:
+  - Acton, C.H.; "Ancillary Data Services of NASA's Navigation and Ancillary Information Facility;" Planetary and
+    Space Science, Vol. 44, No. 1, pp. 65-70, 1996. DOI 10.1016/0032-0633(95)00107-7
+  - Charles Acton, Nathaniel Bachman, Boris Semenov, Edward Wright; A look toward the future in the handling of space
+    science mission geometry; Planetary and Space Science (2017); DOI 10.1016/j.pss.2017.02.013
