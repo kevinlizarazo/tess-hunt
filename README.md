@@ -21,9 +21,12 @@ Published results ([results/README.md](results/README.md)):
 ## What it searches
 
 Sun-like dwarfs (5300 to 6500 K) of TESS magnitude 10.5 or brighter, observed in at least four sectors including at
-least one of sectors 97 to 107, for periodic dips between 1 and 40 days. Every vetting check is proven to fail on a
-planted false positive, and pass/fail criteria are committed before the data is searched. The design is in
-[docs/design.md](docs/design.md); decisions are in [docs/decisions/](docs/decisions/).
+least one of sectors 97 to 107, for periodic dips between 1 and 40 days. Every vetting check but one is proven to
+fail on a planted false positive. The exception, `signal_present`, only asks whether there is a dip at the ephemeris
+and never fails, because a weak dip is a lack of evidence for a planet, not evidence against one; its test shows that
+pure noise is inconclusive and does not advance ([decision 0017](docs/decisions/0017-signal-present-check.md)).
+Pass/fail criteria are committed before the data is searched. The design is in [docs/design.md](docs/design.md);
+decisions are in [docs/decisions/](docs/decisions/).
 
 ## Setup
 
