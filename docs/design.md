@@ -385,7 +385,8 @@ tess-hunt/
   benchmarks/         known-planet set, injection config
   tests/              unit tests and negative controls on synthetic light curves
   docs/               design.md (this spec), decisions/
-  results/            CC BY 4.0: candidate tables, dossiers, plots
+  results/            CC BY 4.0, except the triage tables' ruwe column (Gaia DR3, CC BY-NC 3.0 IGO): candidate
+                      tables, dossiers, plots
   LICENSE (MIT), results/LICENSE (CC BY 4.0), CITATION.cff, ACKNOWLEDGEMENTS.md, README.md
   .github/workflows/ci.yml
 ```
