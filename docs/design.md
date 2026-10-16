@@ -314,13 +314,12 @@ A check without a passing negative-control test is not merged.
 - **Scramble (M2):** as in the LEO-Vetter paper [T49], each sector is split into segments at every internal gap
   longer than `[null] segment_gap_days` (in most sectors, its two orbits; the
   [sector structure](../results/benchmarks/sector-structure-2026-10-13.txt) of 500 random fetched stars, from
-  `benchmarks/sector_structure.py`), the segments are shuffled within the
-  sector, and then the sectors are shuffled. The "time offsets" are the shifts that move each segment into its new
-  slot. Segments within a sector are placed a fixed `[null] placement_gap_days` apart (1.0 d in
-  `criteria/search-v2.toml`), above detrend's 0.5 d break tolerance, so moved segments are detrended apart as orbits
-  are. Every sample star is scrambled once; the null scrambles the raw light curve, with known-object masks
-  following their cadences, then runs the production detrend and search
-  ([0019](decisions/0019-null-threshold.md)).
+  `benchmarks/sector_structure.py`), the segments are shuffled within the sector, and then the sectors are shuffled.
+  The "time offsets" are the shifts that move each segment into its new slot. Segments within a sector are placed a
+  fixed `[null] placement_gap_days` apart (1.0 d in `criteria/search-v2.toml`), above detrend's 0.5 d break
+  tolerance, so moved segments are detrended apart as orbits are. Every sample star is scrambled once; the null
+  scrambles the raw light curve, with known-object masks following their cadences, then runs the production detrend
+  and search ([0019](decisions/0019-null-threshold.md)).
 - **Exclusions:** before the threshold is counted, two rules drop null signals. A null signal that matches, on period
   alone at a listed harmonic, a known object of any kind on its own star in the triage snapshot (TCEs and catalogued
   eclipsing binaries included) is dropped. So is every null signal on a star that hosts a catalogued planet,

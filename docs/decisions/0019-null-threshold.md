@@ -124,9 +124,9 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   the snapshot `2026-10-13T163454Z`, the harmonic exclusion dropped 877 signals and the host exclusion 1,574 more (on
   768 stars, counted from `null_dropped.csv`). The host exclusion removed 832 of the null's searched sample stars,
   leaving 29,343 stars in the null and 1.03 expected false alarms. LEO-Vetter judged the 1,200 highest remaining
-  signals, none unjudged. The threshold is SDE 20.24 (TIC 309963553 at 39.39 d, 5
-  transits), above the floor of 9.0; it does not trace back to the star's own transits. Every one of the 20 highest
-  null signals failed a false-alarm test.
+  signals, none unjudged. The threshold is SDE 20.24 (TIC 309963553 at 39.39 d, 5 transits), above the floor of 9.0;
+  it does not trace back to the star's own transits. Every one of the 20 highest null signals failed a false-alarm
+  test.
 - The sector structure the scramble splits, on 500 random fetched stars, from
   [benchmarks/sector_structure.py](../../benchmarks/sector_structure.py):
   [results/benchmarks/sector-structure-2026-10-13.txt](../../results/benchmarks/sector-structure-2026-10-13.txt).
