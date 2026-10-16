@@ -330,9 +330,12 @@ def cmd_threshold(args) -> int:
     stars = pd.read_parquet(args.targets).set_index("tic")
     run = start_run("threshold", [crit_search, crit_triage], args.production, sys.argv)
     run.record_input("null_signals", args.null / "signals.parquet")
+    run.record_input("null_stars", args.null / "stars.parquet")
     run.record_input("targets", args.targets)
     for name, path in snapshot_inputs(args.catalogs).items():
         run.record_input(name, path)
+    for name, path in snapshot_inputs(args.mask_catalogs).items():
+        run.record_input(f"mask_{name}", path)
     # CSV, so `benchmark publish` copies it beside threshold.json.
     dropped.to_csv(run.path / "null_dropped.csv", index=False)
     masks = load_known(args.mask_catalogs)

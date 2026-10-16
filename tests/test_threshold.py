@@ -8,7 +8,7 @@ import pytest
 from synthetic import make_lc, write_catalog_snapshot
 
 from tess_hunt import threshold as threshold_module
-from tess_hunt.catalogs import KNOWN_COLUMNS, load_known
+from tess_hunt.catalogs import KNOWN_COLUMNS, load_known, snapshot_inputs
 from tess_hunt.checks import inconclusive
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
@@ -476,6 +476,10 @@ def test_threshold_cli_drops_known_objects_and_traces_the_threshold_row(tmp_path
     provenance = json.loads((run / "provenance.json").read_text())
     assert provenance["summary"]["threshold"] == result["threshold"]
     assert provenance["inputs"]["null_signals"]["sha256"] == sha256_file(null / "signals.parquet")
+    # n_null_stars and the host counts come from the null's stars table, and the masks from this snapshot.
+    assert provenance["inputs"]["null_stars"]["sha256"] == sha256_file(null / "stars.parquet")
+    masks = {f"mask_{name}": sha256_file(path) for name, path in snapshot_inputs(mask).items()}
+    assert {k: provenance["inputs"][k]["sha256"] for k in masks} == masks
     assert all_thresholds(tmp_path / "data" / "runs") == [result]
 
 
