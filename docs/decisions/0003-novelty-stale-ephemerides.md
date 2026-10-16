@@ -33,4 +33,4 @@ A wrong epoch that survives decision 0002, such as a placeholder, fails the full
 Unit tests in [tests/test_novelty.py](../../tests/test_novelty.py):
 `test_same_star_period_match_out_of_phase_is_inconclusive`,
 `test_neighbour_period_match_out_of_phase_is_inconclusive` and `test_neighbour_at_half_period_out_of_phase_passes`.
-The task brief's novelty tests pass unchanged.
+The novelty tests written before this decision pass unchanged.

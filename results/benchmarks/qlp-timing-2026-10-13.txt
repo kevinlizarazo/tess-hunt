@@ -1,0 +1,8 @@
+TIC 7439481 S102 hlsp_qlp_tess_ffi_s0102-0000000007439481_tess_v01_llc.fits: QLP minus SPOC +75.00 min over 15 transits (spread 37.82)
+TIC 22560356 S99 hlsp_qlp_tess_ffi_s0099-0000000022560356_tess_v01_llc.fits: QLP minus SPOC -2.00 min over 2 transits (spread 0.75)
+TIC 22560356 S100 hlsp_qlp_tess_ffi_s0100-0000000022560356_tess_v01_llc.fits: QLP minus SPOC -20.50 min over 3 transits (spread 11.66)
+TIC 22560356 S101 hlsp_qlp_tess_ffi_s0101-0000000022560356_tess_v01_llc.fits: QLP minus SPOC +1.13 min over 4 transits (spread 9.02)
+TIC 23435610 S100 hlsp_qlp_tess_ffi_s0100-0000000023435610_tess_v01_llc.fits: QLP minus SPOC -2.75 min over 3 transits (spread 6.11)
+TIC 68081952 S99 hlsp_qlp_tess_ffi_s0099-0000000068081952_tess_v01_llc.fits: QLP minus SPOC +2.75 min over 2 transits (spread 2.00)
+TIC 68081952 S100 hlsp_qlp_tess_ffi_s0100-0000000068081952_tess_v01_llc.fits: QLP minus SPOC -1.75 min over 3 transits (spread 3.74)
+TIC 68081952 S101 hlsp_qlp_tess_ffi_s0101-0000000068081952_tess_v01_llc.fits: QLP minus SPOC -7.75 min over 3 transits (spread 2.08)

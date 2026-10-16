@@ -7,17 +7,32 @@ from tess_hunt.ephemeris import Ephemeris, in_transit
 from tess_hunt.lightcurve import LightCurve
 
 
-def detrend(lc: LightCurve, cfg: dict, mask: list[Ephemeris] = ()) -> LightCurve:
-    """Flatten each sector with a time-windowed biweight. Cadences inside `mask` transits are
-    left out of the trend and dropped after flattening, so known planets neither bend the trend
-    nor reach the search."""
-    known = np.zeros(len(lc.time), dtype=bool)
+def known_mask(time, mask: list[Ephemeris], width: float) -> np.ndarray:
+    known = np.zeros(len(time), dtype=bool)
     for eph in mask:
-        known |= in_transit(lc.time, eph, cfg["known_mask_width"])
+        known |= in_transit(time, eph, width)
+    return known
+
+
+def detrend(
+    lc: LightCurve,
+    cfg: dict,
+    mask: list[Ephemeris] = (),
+    exclude: np.ndarray | None = None,
+    hold_out: np.ndarray | None = None,
+) -> LightCurve:
+    """Flatten each sector with a time-windowed biweight. Cadences inside `mask` transits or flagged in
+    `exclude` are left out of the trend and dropped after flattening, so known planets neither bend the trend
+    nor reach the search. Cadences flagged in `hold_out` are left out of the trend but kept, so a transit
+    under test keeps its depth (wotan evaluates the trend at masked times from their neighbours)."""
+    dropped = known_mask(lc.time, mask, cfg["known_mask_width"])
+    if exclude is not None:
+        dropped |= exclude
+    untrended = dropped | hold_out if hold_out is not None else dropped
     parts = []
     for sector in np.unique(lc.sector):
         m = lc.sector == sector
-        if (m & ~known).sum() < cfg["min_points_per_sector"]:
+        if (m & ~dropped).sum() < cfg["min_points_per_sector"]:
             continue
         time = lc.time[m]
         # Masked cadences stay in the time array: deleting them would leave gaps that wotan
@@ -29,9 +44,9 @@ def detrend(lc: LightCurve, cfg: dict, mask: list[Ephemeris] = ()) -> LightCurve
             window_length=cfg["window_days"],
             edge_cutoff=cfg["edge_cutoff_days"],
             break_tolerance=cfg["break_tolerance_days"],
-            mask=known[m],
+            mask=untrended[m],
         )
-        ok = np.isfinite(flat) & ~known[m]
+        ok = np.isfinite(flat) & ~dropped[m]
         time, flat = time[ok], flat[ok]
         if len(flat) < cfg["min_points_per_sector"]:
             continue

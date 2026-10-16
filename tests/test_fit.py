@@ -1,14 +1,18 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 from synthetic import make_transit_lc
 
 from tess_hunt.checks import Outcome
 from tess_hunt.checks.physical import density
-from tess_hunt.ephemeris import Ephemeris, in_transit
-from tess_hunt.fit import MIN_ACCEPTANCE, fit_transit
+from tess_hunt.config import load_criteria
+from tess_hunt.ephemeris import Ephemeris, in_transit, phase_days
+from tess_hunt.fit import fit_transit
 
-CFG = {"walkers": 32, "steps": 3000, "burn": 1500, "window_durations": 3.0}
-SMALL = {"walkers": 16, "steps": 200, "burn": 100, "window_durations": 3.0}
+FIT = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v2.toml")["fit"]
+CFG = {**FIT, "steps": 3000, "burn": 1500}
+SMALL = {**FIT, "walkers": 16, "steps": 200, "burn": 100}
 
 
 @pytest.mark.slow
@@ -35,6 +39,18 @@ def test_fit_refuses_without_data_near_transit():
         fit_transit(lc.select(lc.time > 5000), Ephemeris(5.0, 1326.1, 0.13), CFG, seed=1)
 
 
+def test_fit_window_is_a_half_width():
+    # The window counts cadences within window_half_width_durations either side of mid-transit;
+    # in_transit's width of the same number spans only half as far.
+    lc = make_transit_lc()
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0008)
+    width = FIT["window_half_width_durations"]
+    near = int((np.abs(phase_days(lc.time, eph)) < width * eph.duration).sum())
+    assert near > in_transit(lc.time, eph, width).sum()
+    with pytest.raises(ValueError, match=f"only {near} cadences near transit"):
+        fit_transit(lc, eph, {**SMALL, "min_points": near + 1}, seed=1)
+
+
 def test_fit_refuses_a_window_with_no_cadence_inside_the_transit():
     lc = make_transit_lc()
     eph = Ephemeris(5.0, 1326.1, 0.13, 0.0008)
@@ -50,10 +66,21 @@ def test_fit_refuses_a_burn_in_that_leaves_no_samples():
 
 
 def test_eclipse_deeper_than_the_prior_still_starts_inside_it():
+    # Under vet-v1's bound of 0.5 the eclipse's sqrt(depth) lies beyond the prior, so only the clip
+    # keeps the walkers inside it; under vet-v2's bound of 1 the clip never comes into play.
     lc = make_transit_lc(rp_rs=0.6)
-    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.2, 0.3), SMALL, seed=1)
-    assert fit.acceptance > MIN_ACCEPTANCE
+    v1_bound = {**SMALL, "max_rp_rs": 0.5}
+    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.2, 0.3), v1_bound, seed=1)
+    assert fit.acceptance > FIT["min_acceptance"]
     assert len(np.unique(fit.column("b"))) > SMALL["walkers"]
+
+
+def test_fit_below_the_criteria_acceptance_raises():
+    lc = make_transit_lc()
+    with pytest.raises(ValueError, match="acceptance"):
+        fit_transit(
+            lc, Ephemeris(5.0, 1326.1, 0.13, 0.0008), {**SMALL, "min_acceptance": 1.0}, seed=1
+        )
 
 
 # Judging each rejected proposal, emcee subtracts the walker's -inf log probability from the proposal's.
@@ -63,3 +90,11 @@ def test_fit_whose_walkers_never_move_raises():
     white_dwarf_prior = (6.0, 0.1)
     with pytest.raises(ValueError, match="acceptance"):
         fit_transit(lc, Ephemeris(5.0, 1326.1, 0.13, 0.0008), SMALL, white_dwarf_prior, seed=1)
+
+
+@pytest.mark.slow
+def test_deep_eclipse_is_not_pinned_at_the_bound():
+    lc = make_transit_lc(rp_rs=0.6, b=0.0, noise_ppm={1: 600.0, 2: 600.0, 64: 150.0})
+    fit = fit_transit(lc, Ephemeris(5.0, 1326.1, 0.3, 0.3), CFG, seed=3)
+    rp_rs = fit.column("rp_rs")
+    assert np.median(rp_rs) > 0.52 and np.mean(rp_rs > 0.495) > 0.5

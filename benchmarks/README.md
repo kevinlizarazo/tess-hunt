@@ -11,7 +11,8 @@ run and a new approval.
 
 ### Selection rule
 
-All thresholds come from `criteria/search-v1.toml`.
+The thresholds below are those of `criteria/search-v1.toml`, which selected the set and scored M1's published benchmark
+tables. The M2 reruns score the same set under `criteria/search-v2.toml`.
 
 1. TOIs with TFOPWG disposition KP or CP, a period inside `[search]` `period_min_days` to `period_max_days`, and a
    catalog depth, epoch and duration.
@@ -46,3 +47,54 @@ The published vet run
 this signal, with the period, epoch and duration rounded on the command line; its `provenance.json` records the
 arguments. [Decision 0006](../docs/decisions/0006-red-noise-depth-errors.md) describes the run. Later runs of the
 control should pass the file's full-precision values.
+
+## Nearby eclipsing-binary controls
+
+`pixel_controls.csv` holds the real-data controls for pixel vetting: three TOIs whose dips come from a nearby star.
+The network tests in `tests/test_pixels.py` run each through the pixel check and compare the outcome with `expected`.
+It is a control input, not a criterion.
+
+The rows are from the ExoFOP TOI table in the catalog snapshot of 2026-10-09 (UTC), converted the way the catalog
+loader converts them: the epoch from BJD to BTJD, the duration from hours to days and the position to degrees. The
+`sectors` column lists every sector in which MAST's product list holds a SPOC, TESS-SPOC or QLP light curve of the
+star. A short script wrote the file from the snapshot and `mast.discover`, not by hand.
+
+- TOI-1175.01 (TIC 30329585), `expected = fail`: TESS disposition EB, TFOPWG disposition FP, retired as a nearby
+  eclipsing binary offset to TIC 30329564.
+- TOI-1058.01 (TIC 31553893), `expected = fail`: EB and FP, retired as a nearby eclipsing binary, with its centroid
+  offset near TIC 31553886.
+- TOI-1399.01 (TIC 66783360), `expected = pass`: TESS disposition PC, TFOPWG disposition FP, with its centroid offset
+  on another star in SPOC's sector 57 search.
+
+TOI-1399.01 is the published offset rule's recorded miss (`[pixels]` `max_offset_arcsec` in
+`criteria/triage-v1.toml`): a nearby-star false positive whose offset falls inside the rule, so its row expects a
+pass. Each control's best-quality offset and every sector's offset and quality are in the published control run,
+written by
+`uv run pytest -m network tests/test_pixels.py -k real_nearby -v --no-header -rP --disable-warnings`:
+[results/triage/pixel-controls-2026-10-16.txt](../results/triage/pixel-controls-2026-10-16.txt). None are quoted here.
+
+No `tess-hunt` stage reads the file; only the pixel tests do.
+
+## Replay comparisons
+
+`compare_replay.py` regenerates a replay comparison, `results/benchmarks/<replay run id>-comparison.md`, from the
+replayed run's published `injections.csv` and the replay's, run from the repository root:
+`uv run python benchmarks/compare_replay.py OLD_CSV NEW_CSV > results/benchmarks/<replay run id>-comparison.md`.
+
+## Evidence scripts
+
+The scripts behind M2's loose evidence files under `results/`. Each runs from the repository root with
+`uv run python benchmarks/<script>`; its docstring gives the arguments and the cached files it reads.
+
+- `compare_replay.py`: a replay comparison, `results/benchmarks/<replay run id>-comparison.md` (above).
+- `qlp_timing.py`: QLP minus SPOC transit times in QLP S99 to S104, `results/benchmarks/qlp-timing-2026-10-13.txt`.
+- `qlp_timing_robust.py`: the same offsets against each sector's own SPOC fit, `qlp-timing-robust-2026-10-13.txt`.
+- `qlp_dilution.py`: QLP against SPOC transit depths on crowded stars, `qlp-dilution-2026-10-13.txt`.
+- `scramble_leo_probe.py`: LEO-Vetter's false-alarm tests on scrambled signals, `scramble-leo-probe-2026-10-13.json`.
+- `sector_structure.py`: each sector's span and gaps on 500 random fetched stars, `sector-structure-2026-10-13.txt`.
+- `pixel_timing.py`: transit-diffImage's pixel times against TESScut's, `results/triage/pixel-timing-2026-10-14.txt`.
+- `leo_strictness.py`: LEO-Vetter's outcomes by catalogued match, `results/triage/leo-strictness-2026-10-16.txt`.
+
+`sector-structure-2026-10-13.txt` and `pixel-timing-2026-10-14.txt` were written before the scripts printed their
+one-line header (sample, seed and gap threshold; the in-transit rule); apart from that header, the committed scripts
+are the code that wrote them.

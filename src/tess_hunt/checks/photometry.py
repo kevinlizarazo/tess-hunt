@@ -1,4 +1,4 @@
-"""Light-curve checks: odd and even depths, secondary eclipse, depth by sector."""
+"""Light-curve checks: a dip at all, odd and even depths, secondary eclipse, depth by sector."""
 
 from dataclasses import replace
 
@@ -11,15 +11,11 @@ from tess_hunt.lightcurve import LightCurve
 
 
 def red_noise_beta(
-    lc: LightCurve,
-    eph: Ephemeris,
-    timescale_days: float,
-    exclude_width: float = 3.0,
-    min_bins: int = 20,
+    lc: LightCurve, eph: Ephemeris, timescale_days: float, cfg: dict
 ) -> dict[str, dict]:
     """Each sector's red-noise factor at `timescale_days` by the time-averaging method (Pont et al.
     2006; Winn et al. 2008): the scatter of out-of-transit bin means over what white noise gives."""
-    outside = ~in_transit(lc.time, eph, exclude_width)
+    outside = ~in_transit(lc.time, eph, cfg["exclude_width"])
     betas = {}
     for sector in np.unique(lc.sector):
         m = outside & (lc.sector == sector)
@@ -36,15 +32,17 @@ def red_noise_beta(
         counts = np.bincount(index)
         sums = np.bincount(index, weights=flux)
         # Bins cut by a gap or an excluded transit hold fewer cadences and would read as noisier.
-        kept = counts >= 0.8 * counts.max()
+        kept = counts >= cfg["kept_bin_fraction"] * counts.max()
         n_bins = int(kept.sum())
         per_bin = float(np.median(counts[kept]))
         row = {"beta": 1.0, "n_bins": n_bins, "cadences_per_bin": per_bin}
         mean_count = float(counts[counts > 0].mean())
-        if mean_count < 3.0:
-            row["note"] = f"{mean_count:.1f} cadences per bin on average, need 3"
-        elif n_bins < min_bins:
-            row["note"] = f"{n_bins} full bins, need {min_bins}"
+        if mean_count < cfg["min_cadences_per_bin"]:
+            row["note"] = (
+                f"{mean_count:.1f} cadences per bin on average, need {cfg['min_cadences_per_bin']:g}"
+            )
+        elif n_bins < cfg["min_bins"]:
+            row["note"] = f"{n_bins} full bins, need {cfg['min_bins']}"
         else:
             means = sums[kept] / counts[kept]
             white = np.median(err) / np.sqrt(per_bin)
@@ -69,6 +67,27 @@ def box_depth(time, flux, err, eph: Ephemeris, fraction: float) -> tuple[float, 
         return float("nan"), float("nan"), 0
     w = 1.0 / err[inside] ** 2
     return float(1.0 - np.sum(w * flux[inside]) / np.sum(w)), float(1.0 / np.sqrt(np.sum(w))), n
+
+
+def signal_present(
+    lc: LightCurve, eph: Ephemeris, core_fraction: float, min_snr: float, min_points: int
+) -> CheckResult:
+    """Is there a dip at this ephemeris at all? The depth checks compare depths and pass when there is
+    nothing to compare (the M1 final review's R9), so they are judged alongside this one."""
+    depth, err, n = box_depth(lc.time, lc.flux, lc.flux_err, eph, core_fraction)
+    snr = depth / err if n else float("nan")
+    evidence = {"depth": depth, "err": err, "snr": snr, "n": n}
+    if n < min_points:
+        return inconclusive(
+            "signal_present", f"fewer than {min_points} in-transit cadences", **evidence
+        )
+    if not np.isfinite(snr):
+        return inconclusive("signal_present", "statistic is not finite", **evidence)
+    if snr < min_snr:
+        return inconclusive(
+            "signal_present", f"combined depth is {snr:.1f} sigma, below {min_snr:g}", **evidence
+        )
+    return passed("signal_present", f"combined depth is {snr:.1f} sigma", **evidence)
 
 
 def odd_even(

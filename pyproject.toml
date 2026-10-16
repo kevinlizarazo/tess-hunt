@@ -21,6 +21,9 @@ dependencies = [
     "scipy",
     # pytransit, pulled in by triceratops, imports pkg_resources, which setuptools 81 removed.
     "setuptools<81",
+    "spiceypy==8.3.0",
+    # Not on PyPI; pinned by commit. GPL-3.0, as is leo-vetter.
+    "transit-diffimage @ git+https://github.com/stevepur/transit-diffImage@2b13199132ce67f437b8cd9bb4eb128bd78e0d81",
     "transitleastsquares==2.0",
     "triceratops==1.1.0",
     "wotan==1.10",
@@ -35,6 +38,9 @@ dev = ["pytest", "ruff"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tess_hunt"]

@@ -1,4 +1,6 @@
+import subprocess
 from importlib.metadata import version
+from pathlib import Path
 
 import numpy as np
 
@@ -18,3 +20,16 @@ def test_stack_imports():
     from triceratops import triceratops  # noqa: F401
 
     assert int(np.__version__.split(".")[0]) == 1
+
+
+def test_criteria_and_data_files_have_fixed_line_endings():
+    root = Path(__file__).resolve().parents[1]
+    out = subprocess.run(
+        ["git", "check-attr", "eol", "binary", "--", "criteria/search-v1.toml", "x.fits", "x.npz"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert "criteria/search-v1.toml: eol: lf" in out
+    assert "x.fits: binary: set" in out and "x.npz: binary: set" in out

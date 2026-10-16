@@ -1,0 +1,44 @@
+{
+  "argv": [
+    "tess-hunt",
+    "fetch",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-b0d4/targets.parquet",
+    "--products",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-b0d4/products.parquet",
+    "--workers",
+    "4",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    }
+  ],
+  "ended_at": "2026-10-13T15:11:43.118109+00:00",
+  "git": {
+    "commit": "cce2f6e5ff51cc82b06e280c3bf26e1ab5077da0",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "products": {
+      "file": "products.parquet",
+      "sha256": "f447b22b8b318d6f6bc33d9619363e48879df41ac08469102e99c106bcc3d432"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "04029fd9f9172976d43bf9669938072560a92c900bb1d2f29d06fed27f333dbb"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261013T111341Z-fetch-cce2f6e-e14b",
+  "stage": "fetch",
+  "started_at": "2026-10-13T11:13:41.015309+00:00",
+  "summary": {
+    "stars": 30195,
+    "status_ok": 30195
+  },
+  "uv_lock_sha256": "1ea0de8eb5e75372914ff2fd58de1aa4a06c55508ea1d7695d28c9b56e0764e7"
+}

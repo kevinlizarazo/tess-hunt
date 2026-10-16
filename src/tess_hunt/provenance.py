@@ -3,9 +3,11 @@
 import datetime as dt
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -58,8 +60,8 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.UTC)
 
 
-def _scrub(arg: str) -> str:
-    # Provenance may be published under results/; it must not carry this machine's paths.
+def scrub(arg: str) -> str:
+    # Provenance and run outputs may be published under results/; they must not carry this machine's paths.
     return arg.replace(str(data_dir()), "$TESS_HUNT_DATA").replace(str(Path.home()), "~")
 
 
@@ -85,6 +87,10 @@ class Run:
             "file": Path(path).name,
             "sha256": sha256_file(Path(path)),
         }
+        self._save()
+
+    def record(self, key: str, value: Any) -> None:
+        self.provenance[key] = value
         self._save()
 
     def finish(self, **summary: Any) -> None:
@@ -146,11 +152,63 @@ def start_run(
                 {"file": f, "sha256": c.sha256} for f, c in zip(files, criteria, strict=True)
             ],
             # argv[0] is wherever the checkout's venv put the script; only its name is reproducible.
-            "argv": [Path(argv[0]).name, *(_scrub(a) for a in argv[1:])],
+            "argv": [Path(argv[0]).name, *(scrub(a) for a in argv[1:])],
             "python": sys.version.split()[0],
             "inputs": {},
             "summary": None,
         },
     )
+    run._save()
+    return run
+
+
+def publish_run(run_id: str, root: Path, kind: str, files: Callable[[Path], list[Path]]) -> Path:
+    """Copy a finished run's `files(run directory)` into results/<kind>/<run id> under `root`."""
+    source = runs_dir() / run_id
+    provenance = source / "provenance.json"
+    if not provenance.exists():
+        raise SystemExit(f"no run {run_id} under the data directory")
+    if json.loads(provenance.read_text())["ended_at"] is None:
+        raise SystemExit(f"run {run_id} has not finished; only finished runs are evidence")
+    dest = root / "results" / kind / run_id
+    if dest.exists():
+        raise SystemExit(f"{dest} exists; published results are never overwritten")
+    paths = files(source)
+    # Checked before the copy starts, so a refusal leaves no partial publication behind.
+    missing = [p.name for p in paths if not p.is_file()]
+    if missing:
+        raise SystemExit(f"run {run_id} has no {', '.join(missing)}")
+    dest.mkdir(parents=True)
+    for path in paths:
+        shutil.copy(path, dest / path.name)
+        (dest / path.name).chmod(0o644)
+    print(f"published {run_id} -> {dest.relative_to(root)}")
+    return dest
+
+
+class ResumeError(RuntimeError):
+    pass
+
+
+def resume_run(
+    run_id: str, criteria: list[Criteria], root: Path | None = None, runs: Path | None = None
+) -> Run:
+    """Reopen an unfinished run. Only the same commit, tree state and criteria may continue it, so a resumed
+    run never mixes two versions of the code."""
+    root = root or repo_root()
+    path = (runs or runs_dir()) / run_id
+    provenance = json.loads((path / "provenance.json").read_text())
+    if provenance["ended_at"] is not None:
+        raise ResumeError(f"run {run_id} has finished; finished runs are immutable")
+    # Criteria first: an edited criteria file also dirties the tree, and this message says more.
+    if [c.sha256 for c in criteria] != [c["sha256"] for c in provenance["criteria"]]:
+        raise ResumeError(f"run {run_id} was started with different criteria")
+    state = git_state(root)
+    if state != provenance["git"]:
+        raise ResumeError(
+            f"run {run_id} was started at {provenance['git']}, the tree is now {state}"
+        )
+    provenance.setdefault("resumed_at", []).append(_now().isoformat())
+    run = Run(path, provenance)
     run._save()
     return run

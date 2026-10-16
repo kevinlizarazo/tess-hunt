@@ -1,0 +1,64 @@
+# Triage criteria, version 1.
+# Changing a value after any result exists needs a docs/decisions entry first.
+
+[threshold]
+# The null threshold (decision 0019): the highest SDE among scrambled signals that pass LEO-Vetter's
+# false-alarm tests, after two exclusions: null signals that match a known object of any kind on their
+# own star at one of exclude_harmonics, and every null signal on a star that hosts a catalogued object of
+# one of exclude_host_kinds (stars with only TCEs stay).
+rule = "null_max_after_leo_fa"
+exclude_harmonics = [1.0, 0.5, 2.0, 0.3333333333333333, 3.0]
+exclude_host_kinds = ["planet", "candidate", "community", "eb"]
+batch = 200
+report_top = 20
+
+[leo]
+# The paper text's thresholds (Kunimoto et al. 2025, arXiv 2509.10619, section 3; decision 0012).
+# leo-vetter 1.2.0's code defaults differ only in max_SES_to_MES (0.8) and ASYM (8).
+MES = 6.2
+N_transit = 3
+SHP = 0.6
+MS1 = 0.2
+MS2 = 0.8
+MS3 = 0.8
+chases = 0.78
+DMM = 1.5
+max_SES_to_MES = 0.88
+AIC1 = -60
+AIC2 = -30
+SWEET = 15
+ASYM = 10
+CHI = 7.8
+frac_gap = 0.5
+V_shape = 1.5
+size = 22
+MS4 = 0
+MS5 = -1
+MS6 = -1
+offset = 15
+
+[leo_metrics]
+# compute_flux_metrics arguments as leo-vetter 1.2.0 sets them.
+cap_b = true
+max_RpRs = 1.0
+frac = 0.7
+gap = 0.3
+chases = 0.01
+rubble = 0.75
+redchi2 = 5.0
+A = 0.3
+# Ours, not the paper's: how the light curve is re-detrended before LEO-Vetter sees it.
+hold_out_durations = 2.0         # around each transit, left out of the trend
+default_e_rad_fraction = 0.1     # when the TIC gives no radius error
+default_e_mass_fraction = 0.1
+default_e_teff = 150.0           # K
+
+[pixels]
+max_offset_arcsec = 15.0         # LEO-Vetter's published rule
+max_sectors = 5                  # the latest five with data, as the paper ran it
+n_bad = 0
+
+[novelty]
+neighbour_arcmin = 2.5
+harmonics = [1.0, 0.5, 2.0, 0.3333333333333333, 3.0]
+inconclusive_kinds = ["tce"]     # a match only to SPOC TCEs or ExoMiner rows (decision 0013)

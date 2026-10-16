@@ -1,0 +1,83 @@
+Rule: reliable when the predicted single-transit uncertainty of QLP minus SPOC is at most 5.0 min and there are
+at least 3 transits. Prediction per pipeline: Carter et al. (2008), sigma_pt/depth * sqrt(tau * cadence / 2),
+with tau = duration / 2 (the V-shape maximum, conservative); sigma_pt is the sector's point-to-point scatter
+and depth the median fitted box depth; the two pipelines are added in quadrature.
+Reference times are SPOC's own per-transit fits; the TOI ephemeris only seeds the search.
+
+Per pair
+TIC 458856474 S99 (Tmag 5.7, TOI epoch drift +1 min): QLP minus SPOC +5.75 min over 2 transits (spread 2.25, predicted sigma 0.57) UNRELIABLE
+    each: +8.00, +3.50
+TIC 411731278 S99 (Tmag 8.2, TOI epoch drift +0 min): QLP minus SPOC +2.00 min over 1 transits (spread 0.00, predicted sigma 3.90) UNRELIABLE
+    each: +2.00
+TIC 19342878 S99 (Tmag 10.8, TOI epoch drift -17 min): QLP minus SPOC +2.75 min over 9 transits (spread 3.01, predicted sigma 1.18) reliable
+    each: +1.50, -6.00, +3.25, +3.25, -0.50, +2.75, +4.75, +1.25, +3.25
+TIC 261867566 S99 (Tmag 10.6, TOI epoch drift -4 min): QLP minus SPOC +0.50 min over 5 transits (spread 4.14, predicted sigma 1.59) reliable
+    each: +5.25, -6.00, +0.50, +4.75, -1.25
+TIC 241326434 S99 (Tmag 11.8, TOI epoch drift -3 min): QLP minus SPOC +1.50 min over 3 transits (spread 3.27, predicted sigma 1.86) reliable
+    each: +6.00, -2.00, +1.50
+TIC 102195674 S99 (Tmag 11.3, TOI epoch drift -82 min): QLP minus SPOC +1.37 min over 4 transits (spread 2.76, predicted sigma 2.30) reliable
+    each: +2.75, -4.00, +2.75, +0.00
+TIC 36734222 S100 (Tmag 11.1, TOI epoch drift +0 min): QLP minus SPOC -1.37 min over 20 transits (spread 2.52, predicted sigma 0.85) reliable
+    each: -1.00, +0.50, -1.75, +0.25, -4.50, -2.50, +2.00, -1.75, -5.25, -2.00, -2.25, +1.25, -1.00, -2.75, -3.00, +1.50, -0.25, -6.50, +4.25, +0.50
+TIC 437242640 S100 (Tmag 9.8, TOI epoch drift -4 min): QLP minus SPOC -1.88 min over 4 transits (spread 2.10, predicted sigma 1.13) reliable
+    each: -5.25, -1.25, +0.50, -2.50
+TIC 411731278 S100 (Tmag 8.2, TOI epoch drift +11 min): QLP minus SPOC -2.00 min over 4 transits (spread 1.48, predicted sigma 2.40) reliable
+    each: +1.00, -2.50, -2.75, -1.50
+TIC 295599256 S100 (Tmag 9.9, TOI epoch drift -1 min): QLP minus SPOC -2.25 min over 3 transits (spread 3.37, predicted sigma 1.62) reliable
+    each: -9.00, -2.25, -1.50
+TIC 409934330 S101 (Tmag 8.1, TOI epoch drift +1 min): QLP minus SPOC -3.75 min over 9 transits (spread 10.02, predicted sigma 2.11) reliable
+    each: -1.75, -6.75, -6.75, -3.25, +26.75, -3.75, -6.75, -5.50, -1.75
+TIC 411731278 S101 (Tmag 8.2, TOI epoch drift -136 min): QLP minus SPOC -6.25 min over 1 transits (spread 0.00, predicted sigma inf) UNRELIABLE
+    each: -6.25
+TIC 295599256 S101 (Tmag 9.9, TOI epoch drift -4 min): QLP minus SPOC -2.25 min over 1 transits (spread 0.00, predicted sigma 1.84) UNRELIABLE
+    each: -2.25
+TIC 398943781 S101 (Tmag 10.8, TOI epoch drift +1 min): QLP minus SPOC -4.00 min over 7 transits (spread 2.26, predicted sigma 0.96) reliable
+    each: +1.25, -5.75, -1.25, -3.50, -4.50, -4.00, -5.00
+TIC 243641947 S101 (Tmag 13.2, TOI epoch drift -2 min): QLP minus SPOC -4.63 min over 8 transits (spread 3.11, predicted sigma 1.19) reliable
+    each: -2.25, +0.75, -5.75, -2.50, -4.25, -10.50, -6.25, -5.00
+TIC 261867566 S101 (Tmag 10.6, TOI epoch drift -2 min): QLP minus SPOC -3.13 min over 6 transits (spread 5.45, predicted sigma 1.53) reliable
+    each: -0.75, +0.00, -15.50, -4.50, -8.75, -1.75
+TIC 144065872 S102 (Tmag 9.5, TOI epoch drift +0 min): QLP minus SPOC +3.25 min over 8 transits (spread 0.87, predicted sigma 1.06) reliable
+    each: +2.25, +4.75, +3.25, +2.25, +2.50, +4.25, +3.25, +3.75
+TIC 411731278 S102 (Tmag 8.2, TOI epoch drift -11 min): QLP minus SPOC -6.50 min over 3 transits (spread 19.68, predicted sigma 4.57) reliable
+    each: -6.50, -6.50, +35.25
+TIC 295599256 S102 (Tmag 9.9, TOI epoch drift -5 min): QLP minus SPOC -0.75 min over 1 transits (spread 0.00, predicted sigma 1.72) UNRELIABLE
+    each: -0.75
+TIC 201248411 S102 (Tmag 9.9, TOI epoch drift -0 min): QLP minus SPOC +4.12 min over 20 transits (spread 1.92, predicted sigma 1.05) reliable
+    each: +3.00, +4.25, +7.25, +6.75, +4.00, +4.25, +6.25, +5.00, +4.25, +1.75, +5.00, +4.75, +2.00, +3.25, +3.25, +1.75, +3.50, +1.25, +4.25, -1.00
+TIC 160708862 S102 (Tmag 9.9, TOI epoch drift +3 min): QLP minus SPOC -6.00 min over 6 transits (spread 3.78, predicted sigma 1.40) reliable
+    each: -4.25, -6.00, -7.00, -6.25, +4.00, -6.00
+TIC 100100827 S103 (Tmag 8.8, TOI epoch drift +0 min): QLP minus SPOC +3.75 min over 20 transits (spread 0.97, predicted sigma 0.83) reliable
+    each: +3.75, +4.25, +3.75, +4.25, +3.50, +4.75, +2.00, +2.50, +3.00, +2.50, +4.75, +4.25, +2.75, +5.50, +3.25, +3.75, +4.50, +1.75, +4.50, +3.50
+TIC 409934330 S103 (Tmag 8.1, TOI epoch drift +3 min): QLP minus SPOC -1.25 min over 8 transits (spread 1.25, predicted sigma 2.68) reliable
+    each: -1.00, -2.00, -0.25, -0.50, -0.75, -3.75, -1.50, -3.50
+TIC 295599256 S103 (Tmag 9.9, TOI epoch drift +8 min): QLP minus SPOC -3.75 min over 3 transits (spread 1.90, predicted sigma 2.06) reliable
+    each: -0.50, -5.00, -3.75
+TIC 160708862 S103 (Tmag 9.9, TOI epoch drift +3 min): QLP minus SPOC -6.50 min over 5 transits (spread 1.28, predicted sigma 1.45) reliable
+    each: -6.25, -9.25, -8.75, -6.50, -6.50
+TIC 100100827 S104 (Tmag 8.8, TOI epoch drift -1 min): QLP minus SPOC +1.75 min over 22 transits (spread 2.00, predicted sigma 0.90) reliable
+    each: +4.00, +3.25, +3.75, +3.25, +3.75, +0.75, +1.50, +4.00, +1.50, +1.75, +2.50, +0.25, +0.75, -0.75, -4.75, -0.25, +2.25, +3.00, +0.25, +0.75, +3.50, +1.75
+TIC 230982885 S104 (Tmag 10.0, TOI epoch drift +3 min): QLP minus SPOC +1.50 min over 9 transits (spread 4.81, predicted sigma 1.32) reliable
+    each: +1.50, +1.75, -3.25, +8.25, +4.25, -6.50, +2.75, -2.75, -7.00
+TIC 201248411 S104 (Tmag 9.9, TOI epoch drift +1 min): QLP minus SPOC -1.50 min over 23 transits (spread 1.76, predicted sigma 1.14) reliable
+    each: +1.75, -1.25, -1.00, +0.75, +1.50, -0.75, -1.75, -0.50, -3.00, -1.75, +1.00, -2.75, -2.75, -6.00, -0.75, -2.75, -2.75, -1.50, -1.75, -3.50, -1.25, -1.50, -3.75
+TIC 100504381 S104 (Tmag 8.6, TOI epoch drift -4 min): QLP minus SPOC -12.62 min over 2 transits (spread 10.62, predicted sigma 3.45) UNRELIABLE
+    each: -2.00, -23.25
+TIC 269217040 S104 (Tmag 10.3, TOI epoch drift +53 min): QLP minus SPOC -5.62 min over 2 transits (spread 6.13, predicted sigma 1.41) UNRELIABLE
+    each: +0.50, -11.75
+TIC 381856447 S104 (Tmag 10.7, TOI epoch drift +45 min): QLP minus SPOC -5.25 min over 11 transits (spread 3.01, predicted sigma 2.19) reliable
+    each: -5.50, +0.50, -5.75, -10.00, -5.00, +0.00, -7.75, -4.00, -2.75, -5.25, -7.25
+
+Per sector (reliable pairs only)
+S99: 4 reliable of 6 measured; median of medians +1.44 min; largest absolute +2.75 min
+S100: 4 reliable of 4 measured; median of medians -1.94 min; largest absolute -2.25 min
+S101: 4 reliable of 6 measured; median of medians -3.88 min; largest absolute -4.63 min
+S102: 4 reliable of 5 measured; median of medians -1.37 min; largest absolute -6.50 min
+S103: 4 reliable of 4 measured; median of medians -2.50 min; largest absolute -6.50 min
+S104: 4 reliable of 6 measured; median of medians +0.00 min; largest absolute -5.25 min
+
+Reliable medians above 10 min: 0
+
+Checks on TIC 19342878 S99
+SPOC against SPOC: +0.00 min over 12 transits (spread 0.00)
+SPOC against SPOC shifted +5.00 min: +5.00 min over 12 transits (spread 1.11)

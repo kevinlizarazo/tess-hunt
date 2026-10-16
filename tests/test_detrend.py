@@ -4,7 +4,7 @@ import numpy as np
 from synthetic import make_lc
 
 from tess_hunt.config import load_criteria
-from tess_hunt.detrend import detrend
+from tess_hunt.detrend import detrend, known_mask
 from tess_hunt.ephemeris import Ephemeris, in_transit
 
 CFG = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "search-v1.toml")["detrend"]
@@ -72,3 +72,43 @@ def test_nothing_usable_gives_empty_light_curve():
     lc = make_lc(sectors=(1,), seed=5)
     flat = detrend(lc.select(np.arange(len(lc.time)) < 50), CFG)
     assert len(flat.time) == 0
+
+
+def test_exclude_drops_cadences_like_a_mask():
+    lc = make_lc(sectors=(1,), noise_ppm=200.0, seed=4)
+    exclude = (lc.time > 1330.0) & (lc.time < 1331.0)
+    flat = detrend(lc, CFG, exclude=exclude)
+    assert not np.any((flat.time > 1330.0) & (flat.time < 1331.0))
+    assert len(flat.time) >= len(lc.time) - exclude.sum() - 200  # only orbit-edge cuts besides
+
+
+def test_exclude_matches_an_ephemeris_mask():
+    # The null maps the known-planet mask through the scramble and passes it as exclude.
+    lc = make_lc(sectors=(1, 2), signals=[PLANET], seed=1)
+    eph = Ephemeris(*PLANET[:3])
+    by_mask = detrend(lc, CFG, [eph])
+    by_exclude = detrend(lc, CFG, exclude=known_mask(lc.time, [eph], CFG["known_mask_width"]))
+    for field in ("time", "flux", "flux_err", "sector"):
+        np.testing.assert_array_equal(getattr(by_mask, field), getattr(by_exclude, field))
+
+
+def test_hold_out_keeps_the_transit_and_its_depth():
+    eph = Ephemeris(4.0, 1327.0, 0.4, 0.004)
+    lc = make_lc(sectors=(1, 2), noise_ppm=100.0, signals=[(4.0, 1327.0, 0.4, 0.004)], seed=5)
+    held = detrend(lc, CFG, hold_out=in_transit(lc.time, eph, 2.0))
+    inside = in_transit(held.time, eph, 0.5)
+    assert inside.sum() > 50
+    assert abs((1.0 - np.median(held.flux[inside])) - 0.004) < 0.0004
+
+
+def test_hold_out_stops_a_shallow_transit_bending_the_trend():
+    # The biweight already rejects a deep dip; a shallow one bends the trend unless held out.
+    eph = Ephemeris(4.0, 1327.0, 0.4, 0.0005)
+    lc = make_lc(sectors=(1, 2), noise_ppm=100.0, signals=[(4.0, 1327.0, 0.4, 0.0005)], seed=5)
+
+    def depth(**kw):
+        flat = detrend(lc, CFG, **kw)
+        return 1.0 - np.median(flat.flux[in_transit(flat.time, eph, 0.5)])
+
+    assert abs(depth(hold_out=in_transit(lc.time, eph, 2.0)) - 0.0005) < 0.1 * 0.0005
+    assert depth() < 0.9 * 0.0005

@@ -1,0 +1,89 @@
+{
+  "argv": [
+    "tess-hunt",
+    "search",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-b0d4/targets.parquet",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-13",
+    "--threshold",
+    "$TESS_HUNT_DATA/runs/20261014T175116Z-threshold-0d6748e-40ac/threshold.json",
+    "--controls",
+    "benchmarks/known_planets.csv",
+    "--control-targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-630d/targets.parquet",
+    "--workers",
+    "20",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    }
+  ],
+  "ended_at": "2026-10-15T11:56:08.999038+00:00",
+  "git": {
+    "commit": "fe29585bd08350fa4cb0e47f141935dc7f2c157c",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "control_targets": {
+      "file": "targets.parquet",
+      "sha256": "e9c7533dc31b62bd9352fe25760bb388455393051b7818ff6fbd917223a713c5"
+    },
+    "controls": {
+      "file": "known_planets.csv",
+      "sha256": "2b91a2a1f23d32b1832b5bfa72d7e5650d236df2d6feabf8f07c90d977e88617"
+    },
+    "ctoi.csv": {
+      "file": "ctoi.csv",
+      "sha256": "1059ac9235aa11d4bf914153ddc0278431709f090607497325a9b7c208911bb4"
+    },
+    "pscomppars.csv": {
+      "file": "pscomppars.csv",
+      "sha256": "c7281981ad065f2b91fcc5871c449167051a80b187ffd63f4930090b1c74778a"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "04029fd9f9172976d43bf9669938072560a92c900bb1d2f29d06fed27f333dbb"
+    },
+    "threshold": {
+      "file": "threshold.json",
+      "sha256": "0c8dac9ddf43229b12ff953a55645a29fea27986e0775f9b5abd7230091dd944"
+    },
+    "toi.csv": {
+      "file": "toi.csv",
+      "sha256": "f8c8085178780e343a7e84dc8938023fada22a5bfbf895265ba1916624f1cd0b"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261014T205855Z-search-fe29585-cdf2",
+  "scramble": null,
+  "search_code_sha256": "5c89d48fa7e36abde34d59237b22a1838e4aa0e8276e35d9aa7b87498e5ddc59",
+  "stage": "search",
+  "started_at": "2026-10-14T20:58:55.318286+00:00",
+  "summary": {
+    "control_rows": 18,
+    "control_signals": 42,
+    "controls_missed": [
+      "1097.02",
+      "451.02",
+      "451.03"
+    ],
+    "controls_required_missed": [],
+    "controls_valid": true,
+    "signals": 31050,
+    "stars": 30195,
+    "status_nonfinite_sde": 1,
+    "status_not_covered_after_fetch": 19,
+    "status_ok": 30175
+  },
+  "threshold": {
+    "file": "threshold.json",
+    "run_id": "20261014T175116Z-threshold-0d6748e-40ac",
+    "value": 20.24494315641701
+  },
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a"
+}

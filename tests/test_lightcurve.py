@@ -42,3 +42,14 @@ def test_select_keeps_sources():
     lc = make()
     sub = lc.select(lc.sector == 6)
     assert len(sub.time) == 2 and sub.sources is lc.sources
+
+
+def test_failed_write_leaves_nothing_that_globs_as_a_light_curve(tmp_path, monkeypatch):
+    def broken(fh, **arrays):
+        fh.write(b"partial")
+        raise OSError("disk full")
+
+    monkeypatch.setattr("tess_hunt.lightcurve.np.savez_compressed", broken)
+    with pytest.raises(OSError):
+        make().save(tmp_path / "42.npz")
+    assert list(tmp_path.glob("*.npz")) == []

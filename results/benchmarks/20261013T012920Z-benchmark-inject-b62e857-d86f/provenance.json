@@ -1,0 +1,70 @@
+{
+  "argv": [
+    "tess-hunt",
+    "benchmark",
+    "inject",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261009T164412Z-targets-4b349b4-9694/targets.parquet",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-09",
+    "--engines",
+    "bls30",
+    "--replay",
+    "results/benchmarks/20261009T181208Z-benchmark-inject-0801864-5082/injections.csv",
+    "--manifest",
+    "$TESS_HUNT_DATA/runs/20261009T175308Z-fetch-b64d6e2-7548/fetch_manifest.jsonl",
+    "--workers",
+    "20",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    }
+  ],
+  "ended_at": "2026-10-13T02:14:39.440244+00:00",
+  "git": {
+    "commit": "b62e857b0b3a8cd8c46aa01ef38c188e49d36490",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "ctoi.csv": {
+      "file": "ctoi.csv",
+      "sha256": "1059ac9235aa11d4bf914153ddc0278431709f090607497325a9b7c208911bb4"
+    },
+    "fetch_manifest": {
+      "file": "fetch_manifest.jsonl",
+      "sha256": "a28349f092c2120d854c13ed34400ea90b85906c938befee577cf7e1bfc94e86"
+    },
+    "pscomppars.csv": {
+      "file": "pscomppars.csv",
+      "sha256": "c7281981ad065f2b91fcc5871c449167051a80b187ffd63f4930090b1c74778a"
+    },
+    "replay": {
+      "file": "injections.csv",
+      "sha256": "4ad757fffc817fb38d18475ebe5d3da5b42a69bb4d2552993aef93f8a497230f"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "846faf6c80ab27764f9fe075e22b30929ebc84942ecddc09d8b1bcf102c8915d"
+    },
+    "toi.csv": {
+      "file": "toi.csv",
+      "sha256": "11e811899a9f77d1a6ab62790d039b61add1f12fce04cdfc8bcda9e12b0640f4"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261013T012920Z-benchmark-inject-b62e857-d86f",
+  "stage": "benchmark-inject",
+  "started_at": "2026-10-13T01:29:20.029111+00:00",
+  "summary": {
+    "error": 0,
+    "injections": 400,
+    "no_draw": 0,
+    "stars": 200,
+    "too_few_points": 0
+  },
+  "uv_lock_sha256": "1ea0de8eb5e75372914ff2fd58de1aa4a06c55508ea1d7695d28c9b56e0764e7"
+}

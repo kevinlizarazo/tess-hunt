@@ -33,6 +33,8 @@ star's own variability: its duration grid is the same for every period, so a box
 that period can fit the variability, and it can detect the same variability more than once.
 M2 fixes the search and reruns the benchmark.
 
+Fixed in [0008](0008-search-fix.md).
+
 ## Evidence
 
 - BLS injection-recovery, both bin sizes:

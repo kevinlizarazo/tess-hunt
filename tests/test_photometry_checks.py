@@ -10,6 +10,7 @@ from tess_hunt.checks.photometry import (
     red_noise_beta,
     secondary,
     sector_depths,
+    signal_present,
     with_red_noise,
 )
 from tess_hunt.config import load_criteria
@@ -22,6 +23,7 @@ EB_AT_TWICE_THE_PERIOD = [(7.4, 1326.1, 0.12, 3000e-6), (7.4, 1326.1 + 3.7, 0.12
 DETREND = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "search-v1.toml").values[
     "detrend"
 ]
+RED = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v2.toml")["red_noise"]
 
 
 def test_box_depth_of_a_box():
@@ -139,14 +141,14 @@ def test_red_noise_beta_is_one_on_white_noise():
         signals=[PLANET],
         seed=11,
     )
-    three_hours = red_noise_beta(lc, EPH, 0.125)
+    three_hours = red_noise_beta(lc, EPH, 0.125, RED)
     assert set(three_hours) == {"1", "2", "3", "4"}
     assert all(abs(row["beta"] - 1.0) < 0.15 and "note" not in row for row in three_hours.values())
     # 72 minutes is 36 two-minute cadences but under three 30-minute ones.
-    short = red_noise_beta(lc, EPH, 0.05)
+    short = red_noise_beta(lc, EPH, 0.05, RED)
     assert all(abs(short[s]["beta"] - 1.0) < 0.15 and "note" not in short[s] for s in ("1", "2"))
     assert all(short[s]["beta"] == 1.0 and "note" in short[s] for s in ("3", "4"))
-    too_few_bins = red_noise_beta(lc, EPH, 0.125, min_bins=10_000)
+    too_few_bins = red_noise_beta(lc, EPH, 0.125, {**RED, "min_bins": 10_000})
     assert all(row["beta"] == 1.0 and "note" in row for row in too_few_bins.values())
 
 
@@ -160,7 +162,7 @@ def red_noise_lc(signals=(), seed=12):
 
 
 def test_red_noise_beta_sees_correlated_noise():
-    betas = red_noise_beta(red_noise_lc(), EPH, 0.5 * EPH.duration)
+    betas = red_noise_beta(red_noise_lc(), EPH, 0.5 * EPH.duration, RED)
     assert all(row["beta"] > 1.3 for row in betas.values()), betas
 
 
@@ -168,7 +170,7 @@ def test_sector_depth_red_noise_fails_on_white_errors_and_passes_inflated():
     lc = red_noise_lc(signals=[PLANET])
     white = sector_depths(lc, EPH, 0.5, 0.001, 5)
     red = sector_depths(
-        with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration)), EPH, 0.5, 0.001, 5
+        with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration, RED)), EPH, 0.5, 0.001, 5
     )
     assert white.outcome is Outcome.FAIL, white.evidence["p_value"]
     assert red.outcome is Outcome.PASS, red.evidence["p_value"]
@@ -176,7 +178,7 @@ def test_sector_depth_red_noise_fails_on_white_errors_and_passes_inflated():
 
 def inflated(lc):
     """The light curve with the errors vet_signal gives the depth checks."""
-    return with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration))
+    return with_red_noise(lc, red_noise_beta(lc, EPH, 0.5 * EPH.duration, RED))
 
 
 def test_odd_even_negative_control_fails_through_red_noise_inflation():
@@ -202,3 +204,21 @@ def test_with_red_noise_scales_each_sectors_errors():
         noisy.flux_err / lc.flux_err, np.select([lc.sector == 1, lc.sector == 2], [2.0, 1.5], 1.0)
     )
     assert np.array_equal(noisy.flux, lc.flux) and np.allclose(lc.flux_err, 300e-6)
+
+
+def test_signal_present_passes_a_planet():
+    lc = make_lc(sectors=(1, 2), noise_ppm=300.0, signals=[PLANET], seed=13)
+    result = signal_present(lc, EPH, 0.5, 7.0, 5)
+    assert result.outcome is Outcome.PASS and result.evidence["snr"] > 20
+
+
+def test_signal_present_negative_control_noise_is_inconclusive():
+    lc = make_lc(sectors=(1, 2, 3, 4, 5, 6, 7, 8, 9), noise_ppm=300.0, seed=14)
+    result = signal_present(lc, Ephemeris(4.21, 1327.3, 0.12), 0.5, 7.0, 5)
+    assert result.outcome is Outcome.INCONCLUSIVE and abs(result.evidence["snr"]) < 7.0
+
+
+def test_signal_present_without_cadences_is_inconclusive():
+    lc = make_lc(sectors=(1,), seed=15)
+    result = signal_present(lc.select(lc.time > 5000), EPH, 0.5, 7.0, 5)
+    assert result.outcome is Outcome.INCONCLUSIVE

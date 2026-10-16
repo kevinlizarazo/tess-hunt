@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+collecting ... collected 24 items / 21 deselected / 3 selected
+
+tests/test_pixels.py::test_real_nearby_eb_controls[1058.01] PASSED       [ 33%]
+tests/test_pixels.py::test_real_nearby_eb_controls[1175.01] PASSED       [ 66%]
+tests/test_pixels.py::test_real_nearby_eb_controls[1399.01] PASSED       [100%]
+
+==================================== PASSES ====================================
+____________________ test_real_nearby_eb_controls[1058.01] _____________________
+----------------------------- Captured stdout call -----------------------------
+TOI-1058.01 (TIC 31553893): fail, centroid offset 21.5" exceeds 15"
+best-quality offset 21.47"
+S94: offset 24.37", quality 0.905
+S92: offset 21.47", quality 0.964
+S67: offset 24.18", quality 0.914
+S27: offset 22.31", quality 0.903
+S13: offset 10.62", quality 0.812
+sectors without a difference image: []
+____________________ test_real_nearby_eb_controls[1175.01] _____________________
+----------------------------- Captured stdout call -----------------------------
+TOI-1175.01 (TIC 30329585): fail, centroid offset 25.1" exceeds 15"
+best-quality offset 25.06"
+S81: offset 26.85", quality 0.831
+S80: offset 23.52", quality 0.671
+S74: offset 24.76", quality 0.814
+S54: offset 23.05", quality 0.728
+S41: offset 25.06", quality 0.857
+sectors without a difference image: []
+____________________ test_real_nearby_eb_controls[1399.01] _____________________
+----------------------------- Captured stdout call -----------------------------
+TOI-1399.01 (TIC 66783360): pass, centroid offset 11.6" within 15"
+best-quality offset 11.63"
+S84: offset 10.28", quality 0.484
+S83: offset 11.63", quality 0.950
+S77: offset 13.44", quality 0.522
+S57: offset 11.13", quality 0.419
+S17: offset 13.07", quality 0.603
+sectors without a difference image: []
+========== 3 passed, 21 deselected, 12 warnings in 206.15s (0:03:26) ===========

@@ -15,36 +15,7 @@ def separation_arcmin(ra1, dec1, ra2, dec2):
     return np.degrees(2 * np.arcsin(np.sqrt(np.clip(s, 0.0, 1.0)))) * 60.0
 
 
-def check_novelty(
-    tic: int,
-    ra: float,
-    dec: float,
-    eph: Ephemeris,
-    known: pd.DataFrame,
-    neighbour_arcmin: float,
-    harmonics: tuple[float, ...],
-    sigma_p: float,
-    sigma_t: float,
-) -> CheckResult:
-    if not np.all(np.isfinite([ra, dec, eph.period, eph.t0])):
-        # A NaN position finds no neighbours and a NaN ephemeris matches nothing: both would pass.
-        return inconclusive(
-            "novelty",
-            "candidate position or ephemeris missing",
-            ra=ra,
-            dec=dec,
-            period=eph.period,
-            t0=eph.t0,
-        )
-    present = set(known["source"]) if len(known) else set()
-    missing = REQUIRED_SOURCES - present
-    if missing:
-        # An empty or partial catalog would make every signal look new.
-        return inconclusive(
-            "novelty", f"catalogs not loaded: {sorted(missing)}", catalog_rows=len(known)
-        )
-    sep = separation_arcmin(ra, dec, known["ra"], known["dec"])
-    near = known[(known["tic"] == tic) | (sep < neighbour_arcmin)]
+def _scan(near: pd.DataFrame, tic: int, eph: Ephemeris, harmonics, sigma_p, sigma_t):
     matches, period_matches, unknown_period = [], [], []
     for row in near.itertuples():
         if not (np.isfinite(row.period) and row.period > 0):
@@ -53,6 +24,7 @@ def check_novelty(
             continue
         found = {
             "source": row.source,
+            "kind": row.kind,
             "name": row.name,
             "tic": int(row.tic),
             "period": float(row.period),
@@ -72,26 +44,90 @@ def check_novelty(
         if ratio is not None:
             cycles = int(round((eph.t0 - row.t0) / row.period)) if np.isfinite(row.t0) else None
             period_matches.append({**found, "ratio": ratio, "cycles": cycles})
+    return matches, period_matches, unknown_period
+
+
+def check_novelty(
+    tic: int,
+    ra: float,
+    dec: float,
+    eph: Ephemeris,
+    known: pd.DataFrame,
+    neighbour_arcmin: float,
+    harmonics: tuple[float, ...],
+    sigma_p: float,
+    sigma_t: float,
+    inconclusive_kinds: tuple[str, ...] = (),
+) -> CheckResult:
+    if not np.all(np.isfinite([ra, dec, eph.period, eph.t0])):
+        # A NaN position finds no neighbours and a NaN ephemeris matches nothing: both would pass.
+        return inconclusive(
+            "novelty",
+            "candidate position or ephemeris missing",
+            category="missing_input",
+            ra=ra,
+            dec=dec,
+            period=eph.period,
+            t0=eph.t0,
+        )
+    present = set(known["source"]) if len(known) else set()
+    missing = REQUIRED_SOURCES - present
+    if missing:
+        # An empty or partial catalog would make every signal look new.
+        return inconclusive(
+            "novelty",
+            f"catalogs not loaded: {sorted(missing)}",
+            category="catalogs_not_loaded",
+            catalog_rows=len(known),
+        )
+    sep = separation_arcmin(ra, dec, known["ra"], known["dec"])
+    near = known[(known["tic"] == tic) | (sep < neighbour_arcmin)]
+    soft = near["kind"].isin(inconclusive_kinds)
+    matches, period_matches, unknown_period = _scan(
+        near[~soft], tic, eph, harmonics, sigma_p, sigma_t
+    )
+    tce_matches, tce_period_matches, _ = _scan(near[soft], tic, eph, harmonics, sigma_p, sigma_t)
     evidence = {
         "catalog_rows": len(known),
         "nearby_rows": len(near),
         "neighbour_arcmin": neighbour_arcmin,
+        # Kept on every outcome, so a signal judged on another object still shows that SPOC saw it.
+        "tce_matches": tce_matches,
+        "tce_period_matches": tce_period_matches,
     }
     if matches:
-        return failed("novelty", f"matches {matches[0]['name']}", matches=matches, **evidence)
+        return failed(
+            "novelty",
+            f"matches {matches[0]['name']}",
+            category="known",
+            matches=matches,
+            **evidence,
+        )
     if period_matches:
         return inconclusive(
             "novelty",
             f"period matches {period_matches[0]['name']} but the epoch does not; "
             "the catalog ephemeris may be stale",
+            category="stale_catalog_epoch",
             period_matches=period_matches,
             **evidence,
         )
+    # Before the TCE branch: a TOI or planet with no period on this star is not a SPOC-only object.
     if unknown_period:
         return inconclusive(
             "novelty",
             "this star has a known object with no period",
+            category="no_period_object",
             objects=unknown_period,
+            **evidence,
+        )
+    if tce_matches or tce_period_matches:
+        # Decision 0013: SPOC detected it but it never became a TOI; listed for the maintainer, not
+        # shortlisted.
+        return inconclusive(
+            "novelty",
+            "matches only SPOC TCE or ExoMiner rows",
+            category="known_to_spoc",
             **evidence,
         )
     return passed("novelty", "no known object matches", **evidence)
