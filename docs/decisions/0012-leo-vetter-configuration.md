@@ -63,7 +63,10 @@ signal seen mainly in QLP sectors, LEO-Vetter's radius tests (`large` and `vshap
   [results/triage/20261015T155441Z-triage-7b12e25-3f57](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md):
   of the 2,993 signals at or above the threshold, LEO-Vetter passed 57, failed 2,932 (2,825 as false alarms, 107 as
   false positives) and left 4 inconclusive. The pixel check ran on the 15 that also passed novelty: 9 passed and 6
-  failed, at offsets of 15.6" to 92.8". Of the signals matching a catalogued eclipsing binary at its period or a
-  harmonic, LEO-Vetter rejected 175 of 176; of the 78 matching a catalogued candidate (TOI, CTOI, RAVEN or T16) at its
-  period, it passed 18. The tests failed most often were `non_unique` (1,775 signals) and `unphysical_duration`
-  (1,578).
+  failed, at offsets of 15.6" to 92.8". Of the 208 signals matching a catalogued eclipsing binary, on their own star
+  or a neighbour, at its period or a harmonic, LEO-Vetter rejected 206; of the 56 matching a catalogued candidate
+  (TOI, CTOI, RAVEN or T16) at its period and no eclipsing binary, it passed 18. The tests failed most often were
+  `non_unique` (1,775 signals) and `unphysical_duration` (1,578). The counts and their definitions are in
+  [leo-strictness-2026-10-16.txt](../../results/triage/leo-strictness-2026-10-16.txt), written by
+  [benchmarks/leo_strictness.py](../../benchmarks/leo_strictness.py), which reruns novelty's matching on the run's
+  catalog snapshot and targets table; those two are not published.

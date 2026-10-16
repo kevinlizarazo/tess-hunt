@@ -503,10 +503,12 @@ period. It meets the same bar as M2 and M3.
   recovered 0.385 of 2,000 injections: none below an expected SNR of 10, 0.0541 from 10 to 15 and 0.43 from 15 to 20
   ([summary.md](../results/benchmarks/20261015T131443Z-benchmark-inject-fe29585-8496/summary.md)).
 - **LEO-Vetter's strictness:** its thresholds were tuned on QLP light curves of M dwarfs [T49]. In the production
-  triage run it passed 18 of the 78 signals that match a catalogued candidate at its period, and rejected 175 of the
-  176 that match a catalogued eclipsing binary at its period or a harmonic. The tests failed most often were
-  `non_unique` (1,775 signals) and `unphysical_duration` (1,578) ([0012](decisions/0012-leo-vetter-configuration.md)).
-  Triage therefore misses many real planets; M3 measures triage's completeness before any setting changes.
+  triage run it rejected 206 of the 208 signals that match a catalogued eclipsing binary, on their own star or a
+  neighbour, at its period or a harmonic, and passed 18 of the 56 that match a catalogued planet candidate at its
+  period and no eclipsing binary. The tests failed most often were `non_unique` (1,775 signals) and
+  `unphysical_duration` (1,578) ([output](../results/triage/leo-strictness-2026-10-16.txt),
+  [0012](decisions/0012-leo-vetter-configuration.md)). Triage therefore misses many real planets; M3 measures
+  triage's completeness before any setting changes.
 - **Planets on short-period variables:** the search can spend later ranks on a pulsator's other multiples, so
   completeness on those stars is low ([0008](decisions/0008-search-fix.md)). M3 takes up a treatment.
 - **QLP S99-S104 timing:** their timestamps are wrong until MAST redelivers them [L8]. An ephemeris-independent

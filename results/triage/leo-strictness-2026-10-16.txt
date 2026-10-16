@@ -1,0 +1,27 @@
+# LEO-Vetter on catalogued objects, triage run 20261015T155441Z-triage-7b12e25-3f57
+# 2993 signals at or above SDE 20.24, from its signals.csv.
+# A match is novelty's (period and epoch, criteria/triage-v1.toml [novelty]) to a catalogued object on the signal's star or within 2.5' of it.
+# EB match: the signal matches a catalogued eclipsing binary (kind eb) at any ratio (1, 0.5, 2, 0.3333, 3).
+# Candidate match: it matches a catalogued planet candidate (kind candidate: CTOI, RAVEN, T16, TOI) at the candidate's own period (ratio 1), and has no EB match.
+# Matches rerun on snapshot 2026-10-13T163454Z and the run's targets table (both unpublished; sha256 as in provenance.json); every novelty outcome and reason agrees with signals.csv.
+
+match       signals  LEO pass  LEO fail  LEO inconclusive
+EB              208         2       206                 0
+candidate        56        18        38                 0
+
+LEO-Vetter tests failed, in signals (of 2932 that failed):
+non_unique             1775
+unphysical_duration    1578
+sinusoidal              750
+invalid_transits        703
+chi                     701
+chases                  455
+data_gapped             437
+single_event            370
+dmm                     301
+asymmetric              190
+bad_fit                  96
+secondary                87
+large                    40
+odd_even                 27
+weak                     16
