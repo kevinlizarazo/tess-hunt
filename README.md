@@ -5,8 +5,18 @@ An independent search for transiting planets in public NASA TESS light curves.
 **Status:** under construction. No signal this project reports is a confirmed planet; every one is a candidate until
 other observers confirm it. The known planets under `results/benchmarks/` are positive controls from the TOI catalog.
 
-`results/benchmarks/` holds M1's known-planet, injection-recovery and control vet runs
-([results/README.md](results/README.md)); no search has run yet.
+M2 searched the whole sample. `targets` builds it from the TIC with a Gaia DR3 dwarf cut, `fetch` reads the light
+curves, a search of scrambled light curves sets the detection threshold, and the production search runs with the
+known planets as positive controls. `triage` checks every signal above the threshold for novelty against published
+catalogs, with LEO-Vetter's flux tests and with pixel centroids, and shortlists the signals that pass all three. The
+[shortlist](results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md) is the input to M3's vetting; none of its
+signals has been vetted yet.
+
+Published results ([results/README.md](results/README.md)):
+- `results/benchmarks/`: M1's runs, the search fix's reruns, the null threshold, the production search's positive
+  controls and the completeness map for typical sample stars
+- `results/triage/`: the triage run with its shortlist, and the pixel check's controls
+- `results/catalogs/`: the manifest of the catalog snapshot the novelty check used
 
 ## What it searches
 
@@ -23,9 +33,10 @@ and `unzip` on PATH.
     uv sync
     uv run tess-hunt --help
 
-Light curves are read anonymously from the public TESS bucket on AWS (`s3://stpubdata`) and cached in
-`$TESS_HUNT_DATA` (default `~/.cache/tess-hunt`). Stellar parameters come from the TIC via MAST, and known planets and
-candidates from ExoFOP and the NASA Exoplanet Archive, all without credentials. Pixel vetting keeps
+Light curves are read anonymously from the public TESS bucket on AWS (`s3://stpubdata`), or from MAST's download API
+for files the bucket lacks, and cached in `$TESS_HUNT_DATA` (default `~/.cache/tess-hunt`). Stellar parameters come
+from the TIC via MAST and from the Gaia archive, and known objects from ExoFOP, the NASA Exoplanet Archive and the
+catalogs listed in [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md), all without credentials. Pixel vetting keeps
 transit-diffImage's difference images (pickle files) and records their sha256; transit-diffImage deletes the TESScut
 cutouts it builds them from.
 
