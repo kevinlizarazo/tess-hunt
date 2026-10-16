@@ -80,3 +80,21 @@ No `tess-hunt` stage reads the file; only the pixel tests do.
 `compare_replay.py` regenerates a replay comparison, `results/benchmarks/<replay run id>-comparison.md`, from the
 replayed run's published `injections.csv` and the replay's, run from the repository root:
 `uv run python benchmarks/compare_replay.py OLD_CSV NEW_CSV > results/benchmarks/<replay run id>-comparison.md`.
+
+## Evidence scripts
+
+The scripts behind M2's loose evidence files under `results/`. Each runs from the repository root with
+`uv run python benchmarks/<script>`; its docstring gives the arguments and the cached files it reads.
+
+- `compare_replay.py`: a replay comparison, `results/benchmarks/<replay run id>-comparison.md` (above).
+- `qlp_timing.py`: QLP minus SPOC transit times in QLP S99 to S104, `results/benchmarks/qlp-timing-2026-10-13.txt`.
+- `qlp_timing_robust.py`: the same offsets against each sector's own SPOC fit, `qlp-timing-robust-2026-10-13.txt`.
+- `qlp_dilution.py`: QLP against SPOC transit depths on crowded stars, `qlp-dilution-2026-10-13.txt`.
+- `scramble_leo_probe.py`: LEO-Vetter's false-alarm tests on scrambled signals, `scramble-leo-probe-2026-10-13.json`.
+- `sector_structure.py`: each sector's span and gaps on 500 random fetched stars, `sector-structure-2026-10-13.txt`.
+- `pixel_timing.py`: transit-diffImage's pixel times against TESScut's, `results/triage/pixel-timing-2026-10-14.txt`.
+- `leo_strictness.py`: LEO-Vetter's outcomes by catalogued match, `results/triage/leo-strictness-2026-10-16.txt`.
+
+`sector-structure-2026-10-13.txt` and `pixel-timing-2026-10-14.txt` were written before the scripts printed their
+one-line header (sample, seed and gap threshold; the in-transit rule); apart from that header, the committed scripts
+are the code that wrote them.

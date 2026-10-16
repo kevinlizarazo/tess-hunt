@@ -312,8 +312,9 @@ A check without a passing negative-control test is not merged.
   expected false-alarm count) is fixed in the criteria file. The threshold is recomputed whenever the null set grows,
   and a run fails if its threshold sits below the current null's value.
 - **Scramble (M2):** as in the LEO-Vetter paper [T49], each sector is split into segments at every internal gap
-  longer than `[null] segment_gap_days` (in most sectors, its two orbits; the fetched stars'
-  [sector structure](../results/benchmarks/sector-structure-2026-10-13.txt)), the segments are shuffled within the
+  longer than `[null] segment_gap_days` (in most sectors, its two orbits; the
+  [sector structure](../results/benchmarks/sector-structure-2026-10-13.txt) of 500 random fetched stars, from
+  `benchmarks/sector_structure.py`), the segments are shuffled within the
   sector, and then the sectors are shuffled. The "time offsets" are the shifts that move each segment into its new
   slot. Segments within a sector are placed a fixed `[null] placement_gap_days` apart (1.0 d in
   `criteria/search-v2.toml`), above detrend's 0.5 d break tolerance, so moved segments are detrended apart as orbits
