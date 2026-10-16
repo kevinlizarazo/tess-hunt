@@ -57,17 +57,19 @@ files have not been redelivered; the files served are version `v01`.
   S94, before TGLC, so the comparison does not show what causes the shallow QLP depths. SPOC's CROWDSAP describes
   SPOC's aperture, not QLP's, so it is only a rough guide to the crowding in QLP's photometry.
 - https://archive.stsci.edu/hlsp/qlp, "Corrected timestamps for QLP Sectors 99-104", read 2026-10-12.
-- The production sample fetch `20261013T111341Z-fetch-cce2f6e-e14b` (Task 6), from targets run
-  `20261013T031523Z-targets-cce2f6e-b0d4`, wrote all 30,195 stars. Of their 253,783 sector sources, 211,947 came from
-  the bucket and 41,836 through the MAST API: every QLP S99 to S104 source (41,348, all `v01` and all flagged
-  `timing_suspect`) and 488 TESS-SPOC sources from sector 1751. 17,924 QLP sources, all but one in S94 to S104, got
-  scatter errors (`errors_from_scatter`). 138 sectors on 133 stars were dropped, each a QLP file with too few good
-  cadences (136 with none, one with 13, one with 20); 19 of those stars fall below the coverage rule after the fetch,
-  leaving 30,176 covered.
+- The production sample fetch
+  [20261013T111341Z-fetch-cce2f6e-e14b](../../results/benchmarks/20261013T111341Z-fetch-cce2f6e-e14b/provenance.json),
+  from targets run `20261013T031523Z-targets-cce2f6e-b0d4`, wrote all 30,195 stars (its summary). The counts that
+  follow come from the run's fetch manifest, which is not published. Of the stars' 253,783 sector sources, 211,947
+  came from the bucket and 41,836 through the MAST API: every QLP S99 to S104 source (41,348, all `v01` and all
+  flagged `timing_suspect`) and 488 TESS-SPOC sources from sector 1751. 17,924 QLP sources, all but one in S94 to
+  S104, got scatter errors (`errors_from_scatter`). 138 sectors on 133 stars were dropped, each a QLP file with too
+  few good cadences (136 with none, one with 13, one with 20); 19 of those stars fall below the coverage rule after
+  the fetch, leaving 30,176 covered.
 - The control fetch `20261013T151147Z-fetch-cce2f6e-0f95`, from targets run `20261013T031523Z-targets-cce2f6e-630d`
-  (the 18 hosts in [benchmarks/known_planets.csv](../../benchmarks/known_planets.csv)): 17 hosts came from the cache
-  and one was fetched. All 161 of its sector sources are bucket sources; for a cached host the manifest repeats the
-  route recorded by the earlier fetch that wrote the file.
+  (the 18 hosts in [benchmarks/known_planets.csv](../../benchmarks/known_planets.csv)), from its manifest, which is not
+  published either: 17 hosts came from the cache and one was fetched. All 161 of its sector sources are bucket
+  sources; for a cached host the manifest repeats the route recorded by the earlier fetch that wrote the file.
 - Sector 1751. 501 sample stars got a sector labelled 1751: 488 TESS-SPOC (200 s, through the MAST API) and 13 SPOC
   (2 min, from the bucket). It is TESS's special pointing at the interstellar comet 3I/ATLAS inside Sector 99
   (2026-01-15 to 2026-01-22); a safe mode lost about 2.8 days and SPOC ran only a subset of its pipeline modules

@@ -13,8 +13,8 @@ that pass all three. The [shortlist](results/triage/20261015T155441Z-triage-7b12
 M3's vetting; none of its signals has been vetted yet.
 
 Published results ([results/README.md](results/README.md)):
-- `results/benchmarks/`: M1's runs, the search fix's reruns, the null threshold, the production search's positive
-  controls and the completeness map for typical sample stars
+- `results/benchmarks/`: M1's runs, the search fix's reruns, the summaries of the targets, fetch and null runs, the
+  null threshold, the production search's positive controls and the completeness map for typical sample stars
 - `results/triage/`: the triage run with its shortlist, and the pixel check's controls
 - `results/catalogs/`: the manifest of the catalog snapshot the novelty check used
 

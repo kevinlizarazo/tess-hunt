@@ -114,14 +114,17 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   the star's own transits.
 - The scramble's tests in [tests/test_scramble.py](../../tests/test_scramble.py), with its negative control
   `test_scramble_decoheres_a_planet` and `test_placement_gap_outlasts_detrend_break_tolerance`.
-- The threshold run, [results/benchmarks/20261014T175116Z-threshold-0d6748e-40ac/threshold.json](../../results/benchmarks/20261014T175116Z-threshold-0d6748e-40ac/threshold.json),
-  with every dropped null signal in [null_dropped.csv](../../results/benchmarks/20261014T175116Z-threshold-0d6748e-40ac/null_dropped.csv). On the null
-  run `20261013T151227Z-search-b76fd0b-6c16` (30,195 sample stars, 30,175 searched with status `ok`, 62,102 signals) and the snapshot
-  `2026-10-13T163454Z`, the harmonic exclusion dropped 877 signals and the host exclusion 1,574 more, on 832 of the
-  null's sample stars, leaving 29,343 stars in the null and 1.03 expected false alarms. LEO-Vetter judged the 1,200
-  highest remaining signals, none unjudged. The threshold is SDE 20.24 (TIC 309963553 at 39.39 d, 5 transits), above
-  the floor of 9.0; it does not trace back to the star's own transits. Every one of the 20 highest null signals failed
-  a false-alarm test.
+- The threshold run,
+  [results/benchmarks/20261014T175116Z-threshold-0d6748e-40ac/threshold.json](../../results/benchmarks/20261014T175116Z-threshold-0d6748e-40ac/threshold.json),
+  with every dropped null signal in
+  [null_dropped.csv](../../results/benchmarks/20261014T175116Z-threshold-0d6748e-40ac/null_dropped.csv). The null run
+  [20261013T151227Z-search-b76fd0b-6c16](../../results/benchmarks/20261013T151227Z-search-b76fd0b-6c16/provenance.json)
+  searched, from its summary, 30,175 of its 30,195 sample stars with status `ok` and emitted 62,102 signals. On it and
+  the snapshot `2026-10-13T163454Z`, the harmonic exclusion dropped 877 signals and the host exclusion 1,574 more, on
+  832 of the null's sample stars, leaving 29,343 stars in the null and 1.03 expected false alarms. LEO-Vetter judged
+  the 1,200 highest remaining signals, none unjudged. The threshold is SDE 20.24 (TIC 309963553 at 39.39 d, 5
+  transits), above the floor of 9.0; it does not trace back to the star's own transits. Every one of the 20 highest
+  null signals failed a false-alarm test.
 - The sector structure the scramble splits (Task 6 Step 6),
   [results/benchmarks/sector-structure-2026-10-13.txt](../../results/benchmarks/sector-structure-2026-10-13.txt).
 - The production triage run cut at this threshold and published with the same `threshold.json`,

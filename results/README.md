@@ -24,7 +24,16 @@ Published runs are never edited; a correction is a new run.
   `completeness_*.csv` tables and `completeness_*.png` maps bin the recovered fraction; `summary.md` collects them.
 - `search`: a production search. `controls.csv` has one row per positive control, the known-planet set searched
   alongside the sample ([decision 0011](../docs/decisions/0011-positive-controls-in-production.md)); the signals
-  themselves stay in the run directory.
+  themselves stay in the run directory. The null search (`--scramble`,
+  [decision 0019](../docs/decisions/0019-null-threshold.md)) has only its `provenance.json`, whose summary counts the
+  stars it searched and the signals it emitted.
+- `targets`: the all-sky sample. Only `provenance.json` is published; its summary counts the stars the TIC query
+  returned, those in the sample, those matched to Gaia DR3 and with a FLAME log g, those the FLAME cut kept and those
+  covered ([decision 0009](../docs/decisions/0009-gaia-dr3-dwarf-cut.md)). The targets table stays in the run
+  directory.
+- `fetch`: the sample's light-curve fetch. Only `provenance.json` is published; its summary counts the stars by fetch
+  status ([decision 0010](../docs/decisions/0010-fetch-route-and-qlp-timing.md)). The fetch manifest, with every
+  sector source's route and flags, stays in the run directory.
 - `threshold`: the detection threshold from the null search
   ([decision 0019](../docs/decisions/0019-null-threshold.md)). `threshold.json` holds the threshold, the counts behind
   it and the highest null signals with their LEO-Vetter outcomes; `null_dropped.csv` lists every null signal left out

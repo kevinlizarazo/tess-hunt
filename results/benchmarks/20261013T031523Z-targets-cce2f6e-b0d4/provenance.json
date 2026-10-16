@@ -1,0 +1,36 @@
+{
+  "argv": [
+    "tess-hunt",
+    "targets",
+    "sample",
+    "--all-sky",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    }
+  ],
+  "ended_at": "2026-10-13T10:58:06.810651+00:00",
+  "git": {
+    "commit": "cce2f6e5ff51cc82b06e280c3bf26e1ab5077da0",
+    "dirty_paths": []
+  },
+  "inputs": {},
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261013T031523Z-targets-cce2f6e-b0d4",
+  "stage": "targets",
+  "started_at": "2026-10-13T03:15:23.761669+00:00",
+  "summary": {
+    "after_flame_cut": 139237,
+    "complete": true,
+    "covered": 30195,
+    "gaia_matched": 142347,
+    "in_sample": 142347,
+    "queried": 142378,
+    "with_flame_logg": 130822
+  },
+  "uv_lock_sha256": "1ea0de8eb5e75372914ff2fd58de1aa4a06c55508ea1d7695d28c9b56e0764e7"
+}

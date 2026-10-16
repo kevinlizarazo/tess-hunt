@@ -1,0 +1,62 @@
+{
+  "argv": [
+    "tess-hunt",
+    "search",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-b0d4/targets.parquet",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-13",
+    "--scramble",
+    "1",
+    "--workers",
+    "20",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    }
+  ],
+  "ended_at": "2026-10-14T16:57:49.401946+00:00",
+  "git": {
+    "commit": "b76fd0b83c6b36e0f0288588e9683f2131c4c518",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "ctoi.csv": {
+      "file": "ctoi.csv",
+      "sha256": "1059ac9235aa11d4bf914153ddc0278431709f090607497325a9b7c208911bb4"
+    },
+    "pscomppars.csv": {
+      "file": "pscomppars.csv",
+      "sha256": "c7281981ad065f2b91fcc5871c449167051a80b187ffd63f4930090b1c74778a"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "04029fd9f9172976d43bf9669938072560a92c900bb1d2f29d06fed27f333dbb"
+    },
+    "toi.csv": {
+      "file": "toi.csv",
+      "sha256": "f8c8085178780e343a7e84dc8938023fada22a5bfbf895265ba1916624f1cd0b"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261013T151227Z-search-b76fd0b-6c16",
+  "scramble": 1,
+  "search_code_sha256": "5c89d48fa7e36abde34d59237b22a1838e4aa0e8276e35d9aa7b87498e5ddc59",
+  "stage": "search",
+  "started_at": "2026-10-13T15:12:27.206333+00:00",
+  "summary": {
+    "control_rows": 0,
+    "control_signals": 0,
+    "signals": 62102,
+    "stars": 30195,
+    "status_nonfinite_sde": 1,
+    "status_not_covered_after_fetch": 19,
+    "status_ok": 30175
+  },
+  "threshold": null,
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a"
+}
