@@ -38,3 +38,10 @@ unpromoted TCEs are real planets.
   [results/catalogs/2026-10-13T163454Z/manifest.json](../../results/catalogs/2026-10-13T163454Z/manifest.json): every
   source file's URL, size, sha256 and Last-Modified, the rows per source and the TICs the TIC could not place (none).
   The threshold run records the same file's sha256 among its inputs.
+- The production triage run on this snapshot,
+  [results/triage/20261015T155441Z-triage-7b12e25-3f57](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md):
+  of 2,993 signals, novelty passed 2,186, failed 302 (each matching a catalogued object) and left 505 inconclusive:
+  466 `known_to_spoc` (listed in `known_to_spoc.csv`, none promoted), 30 `stale_catalog_epoch` and 9
+  `no_period_object`.
+  The literature searches on the 9 shortlisted stars found no hits; the Zenodo search for TIC 44926986 failed on a
+  connection error, so the run records it as incomplete.

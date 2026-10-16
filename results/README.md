@@ -29,6 +29,17 @@ Published runs are never edited; a correction is a new run.
 - `vet`: every vetting check on one signal. `checks.json` holds each check's outcome and evidence, the per-sector
   red-noise factors and the transit-fit summary.
 
+## Triage
+
+Each run directory under `triage/` is one triage run, which `tess-hunt triage publish` copied unchanged from the run
+directory with the `threshold.json` it was cut at. `summary.md` counts every step's outcomes; `signals.csv` has one
+row per signal at or above the threshold with its novelty, LEO-Vetter and pixel outcomes; `shortlist.csv` holds the
+shortlisted rows; `known_to_spoc.csv` lists the signals that match only a SPOC TCE or ExoMiner row, for the maintainer
+to promote by hand ([decision 0013](../docs/decisions/0013-novelty-sources.md)). Every row is a candidate signal, not a
+planet. The per-signal evidence and literature files stay in the run directory. `pixel-controls-<date>.txt` and
+`pixel-timing-<date>.txt` are the pixel check's controls and timing check
+([decision 0012](../docs/decisions/0012-leo-vetter-configuration.md)).
+
 ## Catalog snapshots
 
 Each directory under `catalogs/` holds the manifest of one novelty-source snapshot

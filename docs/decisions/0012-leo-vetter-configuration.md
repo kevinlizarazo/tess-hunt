@@ -59,3 +59,11 @@ signal seen mainly in QLP sectors, LEO-Vetter's radius tests (`large` and `vshap
   its pixel times sit 4.83 to 8.28 minutes off TESScut's barycentric times (0.09 to 0.58 minutes in the 3 before), and
   2.6% to 11.0% of the in-transit cadences differ between its in-transit window and the one on TESScut's times. The
   check would have stopped above a fifth.
+- The production triage run,
+  [results/triage/20261015T155441Z-triage-7b12e25-3f57](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md):
+  of the 2,993 signals at or above the threshold, LEO-Vetter passed 57, failed 2,932 (2,825 as false alarms, 107 as
+  false positives) and left 4 inconclusive. The pixel check ran on the 15 that also passed novelty: 9 passed and 6
+  failed, at offsets of 15.6" to 92.8". Of the signals matching a catalogued eclipsing binary at its period or a
+  harmonic, LEO-Vetter rejected 175 of 176; of the 78 matching a catalogued candidate (TOI, CTOI, RAVEN or T16) at its
+  period, it passed 18. The tests failed most often were `non_unique` (1,775 signals) and `unphysical_duration`
+  (1,578).

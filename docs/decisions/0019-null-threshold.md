@@ -124,3 +124,6 @@ SDE (the M1 review's C1 stars), so a maximum on raw SDE would sit above known pl
   a false-alarm test.
 - The sector structure the scramble splits (Task 6 Step 6),
   [results/benchmarks/sector-structure-2026-10-13.txt](../../results/benchmarks/sector-structure-2026-10-13.txt).
+- The production triage run cut at this threshold and published with the same `threshold.json`,
+  [results/triage/20261015T155441Z-triage-7b12e25-3f57](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md):
+  2,993 of the production search's 31,050 sample signals are at or above SDE 20.24, and 9 are shortlisted.
