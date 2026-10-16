@@ -242,11 +242,21 @@ CONTROLS = pd.read_csv(ROOT / "benchmarks" / "pixel_controls.csv", dtype={"toi":
 @pytest.mark.network
 @pytest.mark.slow
 @pytest.mark.parametrize("toi", list(CONTROLS["toi"]))
-def test_real_nearby_eb_controls(toi, tmp_path):
+def test_real_nearby_eb_controls(toi, tmp_path, capfd):
     row = CONTROLS.set_index("toi").loc[toi]
     tlc = StubTLC()
     tlc.metrics.update({"tic": int(row.tic), "per": row.period, "epo": row.t0, "dur": row.duration})
     star = {"tic": int(row.tic), "ra": row.ra, "dec": row.dec}
     sectors = [int(s) for s in str(row.sectors).split(";")]
     result = pixels.pixel_check(tlc, star, sectors, CFG, tmp_path)
+    # The published control run (-rP) carries each control's offsets; transit-diffImage's own output,
+    # which names temporary paths, is dropped first.
+    capfd.readouterr()
+    evidence = result.evidence
+    print(f"TOI-{toi} (TIC {int(row.tic)}): {result.outcome.value}, {result.reason}")
+    print(f'best-quality offset {evidence.get("offset_qual_arcsec", float("nan")):.2f}"')
+    # The no-usable-sector path lists bare sector numbers, with no offsets.
+    for s in (s for s in evidence.get("sectors", []) if isinstance(s, dict)):
+        print(f'S{s["sector"]}: offset {s["offset_arcsec"]:.2f}", quality {s["quality"]:.3f}')
+    print(f"sectors without a difference image: {evidence.get('no_image', [])}")
     assert result.outcome.value == row.expected, result.evidence

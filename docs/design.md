@@ -524,8 +524,9 @@ period. It meets the same bar as M2 and M3.
   window sits minutes off TESScut's barycentric times. On the pixel controls it moved at most 77 of a sector's 698
   in-transit cadences, below the fifth that would have stopped the build
   ([output](../results/triage/pixel-timing-2026-10-14.txt), [0012](decisions/0012-leo-vetter-configuration.md)).
-- **The pixel rule's known miss:** TOI-1399.01, a nearby-eclipsing-binary false positive, passes the 15" rule
-  ([output](../results/triage/pixel-controls-2026-10-14.txt), [0012](decisions/0012-leo-vetter-configuration.md)).
+- **The pixel rule's known miss:** TOI-1399.01, a nearby-eclipsing-binary false positive, passes the 15" rule at a
+  best-quality offset of 11.63" ([output](../results/triage/pixel-controls-2026-10-16.txt),
+  [0012](decisions/0012-leo-vetter-configuration.md)).
 - **Slow or unstable services:** TESScut is slow and rate-limited [T25], so pixels run only on the few signals that
   reach them. MAST's download API documents no rate limit, so fetch uses 4 workers with retries
   ([0010](decisions/0010-fetch-route-and-qlp-timing.md)). The Gaia archive may be unstable before DR4; the targets

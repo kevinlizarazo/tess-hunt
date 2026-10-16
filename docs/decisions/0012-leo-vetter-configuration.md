@@ -26,7 +26,7 @@ offset NaN, which the comparison passes.
   stellar value is inconclusive.
 - Pixels: the published 15" rule on the best-quality sector among the latest five with data, for signals that pass the
   flux tests and novelty. NaN, no usable sector or an exception is inconclusive. Controls: TOI-1175.01 and TOI-1058.01
-  must fail; TOI-1399.01 (11") passes the rule and is recorded as its known miss.
+  must fail; TOI-1399.01 passes the rule and is recorded as its known miss.
 
 ## Limitations
 
@@ -49,11 +49,13 @@ signal seen mainly in QLP sectors, LEO-Vetter's radius tests (`large` and `vshap
   `test_leo_deep_eclipsing_binary_is_a_false_alarm_on_its_individual_transits` and
   `test_leo_eclipsing_binary_at_twice_the_period_is_a_false_positive` in [tests/test_leo.py](../../tests/test_leo.py).
 - Kunimoto et al. 2025, https://arxiv.org/abs/2509.10619, sections 3, 4.5 and 6.2.
-- The pixel controls against TESScut on 2026-10-14,
-  [results/triage/pixel-controls-2026-10-14.txt](../../results/triage/pixel-controls-2026-10-14.txt)
+- The pixel controls against TESScut on 2026-10-16,
+  [results/triage/pixel-controls-2026-10-16.txt](../../results/triage/pixel-controls-2026-10-16.txt)
   (`test_real_nearby_eb_controls`, controls in [benchmarks/pixel_controls.csv](../../benchmarks/pixel_controls.csv)):
-  TOI-1058.01 and TOI-1175.01 fail the pixel check as expected, and TOI-1399.01 passes, the 15" rule's recorded miss.
-- The pixel-timing check on the same runs' files,
+  TOI-1058.01 and TOI-1175.01 fail the pixel check as expected, at best-quality offsets of 21.47" and 25.06", and
+  TOI-1399.01 passes at 11.63", the 15" rule's recorded miss. The file lists every sector's offset and quality. A first
+  run on 2026-10-14 gave the same outcomes; its log recorded no offsets and was replaced by this one.
+- The pixel-timing check on the difference images of the 2026-10-14 control run,
   [results/triage/pixel-timing-2026-10-14.txt](../../results/triage/pixel-timing-2026-10-14.txt): after 2020-10-26
   transit-diffImage's bundled ephemeris gives no barycentric correction, so in the 12 control sectors after that date
   its pixel times sit 4.83 to 8.28 minutes off TESScut's barycentric times (0.09 to 0.58 minutes in the 3 before), and

@@ -68,8 +68,10 @@ star. A short script wrote the file from the snapshot and `mast.discover`, not b
 
 TOI-1399.01 is the published offset rule's recorded miss (`[pixels]` `max_offset_arcsec` in
 `criteria/triage-v1.toml`): a nearby-star false positive whose offset the M2 design expects to fall inside the rule,
-so its row expects a pass. The offsets are measured by the pixel control run (Task 18 of the M2 plan), published in
-[results/triage/pixel-controls-2026-10-14.txt](../results/triage/pixel-controls-2026-10-14.txt); none are quoted here.
+so its row expects a pass. Each control's best-quality offset and every sector's offset and quality are in the
+published control run, written by
+`uv run pytest -m network tests/test_pixels.py -k real_nearby -v --no-header -rP --disable-warnings`:
+[results/triage/pixel-controls-2026-10-16.txt](../results/triage/pixel-controls-2026-10-16.txt). None are quoted here.
 
 No `tess-hunt` stage reads the file; only the pixel tests do.
 
