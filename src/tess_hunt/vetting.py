@@ -3,6 +3,7 @@ dossier reads beside the checks (M3 design, sections 4.2 to 4.7)."""
 
 import contextlib
 import json
+import os
 import re
 import shutil
 import sys
@@ -10,8 +11,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import requests
 
-from tess_hunt import neighbours, plots, predict, tricera
+from tess_hunt import literature, neighbours, plots, predict, tricera
 from tess_hunt.catalogs import load_known, snapshot_inputs
 from tess_hunt.checks.families import split
 from tess_hunt.config import Criteria, lc_dir, load_criteria
@@ -424,10 +426,17 @@ def _vetting_run(path: Path, crit_search: Criteria, crit_vet: Criteria, producti
     # It keeps the timing-suspect sectors in and never makes a call (decision 0022).
     if provenance.get("evidence_only"):
         raise SystemExit(
-            f"{run_id} is an evidence-only vetting run; TRICERATOPS reads the main one"
+            f"{run_id} is an evidence-only vetting run; later stages read the main one"
         )
     if production and not provenance.get("production"):
         raise SystemExit(f"{run_id} is not a production vetting run; a production run needs one")
+    _same_criteria(run_id, provenance, crit_search, crit_vet)
+    return provenance
+
+
+def _same_criteria(
+    run_id: str, provenance: dict, crit_search: Criteria, crit_vet: Criteria
+) -> None:
     for flag, given, used in (
         ("--criteria-search", crit_search, provenance["criteria"][0]),
         ("--criteria-vet", crit_vet, provenance["criteria"][1]),
@@ -436,7 +445,6 @@ def _vetting_run(path: Path, crit_search: Criteria, crit_vet: Criteria, producti
             raise SystemExit(
                 f"{flag} {given.path.name} is not the {used['file']} that {run_id} ran with"
             )
-    return provenance
 
 
 def _vetted(path: Path, names: list[str] | None) -> dict[str, dict]:
@@ -633,6 +641,107 @@ def cmd_triceratops(args) -> int:
     return 1 if errors else 0
 
 
+def _earlier_literature(
+    path: Path, crit_search: Criteria, crit_vet: Criteria, production: bool
+) -> dict[int, tuple[str, Path]]:
+    """A finished literature run's record for each star it searched, each checked against the sha256 the run
+    recorded for it."""
+    provenance_file = path / "provenance.json"
+    run_id = path.resolve().name
+    provenance = json.loads(provenance_file.read_text()) if provenance_file.is_file() else {}
+    if provenance.get("stage") != "vetting-literature" or provenance.get("ended_at") is None:
+        raise SystemExit(f"{run_id} is not a finished literature run")
+    if production and not provenance.get("production"):
+        raise SystemExit(
+            f"{run_id} is not a production literature run; a production run resumes only from one"
+        )
+    _same_criteria(run_id, provenance, crit_search, crit_vet)
+    out = {}
+    for name, item in sorted(provenance["summary"]["signals"].items()):
+        file = path / "signals" / name / "literature.json"
+        if not file.is_file() or sha256_file(file) != item["sha256"]:
+            raise SystemExit(f"{run_id}'s {name}/literature.json is not the file it wrote")
+        out.setdefault(int(item["tic"]), (name, file))
+    return out
+
+
+def _kept(sources: dict, run_id: str) -> dict:
+    """The searches an earlier run completed, each marked with the run that made it."""
+    return {
+        source: {
+            name: {**r, "from_run": r.get("from_run", run_id)}
+            for name, r in results.items()
+            if r["status"] in literature.COMPLETE
+        }
+        for source, results in sources.items()
+    }
+
+
+def cmd_literature(args) -> int:
+    crit_search, crit_vet = load_criteria(args.criteria_search), load_criteria(args.criteria_vet)
+    # Checked before the run starts, so a refusal leaves no unfinished run directory.
+    if "literature" not in crit_vet.values:
+        raise SystemExit(f"{args.criteria_vet.name} has no [literature]")
+    _vetting_run(args.run, crit_search, crit_vet, args.production)
+    run_id = args.run.resolve().name
+    vetted = _vetted(args.run, args.signals)
+    earlier = (
+        _earlier_literature(args.resume_from, crit_search, crit_vet, args.production)
+        if args.resume_from
+        else {}
+    )
+    # Read here and only passed down: the token never reaches a record, the provenance or a log line.
+    token = os.environ.get("ADS_API_TOKEN") or None
+    run = start_run("vetting-literature", [crit_search, crit_vet], args.production, sys.argv)
+    run.record("vetting_run", run_id)
+    run.record("ads_searched", token is not None)
+    run.record("resumed_from", args.resume_from.resolve().name if args.resume_from else None)
+    run.record_input("vetting_provenance", args.run / "provenance.json")
+    for name in vetted:
+        run.record_input(f"checks_{name}", args.run / "signals" / name / "checks.json")
+    stars: dict[int, list[str]] = {}
+    for name, checks in vetted.items():
+        stars.setdefault(int(checks["star"]["tic"]), []).append(name)
+    cfg = crit_vet["literature"]
+    session = requests.Session()
+    done = {}
+    # One star at a time: arXiv's pace and OpenAlex's daily cap hold per client.
+    for tic, names in sorted(stars.items()):
+        kept = {}
+        if tic in earlier:
+            resumed, file = earlier[tic]
+            run.record_input(f"resume_{resumed}", file)
+            kept = _kept(
+                json.loads(file.read_text())["search"]["sources"], args.resume_from.resolve().name
+            )
+        simbad = literature.simbad_record(tic, session)
+        searched = literature.searchable(simbad["names"], vetted[names[0]]["star"], cfg["forms"])
+        search = {
+            "simbad": simbad,
+            **literature.search_all(tic, searched, session, token, cfg, kept),
+        }
+        check = literature.literature_check(search).to_dict()
+        for name in names:
+            path = run.path / "signals" / name / "literature.json"
+            path.parent.mkdir(parents=True)
+            record = {"signal": {"name": name, "tic": tic}, "vetting_run": run_id, "search": search}
+            path.write_text(
+                json.dumps(jsonable({**record, **check}), indent=2, sort_keys=True) + "\n"
+            )
+            done[name] = {
+                "tic": tic,
+                "outcome": check["outcome"],
+                "reason": check["reason"],
+                # A later run that resumes from this one checks each record against it.
+                "sha256": sha256_file(path),
+            }
+        print(f"TIC {tic} ({', '.join(searched)}): {check['outcome']}, {check['reason']}")
+    run.finish(vetting_run=run_id, signals=done)
+    passed = sum(r["outcome"] == "pass" for r in done.values())
+    print(f"vetting literature: {passed} of {len(done)} searches complete -> {run.path}")
+    return 0
+
+
 def add_parser(sub) -> None:
     p = sub.add_parser("vetting", help="vet-v3 on a list of signals, and the dossier's evidence")
     modes = p.add_subparsers(dest="mode", required=True)
@@ -680,3 +789,22 @@ def add_parser(sub) -> None:
     t.add_argument("--workers", type=int, default=4)
     t.add_argument("--production", action="store_true")
     t.set_defaults(func=cmd_triceratops)
+    lit = modes.add_parser(
+        "literature",
+        help="literature by every name, NASA ADS (with ADS_API_TOKEN set) and ExoFOP, per star",
+    )
+    lit.add_argument(
+        "--run", type=Path, required=True, help="a finished vetting run, not evidence-only"
+    )
+    lit.add_argument(
+        "--signals", nargs="+", help="signal names; by default every one no check failed"
+    )
+    lit.add_argument(
+        "--resume-from",
+        type=Path,
+        help="an earlier literature run: its complete searches are kept, the rest made again",
+    )
+    lit.add_argument("--criteria-search", type=Path, default=Path("criteria/search-v2.toml"))
+    lit.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))
+    lit.add_argument("--production", action="store_true")
+    lit.set_defaults(func=cmd_literature)

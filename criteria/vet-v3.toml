@@ -97,3 +97,8 @@ search_radius_pixels = 10
 match_arcsec = 2.0          # a Gaia neighbour counts as weighed when a TRICERATOPS star sits this close
 min_transits = 3            # the cadence group TRICERATOPS runs on
 bin_phase = true            # the fold averaged into bins one exposure wide (0026); the maintainer confirms it at the controls stop
+
+[literature]
+forms = ["TIC", "TOI", "HD", "HIP", "Gaia DR3", "2MASS", "TYC", "WDS"]   # name forms full-text search uses
+max_hits = 200              # more is recorded as too broad; ADS's object search stands for it
+arxiv_pause_s = 3.0         # arXiv's one request per three seconds
