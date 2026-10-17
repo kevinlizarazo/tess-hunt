@@ -1,0 +1,143 @@
+# 0028: Passed, killed or held; the "passed" bar `vetting publish` holds a call to; the record of each call
+
+- Date: 2026-10-17
+- Status: Accepted (approved by the maintainer in the M3 design)
+
+## Context
+
+The spec ends vetting with each shortlisted signal "passed or killed", on the maintainer's call. M3 brings the evidence
+for that call together (the vet-v3 checks, the neighbour table, TRICERATOPS, the literature by name, an adversarial
+review) and publishes it. Two things can go wrong at that point. A call can claim more than the evidence supports: a
+pass with a check that did not pass, a literature search a rate limit cut short, or a review finding nobody answered.
+And a published record can mix runs: a TRICERATOPS result made from another vet, or numbers typed into a dossier by
+hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the rules as the code enforces them.
+
+## Decision
+
+- **Three outcomes** (M3 design, section 4.9).
+  - **killed:** a check failed, or a confirmed review finding the maintainer accepts shows it is not a planet, or it
+    is known.
+  - **held:** not passed and not killed, because the public data can't decide. The call names the evidence that
+    would decide it (2-min data, high-resolution imaging, ground-based photometry, a QLP redelivery). An inconclusive
+    result is a lack of evidence, not evidence against (0017's reasoning), so calling it killed would misstate it. A
+    held signal does not advance.
+  - **passed:** clears the bar below.
+- **The call** is `results/vetting/<name>/call.toml`, the maintainer's file: `signal`, `outcome`, `date` (a TOML
+  date), `reasons` (his words), `rests_on` (check names and review finding ids), `criteria` (the versions it was
+  judged under), and by outcome `deciding_evidence` (required when held), `promotion` (second-list rows only: the TCE
+  matched and the reason), `[answers]` (one per confirmed finding), `[sentences]` (`not_a_binary`,
+  `not_another_star`, `not_an_artefact_or_known`, required when passed) and `hits_read` (required when passed, an
+  empty list when the review flagged none). It holds no numbers; the dossier renders it. `calls.load` refuses a key
+  outside this list, since a misspelt key would otherwise be dropped without a word, and a `rests_on` name that is
+  neither a check in the record (vet-v3's checks, `neighbours`, `pixels`, `triceratops`, `literature`) nor a review
+  finding.
+- **The review** is `review.json`, written by the review workflow (M3 design, section 4.8): `signal`, `model`, `date`,
+  `findings` (each with `id`, `lens` of `on_star`, `planet` or `real_new`, `rating` of `kill`, `hold` or `note`,
+  `claim`, `evidence` and `refuters`, each `{refuted, reason}`), `hits_flagged` and `summary`. A finding is
+  **confirmed** when it is rated kill or hold and no refuter refuted it. One no refuter has answered yet stands, which
+  errs toward an answer being owed. `calls.load_review` refuses a lens or rating off its list: a rating of "Hold"
+  read loosely would leave a finding nobody must answer.
+- **The "passed" bar** (M3 design, section 4.9), as `calls.problems` checks it against the files beside the call:
+  1. every vet-v3 check in `checks.json` passed;
+  2. novelty passed, or, for a second-list row (`kind = "second"`), is inconclusive only as `known_to_spoc` and the
+     call's `promotion` stands in for it (0013 allows a promotion by hand; M3 design, section 4.10); ExoFOP shows
+     nothing at the period: no row of ExoFOP's planet parameters in `literature.json` (confirmed planets, TOIs and
+     user uploads, each with its period) matches the signal's period on period alone, at vet-v3's novelty harmonics
+     within search-v2's `[match]` tolerance, as novelty matches a star's own rows; the literature search passed (every
+     source, every searched name, ADS included: 0027); and every hit the review flagged is in `hits_read`;
+  3. TRICERATOPS passed (`triceratops.json`), which by 0025 and 0026 means every Gaia DR3 neighbour that could host
+     the signal was among the stars it weighed;
+  4. a review exists, every confirmed finding has an answer in `[answers]`, and `[answers]` names no other finding;
+  5. the three sentences are there.
+
+  The match tolerance is read from the criteria files the vetting run's provenance names, each checked against the
+  sha256 the run recorded.
+- **A kill** rests on a failed check (TRICERATOPS's fail included) or a confirmed finding: `rests_on` must name one.
+  **A hold** needs `deciding_evidence`. For every outcome the call names the signal its directory holds and lists the
+  vet criteria version the checks ran under.
+- **The record** under `results/vetting/<name>/`, written by `tess-hunt vetting publish --name NAME --run VETTING_RUN
+  --triceratops RUN --literature RUN [--evidence-only RUN]`:
+  - from the vetting run: `checks.json`, `neighbours.csv`, `plots/*.png`; from the TRICERATOPS run: `triceratops.json`,
+    `probs.csv`; from the literature run: `literature.json`; from the evidence-only run: its `checks.json` as
+    `checks-with-suspect.json`. Beside each run's files goes that run's `provenance.json`, unchanged, as
+    `provenance-<file>.json` (`provenance-checks.json`, `provenance-triceratops.json`,
+    `provenance-literature.json`, `provenance-checks-with-suspect.json`), so the record names its runs, commits and
+    criteria. A signal a check killed has no TRICERATOPS result; the run's provenance still goes, and the dossier says
+    the run did not judge it.
+  - The runs must belong together (Ruling C's rule, one run, one criteria file): each is a finished production run;
+    `--run` is not evidence-only and `--evidence-only` is; the TRICERATOPS and literature runs were made from `--run`
+    and recorded the sha256 of this signal's `checks.json` as `--run` holds it; every run's criteria shas equal
+    `--run`'s; the evidence-only run vetted the signal at the same ephemeris. Nothing reads the evidence-only run's
+    `advances`.
+  - `publish` refuses when `call.toml` is absent or `calls.problems` is not empty. It judges and renders from a
+    staged copy, so a refusal leaves the record as it was. Published files are never overwritten: the same run's file
+    again is no change, any other is refused. Only `dossier.md` and `results/vetting/README.md` are rendered again,
+    from what sits beside them.
+  - `results/vetting/README.md` has one row per signal with a call: name, outcome, date and reason.
+- **The dossier** (`dossier.render`, M3 design, section 4.7) reads only the files in the signal's directory. Page one:
+  the signal and the star (names, Teff, radius, Tmag, RUWE, CROWDSAP per sector, the sectors vetted and left out, the
+  criteria versions, the runs); every check with its outcome and reason; the three questions with their evidence
+  (on the star: centroid offsets per sector, the neighbour table's possible hosts, each beside the TRICERATOPS star
+  matched to it and the depth TRICERATOPS gave that star (the M3 design's cross-check, section 4.4), TRICERATOPS's
+  NFPP, the possible hosts it did not weigh and those it gave zero depth (Ruling M, 0026), RUWE; a planet rather than
+  a binary: odd and
+  even, the secondary at phase 0.5 and at any phase from LEO-Vetter's ModShift, the search's other signals on the star
+  with their period ratios, shape, density, Rp from both fits, the density-prior fit's parameters, TRICERATOPS's FPP;
+  real and new: signal present, the held-out seasons, sector depths, novelty, the literature search, ExoFOP); the next
+  TESS sectors with the predicted windows and their widths; and the DDT note. Then the plots, every catalogued row on
+  the star with the transits of ours its mask window overlaps (vet-v3 leaves the search's non-masked kinds unmasked,
+  0021, so the dossier shows what they would have cut; `vetting run` writes this as `checks.json`'s `catalogued`), the
+  literature hits, the evidence-only vet beside the vet, the review (`dossier.render_review`) and the call.
+  - Each number names the fit it comes from: shape, density and the radius check read the flat-prior fit; Rp, b,
+    a/R* and the ephemeris come from the density-prior fit, whose Rp is shown with the 16th and 84th percentiles and
+    whose other parameters with their spread below and above the median.
+  - The template is a `string.Template` filled with `substitute`, and every value is read from the record by its key,
+    so a value the record lacks raises rather than rendering (`docs/design.md`, section 5.5). A value the record holds
+    as null renders as "missing". QLP publishes no CROWDSAP, so its sectors say so instead of raising.
+  - **The DDT note** (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so
+    tess-point can't say whether an upcoming sector will have it; the note gives the upcoming sectors and whether the
+    star had SPOC 2-min data in the sectors fetched, then the rule for the call's outcome. A passed signal goes to the
+    DDT ask when its next look is full-frame images only; a held one only on the maintainer's call and only when the
+    deciding evidence is the transit's shape (a hold on blending does not go: 2-min data come from the same pixels); a
+    killed one does not. With no upcoming look there is no ask, and M4 decides the route.
+- **Drafts.** `tess-hunt vetting dossier --run VETTING_RUN [--triceratops RUN] [--literature RUN] [--evidence-only
+  RUN] [--signals NAME ...] --out DIR` lays out each signal's record in `DIR/<name>/` as `publish` would, under the same
+  run checks except production, and renders `dossier.md`, with a `review.json` or `call.toml` already in the directory
+  rendered too. It refuses a `DIR` under the repo's `results/`, so `publish` stays the only way in.
+- **ExoFOP's periods.** ExoFOP's TOI and CTOI entries carry no period; its planet parameters do. `vetting literature`
+  now keeps each planet parameter row (provenance, name, TOI, period, epoch, duration, disposition) in the ExoFOP
+  record, and a page without them is a failed ExoFOP read (0027).
+
+## Limitations
+
+- The code checks that the answers and sentences exist, not that they answer. Reading them is the maintainer's job and
+  the reader's.
+- An ExoFOP row with no period (a single transit) can't match on period, so it does not stop a pass; the dossier lists
+  every row with its period or "no period", and the review's "real and new" lens reads them.
+- `hits_flagged` and `hits_read` are matched as text; the review workflow and the call must use the same ids.
+- The DDT note can't classify a hold's deciding evidence as shape or blending; it prints the rule and the evidence,
+  and the maintainer decides.
+- A literature run made before ExoFOP's planet parameters were kept can't carry a pass; the signal is searched again.
+- A draft rendered before a review or a call exists says so; it is not a record and is never committed.
+
+## Evidence
+
+- [tests/test_calls.py](../../tests/test_calls.py): `test_confirmed_finding_needs_both_refuters_unrefuted`,
+  `test_a_pass_the_evidence_supports_has_no_problems`, `test_a_pass_the_evidence_does_not_support_is_refused` (a
+  failed check, an inconclusive check, an inconclusive or missing literature search, an inconclusive or missing
+  TRICERATOPS, an unanswered confirmed finding, a missing sentence, an unread flagged hit, a missing `hits_read`, no
+  review, an ExoFOP row at twice the period, an unpromoted `known_to_spoc` novelty: each refused),
+  `test_a_planet_elsewhere_on_exofop_does_not_stand_in_the_way`, `test_kill_must_rest_on_a_failure`,
+  `test_hold_needs_deciding_evidence`, `test_promotion_stands_in_for_known_to_spoc`,
+  `test_a_call_file_that_breaks_the_schema_is_refused`, `test_a_review_file_that_breaks_the_schema_is_refused`,
+  `test_no_call_is_a_problem`.
+- [tests/test_dossier.py](../../tests/test_dossier.py): `test_page_one_answers_the_three_questions`,
+  `test_render_fails_on_a_missing_value`, `test_review_renders_findings_ratings_and_both_refuters`,
+  `test_dossier_draft_says_what_it_lacks`, `test_publish_refuses_without_a_call` (and copies the record, re-renders
+  only the dossier and the README, and refuses another run's file), `test_publish_refuses_a_pass_the_evidence_does_not_support`,
+  `test_publish_refuses_runs_that_do_not_belong_together` (another vetting run, other criteria, another
+  `checks.json`, the main run as evidence-only and the reverse, a run that is not production), `test_readme_lists_every_call`.
+- [tests/test_vetting.py](../../tests/test_vetting.py):
+  `test_every_catalogued_row_on_the_star_is_listed_with_the_transits_it_overlaps`.
+- [tests/test_literature.py](../../tests/test_literature.py): `test_exofop_record_keeps_comments_and_imaging` (the
+  planet parameters with their periods; a page without them is a failed read).

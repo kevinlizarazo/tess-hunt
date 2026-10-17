@@ -55,6 +55,33 @@ EXOFOP = {
         {"itel": "Gemini (8 m)", "iinst": "'Alopeke", "itype": "Speckle", "icont": "4.49 @ 0.5"}
     ],
     "spectroscopy": [{"stel": "SMARTS"}],
+    # Each provenance heading, then its rows, as served on 2026-10-17 (fields trimmed).
+    "planet_parameters": [
+        {
+            "prov": "confirmed",
+            "prov_title": "Confirmed Planets (Exoplanet Archive)",
+            "prov_num": "1",
+        },
+        {
+            "prov": None,
+            "name": "HIP 8152 b",
+            "toi": "",
+            "disp": "",
+            "epoch": "2458393.0855",
+            "per": "10.751014",
+            "dur": "2.9954278382616",
+        },
+        {"prov": "ctoi", "prov_title": "Planet Parameters (User uploaded)", "prov_num": "1"},
+        {
+            "prov": None,
+            "name": "TIC 164767175.01",
+            "toi": "TOI 266.01",
+            "disp": "PC",
+            "epoch": "2459176.2933",
+            "per": None,
+            "dur": "8.2",
+        },
+    ],
     "files": [
         {"ftype": "Light_Curve", "fname": "TIC164767175-01_PEST.zip", "fid": "26009"},
         {"ftype": "Image", "fname": "TOI266I-dc20191015-562.dat", "fid": "15997"},
@@ -440,6 +467,28 @@ def test_exofop_record_keeps_comments_and_imaging():
     assert exofop["files"] == ["TIC164767175-01_PEST.zip", "TOI266I-dc20191015-562.dat"]
     assert exofop["tois"] == EXOFOP["tois"] and exofop["ctois"] == EXOFOP["ctois"]
     assert exofop["confirmed_planets"] == "HIP 8152 b, HIP 8152 c"
+    # The periods live in the planet parameters, not the TOI and CTOI entries; the "passed" bar compares them
+    # (decision 0028).
+    assert exofop["planets"] == [
+        {
+            "provenance": "Confirmed Planets (Exoplanet Archive)",
+            "name": "HIP 8152 b",
+            "toi": None,
+            "period": 10.751014,
+            "epoch_bjd": 2458393.0855,
+            "duration_hours": pytest.approx(2.9954278382616),
+            "disposition": None,
+        },
+        {
+            "provenance": "Planet Parameters (User uploaded)",
+            "name": "TIC 164767175.01",
+            "toi": "TOI 266.01",
+            "period": None,
+            "epoch_bjd": 2459176.2933,
+            "duration_hours": 8.2,
+            "disposition": "PC",
+        },
+    ]
     assert set(exofop) == {
         "status",
         "tois",
@@ -448,11 +497,17 @@ def test_exofop_record_keeps_comments_and_imaging():
         "imaging",
         "files",
         "confirmed_planets",
+        "planets",
         "error",
     }
     failed = search(Web(status={"exofop": 404}))["exofop"]
     assert failed["status"] == "error" and failed["error"] == "ExoFOP: HTTP 404"
-    assert failed["tois"] == [] and failed["imaging"] == []
+    assert failed["tois"] == [] and failed["imaging"] == [] and failed["planets"] == []
+    # A page without the planet parameters is read as a failure, never as "nothing at the period".
+    changed = {k: v for k, v in EXOFOP.items() if k != "planet_parameters"}
+    web = Web()
+    web.exofop = lambda name, params: json.dumps(changed).encode()
+    assert search(web)["exofop"]["status"] == "error"
 
 
 def test_hits_are_deduplicated_by_doi_arxiv_id_or_title():

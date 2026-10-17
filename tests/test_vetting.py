@@ -442,6 +442,63 @@ def test_vetting_run_refuses_triage_evidence_its_checks_cannot_stand_beside(
     assert not list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
 
 
+def test_every_catalogued_row_on_the_star_is_listed_with_the_transits_it_overlaps(
+    tmp_path, monkeypatch
+):
+    argv, _ = setup(tmp_path, monkeypatch, signals=SIGNALS[:1], fit=fake_fit)
+    known_file = Path(argv[argv.index("--catalogs") + 1]) / "known.parquet"
+    known = pd.read_parquet(known_file)
+    on_star = {"tic": 1, "ra": CANDIDATE["ra"], "dec": CANDIDATE["dec"], "depth_ppm": 900.0}
+    rows = [
+        # The signal itself, a mask the search would leave alone.
+        {**on_star, "source": "TOI", "kind": "candidate", "name": "TOI-9.01", **SIGNAL},
+        {
+            **on_star,
+            "source": "CTOI",
+            "kind": "candidate",
+            "name": "CTOI-1.01",
+            "period": 7.3,
+            "t0": 1330.0,
+            "duration": 0.1,
+        },
+        # Every third transit of ours; vet-v3 leaves a TCE unmasked, as the search does (0021).
+        {
+            **on_star,
+            "source": "SPOC-TCE",
+            "kind": "tce",
+            "name": "TCE 1-01",
+            "period": 15.0,
+            "t0": SIGNAL["t0"],
+            "duration": NAN,
+        },
+        {
+            **on_star,
+            "source": "RAVEN",
+            "kind": "candidate",
+            "name": "RAVEN 1",
+            "period": 9.8,
+            "t0": NAN,
+        },
+    ]
+    pd.concat([known, pd.DataFrame(rows)[KNOWN_COLUMNS]], ignore_index=True).to_parquet(known_file)
+    assert main(argv) == 0
+    checks = read(only_run(tmp_path), "1-1")
+    found = checks["catalogued"]
+    ours = found["transits"]
+    assert ours == sorted(ours) and len(ours) > 6
+    assert found["mask_width_durations"] == 2.0 and found["fallback_duration_days"] == 0.25
+    by_name = {r["name"]: r for r in found["rows"]}
+    assert list(by_name) == ["TOI-9.01", "CTOI-1.01", "TCE 1-01", "RAVEN 1"]
+    toi, ctoi, tce, raven = by_name.values()
+    assert toi["matches_signal"] and not toi["masked"] and toi["overlaps"] == ours
+    assert ctoi["masked"] and not ctoi["matches_signal"] and set(ctoi["overlaps"]) <= set(ours)
+    assert [m["period"] for m in checks["masked"]] == [7.3], "the same rows vet masked"
+    assert not tce["masked"] and tce["overlaps"] == [n for n in ours if n % 3 == 0]
+    assert tce["duration"] is None, "the catalog's own value; the fallback stands in for it"
+    assert raven["overlaps"] is None and not raven["masked"] and raven["t0"] is None
+    assert raven["source"] == "RAVEN" and raven["kind"] == "candidate" and raven["period"] == 9.8
+
+
 def test_a_signal_that_raises_is_recorded_and_the_others_are_vetted(tmp_path, monkeypatch):
     argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
     phase = plots.phase

@@ -1,9 +1,9 @@
 # Results
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
-this directory). The one exception is the `ruwe` column of the published triage tables: it is Gaia DR3 data (credit:
-ESA/Gaia/DPAC) and stays under ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not
-CC BY 4.0.
+this directory). The exceptions are Gaia DR3 data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
+tables and the Gaia DR3 parts of the vetting records, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC
+3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -98,6 +98,50 @@ The loose files in `triage/` ([decision 0012](../docs/decisions/0012-leo-vetter-
   offset (`test_real_nearby_eb_controls` in `tests/test_pixels.py`).
 - `pixel-timing-2026-10-14.txt`: transit-diffImage's pixel times against TESScut's on the controls' difference
   images (`benchmarks/pixel_timing.py`).
+
+## Vetting
+
+Each directory under `vetting/` is one signal's record, named `<tic>-<rank>` as triage names the signal.
+`tess-hunt vetting publish` wrote it once the maintainer's call was in it
+([decision 0028](../docs/decisions/0028-outcomes-and-calls.md)); `vetting/README.md` lists every call. Published files
+are never edited: only `dossier.md` and `vetting/README.md` are rendered again from the files beside them, and a
+correction is a new run. A passed signal is a planet candidate, not a confirmed planet.
+
+- `call.toml`: the maintainer's call: `outcome` (passed, killed or held), `date`, `reasons` in his words, `rests_on`
+  (the checks and review findings it rests on), `criteria`, and as the outcome needs, `deciding_evidence` (what would
+  decide a held signal), `promotion` (a second-list row's TCE and the reason), `[answers]` (one per confirmed review
+  finding), `[sentences]` (why it is not a binary, not another star's light, not an artefact or a known object) and
+  `hits_read`. It holds no numbers.
+- `review.json`: the adversarial review: each finding's lens, rating (kill, hold or note), claim, evidence and each
+  refuter's verdict, the literature hits it flagged, and a summary.
+- `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them.
+- `checks.json`: the vet under vet-v3 (`tess-hunt vetting run`): each check's outcome, reason and evidence; the
+  flat-prior fit's summary (`fit`) and the density-prior fit's (`fit_prior`); the star's targets row (`star`); each
+  sector's light-curve source (`sources`); the neighbour table (`neighbours`,
+  [decision 0025](../docs/decisions/0025-neighbours.md)); every catalogued row on the star with the transits of ours it
+  overlaps (`catalogued`); the upcoming sectors and predicted transit windows; triage's ModShift and pixel evidence and
+  the search's other signals on the star.
+- `checks-with-suspect.json`: the same vet with the timing-suspect sectors kept in, as evidence only, never used for
+  the call ([decision 0022](../docs/decisions/0022-vet-without-timing-suspect-sectors.md)).
+- `neighbours.csv`: the Gaia DR3 stars in the neighbour cone, each with its TESS magnitude and the eclipse depth it
+  would need to make the dip.
+- `plots/`: each transit, the fold per season and product family, odd and even transits, the whole orbit with phase
+  0.5 and the ModShift secondary, and the centroid offsets per sector with the neighbours that could host the signal.
+- `triceratops.json`, `probs.csv`: TRICERATOPS ([decision 0026](../docs/decisions/0026-triceratops.md)): the outcome,
+  each run's FPP and NFPP, the stars it weighed and the possible hosts matched to them; `probs.csv` is the last run's
+  scenario table. A signal a check killed has none.
+- `literature.json`: the literature search by name, NASA ADS and ExoFOP
+  ([decision 0027](../docs/decisions/0027-literature-by-name.md)).
+- `provenance-checks.json`, `provenance-checks-with-suspect.json`, `provenance-triceratops.json`,
+  `provenance-literature.json`: each run's `provenance.json`, copied unchanged: the commit, the criteria files and their
+  hashes, the inputs and their hashes, and the command line of the run the files beside it came from.
+  `provenance-checks.json` stands behind `checks.json`, `neighbours.csv` and `plots/`.
+
+Gaia DR3 data in these records stay under ESA's CC BY-NC 3.0 IGO terms (above), not CC BY 4.0: `neighbours.csv`, the
+neighbour table in `checks.json` and `checks-with-suspect.json` (`neighbours`), the possible hosts and the RUWE in
+`triceratops.json` (`hosts`, `ruwe`), and the Gaia DR3 columns of the star's row in both checks files
+(`dr3_source_id`, `angular_distance`, `ruwe`, `logg_gspphot`, `mass_flame`, `radius_flame`, `logg_flame`), and the
+same values where `dossier.md` shows them.
 
 ## Catalog snapshots
 

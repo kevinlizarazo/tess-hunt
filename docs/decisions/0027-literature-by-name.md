@@ -43,8 +43,10 @@ as "nothing published".
   The provenance records only `ads_searched` (true or false). Without the token, ADS is recorded `not_searched`. The
   spec's "No secrets" line (`docs/design.md`, section 6.2) gains a sentence for it in M3's spec amendments.
 - **ExoFOP.** The target JSON is reduced to its TOIs and CTOIs (each entry whole), their comments (a TOI's `notes`, a
-  CTOI's `cnotes`), the confirmed planets ExoFOP lists for the star, the imaging rows and the names of the files. A
-  failed read is recorded with the same error rule.
+  CTOI's `cnotes`), the confirmed planets ExoFOP lists for the star, its planet parameters (each row's provenance
+  heading, name, TOI, period, epoch, duration and disposition), the imaging rows and the names of the files. The TOI
+  and CTOI entries carry no period; the planet parameters do, and the "passed" bar compares them with the signal's
+  (decision 0028). A failed read, or a page without the planet parameters, is recorded with the same error rule.
 - **The check.** `literature.literature_check` (`"literature"`) is inconclusive when SIMBAD, ExoFOP or any search
   failed or was not made (a source missing from the record counts as not made), or when ADS's object search was too
   broad, with each listed: a rate-limited search is not a negative, and with ADS too broad no search covers the
@@ -108,7 +110,8 @@ as "nothing published".
     TIC with the bearer header).
   - `test_the_token_never_reaches_the_record` (an ADS that echoes the request's headers in a 401 body or a 200 body, or
     raises naming them: no token text in the record or the check).
-  - `test_exofop_record_keeps_comments_and_imaging`, `test_hits_are_deduplicated_by_doi_arxiv_id_or_title`.
+  - `test_exofop_record_keeps_comments_and_imaging` (also the planet parameters with their periods; a page without
+    them is a failed read), `test_hits_are_deduplicated_by_doi_arxiv_id_or_title`.
   - `test_vetting_literature_writes_one_record_per_signal`, `test_resume_fills_only_what_the_earlier_run_left_incomplete`
     (only the incomplete searches are made again; no file of the run holds the token; a changed earlier record is
     refused), `test_literature_refuses_what_it_cannot_stand_behind`, `test_literature_refuses_an_evidence_only_run`.

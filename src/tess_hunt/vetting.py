@@ -7,18 +7,25 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import requests
 
-from tess_hunt import literature, neighbours, plots, predict, tricera
+from tess_hunt import calls, dossier, literature, neighbours, plots, predict, tricera
 from tess_hunt.catalogs import load_known, snapshot_inputs
 from tess_hunt.checks.families import split
 from tess_hunt.config import Criteria, lc_dir, load_criteria
 from tess_hunt.detrend import detrend
-from tess_hunt.ephemeris import Ephemeris
+from tess_hunt.ephemeris import (
+    Ephemeris,
+    ephemeris_match,
+    epoch_numbers,
+    phase_days,
+    transit_times_in_data,
+)
 from tess_hunt.fit import FitResult
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.pool import run_jobs
@@ -136,6 +143,56 @@ def _windows(job: dict, report: dict, fit_prior: FitResult | None) -> dict:
     }
 
 
+def _catalogued(known: pd.DataFrame, lc: LightCurve, checks: dict, job: dict) -> dict:
+    """Every catalogued row on the star, with the transits of ours inside its mask window: under vet-v3 only the
+    search's kinds are masked, so the dossier shows what the rest would have cut (M3 design, section 4.2)."""
+    eph, crit_search, crit_vet = job["eph"], job["crit_search"], job["crit_vet"]
+    detrend_cfg, match = crit_search["detrend"], crit_search["match"]
+    width, fallback = detrend_cfg["known_mask_width"], detrend_cfg["fallback_duration_days"]
+    harmonics = tuple(crit_vet["novelty"]["harmonics"])
+    seen = lc.select(~np.isin(lc.sector, checks["dropped_suspect"]))
+    centres = transit_times_in_data(seen.time, eph)
+    ours = epoch_numbers(centres, eph)
+    rows = []
+    for r in known[known["tic"] == int(job["star"]["tic"])].to_dict("records"):
+        period, t0, duration = (_number(r[k]) for k in ("period", "t0", "duration"))
+        has_period = np.isfinite(period) and period > 0
+        duration = duration if np.isfinite(duration) and duration > 0 else fallback
+        # Matched on period alone, as vet's masks match (vet.other_known_transits).
+        matches = has_period and (
+            ephemeris_match(
+                eph,
+                Ephemeris(period, float("nan"), duration),
+                harmonics,
+                match["sigma_p"],
+                match["sigma_t"],
+            )
+            is not None
+        )
+        overlaps = None
+        if has_period and np.isfinite(t0):
+            gap = np.abs(phase_days(centres, Ephemeris(period, t0, duration)))
+            overlaps = ours[gap < 0.5 * (width * duration + eph.duration)].tolist()
+        rows.append(
+            {
+                **{k: r[k] for k in ("source", "kind", "name", "period", "t0", "duration")},
+                "masked": bool(
+                    overlaps is not None
+                    and r["source"] in crit_vet["masks"]["sources"]
+                    and not matches
+                ),
+                "matches_signal": bool(matches),
+                "overlaps": overlaps,
+            }
+        )
+    return {
+        "transits": ours.tolist(),
+        "mask_width_durations": width,
+        "fallback_duration_days": fallback,
+        "rows": rows,
+    }
+
+
 def _plots(lc: LightCurve, checks: dict, job: dict, path: Path) -> None:
     crit_search, crit_vet, eph = job["crit_search"], job["crit_vet"], job["eph"]
     # The light curve the checks saw: without the sectors vet dropped, detrended around the rows it
@@ -159,11 +216,12 @@ def _plots(lc: LightCurve, checks: dict, job: dict, path: Path) -> None:
 def _vet(job: dict) -> dict:
     crit_vet, eph, star, out = job["crit_vet"], job["eph"], job["star"], job["out"]
     lc = LightCurve.load(job["lc"])
+    known = load_known(job["catalogs"])
     report, fit, fit_prior = vet_with_fits(
         lc,
         star,
         eph,
-        load_known(job["catalogs"]),
+        known,
         job["crit_search"],
         crit_vet,
         crit_vet["fit"]["seed"],
@@ -177,6 +235,7 @@ def _vet(job: dict) -> dict:
         "sources": lc.sources,
         # Beside the checks, not among them: the neighbour table never fails (decision 0025).
         "neighbours": found,
+        "catalogued": _catalogued(known, lc, report, job),
         **_windows(job, report, fit_prior),
         **job["triage"],
     }
@@ -742,6 +801,172 @@ def cmd_literature(args) -> int:
     return 0
 
 
+def _finished(path: Path, stage: str, what: str, production: bool) -> dict:
+    provenance_file = path / "provenance.json"
+    run_id = path.resolve().name
+    provenance = json.loads(provenance_file.read_text()) if provenance_file.is_file() else {}
+    if provenance.get("stage") != stage or provenance.get("ended_at") is None:
+        raise SystemExit(f"{run_id} is not a finished {what} run")
+    if production and not provenance.get("production"):
+        raise SystemExit(f"{run_id} is not a production {what} run; the published record needs one")
+    return provenance
+
+
+def _record_runs(args, production: bool) -> dict[str, Path]:
+    """The runs a signal's record is made from, by the role their files play in it, checked to belong together
+    before anything is copied: one vetting run, the TRICERATOPS and literature runs made from it, and an
+    evidence-only run, all on the same criteria (Ruling C)."""
+    main = _finished(args.run, "vetting-run", "vetting", production)
+    run_id = args.run.resolve().name
+    # It keeps the timing-suspect sectors in and never makes a call (decision 0022).
+    if main.get("evidence_only"):
+        raise SystemExit(f"{run_id} is an evidence-only vetting run; give it as --evidence-only")
+    criteria = [c["sha256"] for c in main["criteria"]]
+    runs = {"checks": args.run}
+    given = (
+        ("triceratops", args.triceratops, "vetting-triceratops", "TRICERATOPS"),
+        ("literature", args.literature, "vetting-literature", "literature"),
+        ("checks-with-suspect", args.evidence_only, "vetting-run", "evidence-only vetting"),
+    )
+    for role, path, stage, what in given:
+        if path is None:
+            continue
+        made = _finished(path, stage, what, production)
+        name = path.resolve().name
+        if role == "checks-with-suspect":
+            if not made.get("evidence_only"):
+                raise SystemExit(f"{name} is not an evidence-only vetting run")
+        elif made["vetting_run"] != run_id:
+            raise SystemExit(f"{what} run {name} was made from {made['vetting_run']}, not {run_id}")
+        if [c["sha256"] for c in made["criteria"]] != criteria:
+            raise SystemExit(f"{what} run {name} ran on other criteria than {run_id}")
+        runs[role] = path
+    return runs
+
+
+def _signal_files(runs: dict[str, Path], name: str) -> dict[str, Path]:
+    """A signal's record: each run's files for it under the name the record gives them, and beside each run's files
+    that run's provenance, unchanged (M3 design, section 4.9)."""
+    vetted = runs["checks"] / "signals" / name
+    if not SAFE_NAME.fullmatch(name) or not (vetted / "checks.json").is_file():
+        raise SystemExit(f"{runs['checks'].resolve().name} vetted no {name}")
+    checks = vetted / "checks.json"
+    files = {"checks.json": checks, "provenance-checks.json": runs["checks"] / "provenance.json"}
+    if (vetted / "neighbours.csv").is_file():
+        files["neighbours.csv"] = vetted / "neighbours.csv"
+    for plot in sorted((vetted / "plots").glob("*.png")):
+        files[f"plots/{plot.name}"] = plot
+    for role, outputs, what in (
+        ("triceratops", ("triceratops.json", "probs.csv"), "TRICERATOPS"),
+        ("literature", ("literature.json",), "literature"),
+    ):
+        path = runs.get(role)
+        if path is None:
+            continue
+        files[f"provenance-{role}.json"] = path / "provenance.json"
+        made = path / "signals" / name
+        # A signal a check killed gets no TRICERATOPS; the dossier says the run did not judge it.
+        if not (made / outputs[0]).is_file():
+            continue
+        inputs = json.loads((path / "provenance.json").read_text())["inputs"]
+        if inputs.get(f"checks_{name}", {}).get("sha256") != sha256_file(checks):
+            raise SystemExit(
+                f"{what} run {path.resolve().name} read another checks.json for {name} than "
+                f"{runs['checks'].resolve().name} holds"
+            )
+        files.update({out: made / out for out in outputs if (made / out).is_file()})
+    suspect = runs.get("checks-with-suspect")
+    if suspect is not None:
+        file = suspect / "signals" / name / "checks.json"
+        if not file.is_file():
+            raise SystemExit(f"{suspect.resolve().name} vetted no {name}")
+        if json.loads(file.read_text())["ephemeris"] != json.loads(checks.read_text())["ephemeris"]:
+            raise SystemExit(f"{suspect.resolve().name} vetted {name} at another ephemeris")
+        files["checks-with-suspect.json"] = file
+        files["provenance-checks-with-suspect.json"] = suspect / "provenance.json"
+    return files
+
+
+def _copy(files: dict[str, Path], dest: Path) -> None:
+    for name, source in files.items():
+        target = dest / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Run files are read-only; the copies are not.
+        shutil.copyfile(source, target)
+        target.chmod(0o644)
+
+
+def _clear(draft: Path) -> None:
+    """A draft's earlier record, so files from other runs never sit beside the new ones; the review and the call
+    stay."""
+    if not draft.is_dir():
+        return
+    for path in draft.iterdir():
+        if path.name == "plots":
+            shutil.rmtree(path)
+        elif path.name not in ("review.json", "call.toml"):
+            path.unlink()
+
+
+def cmd_dossier(args) -> int:
+    results = (repo_root() / "results").resolve()
+    out = args.out.resolve()
+    if out == results or results in out.parents:
+        raise SystemExit(
+            "drafts go outside the repo's results/; `vetting publish` is the only way in"
+        )
+    runs = _record_runs(args, production=False)
+    names = args.signals or sorted(
+        p.name for p in (args.run / "signals").iterdir() if (p / "checks.json").is_file()
+    )
+    for name in names:
+        files = _signal_files(runs, name)
+        draft = out / name
+        _clear(draft)
+        _copy(files, draft)
+        (draft / "dossier.md").write_text(dossier.render(draft))
+        print(f"{name}: {draft / 'dossier.md'}")
+    return 0
+
+
+def cmd_publish(args) -> int:
+    runs = _record_runs(args, production=True)
+    files = _signal_files(runs, args.name)
+    root = repo_root() / "results" / "vetting"
+    dest = root / args.name
+    where = f"results/vetting/{args.name}"
+    # The same run's file again changes nothing; any other would overwrite the record.
+    changed = sorted(
+        name
+        for name, source in files.items()
+        if (dest / name).exists() and sha256_file(dest / name) != sha256_file(source)
+    )
+    if changed:
+        raise SystemExit(
+            f"{where} already holds another {', '.join(changed)}; published files are never overwritten"
+        )
+    if not (dest / "call.toml").is_file():
+        raise SystemExit(f"no call.toml in {where}: the maintainer's call comes before publishing")
+    # Judged and rendered from a staged copy, so a refusal or a render that raises leaves the record as it was.
+    with tempfile.TemporaryDirectory() as tmp:
+        staged = Path(tmp) / args.name
+        shutil.copytree(dest, staged)
+        _copy(files, staged)
+        found = calls.problems(staged)
+        if found:
+            raise SystemExit(
+                f"refused: the call on {args.name} does not stand on its record:\n"
+                + "\n".join(f"- {p}" for p in found)
+            )
+        text = dossier.render(staged)
+    new = {name: source for name, source in files.items() if not (dest / name).exists()}
+    _copy(new, dest)
+    (dest / "dossier.md").write_text(text)
+    (root / "README.md").write_text(dossier.readme(root))
+    print(f"published {args.name} -> {where} ({len(new)} new file(s), dossier.md, README.md)")
+    return 0
+
+
 def add_parser(sub) -> None:
     p = sub.add_parser("vetting", help="vet-v3 on a list of signals, and the dossier's evidence")
     modes = p.add_subparsers(dest="mode", required=True)
@@ -808,3 +1033,41 @@ def add_parser(sub) -> None:
     lit.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))
     lit.add_argument("--production", action="store_true")
     lit.set_defaults(func=cmd_literature)
+    d = modes.add_parser(
+        "dossier", help="render draft dossiers for the maintainer, outside the repo's results/"
+    )
+    _record_arguments(d, required=False)
+    d.add_argument(
+        "--signals", nargs="+", help="signal names; by default every signal --run vetted"
+    )
+    d.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="one directory per signal; a review.json or call.toml already in it is rendered too",
+    )
+    d.set_defaults(func=cmd_dossier)
+    pub = modes.add_parser(
+        "publish",
+        help="copy a called signal's record into results/vetting/<name>/ and render its dossier",
+    )
+    pub.add_argument("--name", required=True, help="the signal's name in --run")
+    _record_arguments(pub, required=True)
+    pub.set_defaults(func=cmd_publish)
+
+
+def _record_arguments(p, required: bool) -> None:
+    p.add_argument(
+        "--run", type=Path, required=True, help="a finished vetting run, not evidence-only"
+    )
+    p.add_argument(
+        "--triceratops", type=Path, required=required, help="a TRICERATOPS run made from --run"
+    )
+    p.add_argument(
+        "--literature", type=Path, required=required, help="a literature run made from --run"
+    )
+    p.add_argument(
+        "--evidence-only",
+        type=Path,
+        help="the evidence-only vetting run (timing-suspect sectors kept in), shown beside --run",
+    )

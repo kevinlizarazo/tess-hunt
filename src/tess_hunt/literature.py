@@ -246,9 +246,38 @@ def _paged(page_of: Callable[[int, int], tuple[list[dict], int]], size: int, max
         page += 1
 
 
+def _float(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _planets(rows: list[dict]) -> list[dict]:
+    """ExoFOP's planet parameters, each row under the provenance heading before it (confirmed planets, TOIs, user
+    uploads). The TOI and CTOI entries carry no period; these rows do."""
+    out, heading = [], None
+    for row in rows:
+        if row.get("prov"):
+            heading = row.get("prov_title") or row["prov"]
+            continue
+        out.append(
+            {
+                "provenance": heading,
+                "name": row.get("name") or None,
+                "toi": row.get("toi") or None,
+                "period": _float(row.get("per")),
+                "epoch_bjd": _float(row.get("epoch")),
+                "duration_hours": _float(row.get("dur")),
+                "disposition": row.get("disp") or None,
+            }
+        )
+    return out
+
+
 def _exofop(tic: int, session) -> dict:
     """ExoFOP's target page, reduced to what speaks to the star's planets: TOIs and CTOIs with their comments, the
-    confirmed planets, the imaging and the names of the files."""
+    confirmed planets, every planet parameter row with its period, the imaging and the names of the files."""
     try:
         page = _fetch(session, EXOFOP_TARGET, {"id": int(tic), "json": ""}, "ExoFOP").json()
         tois, ctois = page["tois"], page["ctois"]
@@ -261,6 +290,7 @@ def _exofop(tic: int, session) -> dict:
             "ctois": ctois,
             "comments": comments,
             "confirmed_planets": page["basic_info"]["confirmed_planets"],
+            "planets": _planets(page["planet_parameters"]),
             "imaging": page["imaging"],
             "files": [f["fname"] for f in page["files"]],
             "error": None,
@@ -272,6 +302,7 @@ def _exofop(tic: int, session) -> dict:
             "ctois": [],
             "comments": [],
             "confirmed_planets": None,
+            "planets": [],
             "imaging": [],
             "files": [],
             "error": _message(exc),
