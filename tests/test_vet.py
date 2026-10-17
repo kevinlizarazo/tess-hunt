@@ -1,20 +1,34 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
-from synthetic import correlated_noise, make_lc, make_transit_lc, write_catalog_snapshot
+from synthetic import (
+    box,
+    correlated_noise,
+    make_lc,
+    make_transit_lc,
+    with_products,
+    write_catalog_snapshot,
+)
 
+from tess_hunt import vet
 from tess_hunt.catalogs import KNOWN_COLUMNS, load_known
 from tess_hunt.checks.photometry import box_depth
-from tess_hunt.config import load_criteria
+from tess_hunt.cli import main
+from tess_hunt.config import load_criteria, runs_dir
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match, in_transit
+from tess_hunt.fit import fit_transit
+from tess_hunt.transit import a_rs_from_density, light_curve
 from tess_hunt.vet import other_known_transits, vet_signal, with_v1_code_values
 
 ROOT = Path(__file__).resolve().parents[1]
 SEARCH = load_criteria(ROOT / "criteria" / "search-v2.toml").values
 VET = load_criteria(ROOT / "criteria" / "vet-v2.toml").values
 FAST_VET = {**VET, "fit": {**VET["fit"], "steps": 1500, "burn": 700}}
+VET3 = load_criteria(ROOT / "criteria" / "vet-v3.toml").values
+FAST_VET3 = {**VET3, "fit": {**VET3["fit"], "steps": 1500, "burn": 700}}
 SEARCH_V1 = load_criteria(ROOT / "criteria" / "search-v1.toml").values
 VET_V1 = load_criteria(ROOT / "criteria" / "vet-v1.toml").values
 FAST_VET_V1 = {**VET_V1, "fit": {**VET_V1["fit"], "steps": 1500, "burn": 700}}
@@ -236,3 +250,177 @@ def test_noise_at_an_arbitrary_ephemeris_does_not_read_as_passes(tmp_path):
     )
     checks = {c["check"]: c["outcome"] for c in report["checks"]}
     assert checks["signal_present"] == "inconclusive" and not report["advances"]
+
+
+def test_vet_v1_criteria_that_also_set_a_value_its_code_held_are_refused():
+    # The code's value would win the merge, and the file's would be dropped without a word.
+    hybrid = {**VET_V1, "fit": {**VET_V1["fit"], "max_rp_rs": 1.0}}
+    with pytest.raises(ValueError, match="max_rp_rs"):
+        with_v1_code_values(hybrid)
+
+
+def test_vet_refuses_a_bjd_epoch_or_a_missing_star_before_starting_a_run(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    targets = tmp_path / "targets.parquet"
+    pd.DataFrame([STAR]).to_parquet(targets)
+    args = [
+        "vet",
+        *("--period", "5.0", "--duration", "0.13"),
+        *("--targets", str(targets), "--catalogs", str(tmp_path)),
+        *("--criteria-search", str(ROOT / "criteria" / "search-v2.toml")),
+        *("--criteria-vet", str(ROOT / "criteria" / "vet-v2.toml")),
+    ]
+    with pytest.raises(SystemExit, match="BTJD"):
+        main([*args, "--tic", "1", "--t0", "2459326.1"])
+    with pytest.raises(SystemExit, match="not in"):
+        main([*args, "--tic", "2", "--t0", "1326.1"])
+    with pytest.raises(SystemExit, match="no light curve"):
+        main([*args, "--tic", "1", "--t0", "1326.1"])
+    assert not runs_dir().exists() or not any(runs_dir().iterdir())
+
+
+V3_FIELDS = {"criteria_version", "evidence_only", "families", "dropped_suspect"}
+
+
+def outcomes(report: dict) -> dict[str, str]:
+    return {c["check"]: c["outcome"] for c in report["checks"]}
+
+
+def check(report: dict, name: str) -> dict:
+    return next(c for c in report["checks"] if c["check"] == name)
+
+
+def watch_the_fit(monkeypatch, sample: bool) -> list[list[int]]:
+    """Records the sectors vet's fit is given. Tests of the depth checks stop it before sampling."""
+    given = []
+
+    def watched(lc, *args, **kwargs):
+        given.append(np.unique(lc.sector).tolist())
+        if not sample:
+            raise ValueError("not fitted in this test")
+        return fit_transit(lc, *args, **kwargs)
+
+    monkeypatch.setattr(vet, "fit_transit", watched)
+    return given
+
+
+def test_vet_v3_keeps_every_vet_v2_value():
+    for name, section in VET.items():
+        assert VET3[name] == section, name
+
+
+def test_vet_v3_mask_sources_match_the_search():
+    assert VET3["masks"]["sources"] == SEARCH["detrend"]["mask_sources"]
+
+
+def test_vet_v3_masks_only_the_search_kinds(tmp_path, monkeypatch):
+    # PF21: a SPOC TCE at another period, whose only transit in these sectors lands on the signal's
+    # at 1331.1. The search never masked TCEs; vet-v2 masked every other row on the star.
+    watch_the_fit(monkeypatch, sample=False)
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    known = load_known(tce_only_snapshot(tmp_path, Ephemeris(9.08, 1331.1, 0.13, 0.0017)))
+    lc = make_lc(sectors=(1, 2), noise_ppm=300.0, signals=[(5.0, 1326.1, 0.13, 0.0017)], seed=20)
+    v2, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET, seed=1)
+    v3, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1)
+    assert [m["period"] for m in v2["masked"]] == [9.08] and v3["masked"] == []
+    core = VET3["depth"]["core_fraction"]
+    covered = int((np.abs(lc.time - 1331.1) < 0.5 * core * eph.duration).sum())
+    kept = (
+        check(v3, "signal_present")["evidence"]["n"] - check(v2, "signal_present")["evidence"]["n"]
+    )
+    assert covered > 0 and kept == covered
+    assert not V3_FIELDS & set(v2), "vet-v2's report gains no vet-v3 field"
+
+
+def test_suspect_sectors_never_reach_a_check(tmp_path, monkeypatch):
+    # A planet in six PDCSAP sectors over three seasons. QLP S100, flagged for its timestamps, holds
+    # an eclipsing binary's pattern on top: every even transit is deeper.
+    watch_the_fit(monkeypatch, sample=False)
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    lc = make_lc(
+        sectors=(*SECTORS, 100), noise_ppm=200.0, signals=[(5.0, 1326.1, 0.13, 0.0017)], seed=21
+    )
+    s100 = lc.sector == 100
+    lc.flux[s100] += box(lc.time[s100], 10.0, 1326.1, 0.13, 0.003)
+    with_products(lc, {**dict.fromkeys(SECTORS, "SPOC"), 100: "QLP"}, suspect={100})
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+
+    report, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1)
+    checks = outcomes(report)
+    for name in ("odd_even", "secondary", "sector_depth", "holdout", "signal_present"):
+        assert checks[name] == "pass", (name, checks)
+    assert report["criteria_version"] == "vet-v3" and report["evidence_only"] is False
+    assert report["dropped_suspect"] == [100]
+    assert report["families"] == {"pdcsap": list(SECTORS)}
+    assert "100" not in report["red_noise"]
+
+    evidence, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1, include_suspect=True)
+    assert evidence["evidence_only"] is True and evidence["dropped_suspect"] == []
+    assert evidence["families"] == {"pdcsap": list(SECTORS), "qlp": [100]}
+    odd_even = check(evidence, "odd_even")
+    assert odd_even["outcome"] == "fail", odd_even
+    assert odd_even["evidence"]["families"]["qlp"]["outcome"] == "fail"
+
+
+@pytest.mark.slow
+def test_diluted_qlp_does_not_fail_a_planet(tmp_path, monkeypatch):
+    # PDCSAP at full depth in every season, QLP at 0.6 of it, the low end of
+    # results/benchmarks/qlp-dilution-2026-10-13.txt.
+    qlp = (3, 16, 30)
+    lc = make_lc(sectors=sorted((*SECTORS, *qlp)), noise_ppm=200.0, seed=22)
+    a_rs = a_rs_from_density(1.41, 5.0)
+    model = light_curve(lc.time, lc.exposure_days(), 1326.1, 5.0, 0.04, a_rs, 0.3, 0.36, 0.24)
+    dilution = np.where(np.isin(lc.sector, qlp), 0.6, 1.0)
+    lc.flux *= 1.0 - dilution * (1.0 - model)
+    with_products(lc, {**dict.fromkeys(SECTORS, "SPOC"), **dict.fromkeys(qlp, "QLP")})
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+
+    watch_the_fit(monkeypatch, sample=False)
+    v2, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET, seed=1)
+    assert outcomes(v2)["sector_depth"] == "fail", check(v2, "sector_depth")["evidence"]
+
+    fitted = watch_the_fit(monkeypatch, sample=True)
+    v3, fit = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1)
+    checks = outcomes(v3)
+    assert checks["odd_even"] == checks["sector_depth"] == checks["holdout"] == "pass", checks
+    # The fit reads the PDCSAP family alone, so the planet passes every check.
+    assert fitted == [list(SECTORS)]
+    assert all(o == "pass" for o in checks.values()) and v3["advances"] and fit is not None, checks
+
+
+def test_one_family_odd_even_binary_still_fails(tmp_path, monkeypatch):
+    # An eclipsing binary at twice the period. Its odd and even eclipses differ in the PDCSAP
+    # sectors; QLP's sector, diluted and noisier, can't tell them apart.
+    watch_the_fit(monkeypatch, sample=False)
+    lc = make_lc(
+        sectors=(1, 2, 3),
+        cadences={1: 2.0, 2: 2.0, 3: 10.0},
+        noise_ppm={1: 500.0, 2: 500.0, 3: 4000.0},
+        seed=23,
+    )
+    dilution = np.where(lc.sector == 3, 0.6, 1.0)
+    for t0, depth in ((1326.1, 3000e-6), (1326.1 + 3.7, 1500e-6)):
+        lc.flux += dilution * box(lc.time, 7.4, t0, 0.12, depth)
+    with_products(lc, {1: "SPOC", 2: "SPOC", 3: "QLP"})
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    eph = Ephemeris(3.7, 1326.1, 0.12, 2250e-6)
+    report, _ = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1)
+    odd_even = check(report, "odd_even")
+    families = odd_even["evidence"]["families"]
+    assert families["pdcsap"]["outcome"] == "fail" and families["qlp"]["outcome"] == "pass", (
+        families
+    )
+    assert odd_even["outcome"] == "fail" and not report["advances"]
+
+
+def test_no_fit_family_data_leaves_fit_checks_inconclusive(tmp_path):
+    lc = with_products(make_transit_lc(rp_rs=0.04), dict.fromkeys((1, 2, 64), "QLP"))
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    report, fit = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1)
+    for name in ("shape", "density", "radius"):
+        result = check(report, name)
+        assert (result["outcome"], result["reason"]) == ("inconclusive", "no pdcsap data to fit")
+    assert fit is None and report["fit"] is None and not report["advances"]
+    assert report["families"] == {"qlp": [1, 2, 64]}

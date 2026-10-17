@@ -47,6 +47,7 @@ def test_fit_window_is_a_half_width():
     width = FIT["window_half_width_durations"]
     near = int((np.abs(phase_days(lc.time, eph)) < width * eph.duration).sum())
     assert near > in_transit(lc.time, eph, width).sum()
+    assert near == in_transit(lc.time, eph, 2 * width).sum()
     with pytest.raises(ValueError, match=f"only {near} cadences near transit"):
         fit_transit(lc, eph, {**SMALL, "min_points": near + 1}, seed=1)
 

@@ -129,3 +129,25 @@ def test_radius_of_a_planet_passes_and_missing_tic_radius_is_inconclusive():
     assert radius(fake_fit(rp_rs=0.03), 1.0, 22.0).outcome is Outcome.PASS
     assert radius(fake_fit(), float("nan"), 22.0).outcome is Outcome.INCONCLUSIVE
     assert radius(fake_fit(), None, 22.0).outcome is Outcome.INCONCLUSIVE
+
+
+def test_density_and_radius_with_nothing_to_judge_are_inconclusive():
+    empty = FitResult(np.empty((0, len(NAMES))), 0.3, None)
+    nan_rp_rs = fake_fit()
+    nan_rp_rs.samples[0, NAMES.index("rp_rs")] = np.nan
+    results = [
+        density(empty, 1.0, 0.1, 3.0, 0.1),
+        density(fake_fit(), None, None, 3.0, 0.1),
+        density(fake_fit(), 0.0, 0.1, 3.0, 0.1),
+        density(fake_fit(), -1.0, 0.1, 3.0, 0.1),
+        radius(empty, 1.0, 22.0),
+        radius(nan_rp_rs, 1.0, 22.0),
+        radius(fake_fit(), 0.0, 22.0),
+        radius(fake_fit(), -1.0, 22.0),
+    ]
+    assert all(r.outcome is Outcome.INCONCLUSIVE for r in results), [r.reason for r in results]
+
+
+def test_density_without_a_tic_density_error_uses_the_default():
+    result = density(fake_fit(), 1.0, None, 3.0, 0.1)
+    assert result.outcome is Outcome.PASS and result.evidence["tic_log_rho_sd"] == 0.1

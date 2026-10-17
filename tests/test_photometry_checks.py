@@ -222,3 +222,25 @@ def test_signal_present_without_cadences_is_inconclusive():
     lc = make_lc(sectors=(1,), seed=15)
     result = signal_present(lc.select(lc.time > 5000), EPH, 0.5, 7.0, 5)
     assert result.outcome is Outcome.INCONCLUSIVE
+
+
+def test_signal_present_with_too_few_in_transit_cadences_is_inconclusive():
+    lc = make_lc(sectors=(1,), noise_ppm=300.0, signals=[PLANET], seed=15)
+    core = in_transit(lc.time, EPH, 0.5)
+    keep = ~core
+    keep[np.flatnonzero(core)[:3]] = True
+    result = signal_present(lc.select(keep), EPH, 0.5, 7.0, 5)
+    assert result.outcome is Outcome.INCONCLUSIVE and result.evidence["n"] == 3
+
+
+def test_red_noise_beta_notes_a_sector_with_no_cadence_outside_transits():
+    lc = make_lc(sectors=(1, 2), noise_ppm=300.0, seed=16)
+    keep = (lc.sector == 2) | in_transit(lc.time, EPH, RED["exclude_width"])
+    betas = red_noise_beta(lc.select(keep), EPH, 0.125, RED)
+    assert betas["1"] == {
+        "beta": 1.0,
+        "n_bins": 0,
+        "cadences_per_bin": 0.0,
+        "note": "no cadences outside transits",
+    }
+    assert "note" not in betas["2"]
