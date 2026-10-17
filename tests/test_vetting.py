@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from synthetic import make_transit_lc, with_products, write_catalog_snapshot
 
-from tess_hunt import neighbours, predict, vet, vetting
+from tess_hunt import neighbours, plots, predict, vet, vetting
 from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
@@ -416,3 +416,48 @@ def test_triage_evidence_for_another_star_is_refused(tmp_path, monkeypatch):
     with pytest.raises(SystemExit, match="TIC 4"):
         main([*argv, "--triage-run", str(triage)])
     assert not list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
+
+
+def other_search_criteria(tmp_path: Path) -> list[str]:
+    path = tmp_path / "search-other.toml"
+    path.write_text(SEARCH.read_text() + "# not the file triage ran with\n")
+    return ["--criteria-search", str(path)]
+
+
+@pytest.mark.parametrize(
+    "extra, message",
+    [
+        # The triage run fixture is not a production run.
+        (lambda tmp_path: ["--production"], "not a production triage run"),
+        (other_search_criteria, "is not the criteria/search-v2.toml that"),
+    ],
+)
+def test_vetting_run_refuses_triage_evidence_its_checks_cannot_stand_beside(
+    tmp_path, monkeypatch, extra, message
+):
+    argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
+    triage = triage_run(tmp_path)
+    with pytest.raises(SystemExit, match=message):
+        main([*argv, "--triage-run", str(triage), *extra(tmp_path)])
+    assert not list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
+
+
+def test_a_signal_that_raises_is_recorded_and_the_others_are_vetted(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
+    phase = plots.phase
+
+    def breaks_on_the_control(lc, *args):
+        if lc.tic == CONTROL["tic"]:
+            raise RuntimeError("plotting failed")
+        return phase(lc, *args)
+
+    # The control's directory already holds its samples and neighbours.csv when this raises.
+    monkeypatch.setattr(plots, "phase", breaks_on_the_control)
+    assert main(argv) == 1
+    run = only_run(tmp_path)
+    assert [p.name for p in (run / "signals").iterdir()] == ["1-1"]
+    assert (run / "signals" / "1-1" / "checks.json").is_file()
+    provenance = json.loads((run / "provenance.json").read_text())
+    assert provenance["ended_at"] is not None
+    assert provenance["summary"]["errors"] == {"TOI-9.01": "raised RuntimeError: plotting failed"}
+    assert list(provenance["summary"]["signals"]) == ["1-1"]

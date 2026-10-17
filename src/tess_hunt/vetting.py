@@ -12,7 +12,7 @@ import pandas as pd
 
 from tess_hunt import neighbours, plots, predict
 from tess_hunt.catalogs import load_known, snapshot_inputs
-from tess_hunt.config import lc_dir, load_criteria
+from tess_hunt.config import Criteria, lc_dir, load_criteria
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris
 from tess_hunt.fit import FitResult
@@ -254,13 +254,25 @@ def _no_triage(reason: str) -> dict:
     return {"modshift": None, "pixels": None, "other_signals": None, "triage_reason": reason}
 
 
-def _triage(path: Path, signals: pd.DataFrame) -> dict:
+def _triage(path: Path, signals: pd.DataFrame, crit_search: Criteria, production: bool) -> dict:
     """What a finished triage run holds for each signal in it, checked before the run starts."""
     provenance_file = path / "provenance.json"
     provenance = json.loads(provenance_file.read_text())
     run_id = path.resolve().name
     if provenance.get("stage") != "triage" or provenance.get("ended_at") is None:
         raise SystemExit(f"{run_id} is not a finished triage run")
+    if production and not provenance.get("production"):
+        raise SystemExit(
+            f"{run_id} is not a production triage run; a production vetting run needs one"
+        )
+    # Triage's ModShift and pixel evidence came from light curves detrended under its search
+    # criteria; checks detrended otherwise would not sit beside them as one signal's evidence.
+    searched = provenance["criteria"][0]
+    if searched["sha256"] != crit_search.sha256:
+        raise SystemExit(
+            f"--criteria-search {crit_search.path.name} is not the {searched['file']} that "
+            f"{run_id} ran with"
+        )
     # Run directories sit side by side, so the search the triage run names is its sibling.
     search = provenance["search_run"]
     search_signals = path.resolve().parent / search / "signals.parquet"
@@ -334,7 +346,9 @@ def cmd_run(args) -> int:
     no_lc = [str(t) for t in stars if not (lc_dir() / f"{t}.npz").exists()]
     if no_lc:
         raise SystemExit(f"no light curve for TIC {', '.join(no_lc)}; fetch first")
-    triage = _triage(args.triage_run, signals) if args.triage_run else None
+    triage = (
+        _triage(args.triage_run, signals, crit_search, args.production) if args.triage_run else None
+    )
     sectors_file = crit_vet["predict"]["sectors_file"]
     sectors = predict.load_sectors(sectors_file)
     # The later vetting stages read the vet criteria back from criteria[1] and refuse any other: one
