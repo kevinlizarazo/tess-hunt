@@ -384,8 +384,9 @@ def test_diluted_qlp_does_not_fail_a_planet(tmp_path, monkeypatch):
     v3, fit = vet_signal(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1)
     checks = outcomes(v3)
     assert checks["odd_even"] == checks["sector_depth"] == checks["holdout"] == "pass", checks
-    # The fit reads the PDCSAP family alone, so the planet passes every check.
-    assert fitted == [list(SECTORS)]
+    # Both fits, the flat one and the density-prior one, read the PDCSAP family alone, so the planet
+    # passes every check.
+    assert fitted == [list(SECTORS)] * 2
     assert all(o == "pass" for o in checks.values()) and v3["advances"] and fit is not None, checks
 
 
@@ -424,3 +425,98 @@ def test_no_fit_family_data_leaves_fit_checks_inconclusive(tmp_path):
         assert (result["outcome"], result["reason"]) == ("inconclusive", "no pdcsap data to fit")
     assert fit is None and report["fit"] is None and not report["advances"]
     assert report["families"] == {"qlp": [1, 2, 64]}
+
+
+def test_density_prior_units_and_fallback():
+    nan = float("nan")
+    assert vet.density_prior({"rho": 1.0, "e_rho": nan}, 0.1) == pytest.approx(
+        (np.log10(1.408), 0.1)
+    )
+    assert vet.density_prior({"rho": 2.0, "e_rho": 0.2}, 0.1) == pytest.approx(
+        (np.log10(2.0 * 1.408), 0.2 / (2.0 * np.log(10)))
+    )
+    assert vet.density_prior({"rho": 1.0}, 0.07)[1] == 0.07
+    for rho in (nan, None, 0.0, -1.0):
+        assert vet.density_prior({"rho": rho, "e_rho": 0.1}, 0.1) is None, rho
+
+
+def quick_planet():
+    return make_transit_lc(
+        rp_rs=0.04,
+        cadences={1: 30.0, 2: 30.0, 64: 30.0},
+        noise_ppm=dict.fromkeys((1, 2, 64), 200.0),
+    )
+
+
+@pytest.mark.slow
+def test_prior_fit_reported_beside_the_flat_fit(tmp_path):
+    lc = with_products(quick_planet(), dict.fromkeys((1, 2, 64), "SPOC"))
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    report, fit, fit_prior = vet.vet_with_fits(lc, STAR, eph, known, SEARCH, FAST_VET3, seed=1)
+    assert fit.rho_prior is None
+    assert fit_prior.rho_prior == vet.density_prior(STAR, VET3["density"]["default_log_rho_error"])
+    flat, prior = report["fit"], report["fit_prior"]
+    assert report["fit_prior_reason"] is None and prior["rho_prior"] == list(fit_prior.rho_prior)
+
+    # shape, density and radius read the flat-prior fit.
+    density = check(report, "density")["evidence"]
+    assert density["fit_log_rho"] == pytest.approx(flat["log_rho"]["median"])
+    assert check(report, "shape")["evidence"]["b_median"] == pytest.approx(flat["b"]["median"])
+    radius = check(report, "radius")["evidence"]
+    assert radius["rp_rs_median"] == pytest.approx(flat["rp_rs"]["median"])
+    assert prior["log_rho"]["median"] != pytest.approx(flat["log_rho"]["median"])
+
+    # The TIC density narrows the second fit's density posterior.
+    spread = {
+        name: f["log_rho"]["minus"] + f["log_rho"]["plus"]
+        for name, f in (("flat", flat), ("prior", prior))
+    }
+    assert spread["prior"] < spread["flat"], spread
+
+    rp = fit_prior.column("rp_rs") * STAR["rad"] * 109.076
+    assert prior["rp_rearth"] == pytest.approx(
+        dict(zip(("p16", "median", "p84"), np.percentile(rp, [16, 50, 84]), strict=True))
+    )
+    a_rs = [
+        a_rs_from_density(10.0**r, p)
+        for r, p in zip(fit_prior.column("log_rho"), fit_prior.column("period"), strict=True)
+    ]
+    assert prior["a_rs"]["median"] == pytest.approx(np.median(a_rs))
+    for name in ("t0", "period"):
+        assert prior["ephemeris"][name] == pytest.approx(
+            {"median": np.median(fit_prior.column(name)), "sd": np.std(fit_prior.column(name))}
+        )
+
+
+def test_prior_fit_needs_fit_data_and_a_tic_density_inside_the_fit_range(tmp_path, monkeypatch):
+    fitted = watch_the_fit(monkeypatch, sample=False)
+    known = load_known(write_catalog_snapshot(tmp_path / "snap"))
+    eph = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+    lc = with_products(quick_planet(), dict.fromkeys((1, 2, 64), "SPOC"))
+
+    def prior_fit(lc, star, crit_vet):
+        report, _, fit_prior = vet.vet_with_fits(lc, star, eph, known, SEARCH, crit_vet, seed=1)
+        assert fit_prior is None
+        return report
+
+    report = prior_fit(lc, STAR, FAST_VET3)
+    assert report["fit_prior"] is None
+    assert report["fit_prior_reason"] == "no fit: not fitted in this test"
+    assert len(fitted) == 2, "the flat fit and the density-prior fit"
+    for rho, reason in (
+        (float("nan"), "the TIC gives no stellar density"),
+        # A white dwarf's density: walkers started there sit outside the flat bound and never move.
+        (1e5, "the TIC density, log10 5.15 g/cm3, is outside the fit's range (-3, 2)"),
+    ):
+        report = prior_fit(lc, {**STAR, "rho": rho}, FAST_VET3)
+        assert (report["fit_prior"], report["fit_prior_reason"]) == (None, reason)
+    assert len(fitted) == 4, "only the flat fit ran"
+
+    qlp = with_products(quick_planet(), dict.fromkeys((1, 2, 64), "QLP"))
+    report = prior_fit(qlp, STAR, FAST_VET3)
+    assert report["fit_prior_reason"] == "no pdcsap data to fit"
+
+    v2 = prior_fit(lc, STAR, FAST_VET)
+    assert not {"fit_prior", "fit_prior_reason"} & set(v2)
+    assert len(fitted) == 5, "vet-v2 fits once"

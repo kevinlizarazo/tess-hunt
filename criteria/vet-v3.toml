@@ -74,3 +74,8 @@ exclude_timing_suspect = true          # every check and fit leaves out sectors 
 pdcsap = ["SPOC", "TESS-SPOC"]         # crowding-corrected (0023)
 qlp = ["QLP"]
 fit = "pdcsap"                         # the family both fits use
+
+[predict]
+sectors_file = "benchmarks/tess_sectors.csv"
+first_sector = 110          # sectors before it are observed already (2026-10-16)
+sigma = [1.0, 3.0]          # window half-widths reported, in posterior standard deviations

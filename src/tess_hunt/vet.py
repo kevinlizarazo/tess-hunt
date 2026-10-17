@@ -20,14 +20,15 @@ from tess_hunt.checks.photometry import (
     signal_present,
     with_red_noise,
 )
-from tess_hunt.checks.physical import density, radius, shape
+from tess_hunt.checks.physical import R_EARTH_PER_R_SUN, density, radius, shape
 from tess_hunt.config import lc_dir, load_criteria
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
-from tess_hunt.fit import FitResult, fit_transit
+from tess_hunt.fit import LOG_RHO_RANGE, FitResult, fit_transit
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.novelty import check_novelty
 from tess_hunt.provenance import start_run
+from tess_hunt.transit import RHO_SUN_GCC, a_rs_from_density
 
 # vet-v1 left these to the code (docs/decisions/0014-vet-constants-in-criteria.md). A vet-v1 file gets
 # them back, so M1's vets reproduce.
@@ -96,6 +97,39 @@ def other_known_transits(
     ]
 
 
+def density_prior(star: Mapping, default_dex: float) -> tuple[float, float] | None:
+    """The TIC density as fit_transit's prior, (log10 rho in g/cm^3, sigma in dex), or None without
+    one. `rho` and `e_rho` are solar units."""
+    rho, e_rho = _number(star.get("rho")), _number(star.get("e_rho"))
+    if not (np.isfinite(rho) and rho > 0):
+        return None
+    sigma = e_rho / (rho * np.log(10)) if np.isfinite(e_rho) and e_rho > 0 else default_dex
+    return float(np.log10(rho * RHO_SUN_GCC)), float(sigma)
+
+
+def prior_fit_summary(fit: FitResult, rad_tic_solar: float) -> dict:
+    """The density-prior fit's parameters, as the dossier, TRICERATOPS and M4 read them."""
+    out = fit.summary()
+    if np.isfinite(rad_tic_solar) and rad_tic_solar > 0:
+        p16, mid, p84 = np.percentile(
+            fit.column("rp_rs") * rad_tic_solar * R_EARTH_PER_R_SUN, [16, 50, 84]
+        )
+        out["rp_rearth"] = {"median": float(mid), "p16": float(p16), "p84": float(p84)}
+    else:
+        out["rp_rearth"] = None
+    a_rs = [
+        a_rs_from_density(10.0**log_rho, period)
+        for log_rho, period in zip(fit.column("log_rho"), fit.column("period"), strict=True)
+    ]
+    lo, mid, hi = np.percentile(a_rs, [16, 50, 84])
+    out["a_rs"] = {"median": float(mid), "minus": float(mid - lo), "plus": float(hi - mid)}
+    out["ephemeris"] = {
+        name: {"median": float(np.median(fit.column(name))), "sd": float(np.std(fit.column(name)))}
+        for name in ("t0", "period")
+    }
+    return out
+
+
 def vet_signal(
     lc: LightCurve,
     star: Mapping,
@@ -106,8 +140,28 @@ def vet_signal(
     seed: int | None,
     include_suspect: bool = False,
 ) -> tuple[dict, FitResult | None]:
-    """`include_suspect` keeps vet-v3's timing-suspect sectors in, for an evidence-only vet that never
-    makes the call (docs/decisions/0022-vet-without-timing-suspect-sectors.md)."""
+    """vet_with_fits's report and flat-prior fit. Under vet-v3 the report still summarizes the
+    density-prior fit; only its samples are left out."""
+    report, fit, _ = vet_with_fits(
+        lc, star, eph, known, crit_search, crit_vet, seed, include_suspect
+    )
+    return report, fit
+
+
+def vet_with_fits(
+    lc: LightCurve,
+    star: Mapping,
+    eph: Ephemeris,
+    known: pd.DataFrame,
+    crit_search: dict,
+    crit_vet: dict,
+    seed: int | None,
+    include_suspect: bool = False,
+) -> tuple[dict, FitResult | None, FitResult | None]:
+    """The report, the flat-prior fit and, under vet-v3, the fit with the TIC density as a prior
+    (docs/decisions/0024-density-prior-fit-and-windows.md). `include_suspect` keeps vet-v3's
+    timing-suspect sectors in, for an evidence-only vet that never makes the call
+    (docs/decisions/0022-vet-without-timing-suspect-sectors.md)."""
     tic = int(star["tic"])
     # Only vet-v1 names the fit window `window_durations` (docs/decisions/0015-fit-window-half-width.md).
     v1 = "window_durations" in crit_vet["fit"]
@@ -220,6 +274,27 @@ def vet_signal(
         ]
         if with_radius:
             results.append(radius(fit, _number(star.get("rad")), crit_vet["radius"]["max_rearth"]))
+    # The checks keep the flat prior: the density check needs it, and shape and radius read from a
+    # density prior would assume the signal is on the target, one of the things being tested.
+    fit_prior, no_prior_fit = None, None
+    if v3:
+        prior = density_prior(star, crit_vet["density"]["default_log_rho_error"])
+        low, high = LOG_RHO_RANGE
+        if fit_lc is None:
+            no_prior_fit = no_fit
+        elif prior is None:
+            no_prior_fit = "the TIC gives no stellar density"
+        elif not low < prior[0] < high:
+            # Walkers started outside the flat bound never move, and the fit would say only that.
+            no_prior_fit = (
+                f"the TIC density, log10 {prior[0]:.2f} g/cm3, is outside the fit's range "
+                f"({low:g}, {high:g})"
+            )
+        else:
+            try:
+                fit_prior = fit_transit(fit_lc, eph, crit_vet["fit"], rho_prior=prior, seed=seed)
+            except ValueError as exc:
+                no_prior_fit = f"no fit: {exc}"
     report = {
         "tic": tic,
         "ephemeris": asdict(eph),
@@ -235,8 +310,14 @@ def vet_signal(
             evidence_only=include_suspect,
             families={name: np.unique(part.sector).tolist() for name, part in parts.items()},
             dropped_suspect=dropped,
+            fit_prior=(
+                prior_fit_summary(fit_prior, _number(star.get("rad")))
+                if fit_prior is not None
+                else None
+            ),
+            fit_prior_reason=no_prior_fit,
         )
-    return report, fit
+    return report, fit, fit_prior
 
 
 def add_parser(sub) -> None:
@@ -273,7 +354,7 @@ def cmd(args) -> int:
         run.record_input(name, path)
     run.record_input("light_curve", lc_path)
     eph = Ephemeris(args.period, args.t0, args.duration, args.depth)
-    report, fit = vet_signal(
+    report, fit, fit_prior = vet_with_fits(
         LightCurve.load(lc_path),
         star[0],
         eph,
@@ -285,6 +366,8 @@ def cmd(args) -> int:
     run.write_json("checks.json", report)
     if fit is not None:
         np.savez_compressed(run.path / "fit_samples.npz", samples=fit.samples)
+    if fit_prior is not None:
+        np.savez_compressed(run.path / "fit_prior_samples.npz", samples=fit_prior.samples)
     for c in report["checks"]:
         print(f"{c['check']:14s} {c['outcome']:13s} {c['reason']}")
     print(f"advances: {report['advances']} -> {run.path}")

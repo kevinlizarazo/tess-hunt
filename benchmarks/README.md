@@ -75,6 +75,16 @@ written by
 
 No `tess-hunt` stage reads the file; only the pixel tests do.
 
+## TESS sector dates
+
+`tess_sectors.csv` gives the start and end of the sectors TESS has yet to observe, S110 to S114. `predict.windows` places a signal's next transits in them (`[predict]` in `criteria/vet-v3.toml`, decision
+0024). It is an input, not a criterion.
+
+Each row's dates are from the sector's page at tess.mit.edu (`source`), read on 2026-10-16 (`read_on`). The pages
+give days only ("Observations extend from October 31 through November 26, 2026"), so each start and end is 00:00 UTC
+on its day, and each sector ends where the next begins. The five pages, read again on 2026-10-17, gave the same days
+and no times. Future pointings are provisional: when a page changes, the row changes with a new `read_on`.
+
 ## Replay comparisons
 
 `compare_replay.py` regenerates a replay comparison, `results/benchmarks/<replay run id>-comparison.md`, from the

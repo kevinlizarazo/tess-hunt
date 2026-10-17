@@ -13,6 +13,7 @@ from tess_hunt.lightcurve import LightCurve
 from tess_hunt.transit import a_rs_from_density, density_from_duration, light_curve
 
 NAMES = ("t0", "period", "rp_rs", "b", "log_rho", "q1", "q2")
+LOG_RHO_RANGE = (-3.0, 2.0)
 
 
 @dataclass(frozen=True)
@@ -65,7 +66,7 @@ def fit_transit(
             and abs(period - eph.period) < 0.01 * eph.period
             and 0.001 < rp_rs < cfg["max_rp_rs"]
             and 0.0 <= b < 1.0 + rp_rs
-            and -3.0 < log_rho < 2.0
+            and LOG_RHO_RANGE[0] < log_rho < LOG_RHO_RANGE[1]
             and 0.0 < q1 < 1.0
             and 0.0 < q2 < 1.0
         ):
