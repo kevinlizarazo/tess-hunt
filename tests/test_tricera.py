@@ -880,7 +880,8 @@ def control_triceratops(toi, toi_table, tmp_path):
     tic = int(row.tic)
     stars = targets.query_tic_ids([tic])
     star = stars.iloc[0].to_dict()
-    found = gaia.dr3_join(stars).iloc[0]
+    # A float64 row would lose a Gaia id's low digits.
+    found = gaia.dr3_join(stars).to_dict("records")[0]
     star.update(ruwe=float(found["ruwe"]), dr3_source_id=int(found["dr3_source_id"]))
     fetch.fetch_star(tic, mast.discover([tic]), tmp_path, SEARCH["fetch"])
     lc = good_timestamps(LightCurve.load(tmp_path / f"{tic}.npz"))
