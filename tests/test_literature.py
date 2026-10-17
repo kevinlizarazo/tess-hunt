@@ -259,14 +259,10 @@ def test_searchable_forms_and_fallback_names():
         "TOI-4298",
         "TIC 146282666",
     ]
-    # SIMBAD failed or lacks the star: the TIC, Gaia DR3 and 2MASS names from the targets row.
-    row = {"tic": 1, "dr3_source_id": 42, "twomass": "01445032-1824032"}
-    assert literature.searchable([], row, CFG["forms"]) == [
-        "TIC 1",
-        "Gaia DR3 42",
-        "2MASS J01445032-1824032",
-    ]
-    # A control's row has neither; an id rounded through a float would name another star.
+    # SIMBAD failed or lacks the star: the TIC and Gaia DR3 names from the targets row.
+    row = {"tic": 1, "dr3_source_id": 42}
+    assert literature.searchable([], row, CFG["forms"]) == ["TIC 1", "Gaia DR3 42"]
+    # A control's row has no source id; an id rounded through a float would name another star.
     for missing in (None, float("nan"), 5.140454049422547e18):
         assert literature.searchable([], {"tic": 1, "dr3_source_id": missing}, CFG["forms"]) == [
             "TIC 1"
@@ -303,6 +299,23 @@ def test_paging_stops_at_max_hits_as_too_broad():
     assert check.outcome == Outcome.PASS
     assert check.evidence["too_broad"] == ["zenodo TIC 164767175: 40 hits"]
     assert check.reason == "complete: 30 hits to screen"
+
+
+def test_ads_too_broad_leaves_the_search_incomplete():
+    cfg = {**CFG, "max_hits": 3}
+    many = [paper(f"Paper {i}", f"10.1/{i}", f"2601.{i:05d}") for i in range(5)]
+    # A well-studied star: every search too broad, so no hit would be left to read.
+    names = ("TIC 164767175", "HIP 8152")
+    hits = {(s, n): many for s in ("arxiv", "openalex", "zenodo") for n in names}
+    record = search(Web(hits={**hits, ("ads", "TIC 164767175"): many}), names=names, cfg=cfg)
+    assert record["sources"]["ads"]["TIC 164767175"]["status"] == "too_broad"
+    check = literature.literature_check(complete(record))
+    # The by-name searches leave a too-broad query to ADS's object search; nothing stands for ADS's own.
+    assert check.outcome == Outcome.INCONCLUSIVE
+    assert check.evidence["incomplete"] == [
+        "ads TIC 164767175: too_broad (5 papers; nothing stands for it)"
+    ]
+    assert len(check.evidence["too_broad"]) == 7 and check.evidence["hits"] == []
 
 
 def test_a_failed_source_leaves_the_search_incomplete(slept):

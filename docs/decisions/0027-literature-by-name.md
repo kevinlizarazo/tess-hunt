@@ -19,16 +19,18 @@ as "nothing published".
   `[literature] forms` (TIC, TOI, HD, HIP, Gaia DR3, 2MASS, TYC and WDS), with whitespace normalised ("HD  14989"
   becomes "HD 14989"). Other forms (BD, CPD, GSC, HIC, PPM, SAO, RAVE, Gaia DR1 and DR2 and the like) stay in the
   record as SIMBAD gave them and are not searched. Where SIMBAD gave no name of a form (it failed, or does not know the
-  star), the TIC name, the Gaia DR3 name from the targets row's `dr3_source_id` and the 2MASS name from a `twomass`
-  column are added. A source id that is not an integer is left out: one rounded through a float names another star.
+  star), the TIC name and the Gaia DR3 name from the targets row's `dr3_source_id` are added. A source id that is not
+  an integer is left out: one rounded through a float names another star. The targets tables carry no 2MASS ID, so a
+  2MASS name comes from SIMBAD only.
 - **Searches.** Each name goes to arXiv (`all:"name"`), OpenAlex (`fulltext.search:"name"`) and Zenodo (`"name"`), as
   triage's phrase search did. ADS takes one query, `object:"TIC n"`, which resolves the star's aliases through SIMBAD
   and so covers the forms the full-text searches skip. ExoFOP's target JSON is read live.
 - **Paging.** Each search pages until it holds every hit its service reports, at the most each service serves a page
   without a key (Zenodo refuses more than 25). A search whose reported total exceeds `[literature] max_hits` (200) stops
-  at that page and is recorded `too_broad` with the total and no hits: complete, not incomplete, since ADS's object
-  search stands for it. A page that comes back empty short of the reported total (arXiv does this now and then) is an
-  error, not the end of the hits.
+  at that page and is recorded `too_broad` with the total and no hits. For a by-name search that is complete, not
+  incomplete, since ADS's object search stands for it; nothing stands for ADS's own, so a too-broad ADS search leaves
+  the search incomplete (below). A page that comes back empty short of the reported total (arXiv does this now and
+  then) is an error, not the end of the hits.
 - **Rate limits and failures.** arXiv gets one request per `[literature] arxiv_pause_s` (3.0 s), failed ones included.
   A dropped connection or a server error (5xx) is tried three times, 10 s times the attempt apart. Any other status,
   429 included (arXiv's rate limit, OpenAlex's daily cap of about 100 full-text searches without a key), is not
@@ -44,8 +46,10 @@ as "nothing published".
   CTOI's `cnotes`), the confirmed planets ExoFOP lists for the star, the imaging rows and the names of the files. A
   failed read is recorded with the same error rule.
 - **The check.** `literature.literature_check` (`"literature"`) is inconclusive when SIMBAD, ExoFOP or any search
-  failed or was not made (a source missing from the record counts as not made), with each listed: a rate-limited
-  search is not a negative. Otherwise it passes, "complete: N hits to screen", with the hits of every `ok` search
+  failed or was not made (a source missing from the record counts as not made), or when ADS's object search was too
+  broad, with each listed: a rate-limited search is not a negative, and with ADS too broad no search covers the
+  by-name searches it stands for, so even a record of too-broad searches only (no hit left to read) can't pass.
+  Otherwise it passes, "complete: N hits to screen", with the hits of every `ok` search
   merged into one entry per paper: hits that share a DOI, an arXiv id or a title (lowercase letters and digits) are
   the same paper, and an arXiv DOI (10.48550/arXiv.X) gives the arXiv id X. Each entry lists the searches that found
   it. Too-broad searches are listed with their totals.
@@ -64,7 +68,7 @@ as "nothing published".
   vetting run, the whole search (SIMBAD's answer, the names searched, every search, ExoFOP) and the check. The
   provenance's summary records each file's sha256.
 - **Resuming.** With `--resume-from RUN`, an earlier finished literature run on the same criteria (a production run
-  for a production run) gives its complete searches (`ok` and `too_broad`) for the same star, source and name; each
+  for a production run) gives its answered searches (`ok` and `too_broad`) for the same star, source and name; each
   is kept with `from_run` naming the run that made it, and only the rest are made again. Each earlier file is checked
   against the sha256 its run recorded and is recorded as an input. SIMBAD and ExoFOP are read again every run.
 
@@ -78,10 +82,11 @@ as "nothing published".
   control rests on ADS's object search, and the record is inconclusive in any case.
 - SIMBAD is asked by the TIC identifier. A star SIMBAD holds without that identifier gets only the names from the
   targets row, and ADS's object search for the TIC may not resolve it either.
-- The targets tables M2 built carry no 2MASS ID, and the control tables carry no `dr3_source_id`, so for a star SIMBAD
-  lacks, the search may run on the TIC name alone.
-- If ADS's object search itself is too broad, nothing stands for it. It is recorded with its total, and a star with
-  that many papers is one the review reads closely anyway.
+- The control tables carry no `dr3_source_id`, so for a star SIMBAD lacks, the search may run on the TIC name alone.
+- A star ADS lists more than `max_hits` papers for never gets a complete search under vet-v3, so its signal can't be
+  passed (M3 design, section 4.9) until the maintainer reads ADS for it by hand and a decision record says how that
+  counts, or `max_hits` changes through one. A resumed run asks ADS again only if the earlier answer failed; the same
+  criteria give the same too-broad answer.
 - A resumed search is kept as it was found, whatever its age; `from_run` names the run, and so the date, it came from.
 
 ## Evidence
@@ -90,10 +95,12 @@ as "nothing published".
   - `test_simbad_names_reads_every_identifier` (SIMBAD's identifiers as served; an unknown star is an empty list; a
     server error is retried and raises; a bad request is recorded, not retried).
   - `test_searchable_forms_and_fallback_names` (the forms kept from SIMBAD's identifiers for TIC 164767175, whitespace
-    normalised; the TIC, Gaia DR3 and 2MASS names from the targets row when SIMBAD gave none; a missing or float
-    source id adds nothing).
+    normalised; the TIC and Gaia DR3 names from the targets row when SIMBAD gave none; a missing or float source id
+    adds nothing).
   - `test_paging_stops_at_max_hits_as_too_broad` (two Zenodo pages for 30 hits; a total over `max_hits` stops at the
     first page as too broad, and the check still passes).
+  - `test_ads_too_broad_leaves_the_search_incomplete` (every search too broad, ADS's included: inconclusive, with ADS
+    listed and nothing standing for it).
   - `test_a_failed_source_leaves_the_search_incomplete` (OpenAlex's 429 is not retried, a server error is tried three
     times, arXiv paced; an empty page short of the total is an error; a failed SIMBAD or ExoFOP, a missing source, or
     an empty record is inconclusive).

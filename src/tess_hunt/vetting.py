@@ -666,12 +666,12 @@ def _earlier_literature(
 
 
 def _kept(sources: dict, run_id: str) -> dict:
-    """The searches an earlier run completed, each marked with the run that made it."""
+    """The searches an earlier run got an answer to, each marked with the run that made it."""
     return {
         source: {
             name: {**r, "from_run": r.get("from_run", run_id)}
             for name, r in results.items()
-            if r["status"] in literature.COMPLETE
+            if r["status"] in literature.ANSWERED
         }
         for source, results in sources.items()
     }

@@ -25,8 +25,9 @@ OPENSEARCH = "{http://a9.com/-/spec/opensearch/1.1/}"
 ARXIV_ATOM = "{http://arxiv.org/schemas/atom}"
 ARXIV_DOI = "10.48550/arxiv."
 SOURCES = ("arxiv", "openalex", "zenodo", "ads")
-# A too-broad search answered; ADS's object search stands for it, so it does not leave the search incomplete.
-COMPLETE = ("ok", "too_broad")
+# Searches that answered, which a resumed run keeps. A by-name search that is too broad is left to ADS's object
+# search; ADS's own too-broad answer has nothing standing for it, so literature_check counts it as incomplete.
+ANSWERED = ("ok", "too_broad")
 # The most each service serves in one page without a key (Zenodo refuses more than 25).
 PAGE = {"arxiv": 2000, "openalex": 200, "zenodo": 25, "ads": 2000}
 RETRY_ATTEMPTS = 3
@@ -140,15 +141,14 @@ def _has_form(name: str, form: str) -> bool:
 
 
 def searchable(names: list[str], star: Mapping, forms: list[str]) -> list[str]:
-    """The names in `forms`, whitespace normalised, with the TIC, Gaia DR3 and 2MASS names from the targets row where
-    SIMBAD gave none of that form."""
+    """The names in `forms`, whitespace normalised, with the TIC and Gaia DR3 names from the targets row where SIMBAD
+    gave none of that form."""
     found = [" ".join(n.split()) for n in names]
-    source_id, twomass = star.get("dr3_source_id"), star.get("twomass")
+    source_id = star.get("dr3_source_id")
     fallback = {
         "TIC": f"TIC {int(star['tic'])}",
         # An id rounded through a float names another star; None, NaN and pd.NA are missing.
         "Gaia DR3": f"Gaia DR3 {source_id}" if isinstance(source_id, int | np.integer) else None,
-        "2MASS": f"2MASS J{twomass}" if isinstance(twomass, str) and twomass else None,
     }
     for form, name in fallback.items():
         if name and not any(_has_form(n, form) for n in found):
@@ -375,23 +375,28 @@ def _dedupe(found: list[tuple[str, dict]]) -> list[dict]:
 
 
 def literature_check(record: Mapping) -> CheckResult:
-    """Inconclusive while any search failed or was never made (a rate limit is not a negative); otherwise the hits,
-    one per paper, for the maintainer and the review to read. It never fails (decision 0027)."""
+    """Inconclusive while any search failed or was never made (a rate limit is not a negative), or ADS's object search
+    was too broad; otherwise the hits, one per paper, for the maintainer and the review to read. It never fails
+    (decision 0027)."""
     sources = record.get("sources") or {}
-    searches = [("SIMBAD", record.get("simbad"))]
+    searches = [("SIMBAD", "SIMBAD", record.get("simbad"))]
     for source in SOURCES:
         made = sources.get(source)
         searches += (
-            [(f"{source} {name}", r) for name, r in made.items()] if made else [(source, None)]
+            [(source, f"{source} {name}", r) for name, r in made.items()]
+            if made
+            else [(source, source, None)]
         )
-    searches.append(("ExoFOP", record.get("exofop")))
-    incomplete = [
-        f"{label}: not_searched"
-        if r is None
-        else f"{label}: {r['status']}" + (f" ({r['error']})" if r.get("error") else "")
-        for label, r in searches
-        if r is None or r["status"] not in COMPLETE
-    ]
+    searches.append(("ExoFOP", "ExoFOP", record.get("exofop")))
+    incomplete = []
+    for source, label, r in searches:
+        if r is None:
+            incomplete.append(f"{label}: not_searched")
+        elif source == "ads" and r["status"] == "too_broad":
+            incomplete.append(f"{label}: too_broad ({r['total']} papers; nothing stands for it)")
+        elif r["status"] not in ANSWERED:
+            error = f" ({r['error']})" if r.get("error") else ""
+            incomplete.append(f"{label}: {r['status']}{error}")
     answered = [(f"{s} {name}", r) for s in SOURCES for name, r in (sources.get(s) or {}).items()]
     hits = _dedupe([(label, h) for label, r in answered if r["status"] == "ok" for h in r["hits"]])
     evidence = {
