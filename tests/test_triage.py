@@ -1,5 +1,6 @@
 import json
 import pickle
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +30,10 @@ SIGNALS = [  # (tic, rank, period, t0, sde)
     (14, 1, 6.0, 1330.0, 5.0),  # below the threshold
 ]
 THRESHOLD_RUN = "20261020T000000Z-threshold-abc-1"
+NULL_RUN = "20261019T000000Z-search-abc-0"
+HEAD = subprocess.run(
+    ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True
+).stdout.strip()
 
 
 def write_run(path: Path, provenance: dict, **tables) -> Path:
@@ -108,6 +113,11 @@ def setup(
     # What the search searched: triage holds a run to its targets and light curves.
     inputs["targets"] = {"file": targets.name, "sha256": sha256_file(targets)}
     lc_sha256 = [sha256_file(data / "lc" / f"{tic}.npz") for tic in (11, 12, 13, 14)]
+    stars = pd.DataFrame(
+        {"tic": [11, 12, 13, 14], "status": "ok", "control": False, "lc_sha256": lc_sha256}
+    )
+    # The null behind the threshold searched the same light curves.
+    write_run(data / "runs" / NULL_RUN, {}, stars=stars)
     search = write_run(
         data / "runs" / "s1",
         {
@@ -118,16 +128,25 @@ def setup(
             "summary": {"controls_valid": controls_valid},
         },
         signals=signals,
-        stars=pd.DataFrame(
-            {"tic": [11, 12, 13, 14], "status": "ok", "control": False, "lc_sha256": lc_sha256}
-        ),
+        stars=stars,
     )
     criteria = [
         {"file": "criteria/search-v2.toml", "sha256": CRITERIA.sha256},
         {"file": "criteria/triage-v1.toml", "sha256": TRIAGE.sha256},
     ]
-    thr = write_run(data / "runs" / THRESHOLD_RUN, {"criteria": criteria})
-    (thr / "threshold.json").write_text(json.dumps({"threshold": threshold, **hashes}))
+    # Made at this checkout, so LEO-Vetter judges here as it did there.
+    thr = write_run(
+        data / "runs" / THRESHOLD_RUN,
+        {
+            "run_id": THRESHOLD_RUN,
+            "criteria": criteria,
+            "git": {"commit": HEAD, "dirty_paths": []},
+            "uv_lock_sha256": sha256_file(ROOT / "uv.lock"),
+        },
+    )
+    (thr / "threshold.json").write_text(
+        json.dumps({"threshold": threshold, "null_run": NULL_RUN, **hashes})
+    )
     snap = tmp_path / "snap"
     snap.mkdir()
     base = {"ra": 1.0, "dec": -70.0, "duration": 0.1, "depth_ppm": 1000.0}
@@ -266,6 +285,14 @@ def tlc(metrics=None):
 
 def no_triage_run(tmp_path) -> bool:
     return not list((tmp_path / "data" / "runs").glob("*-triage-*"))
+
+
+def change_null_star(tmp: Path, tic: int) -> None:
+    """The null searched another light curve of `tic` than the search did."""
+    path = tmp / "data/runs" / NULL_RUN / "stars.parquet"
+    stars = pd.read_parquet(path)
+    stars.loc[stars["tic"] == tic, "lc_sha256"] = "0" * 64
+    stars.to_parquet(path)
 
 
 def test_triage_records_each_step_and_searches_the_literature_of_shortlisted_stars(
@@ -525,16 +552,39 @@ def test_triage_with_no_signal_above_the_threshold_writes_empty_tables(tmp_path,
             "targets",
         ),
         (
-            lambda tmp: make_lc(sectors=(1, 2, 98), tic=13, seed=1).save(tmp / "data/lc/13.npz"),
-            r"light curves of 1 search stars .*\[13\]",
+            lambda tmp: (tmp / "targets.parquet").unlink(),
+            "--targets targets.parquet does not exist",
         ),
-        (lambda tmp: (tmp / "data/lc/12.npz").unlink(), r"light curves of 1 search stars .*\[12\]"),
+        (
+            lambda tmp: make_lc(sectors=(1, 2, 98), tic=13, seed=1).save(tmp / "data/lc/13.npz"),
+            r"light curves of 1 search star differ .*\[13\]",
+        ),
+        (
+            lambda tmp: (tmp / "data/lc/12.npz").unlink(),
+            r"light curves of 1 search star differ .*\[12\]",
+        ),
         (
             lambda tmp: edit_json(
                 tmp / "data/runs" / THRESHOLD_RUN / "provenance.json",
                 lambda p: p["criteria"][1].update(sha256="0" * 64),
             ),
-            r"\[leo\] and \[leo_metrics\]",
+            r"criteria/triage-v1.toml changed since .* \[leo\] and \[leo_metrics\]",
+        ),
+        (
+            lambda tmp: edit_json(
+                tmp / "data/runs" / THRESHOLD_RUN / "provenance.json",
+                lambda p: p.update(run_id="20261020T000000Z-threshold-abc-2"),
+            ),
+            f"{THRESHOLD_RUN} is not the run its provenance names",
+        ),
+        (
+            lambda tmp: change_null_star(tmp, 13),
+            f"light curves of 1 triaged star differ from the ones the null {NULL_RUN} searched "
+            rf"for {THRESHOLD_RUN}: \[13\]",
+        ),
+        (
+            lambda tmp: (tmp / "data/runs" / NULL_RUN / "stars.parquet").unlink(),
+            f"{THRESHOLD_RUN} names a null run with no stars.parquet: {NULL_RUN}",
         ),
     ],
 )
@@ -619,6 +669,34 @@ def test_production_triage_refuses_a_search_that_was_not_production(tmp_path, mo
     with pytest.raises(SystemExit, match="s1 is not a production search"):
         main([*argv, "--production"])
     assert no_triage_run(tmp_path)
+
+
+def test_production_triage_refuses_a_threshold_run_that_was_not_production(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch)
+    edit_json(tmp_path / "data/runs/s1/provenance.json", lambda p: p.update(production=True))
+    with pytest.raises(SystemExit, match=f"{THRESHOLD_RUN} is not a production threshold run"):
+        main([*argv, "--production"])
+    assert no_triage_run(tmp_path)
+
+
+def test_triage_refuses_a_threshold_run_under_another_lock(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch)
+    edit_json(
+        tmp_path / "data/runs" / THRESHOLD_RUN / "provenance.json",
+        lambda p: p.update(uv_lock_sha256="0" * 64),
+    )
+    with pytest.raises(
+        SystemExit, match=f"LEO-Vetter would not judge as in {THRESHOLD_RUN}: uv.lock differs"
+    ):
+        main(argv)
+    assert no_triage_run(tmp_path)
+
+
+def test_triage_compares_only_the_triaged_stars_light_curves_with_the_null(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch)
+    # Star 14's only signal is below the threshold, so no signal of it is judged.
+    change_null_star(tmp_path, 14)
+    assert main(argv) == 0
 
 
 # leo-vetter 1.2.0's secondary test negates a bool with ~ (see test_leo.py).
