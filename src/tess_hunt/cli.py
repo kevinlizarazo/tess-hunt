@@ -4,9 +4,9 @@ import argparse
 import logging
 from importlib.metadata import version
 
-from tess_hunt import benchmark, catalogs, fetch, search, targets, triage, vet
+from tess_hunt import benchmark, catalogs, fetch, search, targets, triage, vet, vetting
 
-COMMANDS: list = [catalogs, targets, fetch, search, benchmark, vet, triage]
+COMMANDS: list = [catalogs, targets, fetch, search, benchmark, vet, triage, vetting]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,7 +24,10 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
-    # lightkurve installs its own handler, so its INFO lines would print twice under basicConfig.
-    logging.getLogger("lightkurve").setLevel(logging.WARNING)
+    # lightkurve installs its own handler, so each of its lines would print there and again through
+    # the root logger's.
+    lightkurve = logging.getLogger("lightkurve")
+    lightkurve.setLevel(logging.WARNING)
+    lightkurve.propagate = False
     args = build_parser().parse_args(argv)
     return args.func(args)
