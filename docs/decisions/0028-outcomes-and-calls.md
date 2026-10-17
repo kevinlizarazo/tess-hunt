@@ -2,14 +2,18 @@
 
 - Date: 2026-10-17
 - Status: Accepted in part. Approved by the maintainer in the M3 design (2026-10-16): the three outcomes, the five
-  items of the "passed" bar, the record and what the dossier shows (M3 design, sections 4.7 to 4.9). Proposed, pending
-  the maintainer's review: three rulings of the M3 build's controller, Ruling Q (bar 2's "ExoFOP shows nothing at the
-  period" checked against every ExoFOP planet-parameter row on period alone, at the novelty harmonics), Ruling R
-  (`hits_read` names every hit the review flagged) and Ruling U (a second-list row's pixel check, which the second list
-  runs, reaches the call: a pixel fail is a kill's ground, and a second-list row's pass needs a pixel pass); and the
-  choices this record makes in building it: each run's provenance copied into the record, production runs only,
-  unknown call keys refused, a signal a TRICERATOPS or literature run never judged allowed in, the README listing only
-  published calls that stand, and the timing-suspect marks in the centroid table.
+  items of the "passed" bar, the record, what the dossier shows, and the second list's rule that a pixel fail kills a
+  row as it would have in triage (M3 design, sections 4.7 to 4.10). Proposed, pending the maintainer's review: five
+  rulings the M3 build's controller made after that approval, Ruling Q (bar 2's "ExoFOP shows nothing at the period"
+  checked against every ExoFOP planet-parameter row on period alone, at the novelty harmonics), Ruling R (`hits_read`
+  names every hit the review flagged), Ruling U (how the second list's pixel check reaches the call: `pixels.json`
+  through `--second-list`, an inconclusive or missing pixel check blocking a second-list row's pass, and a failed pixel
+  check counted as a kill's ground for every signal), Ruling V (the second list's SPOC DV statistics and ExoMiner score
+  matched at the novelty harmonics and looked up on the stars novelty matched as well as the signal's own, each row
+  naming the TIC, TCE and ratio it came from) and Ruling W (every pass, not only a second-list row's, needs a pixel
+  pass); and the choices this record makes in building it: each run's provenance copied into the record, production
+  runs only, unknown call keys refused, a signal a TRICERATOPS or literature run never judged allowed in, the README
+  listing only published calls that stand, and the timing-suspect marks in the centroid table.
 
 ## Context
 
@@ -59,14 +63,26 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   5. the three sentences are there.
 
   The match tolerance is read from the criteria files the vetting run's provenance names, each checked against the
-  sha256 the run recorded. A second-list row also needs its pixel check passed (below).
+  sha256 the run recorded. Every pass also needs a pixel pass (Ruling W): triage's, in `checks.json`, or for a
+  second-list row the second list's (below). `vetting run` never checks that a candidate was shortlisted, so the bar
+  reads the pixel record instead of trusting the shortlist; a candidate whose record is missing or inconclusive can't
+  be passed.
 - **A second-list row's pixel check** (Ruling U; M3 design, section 4.10). Triage runs its pixel check only on
   signals that passed novelty, so it never ran on a second-list row, and the row's `checks.json` holds triage's "not
-  run". `tess-hunt vetting second-list` runs it as triage runs it and writes the result as `pixels.json`. For a
-  second-list row that is the pixel check `calls.problems` and the dossier read (`calls.pixels`); for every other
-  signal it is triage's, in `checks.json`. A pixel fail kills the row as it would have in triage: a failed pixel check
-  is a ground a kill may rest on (for any signal), and a second-list row's pass needs a `pixels.json` whose outcome is
-  pass. Without the second list's record, `pixels` is not a name a second-list row's call may rest on.
+  run". `tess-hunt vetting second-list` runs it as triage runs it, writes the result as `pixels.json` and draws its
+  centroid plot from it as `pixels.png`. For a second-list row that is the pixel check `calls.problems` and the dossier
+  read (`calls.pixels`), and the plot the dossier shows in place of the vetting run's `plots/centroids.png`, which drew
+  triage's empty record; for every other signal the pixel check is triage's, in `checks.json`. A pixel fail kills the
+  row as it would have in triage: a failed pixel check is a ground a kill may rest on (for any signal), and a
+  second-list row's pass needs a `pixels.json` whose outcome is pass. Without the second list's record, `pixels` is not
+  a name a second-list row's call may rest on.
+- **The second list's table** (M3 design, section 4.10; Ruling V). `vetting second-list` also writes
+  `second-list.csv` and `second-list.md`: per row the vet's outcomes, the pixel check, SPOC's DV statistics and the
+  ExoMiner score for the row at the signal's period, and the next TESS sectors. SPOC and ExoMiner rows match on period
+  alone within search-v2's `[match]` tolerance at vet-v3's novelty harmonics, on the signal's star first and then on
+  each star novelty matched it to; of several, the latest sector run's. Each row names the TIC, the TCE or ExoMiner row
+  and the ratio it came from, and lists every TCE that matched with its run and ratio, so a neighbour's or a
+  harmonic's numbers can't pass for the target's at its period.
 - **A kill** rests on a failed check (TRICERATOPS's and the pixel check's fails included) or a confirmed finding:
   `rests_on` must name one.
   **A hold** needs `deciding_evidence`. For every outcome the call names the signal its directory holds and lists the
@@ -75,8 +91,9 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   --triceratops RUN --literature RUN [--evidence-only RUN] [--second-list RUN]`:
   - from the vetting run: `checks.json`, `neighbours.csv`, `plots/*.png`; from the TRICERATOPS run: `triceratops.json`,
     `probs.csv`; from the literature run: `literature.json`; from the evidence-only run: its `checks.json` as
-    `checks-with-suspect.json`; from the second-list run, for a second-list row: `pixels.json`. Beside each run's files
-    goes that run's `provenance.json`, unchanged, as `provenance-<file>.json` (`provenance-checks.json`,
+    `checks-with-suspect.json`; from the second-list run, for a second-list row: `pixels.json` and `pixels.png`
+    (outside `plots/`, so every file there stays the vetting run's, behind `provenance-checks.json`). Beside each run's
+    files goes that run's `provenance.json`, unchanged, as `provenance-<file>.json` (`provenance-checks.json`,
     `provenance-triceratops.json`, `provenance-literature.json`, `provenance-checks-with-suspect.json`,
     `provenance-second-list.json`), so the record names its runs, commits and criteria. A signal a check killed has no
     TRICERATOPS result; the run's provenance still goes, and the dossier says the run did not judge it.
@@ -154,11 +171,16 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   `test_a_planet_elsewhere_on_exofop_does_not_stand_in_the_way`, `test_kill_must_rest_on_a_failure`,
   `test_hold_needs_deciding_evidence`, `test_promotion_stands_in_for_known_to_spoc`,
   `test_a_kill_may_rest_on_a_failed_pixel_check`, `test_a_second_list_pass_needs_the_pixel_check_to_pass`,
-  `test_a_call_file_that_breaks_the_schema_is_refused`, `test_a_review_file_that_breaks_the_schema_is_refused`,
-  `test_no_call_is_a_problem`.
-- [tests/test_secondlist.py](../../tests/test_secondlist.py): `test_the_dossier_shows_the_second_lists_pixel_check`,
+  `test_a_candidate_pass_needs_triages_pixel_pass`, `test_a_call_file_that_breaks_the_schema_is_refused`,
+  `test_a_review_file_that_breaks_the_schema_is_refused`, `test_no_call_is_a_problem`.
+- [tests/test_secondlist.py](../../tests/test_secondlist.py): `test_dv_fields_match_by_period` (the latest run, each
+  matching TCE with its run and ratio, a harmonic only at the harmonics), `test_no_spoc_row_is_none`,
+  `test_exominer_prefers_v2`, `test_second_list_runs_pixels_as_triage_did` (the DV row found on the star novelty
+  matched, named as such), `test_the_dossier_shows_the_second_lists_pixel_check` (its table, its plot in place of the
+  vetting run's, and no claim of a second list when none was given),
   `test_publish_carries_the_second_lists_pixel_record` (a kill resting on the pixel check is refused without the
-  second list's record and published with it; a second-list run made from another vetting run is refused).
+  second list's record and published with it; `plots/` holds only the vetting run's files; a second-list run made
+  from another vetting run is refused).
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_page_one_answers_the_three_questions`,
   `test_render_fails_on_a_missing_value`, `test_review_renders_findings_ratings_and_both_refuters`,
   `test_dossier_draft_says_what_it_lacks`, `test_publish_refuses_without_a_call` (and copies the record, re-renders

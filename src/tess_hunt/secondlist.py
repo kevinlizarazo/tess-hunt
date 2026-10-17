@@ -6,6 +6,7 @@ triage runs it, and the next TESS sectors, in one table."""
 import fnmatch
 import functools
 import json
+import math
 import re
 from pathlib import Path
 
@@ -152,8 +153,11 @@ def dv_fields(
             "ratio": best["ratio"],
             "tce_period": best["tce_period"],
             **{k: best[k] for k in DV_FIELDS},
-            # Every run whose TCE matched, latest first: how often SPOC found it.
-            "runs": list(dict.fromkeys(found["run"])),
+            # Every TCE on the star that matched, latest run first: how often SPOC found it, and at which ratio.
+            "runs": [
+                {"run": r["run"], "tceid": r["tceid"], "ratio": r["ratio"]}
+                for r in found.to_dict("records")
+            ],
         }
     )
 
@@ -246,7 +250,7 @@ def table(items: list[dict]) -> pd.DataFrame:
                 "dv_ratio": dv["ratio"] if dv else None,
                 "tce_period": dv["tce_period"] if dv else None,
                 **{k: dv[k] if dv else None for k in DV_FIELDS},
-                "dv_runs": " ".join(dv["runs"]) if dv else None,
+                "dv_runs": _matches(dv) if dv else None,
                 **{
                     f"exominer_{k}": exo[k] if exo else None
                     for k in ("tic", "catalog", "id", "run", "ratio", "period", "score", "score_sd")
@@ -258,8 +262,16 @@ def table(items: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _matches(dv: dict) -> str:
+    """Each TCE that matched, as run, TCE id and ratio: a harmonic match reads as one beside the ratio-1 matches."""
+    return "; ".join(f"{r['run']} {r['tceid']} ratio {r['ratio']:g}" for r in dv["runs"])
+
+
 def _f(value, fmt: str) -> str:
-    return "missing" if value is None else format(value, fmt)
+    # The tables are written after the TESScut work, so a missing value must render, not raise.
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return "missing"
+    return format(value, fmt)
 
 
 def _cell(text) -> str:
@@ -286,7 +298,7 @@ def _exominer_cell(exo: dict | None, tic: int) -> str:
     if exo["ratio"] != 1.0:
         where.append(f"ratio {exo['ratio']:g}")
     label = f"{exo['label']}; " if exo["label"] else ""
-    return f"{exo['score']:.3f} ({label}{', '.join(where)})"
+    return f"{_f(exo['score'], '.3f')} ({label}{', '.join(where)})"
 
 
 def _offset(dv: dict, name: str) -> str:
@@ -301,7 +313,7 @@ def markdown(items: list[dict], about: dict) -> str:
     names = list(dict.fromkeys(x["check"] for item in items for x in item["checks"]["checks"]))
     for item in items:
         name, c, pixels, dv = item["name"], item["checks"], item["pixels"], item["dv"]
-        tic, evidence = int(c["star"]["tic"]), pixels["evidence"]
+        tic, evidence, depth = int(c["star"]["tic"]), pixels["evidence"], c["ephemeris"]["depth"]
         found = {x["check"]: x["outcome"] for x in c["checks"]}
         found["neighbours"] = c["neighbours"]["outcome"]
         unpassed = "; ".join(f"{k} {v}" for k, v in found.items() if v != "pass") or "none"
@@ -310,7 +322,7 @@ def markdown(items: list[dict], about: dict) -> str:
                 name,
                 tic,
                 f"{c['ephemeris']['period']:.6f}",
-                f"{c['ephemeris']['depth'] * 1e6:.0f}",
+                _f(None if depth is None else depth * 1e6, ".0f"),
                 unpassed,
                 pixels["outcome"],
                 _f(evidence.get("offset_qual_arcsec"), ".1f"),
@@ -343,7 +355,7 @@ def markdown(items: list[dict], about: dict) -> str:
                 _offset(dv, "tce_dicco_msky"),
                 _offset(dv, "tce_ditco_msky"),
                 _f(dv["wst_depth"], ".1f"),
-                ", ".join(dv["runs"]),
+                _matches(dv),
             ]
         )
     search, vet = about["criteria"]
@@ -408,7 +420,7 @@ def markdown(items: list[dict], about: dict) -> str:
                 "Offset from OOT centroid (arcsec)",
                 "Offset from TIC position (arcsec)",
                 "Weak secondary (ppm)",
-                "Runs that matched",
+                "Every TCE that matched (run, TCE, ratio)",
             ],
             dv_rows,
         ),

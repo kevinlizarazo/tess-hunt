@@ -160,14 +160,31 @@ def test_dv_fields_match_by_period(tmp_path):
             {"tceid": "00000000006-01", "ticid": 6, "tce_period": 3.0},
         ],
     )
-    tce_file(snap, "s0010-s0010", [{"tceid": "00000000005-01", "ticid": 5, "tce_period": 3.0002}])
+    # S10 also found it at half the period.
+    tce_file(
+        snap,
+        "s0010-s0010",
+        [
+            {"tceid": "00000000005-01", "ticid": 5, "tce_period": 3.0002},
+            {"tceid": "00000000005-03", "ticid": 5, "tce_period": 1.5},
+        ],
+    )
     tce_file(snap, "s0039-s0039", [{"tceid": "00000000005-01", "ticid": 5, "tce_period": 2.9998}])
     # Another epoch altogether: the period alone decides, as novelty matches a row whose epoch has gone stale.
-    found = secondlist.dv_fields(snap, 5, Ephemeris(3.00005, 1400.37, 0.1), MATCH)
+    eph = Ephemeris(3.00005, 1400.37, 0.1)
+    found = secondlist.dv_fields(snap, 5, eph, MATCH)
     # The latest run is the one with the latest last sector, and of two such, the longer one.
     assert found["run"] == "s0001-s0039" and found["tceid"] == "00000000005-01"
-    assert found["runs"] == ["s0001-s0039", "s0039-s0039", "s0010-s0010"]
+    runs = [("s0001-s0039", "00000000005-01"), ("s0039-s0039", "00000000005-01")]
+    runs.append(("s0010-s0010", "00000000005-01"))
+    assert found["runs"] == [{"run": r, "tceid": t, "ratio": 1.0} for r, t in runs]
     assert found["tic"] == 5 and found["ratio"] == 1.0 and found["tce_period"] == 3.0
+    # Each run's match names its TCE and ratio, so a harmonic reads as one; of one run's, the earlier harmonic first.
+    every = secondlist.dv_fields(snap, 5, eph, MATCH, HARMONICS)["runs"]
+    assert every[2:] == [
+        {"run": "s0010-s0010", "tceid": "00000000005-01", "ratio": 1.0},
+        {"run": "s0010-s0010", "tceid": "00000000005-03", "ratio": 2.0},
+    ]
     assert found["tce_max_mult_ev"] == 20.0 and found["sectors"] == "s0001-s0039"
     assert {k: found[k] for k in secondlist.DV_FIELDS[2:]} == {
         **{k: DV_ROW[k] for k in secondlist.DV_FIELDS[2:]},
@@ -175,10 +192,10 @@ def test_dv_fields_match_by_period(tmp_path):
     }
     other = secondlist.dv_fields(snap, 5, Ephemeris(7.0, 1400.0, 0.1), MATCH)
     assert other["tceid"] == "00000000005-02" and other["wst_depth"] == 120.0
-    # At a harmonic only when the harmonics are given: the TCE's period times 0.5 is the signal's.
-    half = Ephemeris(1.5, 1400.0, 0.1)
-    assert secondlist.dv_fields(snap, 5, half, MATCH) is None
-    assert secondlist.dv_fields(snap, 5, half, MATCH, HARMONICS)["ratio"] == 0.5
+    # At a harmonic only when the harmonics are given: the TCE's period times 2 is the signal's.
+    double = Ephemeris(6.0, 1400.0, 0.1)
+    assert secondlist.dv_fields(snap, 5, double, MATCH) is None
+    assert secondlist.dv_fields(snap, 5, double, MATCH, HARMONICS)["ratio"] == 2.0
 
 
 def test_no_spoc_row_is_none(tmp_path):
@@ -231,6 +248,41 @@ def test_exominer_prefers_v2(tmp_path):
     ffi = secondlist.exominer(snap, 7, Ephemeris(6.0, 1400.0, 0.1), MATCH)
     assert ffi["catalog"] == "ExoMiner-v2 vetting_catalog_FFI" and ffi["run"] == "56-69"
     assert secondlist.exominer(snap, 9, eph, MATCH) is None
+
+
+def test_a_missing_value_renders_as_missing(tmp_path):
+    """The tables are written after the TESScut work; a catalog row without a score must not stop the run there."""
+    snap = tmp_path / "snap"
+    exominer_v2(snap, "vetting_catalog_FFI", [v2("8-1-S38", 8, "38", 4.0, NAN)])
+    found = secondlist.exominer(snap, 8, Ephemeris(4.0, 1400.0, 0.1), MATCH)
+    assert found["score"] is None
+    checks = {
+        "star": {"tic": 8},
+        "ephemeris": {"period": 4.0, "t0": 1400.0, "duration": 0.1, "depth": None},
+        "checks": [{"check": "novelty", "outcome": "inconclusive"}],
+        "neighbours": {"outcome": "pass"},
+        "upcoming_sectors": None,
+    }
+    about = {
+        "run_id": "r",
+        "vetting_run": "v",
+        "triage_run": "t",
+        "triage_criteria": "criteria/triage-v1.toml",
+        "criteria": ["search-v2", "vet-v3"],
+        "limit": 15.0,
+    }
+    for score in (None, NAN):
+        item = {
+            "name": "8-1",
+            "checks": checks,
+            "pixels": NOT_RUN,
+            "dv": None,
+            "exominer": {**found, "score": score},
+        }
+        text = secondlist.markdown([item], about)
+        assert "| 8-1 | 8 | 4.000000 | missing |" in text
+        assert "missing (PC; ExoMiner-v2 vetting_catalog_FFI, run 38)" in text
+        assert len(secondlist.table([item])) == 1
 
 
 def writable_json(path: Path, change) -> None:
@@ -363,6 +415,8 @@ def test_second_list_runs_pixels_as_triage_did(tmp_path, monkeypatch):
     assert record["signal"] == {"name": NAME, "tic": 1}
     assert record["vetting_run"] == runs["run"].name
     assert record["triage_run"] == runs["triage"].name
+    # Its centroid plot, drawn from this record, beside it.
+    assert (run / "signals" / NAME / "pixels.png").read_bytes().startswith(b"\x89PNG")
     assert not (run / "signals" / "TOI-9.01").exists()
 
     checks = tv.read(runs["run"], NAME)
@@ -377,6 +431,7 @@ def test_second_list_runs_pixels_as_triage_did(tmp_path, monkeypatch):
         row["dv_tic"] == 3 and row["tceid"] == "00000000003-01" and row["dv_run"] == "s0001-s0039"
     )
     assert row["tce_max_mult_ev"] == 15.5 and row["tce_ditco_msky"] == DV_ROW["tce_ditco_msky"]
+    assert row["dv_runs"] == "s0001-s0039 00000000003-01 ratio 1"
     assert row["exominer_tic"] == 1 and row["exominer_score"] == 0.64
     assert row["exominer_catalog"] == "ExoMiner-v2 vetting_catalog_2-min"
     assert row["upcoming_sectors"] == " ".join(str(s) for s in checks["upcoming_sectors"])
@@ -471,6 +526,22 @@ def changed_raw_file(tmp_path, runs) -> list[str]:
     return second_list_argv(runs)
 
 
+def triage_code(change):
+    """The triage run recorded other pixel code or another lock than this checkout's, and the vetting run read that
+    provenance."""
+
+    def argv(tmp_path, runs) -> list[str]:
+        path = runs["triage"] / "provenance.json"
+        td.edit_json(path, change)
+        td.edit_json(
+            runs["run"] / "provenance.json",
+            lambda p: p["inputs"]["triage_provenance"].update(sha256=sha256_file(path)),
+        )
+        return second_list_argv(runs)
+
+    return argv
+
+
 def no_second_list_row(tmp_path, runs) -> list[str]:
     td.writable(runs["run"])
     checks = runs["run"] / "signals" / NAME / "checks.json"
@@ -489,6 +560,14 @@ def no_second_list_row(tmp_path, runs) -> list[str]:
         (unlisted_raw_file, "not in the manifest"),
         (changed_raw_file, "not the file the manifest lists"),
         (no_second_list_row, "no second-list signal"),
+        (
+            triage_code(lambda p: p.update(uv_lock_sha256="0" * 64)),
+            "would not run as in .*uv.lock differs",
+        ),
+        (
+            triage_code(lambda p: p["git"].update(dirty_paths=["src/tess_hunt/pixels.py"])),
+            "would not run as in .*pixels.py had uncommitted changes",
+        ),
     ],
 )
 def test_second_list_refuses_inputs_it_cannot_stand_on(tmp_path, monkeypatch, argv, message):
@@ -507,25 +586,36 @@ def test_the_dossier_shows_the_second_lists_pixel_check(tmp_path, monkeypatch):
     out = tmp_path / "drafts"
     argv = ["vetting", "dossier", "--run", str(runs["run"]), "--signals", NAME, "--out", str(out)]
 
-    # Triage never ran its pixel check on a second-list row, so without the second list the record has none.
+    # Triage never ran its pixel check on a second-list row, so without the second list the record has none, and the
+    # dossier neither claims one nor shows the vetting run's empty centroid plot under triage's name.
     assert main(argv) == 0
     text = (out / NAME / "dossier.md").read_text()
     assert "| pixels | not run | No second-list run was given. |" in text
     assert "Centroids: no pixel evidence (No second-list run was given.)" in text
+    assert "second list ran it" not in text and "which triage did not run on this row" in text
+    plots = td.section(text, "Plots")
+    assert "centroids.png" not in plots and "Triage's centroid" not in plots
 
     assert main([*argv, "--second-list", str(second)]) == 0
     signal = out / NAME
-    assert sha256_file(signal / "pixels.json") == sha256_file(
-        second / "signals" / NAME / "pixels.json"
+    for name in ("pixels.json", "pixels.png"):
+        assert sha256_file(signal / name) == sha256_file(second / "signals" / NAME / name)
+    # The vetting run's plot keeps its place and its provenance; the second list's has its own path.
+    assert sha256_file(signal / "plots" / "centroids.png") == sha256_file(
+        runs["run"] / "signals" / NAME / "plots" / "centroids.png"
     )
     text = (signal / "dossier.md").read_text()
     assert text == dossier.render(signal)
     assert f"| pixels | fail | {FAILED.reason} |" in text
+    assert "triage's pixel check as the second list ran it on this row" in text
     on_star = td.section(text, "On the star?")
     assert "from the second list's pixel check (fail" in on_star
     assert "| 1 | 21.0 | 0.90 | the offset the second list's check judged |" in on_star
     assert "| 2 | 16.0 | 0.60 |  |" in on_star
     assert second.name in td.section(text, "Signal and star")
+    plots = td.section(text, "Plots")
+    assert "](pixels.png)" in plots and "The second list's pixel check" in plots
+    assert "centroids.png" not in plots and "Triage's centroid" not in plots
 
 
 KILLED = tc.edit(
@@ -558,8 +648,14 @@ def test_publish_carries_the_second_lists_pixel_record(tmp_path, monkeypatch):
         main(argv)
     assert main([*argv, "--second-list", str(second)]) == 0
     files = td.published(repo)
-    assert files[f"{NAME}/pixels.json"] == sha256_file(second / "signals" / NAME / "pixels.json")
+    for name in ("pixels.json", "pixels.png"):
+        assert files[f"{NAME}/{name}"] == sha256_file(second / "signals" / NAME / name)
     assert files[f"{NAME}/provenance-second-list.json"] == sha256_file(second / "provenance.json")
+    # Every file under plots/ is the vetting run's, as provenance-checks.json says.
+    vetted = runs["run"] / "signals" / NAME / "plots"
+    assert {k: v for k, v in files.items() if k.startswith(f"{NAME}/plots/")} == {
+        f"{NAME}/plots/{p.name}": sha256_file(p) for p in vetted.glob("*.png")
+    }
     readme = (repo / "results" / "vetting" / "README.md").read_text()
     assert f"[{NAME}]({NAME}/dossier.md) | killed |" in readme
 

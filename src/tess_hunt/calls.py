@@ -269,15 +269,15 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
         )
         if not promoted:
             out.append(f"{c['check']} is {c['outcome']}: {c['reason']}")
-    # Triage passed every other signal's pixel check before shortlisting it; a second-list row's is the second list's.
-    if kind == "second":
-        pixel = pixels(signal_dir, checks)
-        if pixel is None:
-            out.append(
-                "no pixels.json: a second-list row's pass needs the second list's pixel check"
-            )
-        elif pixel["outcome"] != "pass":
-            out.append(f"the pixel check is {pixel['outcome']}: {pixel['reason']}")
+    # Ruling W: every pass needs a pixel pass. `vetting run` never checks that a candidate was shortlisted, so its
+    # triage pixel record is read here, as a second-list row's is from the second list.
+    pixel = pixels(signal_dir, checks)
+    if pixel is None and kind == "second":
+        out.append("no pixels.json: a second-list row's pass needs the second list's pixel check")
+    elif pixel is None:
+        out.append("no pixel check from triage in checks.json: a pass needs a pixel pass")
+    elif pixel["outcome"] != "pass":
+        out.append(f"the pixel check is {pixel['outcome']}: {pixel['reason']}")
     triceratops = _json(signal_dir / "triceratops.json")
     if triceratops is None:
         out.append("no triceratops.json: a pass needs TRICERATOPS's")

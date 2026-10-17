@@ -834,7 +834,9 @@ def _second_triage(
     problems = check_leo_code(made, repo_root(), PIXEL_WRAPPER)
     if problems:
         raise SystemExit(f"the pixel check would not run as in {triage_id}: " + "; ".join(problems))
-    # The pixel check takes the star's position from the targets row the vetting run gives it.
+    # The pixel check takes the star's position from the targets row in checks.json. The vetting run must have read
+    # the targets file triage judged with; it records no file per star, so a star an earlier --targets file also
+    # lists would still take that file's row.
     read = {v["sha256"] for k, v in inputs.items() if k.startswith("targets_")}
     if made["inputs"]["targets"]["sha256"] not in read:
         raise SystemExit(f"{run_id} read none of the targets files {triage_id} judged with")
@@ -961,6 +963,8 @@ def cmd_second_list(args) -> int:
         path = run.path / "signals" / name / "pixels.json"
         path.parent.mkdir(parents=True)
         path.write_text(json.dumps(jsonable(record), indent=2, sort_keys=True) + "\n")
+        # The vetting run's centroid plot drew triage's record, which holds no offsets for this row.
+        plots.centroids(record["evidence"], checks["neighbours"], path.parent / "pixels.png", limit)
         items.append({"name": name, "checks": checks, "pixels": record, **found[name]})
         summary[name] = {"tic": tic, "pixels": record["outcome"], "sha256": sha256_file(path)}
         print(f"{name}: pixels {record['outcome']}, {record['reason']}")
@@ -1040,8 +1044,9 @@ def _signal_files(runs: dict[str, Path], name: str) -> dict[str, Path]:
     for role, outputs, what in (
         ("triceratops", ("triceratops.json", "probs.csv"), "TRICERATOPS"),
         ("literature", ("literature.json",), "literature"),
-        # Only a second-list row has one: the pixel check triage never ran on it (Ruling U).
-        ("second-list", ("pixels.json",), "second-list"),
+        # Only a second-list row has them: the pixel check triage never ran on it (Ruling U), and its centroid plot,
+        # named apart from the vetting run's plots/ so every file there keeps its source.
+        ("second-list", ("pixels.json", "pixels.png"), "second-list"),
     ):
         path = runs.get(role)
         if path is None:

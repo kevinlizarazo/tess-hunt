@@ -95,6 +95,12 @@ PLOTS = {
     "phase.png": "The whole orbit, with phase 0.5 and LEO-Vetter's ModShift secondary marked",
     "centroids.png": "Triage's centroid offset per sector, with the neighbours that could host the signal",
 }
+# A second-list row's centroid plot: the second list draws it from its own pixel check, beside pixels.json, since the
+# vetting run's centroids.png drew triage's record, which holds no offsets for the row.
+SECOND_LIST_CENTROIDS = (
+    "pixels.png",
+    "The second list's pixel check: each sector's centroid offset, with the neighbours that could host the signal",
+)
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
 # Whose pixel check the centroid table shows, keyed by whether the signal is a second-list row: its name, its owner
@@ -290,11 +296,15 @@ def _checks(r: Record) -> str:
             rows.append([role, "not run", r.absent(role, what)])
         else:
             rows.append([role, record["outcome"], record["reason"]])
-    pixel_check = (
-        "triage's pixel check as the second list ran it on this row (triage runs it only on novelty passes)"
-        if r.second
-        else "triage's pixel check"
-    )
+    if not r.second:
+        pixel_check = "triage's pixel check"
+    elif r.pixels is None:
+        pixel_check = "triage's pixel check, which triage did not run on this row (it runs only on novelty passes)"
+    else:
+        pixel_check = (
+            "triage's pixel check as the second list ran it on this row "
+            "(triage runs it only on novelty passes)"
+        )
     note = (
         f"{r.checks['criteria_version']}'s checks first, then the neighbour table (evidence, never a fail), "
         f"{pixel_check}, TRICERATOPS and the literature search."
@@ -714,10 +724,16 @@ def _looks(r: Record) -> str:
 
 
 def _plots(r: Record) -> str:
-    found = [name for name in PLOTS if (r.path / "plots" / name).is_file()]
+    found = [
+        (f"plots/{name}", caption)
+        for name, caption in PLOTS.items()
+        if (r.path / "plots" / name).is_file() and not (r.second and name == "centroids.png")
+    ]
+    if r.second and (r.path / SECOND_LIST_CENTROIDS[0]).is_file():
+        found.append(SECOND_LIST_CENTROIDS)
     if not found:
         return "No plots in this record."
-    return "\n\n".join(f"{PLOTS[name]}:\n\n![{PLOTS[name]}](plots/{name})" for name in found)
+    return "\n\n".join(f"{caption}:\n\n![{caption}]({path})" for path, caption in found)
 
 
 def _catalogued(r: Record) -> str:

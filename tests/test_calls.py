@@ -99,7 +99,7 @@ def signal_dir(
     literature: str | None = "pass",
     planets: list | None = None,
     name: str = NAME,
-    pixels: str | None = None,
+    pixels: str | None = "pass",
 ) -> Path:
     """A signal's record as `vetting publish` lays it out, with only what the call is checked against. `pixels` is
     the pixel check's outcome where the record keeps it: the second list's pixels.json for a second-list row, triage's
@@ -283,7 +283,7 @@ def test_a_kill_may_rest_on_a_failed_pixel_check(tmp_path):
     [problem] = found("c", kind="second", pixels="pass")
     assert "rests on" in problem and "pixels" in problem
     # Triage's pixel check never ran on a second-list row; without the second list's, there is none to rest on.
-    [problem] = found("d", kind="second")
+    [problem] = found("d", kind="second", pixels=None)
     assert "pixels" in problem and "neither a check" in problem
 
 
@@ -293,11 +293,23 @@ def test_a_second_list_pass_needs_the_pixel_check_to_pass(tmp_path):
         return calls.problems(record)
 
     assert found("a", pixels="pass") == []
-    [problem] = found("b")
+    [problem] = found("b", pixels=None)
     assert "pixels.json" in problem
     for name, outcome in (("c", "fail"), ("d", "inconclusive")):
         [problem] = found(name, pixels=outcome)
         assert f"the pixel check is {outcome}" in problem
+
+
+def test_a_candidate_pass_needs_triages_pixel_pass(tmp_path):
+    # Ruling W: `vetting run` never checks that a candidate was shortlisted, so the pass bar reads its pixel record.
+    def found(name, **kwargs):
+        return calls.problems(signal_dir(tmp_path / name, **kwargs))
+
+    assert found("a") == []
+    [problem] = found("b", pixels="inconclusive")
+    assert "the pixel check is inconclusive" in problem
+    [problem] = found("c", pixels=None)
+    assert "no pixel check" in problem and "triage" in problem
 
 
 HELD = """\
