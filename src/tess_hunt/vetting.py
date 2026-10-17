@@ -14,7 +14,17 @@ import numpy as np
 import pandas as pd
 import requests
 
-from tess_hunt import calls, dossier, literature, neighbours, plots, predict, secondlist, tricera
+from tess_hunt import (
+    calls,
+    dossier,
+    gaia,
+    literature,
+    neighbours,
+    plots,
+    predict,
+    secondlist,
+    tricera,
+)
 from tess_hunt.catalogs import load_known, snapshot_inputs
 from tess_hunt.checks import inconclusive
 from tess_hunt.checks.families import split
@@ -56,6 +66,7 @@ MODSHIFT = (
 # A signal's name is its directory's name.
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 CONTRAST_COLUMNS = ["tic", "file", "filt", "source_url"]
+DR3_VALUES = ("dr3_source_id", "ruwe")
 # Our code around LEO-Vetter's pixel test: the second list runs it only as the triage run did.
 PIXEL_WRAPPER = "src/tess_hunt/pixels.py"
 
@@ -74,9 +85,13 @@ def _plain(row: dict) -> dict:
 
 
 def _source_id(star: dict) -> int | None:
-    # pd.NA for a star without one; the control targets tables have no such column at all.
+    # None for a star neither its targets row nor the DR3 join gave one (`_join_dr3`).
     value = star.get("dr3_source_id")
     return None if value is None or pd.isna(value) else int(value)
+
+
+def _known(value) -> bool:
+    return value is not None and not pd.isna(value)
 
 
 def fit_duration(fit: FitResult) -> float:
@@ -318,6 +333,47 @@ def _stars(signals: pd.DataFrame, targets: list[Path]) -> dict[int, dict]:
     return out
 
 
+def _join_dr3(stars: dict[int, dict]) -> dict:
+    """Ruling N: each star's Gaia DR3 source id and RUWE, from one `gaia.dr3_join` on the TIC's Gaia DR2 id for every
+    star whose targets row lacks either (the control targets tables, made by `targets tics`, carry neither). Every
+    row then holds both keys, None where nothing gave a value, and `dr3_from` says where they came from: `targets`;
+    `dr3_join`, the join matched the star and both are its; or `missing`, the join failed or found no match and the
+    row keeps what its targets row had. `dr3_reason` says why a value is None. A failed join is not fatal: those stars
+    are judged without the values. Returns what the run's provenance records about the join."""
+    need = sorted(t for t, s in stars.items() if not all(_known(s.get(k)) for k in DR3_VALUES))
+    found, error = pd.DataFrame(columns=gaia.COLUMNS), None
+    if need:
+        try:
+            found = gaia.dr3_join(
+                pd.DataFrame([{"tic": t, "gaia": stars[t].get("gaia")} for t in need])
+            )
+        except gaia.GaiaError as exc:
+            error = scrub(str(exc))
+    found = found.set_index("tic")
+    for tic, star in stars.items():
+        star.update({k: star[k] if _known(star.get(k)) else None for k in DR3_VALUES})
+        if tic not in need:
+            star.update(dr3_from="targets", dr3_reason=None)
+        elif tic in found.index:
+            source_id, ruwe = int(found.loc[tic, "dr3_source_id"]), _number(found.loc[tic, "ruwe"])
+            star.update(
+                dr3_source_id=source_id,
+                ruwe=ruwe if np.isfinite(ruwe) else None,
+                dr3_from="dr3_join",
+                dr3_reason=None if np.isfinite(ruwe) else f"Gaia DR3 {source_id} has no RUWE",
+            )
+        else:
+            dr2 = str(star.get("gaia")).strip() if _known(star.get("gaia")) else ""
+            if not dr2.isdigit():
+                reason = "the TIC gives no Gaia DR2 id to join on"
+            elif error is not None:
+                reason = f"the Gaia DR3 join failed: {error}"
+            else:
+                reason = f"the Gaia DR3 join found no source for Gaia DR2 {dr2}"
+            star.update(dr3_from="missing", dr3_reason=reason)
+    return {"tics": need, "worked": error is None if need else None, "error": error}
+
+
 def _no_triage(reason: str) -> dict:
     return {"modshift": None, "pixels": None, "other_signals": None, "triage_reason": reason}
 
@@ -419,9 +475,15 @@ def cmd_run(args) -> int:
     )
     sectors_file = crit_vet["predict"]["sectors_file"]
     sectors = predict.load_sectors(sectors_file)
+    joined = _join_dr3(stars)
+    if joined["error"] is not None:
+        print(
+            f"Gaia DR3 join failed for TIC {', '.join(map(str, joined['tics']))}: {joined['error']}"
+        )
     # The later vetting stages read the vet criteria back from criteria[1] and refuse any other: one
     # run, one criteria file.
     run = start_run("vetting-run", [crit_search, crit_vet], args.production, sys.argv)
+    run.record("dr3_join", joined)
     run.record("evidence_only", args.include_suspect)
     run.record("triage_run", triage["run_id"] if triage else None)
     run.record("search_run", triage["search_run"] if triage else None)

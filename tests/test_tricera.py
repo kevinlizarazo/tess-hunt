@@ -55,6 +55,9 @@ def hosts(*seps) -> pd.DataFrame:
             "dec": [DEC] * len(seps),
             "sep_arcsec": list(seps),
             "required_depth": [0.02] * len(seps),
+            # No proper motion: each matches where it is.
+            "pmra": [np.nan] * len(seps),
+            "pmdec": [np.nan] * len(seps),
         }
     )
 
@@ -77,6 +80,7 @@ class FakeTarget:
         fpp=None,
         nfpp=None,
         raises=None,
+        runs_before_raise=0,
         degenerate=False,
     ):
         self.ID, self.sectors, self.search_radius = tic, np.asarray(sectors), search_radius
@@ -99,6 +103,7 @@ class FakeTarget:
         self.pix_coords = [np.array([[100.0, 200.0], [100.6, 200.0]]) for _ in range(n)]
         self.spoc, self.dark, self.outside = spoc, dark, outside
         self.fpp, self.nfpp, self.raises, self.degenerate = fpp, nfpp, raises, degenerate
+        self.runs_before_raise = runs_before_raise
         self.depths, self.calls = [], []
 
     def get_spoc_apertures(self):
@@ -115,7 +120,7 @@ class FakeTarget:
 
     def calc_probs(self, **kwargs):
         self.calls.append(kwargs)
-        if self.raises:
+        if self.raises and len(self.calls) > self.runs_before_raise:
             raise self.raises
         fpp, nfpp = 0.1 * np.random.rand(), 1e-4 * np.random.rand()
         self.FPP = fpp if self.fpp is None else self.fpp
@@ -218,11 +223,52 @@ def test_every_path_records_the_same_fields(monkeypatch):
     assert set(tricera.run(light_curve(), STAR, EPH, EPH.depth, cfg(), [])) == set(
         tricera.RUN_FIELDS
     )
-    install(monkeypatch, raises=RuntimeError("PyTransit failed"))
+    assert check().evidence["raised"] is None
+
+    def down(*args):
+        raise requests.ConnectionError("TESScut did not answer")
+
+    monkeypatch.setattr(tricera, "cadence_group", down)
     raised = check().evidence
     assert set(tricera.RUN_FIELDS) <= set(raised)
-    assert raised["fpp"] == raised["nfpp"] == []
-    assert all(raised[f] is None for f in tricera.RUN_FIELDS if f not in ("fpp", "nfpp"))
+    assert raised["fpp"] == raised["nfpp"] == raised["degenerate"] == []
+    assert all(
+        raised[f] is None for f in tricera.RUN_FIELDS if f not in ("fpp", "nfpp", "degenerate")
+    )
+    assert raised["raised"] == "ConnectionError: TESScut did not answer"
+
+
+def test_a_run_that_raised_keeps_what_it_reached(monkeypatch):
+    """The record says how far TRICERATOPS got before it raised, so the dossier can say exactly that."""
+
+    def down(tic, sectors, search_radius):
+        raise requests.ConnectionError("TESScut did not answer")
+
+    # After the cadence group and the fold, before any star list.
+    monkeypatch.setattr(tricera, "new_target", down)
+    result = check()
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert "TRICERATOPS raised ConnectionError: TESScut did not answer" in result.reason
+    ev = result.evidence
+    assert ev["exposure_s"] == pytest.approx(120.0) and ev["sectors"] == [1, 2, 3]
+    assert ev["groups"] and ev["points"] > 0 and ev["flux_err_0"] > 0
+    assert ev["stars"] is ev["apertures"] is ev["missing_hosts"] is ev["hosts_tdepth_zero"] is None
+    assert ev["fpp"] == [] and ev["raised"] == "ConnectionError: TESScut did not answer"
+
+    # On the second seed's calc_probs: the first run, the star list and the host match are kept.
+    made = install(monkeypatch, raises=RuntimeError("PyTransit failed"), runs_before_raise=1)
+    result = check(config=cfg(runs=3))
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert "TRICERATOPS raised RuntimeError: PyTransit failed" in result.reason
+    ev = result.evidence
+    assert len(made[0].calls) == 2
+    assert len(ev["fpp"]) == len(ev["nfpp"]) == len(ev["degenerate"]) == 1
+    assert ev["fpp_mean"] == ev["fpp"][0]
+    assert [s["ID"] for s in ev["stars"]] == [str(TIC), "999"]
+    assert set(ev["apertures"]) == {1, 2, 3}
+    assert ev["missing_hosts"] == [] and ev["hosts"][0]["tic"] == "999"
+    assert ev["hosts_tdepth_zero"] == []
+    assert ev["probs"] is None and ev["raised"] == "RuntimeError: PyTransit failed"
 
 
 def test_a_non_finite_or_missing_run_is_inconclusive():
@@ -249,6 +295,10 @@ def test_a_target_triceratops_cannot_weigh_is_inconclusive(monkeypatch, behaviou
     assert result.outcome is Outcome.INCONCLUSIVE
     assert reason in result.reason
     assert made[0].calls == []
+    # The star list is matched either way; a stop before calc_depths computed no depth to call zero.
+    assert result.evidence["missing_hosts"] == []
+    zero = result.evidence["hosts_tdepth_zero"]
+    assert zero is None if made[0].depths == [] else zero == []
 
 
 def test_missing_aperture_is_inconclusive(monkeypatch):
@@ -303,6 +353,56 @@ def test_a_possible_host_triceratops_did_not_weigh_is_inconclusive(monkeypatch):
     assert tricera.missing_hosts(hosts(), stars, 2.0) == []
     # A TIC star without a position matches nothing.
     assert tricera.missing_hosts(hosts(12.5), stars.assign(ra=np.nan), 2.0) == [7]
+
+
+def moving(north: float, east_: float, pmra: float, pmdec: float) -> pd.DataFrame:
+    """One possible host at Gaia DR3's epoch, `north` and `east_` arcsec from the TIC star 12.5" east of the
+    target, with its proper motion in mas/yr (pmra times cos dec, as DR3 gives it)."""
+    dec = DEC + north / 3600.0
+    return pd.DataFrame(
+        {
+            "source_id": [7],
+            "ra": [east(12.5) + east_ / 3600.0 / np.cos(np.radians(dec))],
+            "dec": [dec],
+            "sep_arcsec": [12.5],
+            "required_depth": [0.02],
+            "pmra": [pmra],
+            "pmdec": [pmdec],
+        }
+    )
+
+
+def test_a_host_is_matched_at_the_tic_epoch(monkeypatch):
+    """TRICERATOPS's stars sit at TIC v8's epoch (J2000.0), the neighbour table's at Gaia DR3's (J2016.0): 44926986's
+    12.5" host and its TIC star are 2.78" apart for a common motion of about 172 mas/yr (Ruling S)."""
+    stars = pd.DataFrame({"ID": ["1", "999"], "ra": [RA, east(12.5)], "dec": [DEC, DEC]})
+    years = tricera.GAIA_DR3_EPOCH - tricera.TIC_EPOCH
+    assert years == 16.0
+    # 16 years at (100, 140) mas/yr is (1.60", 2.24"); 0.02" more each way leaves 0.028" at J2000.
+    host = moving(2.26, 1.62, 100.0, 140.0)
+    at_2016 = tricera._separation_arcsec(host["ra"], host["dec"], east(12.5), DEC)[0]
+    assert at_2016 == pytest.approx(2.78, abs=0.01)
+    assert tricera.missing_hosts(host, stars, 2.0) == []
+    # Without a proper motion (a two-parameter solution) the host stays where DR3 puts it.
+    assert tricera.missing_hosts(host.assign(pmra=np.nan, pmdec=np.nan), stars, 2.0) == [7]
+    # 1" from the TIC star at J2016, and its motion puts it 3.75" from it at J2000.
+    assert tricera.missing_hosts(moving(1.0, 0.0, 0.0, -172.0), stars, 2.0) == [7]
+    assert tricera.missing_hosts(moving(1.0, 0.0, np.nan, np.nan), stars, 2.0) == []
+
+    # The evidence keeps each host's position at the TIC's epoch and its distance from the TIC star there.
+    install(monkeypatch)
+    result = check(possible=host)
+    assert result.outcome is Outcome.PASS, result.reason
+    [h] = result.evidence["hosts"]
+    assert h["tic"] == "999" and h["distance_arcsec"] == pytest.approx(0.028, abs=0.002)
+    assert h["pmra"] == 100.0 and h["pmdec"] == 140.0
+    assert h["dec_2000"] == pytest.approx(DEC + 0.02 / 3600.0, abs=1e-9)
+    assert h["ra_2000"] == pytest.approx(
+        east(12.5) + 0.02 / 3600.0 / np.cos(np.radians(DEC)), abs=1e-8
+    )
+    still = check(possible=host.assign(pmra=np.nan, pmdec=np.nan)).evidence["hosts"][0]
+    assert still["ra_2000"] == host["ra"][0] and still["dec_2000"] == host["dec"][0]
+    assert still["pmra"] is None and still["tic"] is None
 
 
 def test_a_host_triceratops_gave_no_depth_is_evidence_not_a_blocker(monkeypatch):

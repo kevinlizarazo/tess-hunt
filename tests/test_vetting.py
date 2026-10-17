@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from synthetic import make_transit_lc, with_products, write_catalog_snapshot
 
-from tess_hunt import neighbours, plots, predict, vet, vetting
+from tess_hunt import gaia, neighbours, plots, predict, vet, vetting
 from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
@@ -81,9 +81,29 @@ def cone(ra, dec, radius_arcmin, **kwargs):
     """The target 0.2" from its TIC position and one star 12" away, 5 magnitudes fainter."""
     source = 101 if ra == CANDIDATE["ra"] else 202
     return pd.DataFrame(
-        [(source, ra, dec, 9.2, 0.8, 0.2), (7, ra, dec, 14.2, 0.8, 12.0)],
+        [
+            (source, ra, dec, 9.2, 0.8, 0.2, NAN, NAN, 2016.0),
+            (7, ra, dec, 14.2, 0.8, 12.0, NAN, NAN, 2016.0),
+        ],
         columns=neighbours.COLUMNS,
     )
+
+
+def join(found: dict, asked: list | None = None):
+    """gaia.dr3_join without the archive: `found` maps a TIC to its Gaia DR3 source id and RUWE; `asked` collects
+    the rows each call was given."""
+
+    def dr3_join(stars):
+        if asked is not None:
+            asked.append(stars[["tic", "gaia"]].to_dict("records"))
+        rows = [
+            {"tic": t, "dr3_source_id": found[t][0], "ruwe": found[t][1]}
+            for t in stars["tic"]
+            if t in found
+        ]
+        return pd.DataFrame(rows, columns=gaia.COLUMNS)
+
+    return dr3_join
 
 
 def fake_fit(lc, eph, cfg, rho_prior=None, seed=None):
@@ -130,6 +150,8 @@ def setup(tmp_path, monkeypatch, signals=SIGNALS, suspect=(), fit=None):
 
     monkeypatch.setattr(neighbours, "gaia_cone", cone)
     monkeypatch.setattr(neighbours, "required_depths", watched)
+    # Never the archive: a star the fixtures leave without a DR3 id or RUWE matches nothing.
+    monkeypatch.setattr(gaia, "dr3_join", join({}))
     # tess-point's layout: index 3 holds the sectors, one row per camera.
     monkeypatch.setattr(
         predict,
@@ -277,6 +299,75 @@ def test_vetting_run_refuses_a_signal_list_it_cannot_vet(tmp_path, monkeypatch, 
     assert no_run(tmp_path)
 
 
+# A DR2 id past 2**53, as the TIC's are: a float would round it.
+DR2 = "5431607545961330561"
+
+
+def test_a_star_without_dr3_values_gets_them_from_the_join(tmp_path, monkeypatch):
+    """Ruling N: the control targets tables (`targets tics`) carry the TIC's Gaia DR2 id and no DR3 columns, so
+    TRICERATOPS would have no RUWE and the neighbour table no DR3 id for them."""
+    # The sample's targets row carries both values; the control's carries only the DR2 id.
+    monkeypatch.setitem(globals(), "CANDIDATE", {**CANDIDATE, "ruwe": 0.9})
+    monkeypatch.setitem(globals(), "CONTROL", {**CONTROL, "gaia": DR2})
+    argv, depths = setup(tmp_path, monkeypatch, fit=fake_fit)
+    asked = []
+    monkeypatch.setattr(gaia, "dr3_join", join({2: (202, 1.1)}, asked))
+    assert main(argv) == 0
+    run = only_run(tmp_path)
+    # One join for the run, and a row that has both values is never joined again.
+    assert asked == [[{"tic": 2, "gaia": DR2}]]
+    candidate, control = read(run, "1-1")["star"], read(run, "TOI-9.01")["star"]
+    assert candidate["dr3_source_id"] == 101 and candidate["ruwe"] == 0.9
+    assert candidate["dr3_from"] == "targets" and candidate["dr3_reason"] is None
+    assert control["dr3_source_id"] == 202 and control["ruwe"] == 1.1
+    assert control["dr3_from"] == "dr3_join" and control["dr3_reason"] is None
+    # The neighbour table now finds the control's target by its DR3 id.
+    assert depths == [(SIGNAL["depth"], 9.0, 101), (SIGNAL["depth"], 10.0, 202)]
+    provenance = json.loads((run / "provenance.json").read_text())
+    assert provenance["dr3_join"] == {"tics": [2], "worked": True, "error": None}
+
+
+def down(stars):
+    raise gaia.GaiaError("Gaia archive failed 3 times: OSError: archive unavailable")
+
+
+@pytest.mark.parametrize(
+    "dr3_join, reason, worked",
+    [
+        (
+            down,
+            "the Gaia DR3 join failed: Gaia archive failed 3 times: OSError: archive unavailable",
+            False,
+        ),
+        (join({}), f"the Gaia DR3 join found no source for Gaia DR2 {DR2}", True),
+    ],
+    ids=["failed", "no match"],
+)
+def test_a_star_the_join_gives_nothing_keeps_nulls_and_the_reason(
+    tmp_path, monkeypatch, dr3_join, reason, worked
+):
+    monkeypatch.setitem(globals(), "CONTROL", {**CONTROL, "gaia": DR2})
+    argv, depths = setup(tmp_path, monkeypatch, fit=fake_fit)
+    monkeypatch.setattr(gaia, "dr3_join", dr3_join)
+    assert main(argv) == 0
+    run = only_run(tmp_path)
+    # Every star row carries both keys, which the dossier reads.
+    control = read(run, "TOI-9.01")["star"]
+    assert control["dr3_source_id"] is None and control["ruwe"] is None
+    assert control["dr3_from"] == "missing" and control["dr3_reason"] == reason
+    # The candidate lacks only RUWE, and keeps its targets row's DR3 id.
+    candidate = read(run, "1-1")["star"]
+    assert candidate["dr3_source_id"] == 101 and candidate["ruwe"] is None
+    assert candidate["dr3_from"] == "missing"
+    assert candidate["dr3_reason"] == "the TIC gives no Gaia DR2 id to join on"
+    # Without an id the neighbour table takes the one star within 1" of the TIC position, as before.
+    assert depths == [(SIGNAL["depth"], 9.0, 101), (SIGNAL["depth"], 10.0, None)]
+    provenance = json.loads((run / "provenance.json").read_text())
+    assert provenance["ended_at"] is not None
+    error = None if worked else reason.removeprefix("the Gaia DR3 join failed: ")
+    assert provenance["dr3_join"] == {"tics": [1, 2], "worked": worked, "error": error}
+
+
 def test_evidence_only_run_is_marked(tmp_path, monkeypatch):
     argv, _ = setup(tmp_path, monkeypatch, signals=SIGNALS[:1], suspect={64}, fit=fake_fit)
 
@@ -364,7 +455,10 @@ def test_modshift_and_pixels_come_from_the_triage_run(tmp_path, monkeypatch):
             return cone(ra, dec, radius_arcmin)
         # The control has no DR3 id and two stars within 1", so its target can't be told apart.
         return pd.DataFrame(
-            [(5, ra, dec, 10.0, 0.8, 0.2), (6, ra, dec, 10.5, 0.8, 0.6)],
+            [
+                (5, ra, dec, 10.0, 0.8, 0.2, NAN, NAN, 2016.0),
+                (6, ra, dec, 10.5, 0.8, 0.6, NAN, NAN, 2016.0),
+            ],
             columns=neighbours.COLUMNS,
         )
 

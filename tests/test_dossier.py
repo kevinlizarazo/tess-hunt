@@ -1,6 +1,7 @@
 import json
 import shutil
 import stat
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -121,6 +122,8 @@ def triceratops_record(vetting_run: Path, outcome: str = "pass") -> dict:
             "bin_phase": True,
             "exposure_s": 1800.0,
             "sectors": [1, 2],
+            "points": 120,
+            "raised": None,
             "left_out": [],
             "hosts": [
                 {
@@ -539,29 +542,53 @@ def test_readme_lists_every_call(tmp_path):
 @pytest.mark.parametrize(
     "path, said",
     [
-        ("raised", "It made no calc_probs run: "),
+        (
+            "raised",
+            "It raised before any calc_probs run finished: ConnectionError: TESScut did not answer.",
+        ),
+        (
+            "raised later",
+            f"Then it raised, after 1 of {tt.CFG['runs']} calc_probs run(s): RuntimeError: PyTransit failed.",
+        ),
+        ("raised first", "TRICERATOPS (inconclusive) raised before it chose its data."),
         ("no group", "It stopped before calc_probs: no cadence group"),
+        ("no depth", "It stopped before calc_probs: no usable transit depth (nan)."),
         ("no cutout", "It stopped before calc_probs: TESScut gave"),
         ("no light", "It stopped before calc_probs: calc_depths left the target no light"),
     ],
 )
 def test_a_triceratops_record_from_any_path_renders(tmp_path, monkeypatch, path, said):
+    """The dossier says exactly how far the record shows TRICERATOPS got, on every path."""
     run, _ = vetting_runs(tmp_path, monkeypatch)
+
+    def down(*args):
+        raise requests.ConnectionError("TESScut did not answer")
+
     if path == "raised":
-
-        def down(tic, sectors, search_radius):
-            raise requests.ConnectionError("TESScut did not answer")
-
+        # After the cadence group and the fold.
         monkeypatch.setattr(tricera, "new_target", down)
+    elif path == "raised later":
+        tt.install(monkeypatch, raises=RuntimeError("PyTransit failed"), runs_before_raise=1)
+    elif path == "raised first":
+        monkeypatch.setattr(tricera, "cadence_group", down)
     elif path == "no group":
         monkeypatch.setattr(tricera, "cadence_group", lambda lc, eph, n: (None, [], []))
+    elif path == "no depth":
+        fold = vetting._fold_ephemeris
+
+        def no_depth(checks):
+            eph, source = fold(checks)
+            return replace(eph, depth=float("nan")), source
+
+        monkeypatch.setattr(vetting, "_fold_ephemeris", no_depth)
     else:
         tt.install(monkeypatch, **({"cutouts": 1} if path == "no cutout" else {"dark": True}))
     criteria = ("--criteria-search", str(tv.SEARCH), "--criteria-vet", str(tv.VET3))
     assert main(["vetting", "triceratops", "--run", str(run), *criteria, "--workers", "1"]) == 0
     [tric] = (tmp_path / "data" / "runs").glob("*-vetting-triceratops-*")
     record = json.loads((tric / "signals" / NAME / "triceratops.json").read_text())
-    assert record["outcome"] == "inconclusive" and record["evidence"]["fpp"] == []
+    assert record["outcome"] == "inconclusive"
+    assert len(record["evidence"]["fpp"]) == (1 if path == "raised later" else 0)
     out = tmp_path / "drafts"
     assert (
         main(
@@ -571,11 +598,21 @@ def test_a_triceratops_record_from_any_path_renders(tmp_path, monkeypatch, path,
     )
     text = (out / NAME / "dossier.md").read_text()
     on_star, planet = section(text, "On the star?"), section(text, "A planet rather than a binary?")
-    assert said in on_star
-    assert "TRICERATOPS (inconclusive): no calc_probs run, so no FPP." in planet
-    if path == "raised":
-        assert (
-            "TRICERATOPS (inconclusive) never reached its choice of data." in on_star
-            and "TESScut did not answer" in on_star
-        )
-        assert "It built no star list" in on_star
+    [said_on_star] = [p for p in on_star.split("\n\n") if p.startswith("TRICERATOPS (")]
+    assert said in said_on_star
+    e = record["evidence"]
+    if e["exposure_s"] is None:
+        assert "took sectors" not in said_on_star
+    else:
+        took = f"took sectors {dossier._words(e['sectors'])} at {e['exposure_s']:g} s"
+        assert took in said_on_star
+        # The "no usable transit depth" stop comes before the fold.
+        assert (f"{took} and folded them on" in said_on_star) is (path != "no depth")
+    star_list = "It built no star list, so no possible host was matched to it."
+    assert (star_list in said_on_star) is (
+        path in ("raised", "raised first", "no group", "no depth")
+    )
+    if path == "raised later":
+        assert "TRICERATOPS (inconclusive): mean FPP" in planet and "over 1 run(s)" in planet
+    else:
+        assert "TRICERATOPS (inconclusive): no calc_probs run finished, so no FPP." in planet

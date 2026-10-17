@@ -1,7 +1,9 @@
 # 0025: The neighbour table: Gaia DR3 stars within 1' and the eclipse depth each would need
 
 - Date: 2026-10-17
-- Status: Accepted (approved by the maintainer in the M3 design)
+- Status: Accepted (approved by the maintainer in the M3 design), except Ruling N (a DR3 id joined for a star whose
+  targets row lacks one), which the M3 build's controller made after that approval and is Proposed until the
+  maintainer reviews it
 
 ## Context
 
@@ -16,9 +18,12 @@ seen.
 ## Decision
 
 - `neighbours.gaia_cone` takes every `gaiadr3.gaia_source` row within `[neighbours] radius_arcmin` (1.0) of the
-  target's TIC position: `source_id`, `ra`, `dec`, `phot_g_mean_mag`, `bp_rp` and the separation in arcseconds,
-  nearest first. It goes through `gaia.launch_gaia` (an asynchronous job, removed from the archive afterwards) with
-  `retry.retry`: 3 attempts, 30 s times the attempt number between them. After the last it raises `NeighbourError`.
+  target's TIC position: `source_id`, `ra`, `dec`, `phot_g_mean_mag`, `bp_rp`, the separation in arcseconds, and the
+  proper motion `pmra` (times cos dec) and `pmdec` in mas/yr (null for a two-parameter solution) with the positions'
+  `ref_epoch`, nearest first. The table keeps the proper motions so TRICERATOPS's cross-check can match each possible
+  host at the TIC's epoch (Ruling S, decision 0026). It goes through `gaia.launch_gaia` (an asynchronous job, removed
+  from the archive afterwards) with `retry.retry`: 3 attempts, 30 s times the attempt number between them. After the
+  last it raises `NeighbourError`.
 - Each star's TESS magnitude comes from Stassun et al. 2019 (AJ 158, 138), section 2.3.1, eq. 1:
   `T = G - 0.00522555 c^3 + 0.0891337 c^2 - 0.633923 c + 0.0324473`, `c = BP - RP`, on Gaia's observed magnitudes
   (`tmag_from = "colour"`).
@@ -29,7 +34,8 @@ seen.
   than it is and could be ruled out wrongly. The brightest T can add a possible host but never lose one
   (`tmag_from = "g_only"`).
 - A star with no G has no TESS magnitude (`tmag_from = "none"`).
-- The target is left out by its Gaia DR3 `source_id` (the targets table's `dr3_source_id`), or without one, the one
+- The target is left out by its Gaia DR3 `source_id` (the targets table's `dr3_source_id`, or for a star whose
+  targets row lacks it, the one `vetting run` joins through the TIC's Gaia DR2 id, Ruling N), or without one, the one
   star within 1" of its TIC position. When the cone does not identify the target, `required_depths` raises
   `NeighbourError` and the table is inconclusive: a given source id that is not in the cone (an id rounded through a
   float is one way to get there), or, without an id, no star within 1" (the target moved or is missing) or more than
@@ -64,7 +70,9 @@ seen.
 - The separations are from the TIC position (epoch 2000) to Gaia DR3 positions (epoch 2016.0) with no proper motion
   applied, so a fast-moving star's separation is off by its motion over those years. Without a source id, a target
   that moved more than 1" between the epochs, or one with a companion within 1", leaves the table inconclusive. Every
-  sample target has a `dr3_source_id`; a control's targets table may not, and then the table rests on the 1" match.
+  sample target has a `dr3_source_id`. A control's targets table has none, so `vetting run` joins one (Ruling N); only
+  where that join fails or finds no DR3 source (`checks.json`'s `star` row says so in `dr3_from` and `dr3_reason`)
+  does the table rest on the 1" match.
 - Eq. 1 is applied to observed magnitudes; the TIC applies it to de-reddened ones and adds the extinction back. It is
   fitted for -0.2 < BP-RP < 3.5 and is extrapolated outside that range.
 - The required depth assumes the neighbour's whole light falls in the aperture. A star away from the aperture puts
@@ -87,7 +95,11 @@ seen.
     the red end; a relation with a turning point inside the range is searched there).
   - `test_star_without_g_is_inconclusive`, `test_missing_target_magnitude_is_inconclusive` and
     `test_gaia_failure_is_inconclusive` (3 attempts, then `NeighbourError`, then inconclusive with the error).
-  - `test_gaia_cone_asks_for_the_radius_and_sorts_by_separation`.
+  - `test_gaia_cone_asks_for_the_radius_and_sorts_by_separation` (each star's proper motion and epoch kept, a
+    missing one as null), and `test_required_depth_and_possible` (the table keeps them).
+- [tests/test_vetting.py](../../tests/test_vetting.py): `test_a_star_without_dr3_values_gets_them_from_the_join` (the
+  control's target found by its joined id) and `test_a_star_the_join_gives_nothing_keeps_nulls_and_the_reason` (a
+  failed join, or none found: the 1" match, as before).
 - The network test `test_nearby_eb_controls_show_a_possible_host`, run by hand: TOI-1058.01 and TOI-1175.01 from
   [benchmarks/pixel_controls.csv](../../benchmarks/pixel_controls.csv), at their ExoFOP TOI depths and TESS
   magnitudes, each list the eclipsing binary they were retired to (TIC 31553886 and TIC 30329564) among their possible

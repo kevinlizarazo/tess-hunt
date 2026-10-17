@@ -112,28 +112,30 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
     published, or one that no longer stands on its record, is left out, and `publish` prints which and why.
 - **The dossier** (`dossier.render`, M3 design, section 4.7) reads only the files in the signal's directory. Page one:
   the signal and the star (names, Teff, radius, Tmag, RUWE, CROWDSAP per sector, the sectors vetted and left out, the
-  criteria versions, the runs); every check with its outcome and reason; the three questions with their evidence
-  (on the star: centroid offsets per sector, with each timing-suspect sector marked and the sector whose offset
-  triage's pixel check judged named, from the second list's pixel check for a second-list row, the neighbour table's
-  possible hosts, each beside the TRICERATOPS star
-  matched to it and the depth TRICERATOPS gave that star (the M3 design's cross-check, section 4.4), TRICERATOPS's
-  NFPP, the possible hosts it did not weigh and those it gave zero depth (Ruling M, 0026), RUWE; a planet rather than
-  a binary: odd and even, the secondary at phase 0.5 and at any phase from LEO-Vetter's ModShift, the search's other signals on the star
-  with their period ratios, shape, density, Rp from both fits, the density-prior fit's parameters, TRICERATOPS's FPP;
-  real and new: signal present, the held-out seasons, sector depths, novelty, the literature search, ExoFOP); the next
-  TESS sectors with the predicted windows and their widths; and the DDT note. Then the plots, every catalogued row on
-  the star with the transits of ours its mask window overlaps (vet-v3 leaves the search's non-masked kinds unmasked,
-  0021, so the dossier shows what they would have cut; `vetting run` writes this as `checks.json`'s `catalogued`), the
-  literature hits, the evidence-only vet beside the vet, the review (`dossier.render_review`) and the call.
+  criteria versions, the runs); every check with its outcome and reason; the three questions with their evidence (on the
+  star: centroid offsets per sector, with each timing-suspect sector marked and the sector whose offset triage's pixel
+  check judged named, from the second list's pixel check for a second-list row, the neighbour table's possible hosts,
+  each beside the TRICERATOPS star matched to it at the TIC's epoch and the depth TRICERATOPS gave that star (the M3
+  design's cross-check, section 4.4), TRICERATOPS's NFPP, the possible hosts it did not weigh and those it gave zero
+  depth (Ruling M, 0026), RUWE; a planet rather than a binary: odd and even, the secondary at phase 0.5 and at any phase
+  from LEO-Vetter's ModShift, the search's other signals on the star with their period ratios, shape, density, Rp from
+  both fits, the density-prior fit's parameters, TRICERATOPS's FPP; real and new: signal present, the held-out seasons,
+  sector depths, novelty, the literature search, ExoFOP); the next TESS sectors with the predicted windows and their
+  widths; and the DDT note. Then the plots, every catalogued row on the star with the transits of ours its mask window
+  overlaps (vet-v3 leaves the search's non-masked kinds unmasked, 0021, so the dossier shows what they would have cut;
+  `vetting run` writes this as `checks.json`'s `catalogued`), the literature hits, the evidence-only vet beside the vet,
+  the review (`dossier.render_review`) and the call.
   - Each number names the fit it comes from: shape, density and the radius check read the flat-prior fit; Rp, b,
     a/R* and the ephemeris come from the density-prior fit, whose Rp is shown with the 16th and 84th percentiles and
     whose other parameters with their spread below and above the median.
   - The template is a `string.Template` filled with `substitute`, and every value is read from the record by its key,
     so a value the record lacks raises rather than rendering (`docs/design.md`, section 5.5). A value the record holds
     as null renders as "missing". QLP publishes no CROWDSAP, so its sectors say so instead of raising.
-  - A TRICERATOPS record holds every field `tricera.run` records on every path, None for a step it never reached
-    (`tricera.RUN_FIELDS`): a run that raised, one that stopped before or after `calc_depths`, and one that finished
-    all render, each saying how far TRICERATOPS got.
+  - A TRICERATOPS record holds every field `tricera.run` records on every path (`tricera.RUN_FIELDS`): a run that
+    raised keeps the fields it reached and names the exception (`raised`), and None marks a step it never reached
+    (0026). A run that raised before or after its cadence group, its fold or a finished `calc_probs` run, one that
+    stopped before or after `calc_depths`, and one that finished all render, each saying only what the record shows of
+    how far TRICERATOPS got.
   - **The DDT note** (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so
     tess-point can't say whether an upcoming sector will have it; the note gives the upcoming sectors and whether the
     star had SPOC 2-min data in the sectors fetched, then the rule for the call's outcome. A passed signal goes to the

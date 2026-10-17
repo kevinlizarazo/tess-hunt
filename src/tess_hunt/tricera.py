@@ -27,11 +27,18 @@ FILTERS = ("TESS", "Vis", "J", "H", "K")
 SPOC, TESS_SPOC = "SPOC", "TESS-SPOC"
 TWO_MINUTES_S = 120.0
 STAR_COLUMNS = ("ID", "ra", "dec", "Tmag", "tdepth")
+# TIC v8 gives each star's position at epoch J2000.0, moved there from its source catalogue's epoch (Stassun et al.
+# 2019, AJ 158, 138); TRICERATOPS's star list takes the TIC's ra and dec.
+TIC_EPOCH = 2000.0
+# Gaia DR3's positions are at its reference epoch, J2016.0 (gaia_source's ref_epoch).
+GAIA_DR3_EPOCH = 2016.0
+MAS_PER_DEGREE = 3.6e6
 # calc_probs needs these for the target; without one it stops at the target and reports probabilities from no
 # scenario at all.
 TARGET_PARAMETERS = ("mass", "rad", "Teff", "plx")
-# Every field `run` records. `check` starts the evidence with each one None, so a run that raised leaves a record of
-# the same shape with nothing reached, and a reader can tell "not reached" from a field that was never written.
+# Every field `run` records. `run` sets each one None (the runs' lists empty) before its first step and fills it on
+# reaching it, in a dict `check` keeps when `run` raises: the record says how far TRICERATOPS got on every path, and
+# None marks a step it never reached.
 RUN_FIELDS = (
     "groups",
     "exposure_s",
@@ -125,16 +132,32 @@ def _separation_arcsec(ra1, dec1, ra2, dec2) -> np.ndarray:
     return np.degrees(2 * np.arcsin(np.sqrt(np.clip(h, 0.0, 1.0)))) * 3600.0
 
 
+def _motion(possible: pd.DataFrame, column: str) -> np.ndarray:
+    values = pd.to_numeric(possible[column], errors="coerce").to_numpy(dtype=float)
+    return np.where(np.isfinite(values), values, 0.0)
+
+
+def at_tic_epoch(possible: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Each possible host's Gaia DR3 position moved back to the TIC's epoch with its DR3 proper motion (Ruling S),
+    where TRICERATOPS's stars sit. A host without one (a two-parameter solution) stays where DR3 puts it."""
+    ra, dec = possible["ra"].to_numpy(dtype=float), possible["dec"].to_numpy(dtype=float)
+    years = GAIA_DR3_EPOCH - TIC_EPOCH
+    # DR3's pmra already carries the cos(dec) factor.
+    ra_tic = ra - _motion(possible, "pmra") * years / (MAS_PER_DEGREE * np.cos(np.radians(dec)))
+    return ra_tic, dec - _motion(possible, "pmdec") * years / MAS_PER_DEGREE
+
+
 def _nearest(possible: pd.DataFrame, stars: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
-    """For each possible host, the row in `stars` of the nearest TRICERATOPS star other than the target (the first
-    row) and its distance in arcsec. The target is weighed as the target, so a companion the TIC merged into it,
-    which sits closer to it than to any other star, must not count as weighed."""
+    """For each possible host at the TIC's epoch (`at_tic_epoch`), the row in `stars` of the nearest TRICERATOPS star
+    other than the target (the first row) and its distance in arcsec. The target is weighed as the target, so a
+    companion the TIC merged into it, which sits closer to it than to any other star, must not count as weighed."""
     nearby = stars.iloc[1:]
     if len(possible) == 0 or len(nearby) == 0:
         return np.full(len(possible), -1), np.full(len(possible), np.inf)
+    ra, dec = at_tic_epoch(possible)
     distance = _separation_arcsec(
-        possible["ra"].to_numpy()[:, None],
-        possible["dec"].to_numpy()[:, None],
+        ra[:, None],
+        dec[:, None],
         nearby["ra"].to_numpy()[None, :],
         nearby["dec"].to_numpy()[None, :],
     )
@@ -146,7 +169,8 @@ def _nearest(possible: pd.DataFrame, stars: pd.DataFrame) -> tuple[np.ndarray, n
 
 def missing_hosts(possible: pd.DataFrame, stars: pd.DataFrame, match_arcsec: float) -> list[int]:
     """The possible hosts (the neighbour table's rows with `possible` true) with no TRICERATOPS star but the target
-    (`stars`' first row) within `match_arcsec`: stars TRICERATOPS did not weigh, so its NFPP leaves them out."""
+    (`stars`' first row) within `match_arcsec` at the TIC's epoch: stars TRICERATOPS did not weigh, so its NFPP leaves
+    them out."""
     _, distance = _nearest(possible, stars)
     return [
         int(s)
@@ -157,16 +181,25 @@ def missing_hosts(possible: pd.DataFrame, stars: pd.DataFrame, match_arcsec: flo
 
 def _hosts(possible: pd.DataFrame, stars: pd.DataFrame, match_arcsec: float) -> list[dict]:
     """Each possible host beside the TRICERATOPS star matched to it and that star's `tdepth`: the cross-check of the
-    neighbour table (M3 design, section 4.4)."""
+    neighbour table (M3 design, section 4.4). Each keeps its proper motion and its position at the TIC's epoch, where
+    the distance is measured."""
     rows, distance = _nearest(possible, stars)
+    ra, dec = at_tic_epoch(possible) if len(possible) else ((), ())
     out = []
-    for host, row, d in zip(possible.to_dict("records"), rows, distance, strict=True):
+    for host, row, d, r, de in zip(
+        possible.to_dict("records"), rows, distance, ra, dec, strict=True
+    ):
         match = bool(d <= match_arcsec)
+        pmra, pmdec = _number(host["pmra"]), _number(host["pmdec"])
         out.append(
             {
                 "source_id": int(host["source_id"]),
                 "sep_arcsec": host.get("sep_arcsec"),
                 "required_depth": host.get("required_depth"),
+                "pmra": pmra if np.isfinite(pmra) else None,
+                "pmdec": pmdec if np.isfinite(pmdec) else None,
+                "ra_2000": float(r),
+                "dec_2000": float(de),
                 "tic": str(stars["ID"].iloc[row]) if match else None,
                 "distance_arcsec": float(d) if np.isfinite(d) else None,
                 "tdepth": float(stars["tdepth"].iloc[row]) if match and "tdepth" in stars else None,
@@ -364,19 +397,23 @@ def run(
     depth: float,
     cfg: dict,
     contrast: list[tuple[Path, str]],
+    out: dict | None = None,
 ) -> dict:
     """TRICERATOPS on the cadence group's sectors: the target, its apertures, `calc_depths`, then `cfg["runs"]`
     seeded `calc_probs` on the fold. `lc` is the vet's detrended light curve, PDCSAP family and good timestamps
     only. Stops before calc_probs, saying why in `stopped`, wherever calc_probs would give a number that means
-    nothing."""
+    nothing. Fills `out` (a new dict when None) with each field as it gets there and returns it, so when a step
+    raises, the caller's `out` still holds every field the steps before it recorded."""
+    out = {} if out is None else out
+    out.update(dict.fromkeys(RUN_FIELDS), fpp=[], nfpp=[], degenerate=[])
     tic = int(star["tic"])
     exposure, sectors, groups = cadence_group(lc, eph, cfg["min_transits"])
     cadences = {int(s): float(lc.sources[str(int(s))]["cadence_s"]) for s in np.unique(lc.sector)}
-    out = {
-        "groups": groups,
-        "exposure_s": None if exposure is None else round(exposure * 86400.0, 6),
-        "sectors": sectors,
-        "left_out": [
+    out.update(
+        groups=groups,
+        exposure_s=None if exposure is None else round(exposure * 86400.0, 6),
+        sectors=sectors,
+        left_out=[
             {
                 "sector": s,
                 "cadence_s": c,
@@ -391,18 +428,7 @@ def run(
             for s, c in sorted(cadences.items())
             if s not in sectors
         ],
-        "points": None,
-        "flux_err_0": None,
-        "field_population": None,
-        "field_population_file": None,
-        "apertures": None,
-        "stars": None,
-        "fpp": [],
-        "nfpp": [],
-        "degenerate": [],
-        "probs": None,
-        "stopped": None,
-    }
+    )
     if exposure is None:
         counts = (
             ", ".join(f"{g['exposure_s']:g} s: {g['transits']}" for g in groups) or "no PDCSAP data"
@@ -469,9 +495,12 @@ def run(
             verbose=0,
             dilution_corrected=True,
         )
-        out["fpp"].append(float(target.FPP))
-        out["nfpp"].append(float(target.NFPP))
-        out["degenerate"].append(bool(getattr(target, "FPP_degenerate", False)))
+        # Read before any is kept, so the three lists count the same finished runs.
+        fpp, nfpp = float(target.FPP), float(target.NFPP)
+        degenerate = bool(getattr(target, "FPP_degenerate", False))
+        out["fpp"].append(fpp)
+        out["nfpp"].append(nfpp)
+        out["degenerate"].append(degenerate)
     out["probs"] = target.probs
     return out
 
@@ -501,13 +530,18 @@ def check(
     table = report["neighbours"]
     if table["outcome"] != "pass":
         blockers.append(f"the neighbour table is {table['outcome']}: {table['reason']}")
+    result, raised = {}, None
     try:
-        result = run(lc, star, eph, _number(eph.depth), cfg, contrast)
+        run(lc, star, eph, _number(eph.depth), cfg, contrast, result)
     except Exception as exc:
-        blockers.append(scrub(f"TRICERATOPS raised {type(exc).__name__}: {exc}"))
-        result = None
+        raised = scrub(f"{type(exc).__name__}: {exc}")
+        blockers.append(f"TRICERATOPS raised {raised}")
+    stars, probs = result.pop("stars"), result.pop("probs")
     evidence = {
-        **dict.fromkeys(RUN_FIELDS),
+        **result,
+        "stars": None if stars is None else stars.to_dict("records"),
+        "probs": None if probs is None else probs.to_dict("records"),
+        "raised": raised,
         "ruwe": ruwe if np.isfinite(ruwe) else None,
         "ephemeris": asdict(eph),
         "runs": cfg["runs"],
@@ -518,39 +552,34 @@ def check(
         "missing_hosts": None,
         "hosts_tdepth_zero": None,
     }
-    fpp, nfpp, label_ok = [], [], False
-    if result is not None:
-        stars, probs = result.pop("stars"), result.pop("probs")
-        evidence.update(result)
-        evidence["stars"] = None if stars is None else stars.to_dict("records")
-        evidence["probs"] = None if probs is None else probs.to_dict("records")
-        if result["stopped"]:
-            blockers.append(result["stopped"])
-        if result["field_population"] is False:
-            blockers.append(
-                "no field-star population: TRICERATOPS skipped the DTP, DEB, DEBx2P, BTP, BEB and BEBx2P scenarios"
-            )
-        degenerate = [i for i, d in enumerate(result["degenerate"]) if d]
-        if degenerate:
-            blockers.append(
-                f"TRICERATOPS flagged run(s) {degenerate} degenerate: NaN or infinite scenario evidence"
-            )
-        if stars is not None:
-            evidence["hosts"] = _hosts(possible_hosts, stars, cfg["match_arcsec"])
-            evidence["missing_hosts"] = missing_hosts(possible_hosts, stars, cfg["match_arcsec"])
-            if evidence["missing_hosts"]:
-                listed = ", ".join(str(s) for s in evidence["missing_hosts"])
-                blockers.append(f"possible host(s) TRICERATOPS did not weigh: Gaia DR3 {listed}")
-            # Ruling M: a matched star TRICERATOPS gave no depth is evidence for the review, not a blocker. The
-            # table counts the star's whole light in the aperture; TRICERATOPS counts what its aperture takes.
+    if result["stopped"]:
+        blockers.append(result["stopped"])
+    if result["field_population"] is False:
+        blockers.append(
+            "no field-star population: TRICERATOPS skipped the DTP, DEB, DEBx2P, BTP, BEB and BEBx2P scenarios"
+        )
+    degenerate = [i for i, d in enumerate(result["degenerate"]) if d]
+    if degenerate:
+        blockers.append(
+            f"TRICERATOPS flagged run(s) {degenerate} degenerate: NaN or infinite scenario evidence"
+        )
+    if stars is not None:
+        evidence["hosts"] = _hosts(possible_hosts, stars, cfg["match_arcsec"])
+        evidence["missing_hosts"] = missing_hosts(possible_hosts, stars, cfg["match_arcsec"])
+        if evidence["missing_hosts"]:
+            listed = ", ".join(str(s) for s in evidence["missing_hosts"])
+            blockers.append(f"possible host(s) TRICERATOPS did not weigh: Gaia DR3 {listed}")
+        # Ruling M: a matched star TRICERATOPS gave no depth is evidence for the review, not a blocker. The table
+        # counts the star's whole light in the aperture; TRICERATOPS counts what its aperture takes. Before
+        # calc_depths there is no depth to call zero.
+        if "tdepth" in stars:
             evidence["hosts_tdepth_zero"] = [
                 h["source_id"]
                 for h in evidence["hosts"]
                 if h["tic"] is not None and h["tdepth"] is not None and not h["tdepth"] > 0
             ]
-        fpp, nfpp = result["fpp"], result["nfpp"]
-        label_ok = bool(contrast) and result["exposure_s"] == TWO_MINUTES_S
-    judged = outcome(fpp, nfpp, cfg, blockers, label_ok)
+    label_ok = bool(contrast) and result["exposure_s"] == TWO_MINUTES_S
+    judged = outcome(result["fpp"], result["nfpp"], cfg, blockers, label_ok)
     return CheckResult(judged.check, judged.outcome, judged.reason, {**evidence, **judged.evidence})
 
 

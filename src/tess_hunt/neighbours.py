@@ -11,10 +11,23 @@ from tess_hunt.gaia import launch_gaia
 from tess_hunt.retry import retry
 
 CHECK = "neighbours"
-COLUMNS = ["source_id", "ra", "dec", "phot_g_mean_mag", "bp_rp", "sep_arcsec"]
+# pmra (times cos dec) and pmdec in mas/yr, null for a two-parameter solution, and the positions' epoch: TRICERATOPS's
+# match moves each possible host back to the TIC's epoch with them (decision 0026).
+COLUMNS = [
+    "source_id",
+    "ra",
+    "dec",
+    "phot_g_mean_mag",
+    "bp_rp",
+    "sep_arcsec",
+    "pmra",
+    "pmdec",
+    "ref_epoch",
+]
 QUERY = """
 SELECT source_id, ra, dec, phot_g_mean_mag, bp_rp,
-       DISTANCE(POINT('ICRS', ra, dec), POINT('ICRS', {ra:.10f}, {dec:.10f})) * 3600 AS sep_arcsec
+       DISTANCE(POINT('ICRS', ra, dec), POINT('ICRS', {ra:.10f}, {dec:.10f})) * 3600 AS sep_arcsec,
+       pmra, pmdec, ref_epoch
 FROM gaiadr3.gaia_source
 WHERE 1 = CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', {ra:.10f}, {dec:.10f}, {radius_deg:.10f}))
 """

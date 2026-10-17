@@ -2,7 +2,9 @@
 
 - Date: 2026-10-17
 - Status: Accepted (approved by the maintainer in the M3 design), except phase binning (`[triceratops] bin_phase`),
-  which is Proposed until the maintainer confirms it at the controls stop (M3 plan, Task 11 Step 7)
+  which is Proposed until the maintainer confirms it at the controls stop (M3 plan, Task 11 Step 7), and Rulings N
+  (RUWE joined for a star whose targets row lacks it) and S (possible hosts matched at the TIC's epoch), which the M3
+  build's controller made after that approval and are Proposed until the maintainer reviews them
 
 ## Context
 
@@ -95,7 +97,12 @@ sha256, the layout, and how many rows the envelope lowered are recorded.
 **Inconclusive whatever the numbers**, each blocker named in the reason:
 - RUWE over `[triceratops] max_ruwe` (1.4), or no RUWE for the target: an unresolved companion the priors don't
   condition on (103312990's is 6.21 in the
-  [triage shortlist](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/shortlist.csv));
+  [triage shortlist](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/shortlist.csv)). The RUWE is the
+  targets row's, or for a star whose row lacks it (the controls' `targets tics` tables join no Gaia DR3 columns), the
+  one `vetting run` joins through the TIC's Gaia DR2 id with `gaia.dr3_join`, once per run (Ruling N). `checks.json`'s
+  `star` row says where it came from (`dr3_from`: `targets`, `dr3_join` or `missing`) and why it is null
+  (`dr3_reason`); the run's provenance records the TICs joined and whether the join worked. A failed join is not fatal:
+  those stars have no RUWE, and TRICERATOPS is inconclusive on them;
 - an inconclusive neighbour table (decision 0025);
 - no cadence group with `min_transits` transits;
 - no aperture for a group sector;
@@ -113,6 +120,15 @@ sha256, the layout, and how many rows the envelope lowered are recorded.
   TRICERATOPS weighs it as the target: a companion the TIC merged into it sits nearer the target than any other star
   and would otherwise count as weighed. The evidence lists every possible host beside the TRICERATOPS star matched to
   it and that star's `tdepth`, the cross-check of the two lists.
+- The match compares positions at one epoch (Ruling S). TRICERATOPS's stars are TIC v8 positions, at epoch J2000.0;
+  the neighbour table's are Gaia DR3's, at J2016.0 (`tricera.TIC_EPOCH`, `tricera.GAIA_DR3_EPOCH`). Each possible
+  host is moved back to J2000.0 with its DR3 proper motion before matching (`tricera.at_tic_epoch`: `dec - pmdec * 16
+  / 3.6e6` and `ra - pmra * 16 / (3.6e6 cos dec)` in degrees, DR3's `pmra` already carrying cos dec); a host with no
+  proper motion (a two-parameter solution) matches at its DR3 position. Without this, a host and its own TIC star read
+  as two stars when they move fast: 44926986's 12.5" possible host is TIC 44926982, which TRICERATOPS gave the same
+  depth, yet the two positions sit 2.78" apart, beyond `match_arcsec` (the M3 build's smoke runs, Tasks 9 and 10b;
+  moved to J2000.0, the host sits 0.001" from TIC 44926982). `match_arcsec` is unchanged. `hosts` keeps each host's proper motion, its position at J2000.0 (`ra_2000`, `dec_2000`) and its distance
+  there from the nearest TRICERATOPS star.
 
 **A possible host TRICERATOPS gave no depth** (Ruling M) is evidence, not a blocker. When a possible host matches a
 TIC star whose TRICERATOPS `tdepth` is 0, TRICERATOPS judged that star unable to make the dip and weighed no scenario
@@ -126,9 +142,12 @@ its TIC match and `tdepth`, in `hosts`) so the review sees it.
 
 Where TRICERATOPS can still run (RUWE, the neighbour table, the field-star population, a missing host), it runs and its
 numbers are kept as evidence for the review; where it cannot give a meaningful number (no group, no aperture, a target
-it can't weigh), it stops before `calc_probs`. On every path, a run that raised included, the evidence holds every
-field `run` records (`tricera.RUN_FIELDS`), None for a step it never reached, so the record says how far TRICERATOPS
-got (decision 0028).
+it can't weigh), it stops before `calc_probs`. On every path the evidence holds every field `run` records
+(`tricera.RUN_FIELDS`). `run` fills each as it gets there, in a dict `check` keeps when `run` raises, so a run that
+raised keeps what it reached (the cadence group, the fold, the star list and its host match, the apertures, the
+`calc_probs` runs that finished) and names the exception in `raised`. None marks a step it never reached, and
+`hosts_tdepth_zero` is None until `calc_depths` has given depths. The record says how far TRICERATOPS got, and the
+dossier says only that (decision 0028).
 
 **The stage.** `tess-hunt vetting triceratops --run VETTING_RUN [--signals NAME ...] [--contrast CSV]
 [--criteria-search ...] [--criteria-vet ...] [--workers N] [--production]` runs one job per signal no check failed in
@@ -157,9 +176,11 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
 
 ## Limitations
 
-- `match_arcsec` compares Gaia DR3 positions (epoch 2016.0) with TRICERATOPS's TIC positions (epoch 2000) with no
-  proper motion applied, so a possible host that moved more than `match_arcsec` between the epochs reads as missing.
-  That leaves the check inconclusive, the safe direction.
+- A possible host without a DR3 proper motion is matched at its DR3 position, so one that moved more than
+  `match_arcsec` between the epochs reads as missing; that leaves the check inconclusive, the safe direction. The
+  propagation is linear in RA and Dec and leaves out the change in proper motion from radial velocity, far below
+  `match_arcsec` over 16 years. The match is still to the nearest star, not one to one: two hosts can match one TIC
+  star.
 - Binning assumes the model changes little across a bin. Each binned point is a one-exposure integration averaged over
   a bin one exposure wide, so the transit's edges are smoothed over up to two exposures where the model sees one.
 - A faster sector averaged to E keeps bins with half their cadences or more, so a bin's integration can be shorter
@@ -173,8 +194,8 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
   parallax has no stand-in, and its absence is a blocker.
 - The runs share one target (the TIC query, TESScut and the field-star population), so their spread measures only the
   Monte Carlo noise.
-- A star without a RUWE is inconclusive. The `targets tics` tables (the controls) join no Gaia DR3 columns, so their
-  RUWE has to be joined before their TRICERATOPS can pass or fail.
+- A star without a RUWE is inconclusive: one whose DR3 join failed or found no source, or whose DR3 source has no
+  RUWE.
 
 ## Evidence
 
@@ -191,7 +212,19 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
     a first star that is not the target, no target light in the apertures).
   - `test_a_host_triceratops_gave_no_depth_is_evidence_not_a_blocker` (Ruling M: the check passes and lists the host
     in `hosts_tdepth_zero`).
-  - `test_every_path_records_the_same_fields` (a finished run and one that raised hold the same fields).
+  - `test_a_host_is_matched_at_the_tic_epoch` (Ruling S: a host 2.78" from its TIC star at J2016.0 whose motion brings
+    it within 0.03" at J2000.0 is matched; without a proper motion it stays missing, as does one whose motion takes it
+    away; `hosts` keeps the position at J2000.0 and the distance there).
+  - `test_every_path_records_the_same_fields` (a finished run and one that raised hold the same fields) and
+    `test_a_run_that_raised_keeps_what_it_reached` (a raise in TESScut after the fold, and on the second seed's
+    `calc_probs`, which keeps the first run, the star list and the host match); in
+    `test_a_target_triceratops_cannot_weigh_is_inconclusive`, `hosts_tdepth_zero` is None before `calc_depths`.
+- [tests/test_vetting.py](../../tests/test_vetting.py): `test_a_star_without_dr3_values_gets_them_from_the_join`
+  (Ruling N: one join, a row with both values never joined again) and
+  `test_a_star_the_join_gives_nothing_keeps_nulls_and_the_reason` (a failed join, and none found: null values, the
+  reason, and the run finishes).
+- [tests/test_dossier.py](../../tests/test_dossier.py): `test_a_triceratops_record_from_any_path_renders` (each
+  sentence true to the record: a raise before the group, after the fold, and on a later seed; each stop).
   - `test_validated_label_needs_contrast_and_2min` and `test_runs_are_seeded_and_averaged` (seeds 0 to runs - 1, a
     float period from a numpy one, `parallel=False`, the group's exposure, `dilution_corrected`, and each sector's
     `ccd_pixels` equal to what `calc_depths` got).

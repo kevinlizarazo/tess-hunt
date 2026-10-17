@@ -21,8 +21,8 @@ def cone(*rows):
     return pd.DataFrame(rows, columns=neighbours.COLUMNS)
 
 
-def star(source_id, sep, g, bp_rp=1.0):
-    return (source_id, 10.0, -20.0, g, bp_rp, sep)
+def star(source_id, sep, g, bp_rp=1.0, pmra=np.nan, pmdec=np.nan):
+    return (source_id, 10.0, -20.0, g, bp_rp, sep, pmra, pmdec, 2016.0)
 
 
 def g_for(tmag, bp_rp=1.0):
@@ -37,11 +37,14 @@ def test_tess_mag_at_a_solar_colour_matches_eq_2():
 def test_required_depth_and_possible():
     table = cone(
         star(1, 0.3, g_for(T_TARGET)),
-        star(2, 12.0, g_for(T_TARGET + 5.0)),
+        star(2, 12.0, g_for(T_TARGET + 5.0), pmra=-164.0, pmdec=-53.0),
         star(3, 40.0, g_for(T_TARGET + 10.0)),
     )
     out = neighbours.required_depths(table, DEPTH, T_TARGET, 1, CFG).set_index("source_id")
     assert list(out.index) == [2, 3]
+    # TRICERATOPS's match moves each star to the TIC's epoch with these (decision 0026).
+    assert out.loc[2, "pmra"] == -164.0 and out.loc[2, "pmdec"] == -53.0
+    assert out.loc[2, "ref_epoch"] == 2016.0
     assert out.loc[2, "required_depth"] == pytest.approx(0.0233)
     assert out.loc[3, "required_depth"] == pytest.approx(2.33)
     assert bool(out.loc[2, "possible"]) and not bool(out.loc[3, "possible"])
@@ -152,13 +155,20 @@ def test_gaia_cone_asks_for_the_radius_and_sorts_by_separation():
                 "phot_g_mean_mag": [12.0, 11.0],
                 "bp_rp": [1.0, 1.0],
                 "sep_arcsec": [30.0, 0.2],
+                # A two-parameter solution has no proper motion.
+                "pmra": [np.nan, -164.0],
+                "pmdec": [np.nan, -53.0],
+                "REF_EPOCH": [2016.0, 2016.0],
             }
         )
 
     out = neighbours.gaia_cone(10.0, -20.0, 1.0, launch=launch)
     assert list(out.columns) == neighbours.COLUMNS
+    assert {"pmra", "pmdec", "ref_epoch"} <= set(neighbours.COLUMNS)
     assert list(out["source_id"]) == [4, 5]
+    assert out["pmra"].tolist()[0] == -164.0 and np.isnan(out["pmdec"].tolist()[1])
     assert "CIRCLE('ICRS', 10.0000000000, -20.0000000000, 0.0166666667)" in queries[0]
+    assert "pmra, pmdec, ref_epoch" in queries[0]
 
 
 @pytest.fixture(scope="module")

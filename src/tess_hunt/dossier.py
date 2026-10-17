@@ -397,7 +397,11 @@ def _neighbours(r: Record) -> str:
         f"{head} Each Gaia DR3 star that could make the dip, with the eclipse depth it would need, scaled from "
         f"the depth in {evidence['depth_from']} ({_ppm(evidence['depth'])} ppm) as if all its light fell in "
         "the aperture"
-        + (", and the TRICERATOPS star matched to it" if matched is not None else "")
+        + (
+            ", and the TRICERATOPS star matched to it with the distance between them at the TIC's epoch"
+            if matched is not None
+            else ""
+        )
         + ":\n\n"
         + _table(header, rows)
     )
@@ -420,16 +424,25 @@ def _triceratops_on_star(r: Record) -> str:
     fold = {"fit_prior": "the density-prior fit's", "signal": "the signal's"}[
         t["ephemeris_from"]["ephemeris"]
     ]
-    # Every field run() records is in the record; None is a step TRICERATOPS never reached (tricera.RUN_FIELDS).
+    # Every field run() records is in the record, a run that raised included; None is a step TRICERATOPS never
+    # reached (tricera.RUN_FIELDS), so each sentence says only what the record shows.
     if e["exposure_s"] is not None:
-        data = f"ran on sectors {_words(e['sectors'])} at {e['exposure_s']:g} s, folded on {fold} ephemeris"
+        data = f"took sectors {_words(e['sectors'])} at {e['exposure_s']:g} s"
+        if e["points"] is not None:
+            data += f" and folded them on {fold} ephemeris"
     elif e["groups"] is None:
-        data = "never reached its choice of data"
+        data = "raised before it chose its data"
     else:
         data = "found no cadence group to run on"
     lines = [f"TRICERATOPS ({t['outcome']}) {data}."]
     if e["fpp"]:
         lines.append(f"It gave a {_spread(e, 'nfpp')}.")
+        if e["raised"] is not None:
+            lines.append(
+                f"Then it raised, after {len(e['fpp'])} of {e['runs']} calc_probs run(s): {e['raised']}."
+            )
+    elif e["raised"] is not None:
+        lines.append(f"It raised before any calc_probs run finished: {e['raised']}.")
     elif e["stopped"] is not None:
         lines.append(f"It stopped before calc_probs: {e['stopped']}.")
     else:
@@ -551,7 +564,9 @@ def _planet(r: Record) -> str:
             f"TRICERATOPS ({r.triceratops['outcome']}): {_spread(r.triceratops['evidence'], 'fpp')}."
         )
     else:
-        items.append(f"TRICERATOPS ({r.triceratops['outcome']}): no calc_probs run, so no FPP.")
+        items.append(
+            f"TRICERATOPS ({r.triceratops['outcome']}): no calc_probs run finished, so no FPP."
+        )
     return _list(items)
 
 

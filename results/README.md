@@ -117,7 +117,8 @@ planet.
   refuter's verdict, the literature hits it flagged, and a summary.
 - `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them.
 - `checks.json`: the vet under vet-v3 (`tess-hunt vetting run`): each check's outcome, reason and evidence; the
-  flat-prior fit's summary (`fit`) and the density-prior fit's (`fit_prior`); the star's targets row (`star`); each
+  flat-prior fit's summary (`fit`) and the density-prior fit's (`fit_prior`); the star's targets row, its Gaia DR3 id
+  and RUWE joined where the row lacks them, with where they came from (`star`: `dr3_from`, `dr3_reason`); each
   sector's light-curve source (`sources`); the neighbour table (`neighbours`,
   [decision 0025](../docs/decisions/0025-neighbours.md)); every catalogued row on the star with the transits of ours it
   overlaps (`catalogued`); the upcoming sectors and predicted transit windows; triage's ModShift and pixel evidence and
@@ -127,7 +128,8 @@ planet.
 - `neighbours.csv`: the Gaia DR3 stars in the neighbour cone, each with its TESS magnitude and the eclipse depth it
   would need to make the dip.
 - `plots/`: each transit, the fold per season and product family, odd and even transits, the whole orbit with phase
-  0.5 and the ModShift secondary, and the centroid offsets per sector with the neighbours that could host the signal.
+  0.5 and the ModShift secondary, and the centroid offsets per sector with the neighbours that could host the signal
+  (for a second-list row, `centroids.png` draws triage's record, which holds no offsets; its own are in `pixels.png`).
 - `triceratops.json`, `probs.csv`: TRICERATOPS ([decision 0026](../docs/decisions/0026-triceratops.md)): the outcome,
   each run's FPP and NFPP, the stars it weighed and the possible hosts matched to them; `probs.csv` is the last run's
   scenario table. A signal a check killed has none.
