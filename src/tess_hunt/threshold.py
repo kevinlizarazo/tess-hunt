@@ -266,22 +266,23 @@ def check_reproducible(provenance: dict, targets: Path, ran: str) -> Criteria:
     return crit_search
 
 
-def check_leo_code(provenance: dict, root: Path) -> list[str]:
+def check_leo_code(provenance: dict, root: Path, wrapper: str = LEO_WRAPPER) -> list[str]:
     """Why LEO-Vetter in the checkout at `root` may not judge as it did in the run behind `provenance`;
     empty when it judges the same. A threshold counts the null signals LEO-Vetter passed, so a stage that
-    judges signals against it must run the same LEO-Vetter."""
+    judges signals against it must run the same LEO-Vetter. `wrapper` is our code around the part of
+    LEO-Vetter in question: the flux tests' by default, `pixels.py` for the pixel check."""
     problems = []
     if sha256_file(root / "uv.lock") != provenance["uv_lock_sha256"]:
         problems.append("uv.lock differs from the one the run used")
     commit = provenance["git"]["commit"]
     # The commit's wrapper is the run's only when the run's tree had not changed it.
-    if LEO_WRAPPER in provenance["git"]["dirty_paths"]:
-        problems.append(f"{LEO_WRAPPER} had uncommitted changes when the run ran")
-    ran = subprocess.run(["git", "show", f"{commit}:{LEO_WRAPPER}"], cwd=root, capture_output=True)
+    if wrapper in provenance["git"]["dirty_paths"]:
+        problems.append(f"{wrapper} had uncommitted changes when the run ran")
+    ran = subprocess.run(["git", "show", f"{commit}:{wrapper}"], cwd=root, capture_output=True)
     if ran.returncode != 0:
-        problems.append(f"{LEO_WRAPPER} at {commit[:7]} cannot be read from this checkout")
-    elif ran.stdout != (root / LEO_WRAPPER).read_bytes():
-        problems.append(f"{LEO_WRAPPER} differs from the one at {commit[:7]}")
+        problems.append(f"{wrapper} at {commit[:7]} cannot be read from this checkout")
+    elif ran.stdout != (root / wrapper).read_bytes():
+        problems.append(f"{wrapper} differs from the one at {commit[:7]}")
     return problems
 
 

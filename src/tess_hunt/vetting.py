@@ -14,8 +14,9 @@ import numpy as np
 import pandas as pd
 import requests
 
-from tess_hunt import calls, dossier, literature, neighbours, plots, predict, tricera
+from tess_hunt import calls, dossier, literature, neighbours, plots, predict, secondlist, tricera
 from tess_hunt.catalogs import load_known, snapshot_inputs
+from tess_hunt.checks import inconclusive
 from tess_hunt.checks.families import split
 from tess_hunt.config import Criteria, lc_dir, load_criteria
 from tess_hunt.detrend import detrend
@@ -31,8 +32,9 @@ from tess_hunt.lightcurve import LightCurve
 from tess_hunt.pool import run_jobs
 from tess_hunt.provenance import repo_root, scrub, sha256_file, start_run
 from tess_hunt.serialize import jsonable
-from tess_hunt.threshold import load_v2_catalog
+from tess_hunt.threshold import check_leo_code, check_light_curves, load_v2_catalog
 from tess_hunt.transit import a_rs_from_density
+from tess_hunt.triage import _pixel_job
 from tess_hunt.vet import vet_with_fits
 
 KINDS = ("candidate", "second", "control", "negative_control")
@@ -54,6 +56,8 @@ MODSHIFT = (
 # A signal's name is its directory's name.
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 CONTRAST_COLUMNS = ["tic", "file", "filt", "source_url"]
+# Our code around LEO-Vetter's pixel test: the second list runs it only as the triage run did.
+PIXEL_WRAPPER = "src/tess_hunt/pixels.py"
 
 
 def _number(value) -> float:
@@ -801,6 +805,182 @@ def cmd_literature(args) -> int:
     return 0
 
 
+def _second_triage(
+    path: Path, provenance: dict, run_id: str, names: list[str], production: bool
+) -> dict:
+    """The triage run whose pixel check the second list runs as triage would have (M3 design, section 4.10): the one
+    the vetting run read, unchanged, with the `[pixels]` criteria, pixel code and lock it ran with, and the targets and
+    light curves it judged."""
+    triage_id = path.resolve().name
+    provenance_file = path / "provenance.json"
+    made = json.loads(provenance_file.read_text()) if provenance_file.is_file() else {}
+    if made.get("stage") != "triage" or made.get("ended_at") is None:
+        raise SystemExit(f"{triage_id} is not a finished triage run")
+    if production and not made.get("production"):
+        raise SystemExit(
+            f"{triage_id} is not a production triage run; a production second list needs one"
+        )
+    inputs = provenance["inputs"]
+    if provenance.get("triage_run") != triage_id:
+        raise SystemExit(
+            f"{run_id} read triage run {provenance.get('triage_run')}, not {triage_id}"
+        )
+    if sha256_file(provenance_file) != inputs["triage_provenance"]["sha256"]:
+        raise SystemExit(f"{triage_id}/provenance.json is not the file {run_id} read")
+    used = made["criteria"][1]
+    criteria = repo_root() / used["file"]
+    if not criteria.is_file() or load_criteria(criteria).sha256 != used["sha256"]:
+        raise SystemExit(f"{used['file']} changed since {triage_id} ran; its [pixels] are unknown")
+    problems = check_leo_code(made, repo_root(), PIXEL_WRAPPER)
+    if problems:
+        raise SystemExit(f"the pixel check would not run as in {triage_id}: " + "; ".join(problems))
+    # The pixel check takes the star's position from the targets row the vetting run gives it.
+    read = {v["sha256"] for k, v in inputs.items() if k.startswith("targets_")}
+    if made["inputs"]["targets"]["sha256"] not in read:
+        raise SystemExit(f"{run_id} read none of the targets files {triage_id} judged with")
+    evidence = {}
+    for name in names:
+        file = path / "evidence" / f"{name}.json"
+        recorded = inputs.get(f"triage_evidence_{name}", {}).get("sha256")
+        if recorded is None:
+            raise SystemExit(
+                f"{name} is not in triage run {triage_id}, so its LEO-Vetter metrics are unknown"
+            )
+        if not file.is_file() or sha256_file(file) != recorded:
+            raise SystemExit(f"{triage_id}'s evidence for {name} is not the file {run_id} read")
+        evidence[name] = file
+    # Run directories sit side by side, so the search the triage run names is its sibling.
+    stars = path.resolve().parent / made["search_run"] / "stars.parquet"
+    if not stars.is_file() or sha256_file(stars) != made["inputs"]["search_stars"]["sha256"]:
+        raise SystemExit(f"{made['search_run']}/stars.parquet is not the file {triage_id} read")
+    return {
+        "run_id": triage_id,
+        "provenance": provenance_file,
+        "criteria": criteria,
+        "criteria_file": used["file"],
+        "pixels": load_criteria(criteria)["pixels"],
+        "evidence": evidence,
+        "search_stars": stars,
+    }
+
+
+def cmd_second_list(args) -> int:
+    crit_search, crit_vet = load_criteria(args.criteria_search), load_criteria(args.criteria_vet)
+    # Everything is checked before the run starts, so a refusal leaves no unfinished run directory.
+    provenance = _vetting_run(args.run, crit_search, crit_vet, args.production)
+    run_id = args.run.resolve().name
+    signals = args.run / "signals"
+    vetted = {
+        p.name: json.loads((p / "checks.json").read_text())
+        for p in (sorted(signals.iterdir()) if signals.is_dir() else [])
+        if (p / "checks.json").is_file()
+    }
+    second = {name: c for name, c in vetted.items() if c["signal"]["kind"] == "second"}
+    if not second:
+        raise SystemExit(f"{run_id} vetted no second-list signal (kind second)")
+    triage = _second_triage(args.triage_run, provenance, run_id, list(second), args.production)
+    tics = sorted({int(c["star"]["tic"]) for c in second.values()})
+    for tic in tics:
+        path = lc_dir() / f"{tic}.npz"
+        recorded = provenance["inputs"].get(f"light_curve_{tic}", {}).get("sha256")
+        if not path.is_file() or sha256_file(path) != recorded:
+            raise SystemExit(f"the light curve for TIC {tic} changed since {run_id} vetted it")
+    # Triage handed the pixel check every sector of the light curve its search searched.
+    check_light_curves(pd.read_parquet(triage["search_stars"]), tics, 1, "search")
+    for name, path in snapshot_inputs(args.catalogs).items():
+        recorded = provenance["inputs"].get(name, {}).get("sha256")
+        if not path.is_file() or sha256_file(path) != recorded:
+            raise SystemExit(
+                f"--catalogs {args.catalogs.name} is not the snapshot {run_id} vetted with ({path.name})"
+            )
+    problems = secondlist.check_raw(args.catalogs)
+    if problems:
+        raise SystemExit(f"--catalogs {args.catalogs.name}: " + "; ".join(problems))
+    match, harmonics = crit_search["match"], tuple(crit_vet["novelty"]["harmonics"])
+    found = {
+        name: secondlist.look_up(args.catalogs, checks, match, harmonics)
+        for name, checks in second.items()
+    }
+    run = start_run("vetting-second-list", [crit_search, crit_vet], args.production, sys.argv)
+    run.record("vetting_run", run_id)
+    run.record("triage_run", triage["run_id"])
+    run.record_input("vetting_provenance", args.run / "provenance.json")
+    for name in second:
+        run.record_input(f"checks_{name}", signals / name / "checks.json")
+    run.record_input("triage_provenance", triage["provenance"])
+    run.record_input("triage_criteria", triage["criteria"])
+    run.record_input("search_stars", triage["search_stars"])
+    for name, file in triage["evidence"].items():
+        run.record_input(f"triage_evidence_{name}", file)
+    for tic in tics:
+        run.record_input(f"light_curve_{tic}", lc_dir() / f"{tic}.npz")
+    for name, path in snapshot_inputs(args.catalogs).items():
+        run.record_input(name, path)
+    results, jobs = {}, []
+    for name, checks in second.items():
+        metrics = json.loads(triage["evidence"][name].read_text())["leo_flux"]["evidence"].get(
+            "metrics"
+        )
+        if not metrics:
+            results[name] = inconclusive(
+                "pixels",
+                f"triage run {triage['run_id']} recorded no metrics from LEO-Vetter for {name}, so the "
+                "pixel check can't run as triage runs it",
+            ).to_dict()
+            continue
+        tic = int(checks["star"]["tic"])
+        jobs.append(
+            {
+                "name": name,
+                # The evidence file holds a NaN as null; triage handed the pixel check the NaN, and which fit's
+                # ephemeris it asks for turns on it (pixels.asked_ephemeris).
+                "metrics": {k: float("nan") if v is None else v for k, v in metrics.items()},
+                "star": checks["star"],
+                "sectors": sorted(int(s) for s in LightCurve.load(lc_dir() / f"{tic}.npz").sources),
+                "cfg": triage["pixels"],
+                # transit-diffImage names its files by TIC, planet number and sector: one directory per signal.
+                "tdi": run.path / "tdi" / name,
+            }
+        )
+    # TESScut allows 5 requests a second; as in triage, four signals at a time stays well inside it.
+    done = run_jobs(_pixel_job, jobs, min(4, args.workers))
+    results |= {job["name"]: result for job, result in zip(jobs, done, strict=True)}
+    limit = triage["pixels"]["max_offset_arcsec"]
+    items, summary = [], {}
+    for name, checks in second.items():
+        tic = int(checks["star"]["tic"])
+        record = {
+            "signal": {"name": name, "tic": tic},
+            "vetting_run": run_id,
+            "triage_run": triage["run_id"],
+            "max_offset_arcsec": limit,
+            **results[name],
+            # The record is published with the signal's.
+            "reason": scrub(results[name]["reason"]),
+        }
+        path = run.path / "signals" / name / "pixels.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(jsonable(record), indent=2, sort_keys=True) + "\n")
+        items.append({"name": name, "checks": checks, "pixels": record, **found[name]})
+        summary[name] = {"tic": tic, "pixels": record["outcome"], "sha256": sha256_file(path)}
+        print(f"{name}: pixels {record['outcome']}, {record['reason']}")
+    secondlist.table(items).to_csv(run.path / "second-list.csv", index=False)
+    about = {
+        "run_id": run.provenance["run_id"],
+        "vetting_run": run_id,
+        "triage_run": triage["run_id"],
+        "triage_criteria": triage["criteria_file"],
+        "criteria": [Path(c["file"]).stem for c in provenance["criteria"]],
+        "limit": limit,
+    }
+    (run.path / "second-list.md").write_text(secondlist.markdown(items, about))
+    run.finish(
+        vetting_run=run_id, triage_run=triage["run_id"], max_offset_arcsec=limit, signals=summary
+    )
+    print(f"vetting second-list: {len(items)} row(s) -> {run.path}")
+    return 0
+
+
 def _finished(path: Path, stage: str, what: str, production: bool) -> dict:
     provenance_file = path / "provenance.json"
     run_id = path.resolve().name
@@ -814,8 +994,8 @@ def _finished(path: Path, stage: str, what: str, production: bool) -> dict:
 
 def _record_runs(args, production: bool) -> dict[str, Path]:
     """The runs a signal's record is made from, by the role their files play in it, checked to belong together
-    before anything is copied: one vetting run, the TRICERATOPS and literature runs made from it, and an
-    evidence-only run, all on the same criteria (Ruling C)."""
+    before anything is copied: one vetting run, the TRICERATOPS, literature and second-list runs made from it, and
+    an evidence-only run, all on the same criteria (Ruling C)."""
     main = _finished(args.run, "vetting-run", "vetting", production)
     run_id = args.run.resolve().name
     # It keeps the timing-suspect sectors in and never makes a call (decision 0022).
@@ -827,6 +1007,7 @@ def _record_runs(args, production: bool) -> dict[str, Path]:
         ("triceratops", args.triceratops, "vetting-triceratops", "TRICERATOPS"),
         ("literature", args.literature, "vetting-literature", "literature"),
         ("checks-with-suspect", args.evidence_only, "vetting-run", "evidence-only vetting"),
+        ("second-list", args.second_list, "vetting-second-list", "second-list"),
     )
     for role, path, stage, what in given:
         if path is None:
@@ -859,6 +1040,8 @@ def _signal_files(runs: dict[str, Path], name: str) -> dict[str, Path]:
     for role, outputs, what in (
         ("triceratops", ("triceratops.json", "probs.csv"), "TRICERATOPS"),
         ("literature", ("literature.json",), "literature"),
+        # Only a second-list row has one: the pixel check triage never ran on it (Ruling U).
+        ("second-list", ("pixels.json",), "second-list"),
     ):
         path = runs.get(role)
         if path is None:
@@ -1040,6 +1223,25 @@ def add_parser(sub) -> None:
     lit.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))
     lit.add_argument("--production", action="store_true")
     lit.set_defaults(func=cmd_literature)
+    s = modes.add_parser(
+        "second-list",
+        help="the second-list rows' SPOC DV statistics, ExoMiner scores and triage's pixel check",
+    )
+    s.add_argument(
+        "--run", type=Path, required=True, help="a finished vetting run, not evidence-only"
+    )
+    s.add_argument(
+        "--catalogs",
+        type=Path,
+        required=True,
+        help="the v2 snapshot --run vetted with, its raw files kept",
+    )
+    s.add_argument("--triage-run", type=Path, required=True, help="the triage run --run read")
+    s.add_argument("--criteria-search", type=Path, default=Path("criteria/search-v2.toml"))
+    s.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))
+    s.add_argument("--workers", type=int, default=4)
+    s.add_argument("--production", action="store_true")
+    s.set_defaults(func=cmd_second_list)
     d = modes.add_parser(
         "dossier", help="render draft dossiers for the maintainer, outside the repo's results/"
     )
@@ -1077,4 +1279,9 @@ def _record_arguments(p, required: bool) -> None:
         "--evidence-only",
         type=Path,
         help="the evidence-only vetting run (timing-suspect sectors kept in), shown beside --run",
+    )
+    p.add_argument(
+        "--second-list",
+        type=Path,
+        help="a second-list run made from --run, whose pixel check a second-list row's record needs",
     )

@@ -107,13 +107,22 @@ def confirmed(review: dict) -> list[str]:
     ]
 
 
+def pixels(signal_dir: Path, checks: dict) -> dict | None:
+    """The pixel check the record holds for the signal: for a second-list row the one `vetting second-list` ran
+    (pixels.json), since triage runs its own only on novelty passes (M3 design, section 4.10; Ruling U); for any other
+    signal, triage's, in checks.json."""
+    if checks["signal"]["kind"] == "second":
+        return _json(signal_dir / "pixels.json")
+    return checks["pixels"]
+
+
 def _names(signal_dir: Path) -> set[str]:
     """What a call may rest on: the checks in the record and the review's findings."""
     checks = _json(signal_dir / "checks.json")
     if checks is None:
         raise CallError(f"no checks.json beside the call in {signal_dir.name}")
     names = {c["check"] for c in checks["checks"]} | {"neighbours"}
-    if checks["pixels"] is not None:
+    if pixels(signal_dir, checks) is not None:
         names.add("pixels")
     for name in ("triceratops", "literature"):
         if (signal_dir / f"{name}.json").is_file():
@@ -182,10 +191,12 @@ def load(path: Path) -> dict:
     return call
 
 
-def _failures(checks: dict, triceratops: dict | None) -> set[str]:
+def _failures(checks: dict, triceratops: dict | None, pixel: dict | None) -> set[str]:
     failed = {c["check"] for c in checks["checks"] if c["outcome"] == "fail"}
-    if triceratops is not None and triceratops["outcome"] == "fail":
-        failed.add("triceratops")
+    # A pixel fail kills a signal as it would have in triage (M3 design, section 4.10).
+    for name, record in (("triceratops", triceratops), ("pixels", pixel)):
+        if record is not None and record["outcome"] == "fail":
+            failed.add(name)
     return failed
 
 
@@ -258,6 +269,15 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
         )
         if not promoted:
             out.append(f"{c['check']} is {c['outcome']}: {c['reason']}")
+    # Triage passed every other signal's pixel check before shortlisting it; a second-list row's is the second list's.
+    if kind == "second":
+        pixel = pixels(signal_dir, checks)
+        if pixel is None:
+            out.append(
+                "no pixels.json: a second-list row's pass needs the second list's pixel check"
+            )
+        elif pixel["outcome"] != "pass":
+            out.append(f"the pixel check is {pixel['outcome']}: {pixel['reason']}")
     triceratops = _json(signal_dir / "triceratops.json")
     if triceratops is None:
         out.append("no triceratops.json: a pass needs TRICERATOPS's")
@@ -321,7 +341,8 @@ def problems(signal_dir: Path) -> list[str]:
         )
     if call["outcome"] == "killed":
         found = set(confirmed(review)) if review else set()
-        grounds = _failures(checks, _json(signal_dir / "triceratops.json")) | found
+        tric = _json(signal_dir / "triceratops.json")
+        grounds = _failures(checks, tric, pixels(signal_dir, checks)) | found
         if not grounds & set(call["rests_on"]):
             listed = ", ".join(sorted(grounds)) or "none in this record"
             out.append(

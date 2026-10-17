@@ -75,6 +75,14 @@ not_an_artefact_or_known = "Each season shows it and nobody lists it."
 """
 
 
+TRIAGE_NOT_RUN = {
+    "check": "pixels",
+    "outcome": "inconclusive",
+    "reason": "not run: novelty or the flux tests did not pass",
+    "evidence": {},
+}
+
+
 def edit(text: str, old: str, new: str) -> str:
     assert old in text
     return text.replace(old, new)
@@ -91,11 +99,20 @@ def signal_dir(
     literature: str | None = "pass",
     planets: list | None = None,
     name: str = NAME,
+    pixels: str | None = None,
 ) -> Path:
-    """A signal's record as `vetting publish` lays it out, with only what the call is checked against."""
+    """A signal's record as `vetting publish` lays it out, with only what the call is checked against. `pixels` is
+    the pixel check's outcome where the record keeps it: the second list's pixels.json for a second-list row, triage's
+    evidence in checks.json for the rest."""
     path = tmp_path / name
     path.mkdir(parents=True)
     outcomes = outcomes or {}
+    pixel = pixels and {
+        "check": "pixels",
+        "outcome": pixels,
+        "reason": f"pixels {pixels}",
+        "evidence": {},
+    }
     checks = [
         {
             "check": name,
@@ -117,9 +134,12 @@ def signal_dir(
             "reason": "7 of 29",
             "evidence": {},
         },
-        "pixels": None,
+        # Triage runs its pixel check only on novelty passes, so a second-list row's triage evidence says so.
+        "pixels": pixel if kind != "second" else TRIAGE_NOT_RUN,
     }
     (path / "checks.json").write_text(json.dumps(record))
+    if pixel and kind == "second":
+        (path / "pixels.json").write_text(json.dumps(pixel))
     criteria = [
         {
             "file": f"criteria/{name}.toml",
@@ -251,6 +271,35 @@ def test_kill_must_rest_on_a_failure(tmp_path):
     assert found("e", edit(KILLED, '["odd_even"]', '["triceratops"]'), triceratops="fail") == []
 
 
+def test_a_kill_may_rest_on_a_failed_pixel_check(tmp_path):
+    on_pixels = edit(KILLED, '["odd_even"]', '["pixels"]')
+
+    def found(name, **kwargs):
+        return calls.problems(signal_dir(tmp_path / name, call=on_pixels, **kwargs))
+
+    # A pixel fail kills a second-list row as it would have in triage (M3 design, section 4.10; Ruling U).
+    assert found("a", kind="second", pixels="fail") == []
+    assert found("b", pixels="fail") == []
+    [problem] = found("c", kind="second", pixels="pass")
+    assert "rests on" in problem and "pixels" in problem
+    # Triage's pixel check never ran on a second-list row; without the second list's, there is none to rest on.
+    [problem] = found("d", kind="second")
+    assert "pixels" in problem and "neither a check" in problem
+
+
+def test_a_second_list_pass_needs_the_pixel_check_to_pass(tmp_path):
+    def found(name, **kwargs):
+        record = signal_dir(tmp_path / name, call=PROMOTED, kind="second", **SPOC, **kwargs)
+        return calls.problems(record)
+
+    assert found("a", pixels="pass") == []
+    [problem] = found("b")
+    assert "pixels.json" in problem
+    for name, outcome in (("c", "fail"), ("d", "inconclusive")):
+        [problem] = found(name, pixels=outcome)
+        assert f"the pixel check is {outcome}" in problem
+
+
 HELD = """\
 signal = "44926986-1"
 outcome = "held"
@@ -278,16 +327,19 @@ PROMOTED = edit(
 )
 
 
+SPOC = {"novelty_category": "known_to_spoc", "outcomes": {"novelty": "inconclusive"}}
+
+
 def test_promotion_stands_in_for_known_to_spoc(tmp_path):
-    spoc = {"novelty_category": "known_to_spoc", "outcomes": {"novelty": "inconclusive"}}
-    assert calls.problems(signal_dir(tmp_path / "a", call=PROMOTED, kind="second", **spoc)) == []
+    second = {"kind": "second", "pixels": "pass"}
+    assert calls.problems(signal_dir(tmp_path / "a", call=PROMOTED, **second, **SPOC)) == []
     # Without the promotion, the novelty check stands unpassed.
-    [problem] = calls.problems(signal_dir(tmp_path / "b", kind="second", **spoc))
+    [problem] = calls.problems(signal_dir(tmp_path / "b", **second, **SPOC))
     assert "novelty is inconclusive" in problem
     # A promotion stands in only for known_to_spoc, and only on a second-list row.
     stale = {"novelty_category": "stale_catalog_epoch", "outcomes": {"novelty": "inconclusive"}}
     assert calls.problems(signal_dir(tmp_path / "c", call=PROMOTED, kind="second", **stale))
-    found = calls.problems(signal_dir(tmp_path / "d", call=PROMOTED, **spoc))
+    found = calls.problems(signal_dir(tmp_path / "d", call=PROMOTED, **SPOC))
     assert any("second-list" in p for p in found)
     # A failed novelty is a known object, whatever the promotion says.
     failed = {"novelty_category": "known", "outcomes": {"novelty": "fail"}}

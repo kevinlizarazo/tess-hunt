@@ -97,6 +97,13 @@ PLOTS = {
 }
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
+# Whose pixel check the centroid table shows, keyed by whether the signal is a second-list row: its name, its owner
+# at the head of a sentence, and who judged the offset. Triage never ran its check on a second-list row; the second
+# list ran it as triage runs it (decision 0028).
+PIXEL_CHECK = {
+    False: ("triage's pixel check", "Triage's", "triage"),
+    True: ("the second list's pixel check", "The second list's", "the second list's check"),
+}
 
 
 def _json(path: Path) -> dict | None:
@@ -141,8 +148,15 @@ class Record:
         self.checks = json.loads((path / "checks.json").read_text())
         self.provenance = {
             role: _json(path / f"provenance-{role}.json")
-            for role in ("checks", "triceratops", "literature", "checks-with-suspect")
+            for role in (
+                "checks",
+                "triceratops",
+                "literature",
+                "checks-with-suspect",
+                "second-list",
+            )
         }
+        self.pixels = calls.pixels(path, self.checks)
         self.triceratops = _json(path / "triceratops.json")
         self.literature = _json(path / "literature.json")
         self.suspect = _json(path / "checks-with-suspect.json")
@@ -163,6 +177,19 @@ class Record:
         if provenance is None:
             return f"No {what} run was given."
         return f"{what} run {provenance['run_id']} did not judge this signal."
+
+    @property
+    def second(self) -> bool:
+        """A second-list row, whose pixel check is the second list's: triage never ran its own on it."""
+        return self.checks["signal"]["kind"] == "second"
+
+    def no_pixels(self) -> str:
+        """Why the record holds no pixel check."""
+        return (
+            self.absent("second-list", "second-list")
+            if self.second
+            else self.checks["triage_reason"]
+        )
 
 
 def _title(r: Record) -> str:
@@ -196,6 +223,7 @@ def _runs(r: Record) -> str:
         ("triceratops", "TRICERATOPS"),
         ("literature", "literature"),
         ("checks-with-suspect", "evidence-only vetting"),
+        ("second-list", "second list"),
     ):
         p = r.provenance[role]
         if p is not None:
@@ -250,11 +278,10 @@ def _checks(r: Record) -> str:
     rows = [[c["check"], c["outcome"], c["reason"]] for c in r.checks["checks"]]
     nb = r.checks["neighbours"]
     rows.append(["neighbours", nb["outcome"], nb["reason"]])
-    pixels = r.checks["pixels"]
-    if pixels is None:
-        rows.append(["pixels", "not run", r.checks["triage_reason"]])
+    if r.pixels is None:
+        rows.append(["pixels", "not run", r.no_pixels()])
     else:
-        rows.append(["pixels", pixels["outcome"], pixels["reason"]])
+        rows.append(["pixels", r.pixels["outcome"], r.pixels["reason"]])
     for role, what, record in (
         ("triceratops", "TRICERATOPS", r.triceratops),
         ("literature", "literature", r.literature),
@@ -263,21 +290,29 @@ def _checks(r: Record) -> str:
             rows.append([role, "not run", r.absent(role, what)])
         else:
             rows.append([role, record["outcome"], record["reason"]])
+    pixel_check = (
+        "triage's pixel check as the second list ran it on this row (triage runs it only on novelty passes)"
+        if r.second
+        else "triage's pixel check"
+    )
     note = (
-        f"{r.checks['criteria_version']}'s checks first, then the neighbour table (evidence, never a fail), triage's "
-        "pixel check, TRICERATOPS and the literature search."
+        f"{r.checks['criteria_version']}'s checks first, then the neighbour table (evidence, never a fail), "
+        f"{pixel_check}, TRICERATOPS and the literature search."
     )
     return note + "\n\n" + _table(["Check", "Outcome", "Reason"], rows)
 
 
 def _centroids(r: Record) -> str:
-    pixels = r.checks["pixels"]
+    pixels = r.pixels
     if pixels is None:
-        return f"Centroids: no pixel evidence ({r.checks['triage_reason']})."
+        return f"Centroids: no pixel evidence ({r.no_pixels()})."
+    label, owner, judge = PIXEL_CHECK[r.second]
     # A pixel check triage never ran (novelty or the flux tests did not pass) measured no sector.
     sectors = sorted(pixels["evidence"].get("sectors", []), key=lambda s: s["sector"])
     if not sectors:
-        return f"Centroids: triage's pixel check is {pixels['outcome']} ({pixels['reason']}); no sector measured."
+        return (
+            f"Centroids: {label} is {pixels['outcome']} ({pixels['reason']}); no sector measured."
+        )
     suspect = set(r.checks["dropped_suspect"])
     # Triage judges the best-quality sector's offset (pixels.pixel_check); the row holding that offset is its sector.
     # A NaN offset is null in the record and matches no row.
@@ -293,14 +328,14 @@ def _centroids(r: Record) -> str:
         if s["sector"] in suspect:
             notes.append("timing-suspect: vet-v3 leaves it out")
         if s["sector"] in judged:
-            notes.append("the offset triage judged")
+            notes.append(f"the offset {judge} judged")
         rows.append(
             [s["sector"], _f(s["offset_arcsec"], ".1f"), _f(s["quality"], ".2f"), "; ".join(notes)]
         )
     if len(judged) == 1:
         sector = judged[0]
         source = (
-            f"Triage's {pixels['outcome']} rests on the best-quality sector's offset, S{sector}'s"
+            f"{owner} {pixels['outcome']} rests on the best-quality sector's offset, S{sector}'s"
             + (
                 ", from a timing-suspect sector that vet-v3 leaves out."
                 if sector in suspect
@@ -309,11 +344,11 @@ def _centroids(r: Record) -> str:
         )
     else:
         source = (
-            f"Triage's {pixels['outcome']} rests on the best-quality sector's offset, which no single row below "
+            f"{owner} {pixels['outcome']} rests on the best-quality sector's offset, which no single row below "
             "reports."
         )
     return (
-        f"Centroids, from triage's pixel check ({pixels['outcome']}, {pixels['reason']}): the difference-image "
+        f"Centroids, from {label} ({pixels['outcome']}, {pixels['reason']}): the difference-image "
         f"centroid's offset from the target in each sector. {source}\n\n"
         + _table(["Sector", "Offset (arcsec)", "Quality", "Note"], rows)
     )

@@ -3,12 +3,13 @@
 - Date: 2026-10-17
 - Status: Accepted in part. Approved by the maintainer in the M3 design (2026-10-16): the three outcomes, the five
   items of the "passed" bar, the record and what the dossier shows (M3 design, sections 4.7 to 4.9). Proposed, pending
-  the maintainer's review: two rulings of the M3 build's controller, Ruling Q (bar 2's "ExoFOP shows nothing at the
-  period" checked against every ExoFOP planet-parameter row on period alone, at the novelty harmonics) and Ruling R
-  (`hits_read` names every hit the review flagged); and the choices this record makes in building it: each run's
-  provenance copied into the record, production runs only, unknown call keys refused, a signal a TRICERATOPS or
-  literature run never judged allowed in, the README listing only published calls that stand, and the timing-suspect
-  marks in the centroid table.
+  the maintainer's review: three rulings of the M3 build's controller, Ruling Q (bar 2's "ExoFOP shows nothing at the
+  period" checked against every ExoFOP planet-parameter row on period alone, at the novelty harmonics), Ruling R
+  (`hits_read` names every hit the review flagged) and Ruling U (a second-list row's pixel check, which the second list
+  runs, reaches the call: a pixel fail is a kill's ground, and a second-list row's pass needs a pixel pass); and the
+  choices this record makes in building it: each run's provenance copied into the record, production runs only,
+  unknown call keys refused, a signal a TRICERATOPS or literature run never judged allowed in, the README listing only
+  published calls that stand, and the timing-suspect marks in the centroid table.
 
 ## Context
 
@@ -58,24 +59,32 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   5. the three sentences are there.
 
   The match tolerance is read from the criteria files the vetting run's provenance names, each checked against the
-  sha256 the run recorded.
-- **A kill** rests on a failed check (TRICERATOPS's fail included) or a confirmed finding: `rests_on` must name one.
+  sha256 the run recorded. A second-list row also needs its pixel check passed (below).
+- **A second-list row's pixel check** (Ruling U; M3 design, section 4.10). Triage runs its pixel check only on
+  signals that passed novelty, so it never ran on a second-list row, and the row's `checks.json` holds triage's "not
+  run". `tess-hunt vetting second-list` runs it as triage runs it and writes the result as `pixels.json`. For a
+  second-list row that is the pixel check `calls.problems` and the dossier read (`calls.pixels`); for every other
+  signal it is triage's, in `checks.json`. A pixel fail kills the row as it would have in triage: a failed pixel check
+  is a ground a kill may rest on (for any signal), and a second-list row's pass needs a `pixels.json` whose outcome is
+  pass. Without the second list's record, `pixels` is not a name a second-list row's call may rest on.
+- **A kill** rests on a failed check (TRICERATOPS's and the pixel check's fails included) or a confirmed finding:
+  `rests_on` must name one.
   **A hold** needs `deciding_evidence`. For every outcome the call names the signal its directory holds and lists the
   vet criteria version the checks ran under.
 - **The record** under `results/vetting/<name>/`, written by `tess-hunt vetting publish --name NAME --run VETTING_RUN
-  --triceratops RUN --literature RUN [--evidence-only RUN]`:
+  --triceratops RUN --literature RUN [--evidence-only RUN] [--second-list RUN]`:
   - from the vetting run: `checks.json`, `neighbours.csv`, `plots/*.png`; from the TRICERATOPS run: `triceratops.json`,
     `probs.csv`; from the literature run: `literature.json`; from the evidence-only run: its `checks.json` as
-    `checks-with-suspect.json`. Beside each run's files goes that run's `provenance.json`, unchanged, as
-    `provenance-<file>.json` (`provenance-checks.json`, `provenance-triceratops.json`,
-    `provenance-literature.json`, `provenance-checks-with-suspect.json`), so the record names its runs, commits and
-    criteria. A signal a check killed has no TRICERATOPS result; the run's provenance still goes, and the dossier says
-    the run did not judge it.
+    `checks-with-suspect.json`; from the second-list run, for a second-list row: `pixels.json`. Beside each run's files
+    goes that run's `provenance.json`, unchanged, as `provenance-<file>.json` (`provenance-checks.json`,
+    `provenance-triceratops.json`, `provenance-literature.json`, `provenance-checks-with-suspect.json`,
+    `provenance-second-list.json`), so the record names its runs, commits and criteria. A signal a check killed has no
+    TRICERATOPS result; the run's provenance still goes, and the dossier says the run did not judge it.
   - The runs must belong together (Ruling C's rule, one run, one criteria file): each is a finished production run;
-    `--run` is not evidence-only and `--evidence-only` is; the TRICERATOPS and literature runs were made from `--run`
-    and recorded the sha256 of this signal's `checks.json` as `--run` holds it; every run's criteria shas equal
-    `--run`'s; the evidence-only run vetted the signal at the same ephemeris. Nothing reads the evidence-only run's
-    `advances`.
+    `--run` is not evidence-only and `--evidence-only` is; the TRICERATOPS, literature and second-list runs were made
+    from `--run` and recorded the sha256 of this signal's `checks.json` as `--run` holds it; every run's criteria shas
+    equal `--run`'s; the evidence-only run vetted the signal at the same ephemeris. Nothing reads the evidence-only
+    run's `advances`.
   - `publish` refuses when `call.toml` is absent or `calls.problems` is not empty. It judges the call and renders the
     dossier and `results/vetting/README.md` from a staged copy before it copies anything, so a refusal, or a render
     that raises, leaves `results/` as it was. Published files are never overwritten: the same run's file again is no
@@ -88,7 +97,8 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   the signal and the star (names, Teff, radius, Tmag, RUWE, CROWDSAP per sector, the sectors vetted and left out, the
   criteria versions, the runs); every check with its outcome and reason; the three questions with their evidence
   (on the star: centroid offsets per sector, with each timing-suspect sector marked and the sector whose offset
-  triage's pixel check judged named, the neighbour table's possible hosts, each beside the TRICERATOPS star
+  triage's pixel check judged named, from the second list's pixel check for a second-list row, the neighbour table's
+  possible hosts, each beside the TRICERATOPS star
   matched to it and the depth TRICERATOPS gave that star (the M3 design's cross-check, section 4.4), TRICERATOPS's
   NFPP, the possible hosts it did not weigh and those it gave zero depth (Ruling M, 0026), RUWE; a planet rather than
   a binary: odd and even, the secondary at phase 0.5 and at any phase from LEO-Vetter's ModShift, the search's other signals on the star
@@ -114,9 +124,10 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
     deciding evidence is the transit's shape (a hold on blending does not go: 2-min data come from the same pixels); a
     killed one does not. With no upcoming look there is no ask, and M4 decides the route.
 - **Drafts.** `tess-hunt vetting dossier --run VETTING_RUN [--triceratops RUN] [--literature RUN] [--evidence-only
-  RUN] [--signals NAME ...] --out DIR` lays out each signal's record in `DIR/<name>/` as `publish` would, under the same
-  run checks except production, and renders `dossier.md`, with a `review.json` or `call.toml` already in the directory
-  rendered too. It refuses a `DIR` under the repo's `results/`, so `publish` stays the only way in.
+  RUN] [--second-list RUN] [--signals NAME ...] --out DIR` lays out each signal's record in `DIR/<name>/` as
+  `publish` would, under the same run checks except production, and renders `dossier.md`, with a `review.json` or
+  `call.toml` already in the directory rendered too. It refuses a `DIR` under the repo's `results/`, so `publish` stays
+  the only way in.
 - **ExoFOP's periods.** ExoFOP's TOI and CTOI entries carry no period; its planet parameters do. `vetting literature`
   now keeps each planet parameter row (provenance, name, TOI, period, epoch, duration, disposition) in the ExoFOP
   record, and a page without them is a failed ExoFOP read (0027).
@@ -142,8 +153,12 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   review, an ExoFOP row at twice the period, an unpromoted `known_to_spoc` novelty: each refused),
   `test_a_planet_elsewhere_on_exofop_does_not_stand_in_the_way`, `test_kill_must_rest_on_a_failure`,
   `test_hold_needs_deciding_evidence`, `test_promotion_stands_in_for_known_to_spoc`,
+  `test_a_kill_may_rest_on_a_failed_pixel_check`, `test_a_second_list_pass_needs_the_pixel_check_to_pass`,
   `test_a_call_file_that_breaks_the_schema_is_refused`, `test_a_review_file_that_breaks_the_schema_is_refused`,
   `test_no_call_is_a_problem`.
+- [tests/test_secondlist.py](../../tests/test_secondlist.py): `test_the_dossier_shows_the_second_lists_pixel_check`,
+  `test_publish_carries_the_second_lists_pixel_record` (a kill resting on the pixel check is refused without the
+  second list's record and published with it; a second-list run made from another vetting run is refused).
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_page_one_answers_the_three_questions`,
   `test_render_fails_on_a_missing_value`, `test_review_renders_findings_ratings_and_both_refuters`,
   `test_dossier_draft_says_what_it_lacks`, `test_publish_refuses_without_a_call` (and copies the record, re-renders

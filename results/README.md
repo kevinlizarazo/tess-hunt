@@ -133,9 +133,13 @@ planet.
   scenario table. A signal a check killed has none.
 - `literature.json`: the literature search by name, NASA ADS and ExoFOP
   ([decision 0027](../docs/decisions/0027-literature-by-name.md)).
+- `pixels.json`: a second-list row's pixel check, which triage runs only on novelty passes, run on it as triage runs
+  it by `tess-hunt vetting second-list`: the outcome and reason, each measured sector's centroid offset and quality,
+  and the offset limit (decision 0028). Other signals' pixel check is triage's, in `checks.json`.
 - `provenance-checks.json`, `provenance-checks-with-suspect.json`, `provenance-triceratops.json`,
-  `provenance-literature.json`: each run's `provenance.json`, copied unchanged: the commit, the criteria files and their
-  hashes, the inputs and their hashes, and the command line of the run the files beside it came from.
+  `provenance-literature.json`, `provenance-second-list.json`: each run's `provenance.json`, copied unchanged: the
+  commit, the criteria files and their hashes, the inputs and their hashes, and the command line of the run the files
+  beside it came from.
   `provenance-checks.json` stands behind `checks.json`, `neighbours.csv` and `plots/`.
 
 Gaia DR3 data in these records stay under ESA's CC BY-NC 3.0 IGO terms (above), not CC BY 4.0: `neighbours.csv`, the
