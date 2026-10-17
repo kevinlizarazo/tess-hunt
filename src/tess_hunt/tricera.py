@@ -30,6 +30,25 @@ STAR_COLUMNS = ("ID", "ra", "dec", "Tmag", "tdepth")
 # calc_probs needs these for the target; without one it stops at the target and reports probabilities from no
 # scenario at all.
 TARGET_PARAMETERS = ("mass", "rad", "Teff", "plx")
+# Every field `run` records. `check` starts the evidence with each one None, so a run that raised leaves a record of
+# the same shape with nothing reached, and a reader can tell "not reached" from a field that was never written.
+RUN_FIELDS = (
+    "groups",
+    "exposure_s",
+    "sectors",
+    "left_out",
+    "points",
+    "flux_err_0",
+    "field_population",
+    "field_population_file",
+    "apertures",
+    "stars",
+    "fpp",
+    "nfpp",
+    "degenerate",
+    "probs",
+    "stopped",
+)
 
 
 class ContrastError(ValueError):
@@ -488,6 +507,7 @@ def check(
         blockers.append(scrub(f"TRICERATOPS raised {type(exc).__name__}: {exc}"))
         result = None
     evidence = {
+        **dict.fromkeys(RUN_FIELDS),
         "ruwe": ruwe if np.isfinite(ruwe) else None,
         "ephemeris": asdict(eph),
         "runs": cfg["runs"],

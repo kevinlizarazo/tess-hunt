@@ -126,7 +126,9 @@ its TIC match and `tdepth`, in `hosts`) so the review sees it.
 
 Where TRICERATOPS can still run (RUWE, the neighbour table, the field-star population, a missing host), it runs and its
 numbers are kept as evidence for the review; where it cannot give a meaningful number (no group, no aperture, a target
-it can't weigh), it stops before `calc_probs`.
+it can't weigh), it stops before `calc_probs`. On every path, a run that raised included, the evidence holds every
+field `run` records (`tricera.RUN_FIELDS`), None for a step it never reached, so the record says how far TRICERATOPS
+got (decision 0028).
 
 **The stage.** `tess-hunt vetting triceratops --run VETTING_RUN [--signals NAME ...] [--contrast CSV]
 [--criteria-search ...] [--criteria-vet ...] [--workers N] [--production]` runs one job per signal no check failed in
@@ -189,6 +191,7 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
     a first star that is not the target, no target light in the apertures).
   - `test_a_host_triceratops_gave_no_depth_is_evidence_not_a_blocker` (Ruling M: the check passes and lists the host
     in `hosts_tdepth_zero`).
+  - `test_every_path_records_the_same_fields` (a finished run and one that raised hold the same fields).
   - `test_validated_label_needs_contrast_and_2min` and `test_runs_are_seeded_and_averaged` (seeds 0 to runs - 1, a
     float period from a numpy one, `parallel=False`, the group's exposure, `dilution_corrected`, and each sector's
     `ccd_pixels` equal to what `calc_depths` got).

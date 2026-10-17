@@ -1,7 +1,14 @@
 # 0028: Passed, killed or held; the "passed" bar `vetting publish` holds a call to; the record of each call
 
 - Date: 2026-10-17
-- Status: Accepted (approved by the maintainer in the M3 design)
+- Status: Accepted in part. Approved by the maintainer in the M3 design (2026-10-16): the three outcomes, the five
+  items of the "passed" bar, the record and what the dossier shows (M3 design, sections 4.7 to 4.9). Proposed, pending
+  the maintainer's review: two rulings of the M3 build's controller, Ruling Q (bar 2's "ExoFOP shows nothing at the
+  period" checked against every ExoFOP planet-parameter row on period alone, at the novelty harmonics) and Ruling R
+  (`hits_read` names every hit the review flagged); and the choices this record makes in building it: each run's
+  provenance copied into the record, production runs only, unknown call keys refused, a signal a TRICERATOPS or
+  literature run never judged allowed in, the README listing only published calls that stand, and the timing-suspect
+  marks in the centroid table.
 
 ## Context
 
@@ -69,19 +76,22 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
     and recorded the sha256 of this signal's `checks.json` as `--run` holds it; every run's criteria shas equal
     `--run`'s; the evidence-only run vetted the signal at the same ephemeris. Nothing reads the evidence-only run's
     `advances`.
-  - `publish` refuses when `call.toml` is absent or `calls.problems` is not empty. It judges and renders from a
-    staged copy, so a refusal leaves the record as it was. Published files are never overwritten: the same run's file
-    again is no change, any other is refused. Only `dossier.md` and `results/vetting/README.md` are rendered again,
-    from what sits beside them.
-  - `results/vetting/README.md` has one row per signal with a call: name, outcome, date and reason.
+  - `publish` refuses when `call.toml` is absent or `calls.problems` is not empty. It judges the call and renders the
+    dossier and `results/vetting/README.md` from a staged copy before it copies anything, so a refusal, or a render
+    that raises, leaves `results/` as it was. Published files are never overwritten: the same run's file again is no
+    change, any other is refused. Only `dossier.md` and the README are rendered again, from what sits beside them;
+    `dossier.md` is written last of a signal's record.
+  - `results/vetting/README.md` has one row per published signal whose call stands (its record and `dossier.md` are
+    there and `calls.problems` is empty): name, outcome, date and reason. A call written before its signal is
+    published, or one that no longer stands on its record, is left out, and `publish` prints which and why.
 - **The dossier** (`dossier.render`, M3 design, section 4.7) reads only the files in the signal's directory. Page one:
   the signal and the star (names, Teff, radius, Tmag, RUWE, CROWDSAP per sector, the sectors vetted and left out, the
   criteria versions, the runs); every check with its outcome and reason; the three questions with their evidence
-  (on the star: centroid offsets per sector, the neighbour table's possible hosts, each beside the TRICERATOPS star
+  (on the star: centroid offsets per sector, with each timing-suspect sector marked and the sector whose offset
+  triage's pixel check judged named, the neighbour table's possible hosts, each beside the TRICERATOPS star
   matched to it and the depth TRICERATOPS gave that star (the M3 design's cross-check, section 4.4), TRICERATOPS's
   NFPP, the possible hosts it did not weigh and those it gave zero depth (Ruling M, 0026), RUWE; a planet rather than
-  a binary: odd and
-  even, the secondary at phase 0.5 and at any phase from LEO-Vetter's ModShift, the search's other signals on the star
+  a binary: odd and even, the secondary at phase 0.5 and at any phase from LEO-Vetter's ModShift, the search's other signals on the star
   with their period ratios, shape, density, Rp from both fits, the density-prior fit's parameters, TRICERATOPS's FPP;
   real and new: signal present, the held-out seasons, sector depths, novelty, the literature search, ExoFOP); the next
   TESS sectors with the predicted windows and their widths; and the DDT note. Then the plots, every catalogued row on
@@ -94,6 +104,9 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   - The template is a `string.Template` filled with `substitute`, and every value is read from the record by its key,
     so a value the record lacks raises rather than rendering (`docs/design.md`, section 5.5). A value the record holds
     as null renders as "missing". QLP publishes no CROWDSAP, so its sectors say so instead of raising.
+  - A TRICERATOPS record holds every field `tricera.run` records on every path, None for a step it never reached
+    (`tricera.RUN_FIELDS`): a run that raised, one that stopped before or after `calc_depths`, and one that finished
+    all render, each saying how far TRICERATOPS got.
   - **The DDT note** (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so
     tess-point can't say whether an upcoming sector will have it; the note gives the upcoming sectors and whether the
     star had SPOC 2-min data in the sectors fetched, then the rule for the call's outcome. A passed signal goes to the
@@ -134,9 +147,14 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_page_one_answers_the_three_questions`,
   `test_render_fails_on_a_missing_value`, `test_review_renders_findings_ratings_and_both_refuters`,
   `test_dossier_draft_says_what_it_lacks`, `test_publish_refuses_without_a_call` (and copies the record, re-renders
-  only the dossier and the README, and refuses another run's file), `test_publish_refuses_a_pass_the_evidence_does_not_support`,
+  only the dossier and the README, refuses another run's file, and is not stopped by another signal's call written
+  before its publish), `test_publish_refuses_a_pass_the_evidence_does_not_support`,
   `test_publish_refuses_runs_that_do_not_belong_together` (another vetting run, other criteria, another
-  `checks.json`, the main run as evidence-only and the reverse, a run that is not production), `test_readme_lists_every_call`.
+  `checks.json`, the main run as evidence-only and the reverse, a run that is not production),
+  `test_readme_lists_every_call` (not a call with no record, a record with no call, or a call that no longer stands),
+  `test_a_triceratops_record_from_any_path_renders` (records `vetting triceratops` wrote after TRICERATOPS raised,
+  found no cadence group, got too few cutouts, or found no target light).
+- [tests/test_tricera.py](../../tests/test_tricera.py): `test_every_path_records_the_same_fields`.
 - [tests/test_vetting.py](../../tests/test_vetting.py):
   `test_every_catalogued_row_on_the_star_is_listed_with_the_transits_it_overlaps`.
 - [tests/test_literature.py](../../tests/test_literature.py): `test_exofop_record_keeps_comments_and_imaging` (the

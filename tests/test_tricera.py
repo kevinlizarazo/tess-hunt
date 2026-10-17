@@ -211,6 +211,20 @@ def test_nan_or_raise_is_inconclusive(monkeypatch, behaviour, reason):
     assert result.evidence["validated_label"] is False
 
 
+def test_every_path_records_the_same_fields(monkeypatch):
+    """The dossier reads each field by name, so every path writes every field `run` records, None where not
+    reached."""
+    install(monkeypatch)
+    assert set(tricera.run(light_curve(), STAR, EPH, EPH.depth, cfg(), [])) == set(
+        tricera.RUN_FIELDS
+    )
+    install(monkeypatch, raises=RuntimeError("PyTransit failed"))
+    raised = check().evidence
+    assert set(tricera.RUN_FIELDS) <= set(raised)
+    assert raised["fpp"] == raised["nfpp"] == []
+    assert all(raised[f] is None for f in tricera.RUN_FIELDS if f not in ("fpp", "nfpp"))
+
+
 def test_a_non_finite_or_missing_run_is_inconclusive():
     for fpp, nfpp in (([0.01, float("nan")], [1e-4, 1e-4]), ([], [])):
         result = tricera.outcome(fpp, nfpp, cfg(), [], True)

@@ -67,7 +67,7 @@ $call
 README = Template("""\
 # Vetting
 
-One row per signal the maintainer has called passed, killed or held
+One row per published signal the maintainer has called passed, killed or held, whose call stands on its record
 ([decision 0028](../../docs/decisions/0028-outcomes-and-calls.md)). Each directory holds the signal's dossier
 (`dossier.md`), the call (`call.toml`), the review (`review.json`) and the run files the dossier is rendered from;
 [../README.md](../README.md) describes each file. A passed signal is a planet candidate, not a confirmed planet.
@@ -278,11 +278,44 @@ def _centroids(r: Record) -> str:
     sectors = sorted(pixels["evidence"].get("sectors", []), key=lambda s: s["sector"])
     if not sectors:
         return f"Centroids: triage's pixel check is {pixels['outcome']} ({pixels['reason']}); no sector measured."
-    rows = [[s["sector"], _f(s["offset_arcsec"], ".1f"), _f(s["quality"], ".2f")] for s in sectors]
+    suspect = set(r.checks["dropped_suspect"])
+    # Triage judges the best-quality sector's offset (pixels.pixel_check); the row holding that offset is its sector.
+    # A NaN offset is null in the record and matches no row.
+    judged_offset = pixels["evidence"]["offset_qual_arcsec"]
+    judged = [
+        s["sector"]
+        for s in sectors
+        if judged_offset is not None and s["offset_arcsec"] == judged_offset
+    ]
+    rows = []
+    for s in sectors:
+        notes = []
+        if s["sector"] in suspect:
+            notes.append("timing-suspect: vet-v3 leaves it out")
+        if s["sector"] in judged:
+            notes.append("the offset triage judged")
+        rows.append(
+            [s["sector"], _f(s["offset_arcsec"], ".1f"), _f(s["quality"], ".2f"), "; ".join(notes)]
+        )
+    if len(judged) == 1:
+        sector = judged[0]
+        source = (
+            f"Triage's {pixels['outcome']} rests on the best-quality sector's offset, S{sector}'s"
+            + (
+                ", from a timing-suspect sector that vet-v3 leaves out."
+                if sector in suspect
+                else "."
+            )
+        )
+    else:
+        source = (
+            f"Triage's {pixels['outcome']} rests on the best-quality sector's offset, which no single row below "
+            "reports."
+        )
     return (
         f"Centroids, from triage's pixel check ({pixels['outcome']}, {pixels['reason']}): the difference-image "
-        "centroid's offset from the target in each sector.\n\n"
-        + _table(["Sector", "Offset (arcsec)", "Quality"], rows)
+        f"centroid's offset from the target in each sector. {source}\n\n"
+        + _table(["Sector", "Offset (arcsec)", "Quality", "Note"], rows)
     )
 
 
@@ -311,7 +344,8 @@ def _neighbours(r: Record) -> str:
             else:
                 row += [
                     f'TIC {m["tic"]} ({_f(m["distance_arcsec"], ".1f")}")',
-                    "missing" if m["tdepth"] is None else f"{100 * m['tdepth']:.3g}%",
+                    # TRICERATOPS can stop after building its star list and before calc_depths.
+                    "not computed" if m["tdepth"] is None else f"{100 * m['tdepth']:.3g}%",
                 ]
         rows.append(row)
     return (
@@ -341,12 +375,20 @@ def _triceratops_on_star(r: Record) -> str:
     fold = {"fit_prior": "the density-prior fit's", "signal": "the signal's"}[
         t["ephemeris_from"]["ephemeris"]
     ]
-    group = (
-        f" on sectors {_words(e['sectors'])} at {e['exposure_s']:g} s" if e["exposure_s"] else ""
-    )
-    lines = [
-        f"TRICERATOPS ({t['outcome']}){group}, folded on {fold} ephemeris: {_spread(e, 'nfpp')}."
-    ]
+    # Every field run() records is in the record; None is a step TRICERATOPS never reached (tricera.RUN_FIELDS).
+    if e["exposure_s"] is not None:
+        data = f"ran on sectors {_words(e['sectors'])} at {e['exposure_s']:g} s, folded on {fold} ephemeris"
+    elif e["groups"] is None:
+        data = "never reached its choice of data"
+    else:
+        data = "found no cadence group to run on"
+    lines = [f"TRICERATOPS ({t['outcome']}) {data}."]
+    if e["fpp"]:
+        lines.append(f"It gave a {_spread(e, 'nfpp')}.")
+    elif e["stopped"] is not None:
+        lines.append(f"It stopped before calc_probs: {e['stopped']}.")
+    else:
+        lines.append(f"It made no calc_probs run: {t['reason']}.")
     if e["missing_hosts"] is None:
         lines.append("It built no star list, so no possible host was matched to it.")
     else:
@@ -459,10 +501,12 @@ def _planet(r: Record) -> str:
     ]
     if r.triceratops is None:
         items.append(f"TRICERATOPS: {r.absent('triceratops', 'TRICERATOPS')}")
-    else:
+    elif r.triceratops["evidence"]["fpp"]:
         items.append(
             f"TRICERATOPS ({r.triceratops['outcome']}): {_spread(r.triceratops['evidence'], 'fpp')}."
         )
+    else:
+        items.append(f"TRICERATOPS ({r.triceratops['outcome']}): no calc_probs run, so no FPP.")
     return _list(items)
 
 
@@ -803,10 +847,37 @@ def render(signal_dir: Path) -> str:
     )
 
 
-def readme(vetting_root: Path) -> str:
-    """results/vetting/README.md: one row per signal with a call, from the call files."""
+def _not_listed(path: Path) -> list[str]:
+    """Why the signal directory at `path` is not a published record whose call stands; empty when it is."""
+    # publish writes dossier.md last of the record's files, so a directory without it was never published.
+    if not ((path / "checks.json").is_file() and (path / "dossier.md").is_file()):
+        return ["not published: a call with no record beside it"]
+    return calls.problems(path)
+
+
+def listed(
+    vetting_root: Path, staged: Path | None = None
+) -> tuple[list[Path], dict[str, list[str]]]:
+    """The signal directories the README lists (a published record whose call stands), and why each other
+    directory holding a call is left out. `staged` stands in for the directory of its name, so `vetting publish`
+    renders the README before it copies anything."""
+    dirs = {call.parent.name: call.parent for call in vetting_root.glob("*/call.toml")}
+    if staged is not None:
+        dirs[staged.name] = staged
+    shown, left = [], {}
+    for name in sorted(dirs):
+        why = _not_listed(dirs[name])
+        if why:
+            left[name] = why
+        else:
+            shown.append(dirs[name])
+    return shown, left
+
+
+def readme(vetting_root: Path, staged: Path | None = None) -> str:
+    """results/vetting/README.md: one row per published signal whose call stands, from the call files."""
     rows = []
-    for path in sorted(p for p in vetting_root.iterdir() if (p / "call.toml").is_file()):
+    for path in listed(vetting_root, staged)[0]:
         call = calls.load(path / "call.toml")
         rows.append(
             f"| [{path.name}]({path.name}/dossier.md) | {call['outcome']} | {call['date']} | "

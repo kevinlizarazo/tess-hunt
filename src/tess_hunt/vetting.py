@@ -947,7 +947,8 @@ def cmd_publish(args) -> int:
         )
     if not (dest / "call.toml").is_file():
         raise SystemExit(f"no call.toml in {where}: the maintainer's call comes before publishing")
-    # Judged and rendered from a staged copy, so a refusal or a render that raises leaves the record as it was.
+    # Judged and rendered, the README included, from a staged copy before anything is copied: a refusal or a render
+    # that raises at any point leaves results/ as it was.
     with tempfile.TemporaryDirectory() as tmp:
         staged = Path(tmp) / args.name
         shutil.copytree(dest, staged)
@@ -959,11 +960,17 @@ def cmd_publish(args) -> int:
                 + "\n".join(f"- {p}" for p in found)
             )
         text = dossier.render(staged)
+        (staged / "dossier.md").write_text(text)
+        readme = dossier.readme(root, staged)
+        left = dossier.listed(root, staged)[1]
     new = {name: source for name, source in files.items() if not (dest / name).exists()}
     _copy(new, dest)
+    # Last of the record: the README lists only a directory that holds it.
     (dest / "dossier.md").write_text(text)
-    (root / "README.md").write_text(dossier.readme(root))
+    (root / "README.md").write_text(readme)
     print(f"published {args.name} -> {where} ({len(new)} new file(s), dossier.md, README.md)")
+    for name, why in left.items():
+        print(f"README leaves out {name}: {'; '.join(why)}")
     return 0
 
 

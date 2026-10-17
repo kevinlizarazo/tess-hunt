@@ -4,11 +4,13 @@ import stat
 from pathlib import Path
 
 import pytest
+import requests
 import test_calls as tc
 import test_literature as tl
+import test_tricera as tt
 import test_vetting as tv
 
-from tess_hunt import dossier, literature, vetting
+from tess_hunt import dossier, literature, tricera, vetting
 from tess_hunt.cli import main
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
@@ -17,6 +19,7 @@ NAME = "1-1"
 FPP = [0.011, 0.013, 0.012]
 NFPP = [0.0004, 0.0005, 0.0003]
 REVIEW = {**tc.REVIEW, "signal": NAME}
+S64 = {"sector": 64, "offset_arcsec": 9.7, "quality": 0.95}
 HELD = tc.edit(tc.HELD, 'signal = "44926986-1"', f'signal = "{NAME}"')
 
 
@@ -45,6 +48,12 @@ def vetting_runs(tmp_path, monkeypatch) -> tuple[Path, Path]:
         source["crowdsap"] = 0.9 + 0.01 * i
     lc.save(path)
     triage = tv.triage_run(tmp_path)
+    # Triage measured the timing-suspect S64 too, and its pass reads S64's offset, the best-quality one.
+    evidence = triage / "evidence" / "1-1.json"
+    edit_json(evidence, lambda e: e["pixels"]["evidence"]["sectors"].append(S64))
+    edit_json(
+        evidence, lambda e: e["pixels"]["evidence"].update(offset_qual_arcsec=S64["offset_arcsec"])
+    )
     assert main([*argv, "--triage-run", str(triage)]) == 0
     assert main([*argv, "--triage-run", str(triage), "--include-suspect"]) == 0
     runs = {
@@ -212,7 +221,13 @@ def test_page_one_answers_the_three_questions(tmp_path, monkeypatch):
         assert f"| {c['check']} | {c['outcome']} | {c['reason']} |" in page_one
 
     on_star = section(page_one, "On the star?")
-    assert "| 1 | 10.9 | 0.92 |" in on_star and "| 2 | 12.8 | 0.84 |" in on_star
+    assert "| 1 | 10.9 | 0.92 |  |" in on_star and "| 2 | 12.8 | 0.84 |  |" in on_star
+    # The suspect sector is marked, and the line above the table names the offset triage's pass rests on.
+    assert (
+        "| 64 | 9.7 | 0.95 | timing-suspect: vet-v3 leaves it out; the offset triage judged |"
+        in on_star
+    )
+    assert "S64's, from a timing-suspect sector that vet-v3 leaves out." in on_star
     # Beside each possible host, the TRICERATOPS star matched to it and the depth TRICERATOPS gave that star.
     [host] = checks["neighbours"]["evidence"]["possible_hosts"]
     needed = f"{100 * host['required_depth']:.3g}%"
@@ -337,9 +352,14 @@ def test_publish_refuses_without_a_call(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     monkeypatch.setattr(vetting, "repo_root", lambda: repo)
     argv = publish_argv(runs, "run", "triceratops", "literature", "suspect")
+    # The maintainer has written another signal's call, not yet published.
+    other = repo / "results" / "vetting" / "2-1"
+    other.mkdir(parents=True)
+    (other / "call.toml").write_text(tc.edit(HELD, f'signal = "{NAME}"', 'signal = "2-1"'))
+    before = published(repo)
     with pytest.raises(SystemExit, match="no call.toml"):
         main(argv)
-    assert not (repo / "results" / "vetting").exists() or published(repo) == {}
+    assert published(repo) == before
 
     signal = repo / "results" / "vetting" / NAME
     signal.mkdir(parents=True)
@@ -363,6 +383,8 @@ def test_publish_refuses_without_a_call(tmp_path, monkeypatch):
     assert (signal / "checks.json").stat().st_mode & 0o777 == 0o644
     readme = (repo / "results" / "vetting" / "README.md").read_text()
     assert f"[{NAME}]({NAME}/dossier.md) | held |" in readme
+    # The unpublished call stands in no row, and it did not stop the publish.
+    assert "2-1" not in readme
 
     # Publishing the same runs again re-renders only the dossier and the README.
     (signal / "dossier.md").write_text("stale\n")
@@ -476,14 +498,25 @@ def test_publish_refuses_runs_that_do_not_belong_together(tmp_path, monkeypatch,
 
 def test_readme_lists_every_call(tmp_path):
     root = tmp_path / "vetting"
-    held = tc.signal_dir(root, call=tc.HELD)
-    killed = tc.signal_dir(
-        root,
-        call=tc.KILLED.replace("It fails", "It | fails"),
-        name="48010903-1",
-        outcomes={"odd_even": "fail"},
+
+    def published_dir(call, name, parent=root, **kwargs):
+        call = tc.edit(call, f'signal = "{tc.NAME}"', f'signal = "{name}"')
+        path = tc.signal_dir(parent, call=call, name=name, **kwargs)
+        (path / "dossier.md").write_text("rendered\n")
+        return path
+
+    held = published_dir(tc.HELD, tc.NAME)
+    killed = published_dir(
+        tc.KILLED.replace("It fails", "It | fails"), "48010903-1", outcomes={"odd_even": "fail"}
     )
-    tc.signal_dir(root, call=None, name="103312990-1")
+    # A record with no call, a call with no record (written before publishing), and a published call that no
+    # longer stands on its record (a kill resting on a check that passed): none is a row.
+    published_dir(tc.HELD, "103312990-1").joinpath("call.toml").unlink()
+    (root / "2-1").mkdir()
+    (root / "2-1" / "call.toml").write_text(
+        tc.edit(tc.HELD, f'signal = "{tc.NAME}"', 'signal = "2-1"')
+    )
+    published_dir(tc.KILLED, "399023421-1")
     shutil.copy(held / "call.toml", root / "not-a-signal.toml")
     text = dossier.readme(root)
     rows = [line for line in text.splitlines() if line.startswith("| [")]
@@ -492,3 +525,57 @@ def test_readme_lists_every_call(tmp_path):
         "apart. |",
         f"| [{killed.name}]({killed.name}/dossier.md) | killed | 2026-10-28 | It \\| fails odd and even. |",
     ]
+    shown, left = dossier.listed(root)
+    assert shown == [held, killed]
+    assert left["2-1"] == ["not published: a call with no record beside it"]
+    assert "rests on" in left["399023421-1"][0]
+    # A staged directory stands in for its published one, as `vetting publish` renders the README before copying.
+    staged = published_dir(
+        tc.KILLED, "399023421-1", parent=tmp_path / "staging", outcomes={"odd_even": "fail"}
+    )
+    assert "399023421-1" in dossier.readme(root, staged)
+
+
+@pytest.mark.parametrize(
+    "path, said",
+    [
+        ("raised", "It made no calc_probs run: "),
+        ("no group", "It stopped before calc_probs: no cadence group"),
+        ("no cutout", "It stopped before calc_probs: TESScut gave"),
+        ("no light", "It stopped before calc_probs: calc_depths left the target no light"),
+    ],
+)
+def test_a_triceratops_record_from_any_path_renders(tmp_path, monkeypatch, path, said):
+    run, _ = vetting_runs(tmp_path, monkeypatch)
+    if path == "raised":
+
+        def down(tic, sectors, search_radius):
+            raise requests.ConnectionError("TESScut did not answer")
+
+        monkeypatch.setattr(tricera, "new_target", down)
+    elif path == "no group":
+        monkeypatch.setattr(tricera, "cadence_group", lambda lc, eph, n: (None, [], []))
+    else:
+        tt.install(monkeypatch, **({"cutouts": 1} if path == "no cutout" else {"dark": True}))
+    criteria = ("--criteria-search", str(tv.SEARCH), "--criteria-vet", str(tv.VET3))
+    assert main(["vetting", "triceratops", "--run", str(run), *criteria, "--workers", "1"]) == 0
+    [tric] = (tmp_path / "data" / "runs").glob("*-vetting-triceratops-*")
+    record = json.loads((tric / "signals" / NAME / "triceratops.json").read_text())
+    assert record["outcome"] == "inconclusive" and record["evidence"]["fpp"] == []
+    out = tmp_path / "drafts"
+    assert (
+        main(
+            ["vetting", "dossier", "--run", str(run), "--triceratops", str(tric), "--out", str(out)]
+        )
+        == 0
+    )
+    text = (out / NAME / "dossier.md").read_text()
+    on_star, planet = section(text, "On the star?"), section(text, "A planet rather than a binary?")
+    assert said in on_star
+    assert "TRICERATOPS (inconclusive): no calc_probs run, so no FPP." in planet
+    if path == "raised":
+        assert (
+            "TRICERATOPS (inconclusive) never reached its choice of data." in on_star
+            and "TESScut did not answer" in on_star
+        )
+        assert "It built no star list" in on_star

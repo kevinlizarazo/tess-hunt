@@ -103,9 +103,10 @@ The loose files in `triage/` ([decision 0012](../docs/decisions/0012-leo-vetter-
 
 Each directory under `vetting/` is one signal's record, named `<tic>-<rank>` as triage names the signal.
 `tess-hunt vetting publish` wrote it once the maintainer's call was in it
-([decision 0028](../docs/decisions/0028-outcomes-and-calls.md)); `vetting/README.md` lists every call. Published files
-are never edited: only `dossier.md` and `vetting/README.md` are rendered again from the files beside them, and a
-correction is a new run. A passed signal is a planet candidate, not a confirmed planet.
+([decision 0028](../docs/decisions/0028-outcomes-and-calls.md)); `vetting/README.md` lists every published call that
+stands on its record. Published files are never edited: only `dossier.md` and `vetting/README.md` are rendered again
+from the files beside them, and a correction is a new run. A passed signal is a planet candidate, not a confirmed
+planet.
 
 - `call.toml`: the maintainer's call: `outcome` (passed, killed or held), `date`, `reasons` in his words, `rests_on`
   (the checks and review findings it rests on), `criteria`, and as the outcome needs, `deciding_evidence` (what would
