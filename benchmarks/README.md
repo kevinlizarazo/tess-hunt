@@ -83,7 +83,7 @@ replayed run's published `injections.csv` and the replay's, run from the reposit
 
 ## Evidence scripts
 
-The scripts behind M2's loose evidence files under `results/`. Each runs from the repository root with
+The scripts behind the loose evidence files under `results/`. Each runs from the repository root with
 `uv run python benchmarks/<script>`; its docstring gives the arguments and the cached files it reads.
 
 - `compare_replay.py`: a replay comparison, `results/benchmarks/<replay run id>-comparison.md` (above).
@@ -94,6 +94,9 @@ The scripts behind M2's loose evidence files under `results/`. Each runs from th
 - `sector_structure.py`: each sector's span and gaps on 500 random fetched stars, `sector-structure-2026-10-13.txt`.
 - `pixel_timing.py`: transit-diffImage's pixel times against TESScut's, `results/triage/pixel-timing-2026-10-14.txt`.
 - `leo_strictness.py`: LEO-Vetter's outcomes by catalogued match, `results/triage/leo-strictness-2026-10-16.txt`.
+- `short_period_variables.py`: the stars whose signals sit at simple ratios of one period under 5 days and that
+  LEO-Vetter rejected as non-unique or sinusoidal, and the injection recovery on them against the rest,
+  `results/benchmarks/short-period-variables-<UTC date>.txt`.
 
 `sector-structure-2026-10-13.txt` and `pixel-timing-2026-10-14.txt` were written before the scripts printed their
 one-line header (sample, seed and gap threshold; the in-transit rule); apart from that header, the committed scripts

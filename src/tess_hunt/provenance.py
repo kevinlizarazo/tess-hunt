@@ -179,9 +179,14 @@ def publish_run(run_id: str, root: Path, kind: str, files: Callable[[Path], list
     if missing:
         raise SystemExit(f"run {run_id} has no {', '.join(missing)}")
     dest.mkdir(parents=True)
-    for path in paths:
-        shutil.copy(path, dest / path.name)
-        (dest / path.name).chmod(0o644)
+    try:
+        for path in paths:
+            shutil.copy(path, dest / path.name)
+            (dest / path.name).chmod(0o644)
+    except BaseException:
+        # A partial publication would block every retry: published results are never overwritten.
+        shutil.rmtree(dest)
+        raise
     print(f"published {run_id} -> {dest.relative_to(root)}")
     return dest
 

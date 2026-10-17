@@ -32,6 +32,17 @@ def test_long_exposure_smears_a_short_transit():
     assert smeared.min() > sharp.min()
 
 
+def test_mixed_exposures_integrate_each_cadence_over_its_own():
+    t = np.linspace(-0.1, 0.1, 401)
+    exposure = np.where(np.arange(len(t)) % 2 == 0, 120 / 86400, 1800 / 86400)
+    mixed = light_curve(t, exposure, 0.0, 1.0, 0.1, 6.0, 0.0, 0.4, 0.2)
+    for seconds in (120, 1800):
+        m = exposure == seconds / 86400
+        alone = light_curve(t[m], exposure[m], 0.0, 1.0, 0.1, 6.0, 0.0, 0.4, 0.2)
+        np.testing.assert_array_equal(mixed[m], alone)
+    assert mixed[exposure == 1800 / 86400].min() > mixed[exposure == 120 / 86400].min()
+
+
 def test_draw_respects_ranges_and_transit_count():
     lc = make_lc(sectors=(1, 2, 3))
     rng = np.random.default_rng(0)
