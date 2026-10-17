@@ -73,6 +73,7 @@ class FakeTarget:
         lacking=(),
         first=None,
         dark=False,
+        outside=False,
         fpp=None,
         nfpp=None,
         raises=None,
@@ -96,7 +97,7 @@ class FakeTarget:
         self.trilegal_fname = f"{tic}_gaia_background.csv" if field else None
         n = len(self.sectors) if cutouts is None else cutouts
         self.pix_coords = [np.array([[100.0, 200.0], [100.6, 200.0]]) for _ in range(n)]
-        self.spoc, self.dark = spoc, dark
+        self.spoc, self.dark, self.outside = spoc, dark, outside
         self.fpp, self.nfpp, self.raises, self.degenerate = fpp, nfpp, raises, degenerate
         self.depths, self.calls = [], []
 
@@ -108,6 +109,9 @@ class FakeTarget:
         self.depths.append((tdepth, all_ap_pixels, dilution_corrected))
         self.stars["fluxratio"] = [0.0, 1.0] if self.dark else [0.9, 0.1]
         self.stars["tdepth"] = [0.0, tdepth] if self.dark else [tdepth, 9.0 * tdepth]
+        if self.outside:
+            # Too little of its light in the apertures to make the dip.
+            self.stars.loc[1, "tdepth"] = 0.0
 
     def calc_probs(self, **kwargs):
         self.calls.append(kwargs)
@@ -287,6 +291,21 @@ def test_a_possible_host_triceratops_did_not_weigh_is_inconclusive(monkeypatch):
     assert tricera.missing_hosts(hosts(12.5), stars.assign(ra=np.nan), 2.0) == [7]
 
 
+def test_a_host_triceratops_gave_no_depth_is_evidence_not_a_blocker(monkeypatch):
+    # Ruling M: the TIC star at the host's place is weighed through the aperture and can't make the
+    # dip, where the neighbour table assumed all its light in the aperture.
+    install(monkeypatch, outside=True)
+    result = check(possible=hosts(12.5))
+    assert result.outcome is Outcome.PASS, result.reason
+    assert result.evidence["missing_hosts"] == []
+    assert result.evidence["hosts_tdepth_zero"] == [7]
+    [host] = result.evidence["hosts"]
+    assert host["tic"] == "999" and host["tdepth"] == 0.0
+
+    install(monkeypatch)
+    assert check(possible=hosts(12.5)).evidence["hosts_tdepth_zero"] == []
+
+
 def test_an_inconclusive_neighbour_table_is_inconclusive(monkeypatch):
     install(monkeypatch)
     table = {
@@ -343,6 +362,9 @@ def test_runs_are_seeded_and_averaged(monkeypatch):
     assert target.sectors.tolist() == [1, 2, 3] and target.search_radius == 10
     [(depth, apertures, corrected)] = target.depths
     assert depth == EPH.depth and corrected is True and len(apertures) == 3
+    # Ruling O: the pixels calc_depths got, kept for an audit after the archive has moved on.
+    for sector, pixels in zip((1, 2, 3), apertures, strict=True):
+        assert ev["apertures"][sector]["ccd_pixels"] == pixels.tolist()
     assert len(target.calls) == 3
     for call in target.calls:
         assert type(call["P_orb"]) is float and type(call["flux_err_0"]) is float
@@ -505,22 +527,38 @@ arcsec, dmag, dmrms
 
 
 @pytest.mark.parametrize(
-    "text, layout, expected",
+    "text, layout, measured, expected",
     [
         # Annulus centre and delta mag; the reduction's fitted curve after them is not read.
-        (SPECKLE, "speckle", [(0.1, 4.0), (0.175, 4.8), (0.275, 6.0)]),
+        (
+            SPECKLE,
+            "speckle",
+            [(0.1, 4.0), (0.175, 5.0), (0.225, 4.8), (0.275, 6.0)],
+            [(0.1, 4.0), (0.225, 4.8), (0.275, 6.0)],
+        ),
         # The zero-separation row goes.
-        (PHARO, "pharo", [(0.124, 1.927), (0.226, 3.7), (0.437, 5.55)]),
+        (
+            PHARO,
+            "pharo",
+            [(0.124, 1.927), (0.226, 3.73), (0.329, 3.7), (0.437, 5.55)],
+            [(0.124, 1.927), (0.329, 3.7), (0.437, 5.55)],
+        ),
     ],
     ids=["speckle", "pharo"],
 )
-def test_contrast_curves_convert_to_triceratops_two_columns(tmp_path, text, layout, expected):
+def test_contrast_curves_convert_to_triceratops_two_columns(
+    tmp_path, text, layout, measured, expected
+):
     path = tmp_path / "curve.dat"
     path.write_text(text)
     curve, info = tricera.read_contrast(path)
-    # A dip in delta mag is lowered from outside in, so np.interp in TRICERATOPS reads an increasing curve.
+    # A dip in delta mag is lowered from outside in, and of a run of equal values the widest
+    # separation stays, so np.interp in TRICERATOPS reads an increasing curve.
     np.testing.assert_allclose(curve, expected)
     assert info["layout"] == layout and info["lowered"] == 1
+    # Interpolated as TRICERATOPS interpolates, the curve never claims more contrast than was measured.
+    separations, dmags = np.array(measured).T
+    assert np.all(np.interp(separations, curve[:, 0], curve[:, 1]) <= dmags + 1e-12)
     out = tmp_path / "curve.csv"
     tricera.write_contrast(curve, out)
     from triceratops.funcs import file_to_contrast_curve
@@ -590,6 +628,8 @@ def test_triceratops_runs_on_the_signals_no_check_failed(tmp_path, monkeypatch):
     [target] = made
     assert target.sectors.tolist() == [1, 2, 64]
     assert record["evidence"]["exposure_s"] == 1800.0
+    for sector in ("1", "2", "64"):
+        assert record["evidence"]["apertures"][sector]["ccd_pixels"] == [[100, 200], [101, 200]]
 
     provenance = json.loads((out / "provenance.json").read_text())
     assert provenance["vetting_run"] == run.name

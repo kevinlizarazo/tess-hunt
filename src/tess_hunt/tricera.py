@@ -304,7 +304,10 @@ def apertures(
         except Exception as exc:
             note["reason"] = scrub(f"{type(exc).__name__}: {exc}")
         if aperture is not None:
+            # The pixels calc_depths gets, as (column, row): SPOC's come from the archive at run time, so the run
+            # keeps them to be audited later (Ruling O).
             note["pixels"] = len(aperture)
+            note["ccd_pixels"] = np.asarray(aperture).tolist()
         found[sector], notes[sector] = aperture, note
     return found, notes
 
@@ -493,6 +496,7 @@ def check(
         "contrast": [{"file": Path(path).name, "filt": f} for path, f in contrast],
         "hosts": None,
         "missing_hosts": None,
+        "hosts_tdepth_zero": None,
     }
     fpp, nfpp, label_ok = [], [], False
     if result is not None:
@@ -517,6 +521,13 @@ def check(
             if evidence["missing_hosts"]:
                 listed = ", ".join(str(s) for s in evidence["missing_hosts"])
                 blockers.append(f"possible host(s) TRICERATOPS did not weigh: Gaia DR3 {listed}")
+            # Ruling M: a matched star TRICERATOPS gave no depth is evidence for the review, not a blocker. The
+            # table counts the star's whole light in the aperture; TRICERATOPS counts what its aperture takes.
+            evidence["hosts_tdepth_zero"] = [
+                h["source_id"]
+                for h in evidence["hosts"]
+                if h["tic"] is not None and h["tdepth"] is not None and not h["tdepth"] > 0
+            ]
         fpp, nfpp = result["fpp"], result["nfpp"]
         label_ok = bool(contrast) and result["exposure_s"] == TWO_MINUTES_S
     judged = outcome(fpp, nfpp, cfg, blockers, label_ok)
@@ -571,9 +582,11 @@ def read_contrast(path: Path) -> tuple[np.ndarray, dict]:
         raise ContrastError(f"{path.name}: needs two or more finite rows at increasing separations")
     # TRICERATOPS reads the separation at a companion's delta mag with np.interp over the curve, which needs delta
     # mag increasing, and a measured curve dips here and there. Lowered from outside in, each separation claims only
-    # the depth reached there and at every wider one, so the curve never rules out a companion the data don't.
+    # the depth reached there and at every wider one. Of a run of equal values the widest separation stays: keeping
+    # the closest would interpolate from it to the next, deeper point and claim more than the run measured. So the
+    # curve never rules out a companion the data don't.
     envelope = np.minimum.accumulate(data[::-1, 1])[::-1]
-    keep = np.r_[True, np.diff(envelope) > 0]
+    keep = np.r_[np.diff(envelope) > 0, True]
     curve = np.column_stack([data[keep, 0], envelope[keep]])
     if len(curve) < 2:
         raise ContrastError(f"{path.name}: the curve never deepens")

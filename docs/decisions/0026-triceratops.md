@@ -55,8 +55,10 @@ averaged to 600 s, their 120 s and 200 s data become 600 s integrations, which i
 take bit 2 of the `APERTURE` extension of the light-curve file the photometry came from, as CCD (column + `CRVAL1P`,
 row + `CRVAL2P`), the conversion TRICERATOPS's own `get_aperture` uses (pin P3). The file is fetched again by its S3 key
 into the data directory's `lc_fits/` and must match the sha256 fetch recorded, so the aperture is the one the
-photometry used. Each sector records where its aperture came from, its pixel count, the file's sha256, and whether the
-target's pixel in TRICERATOPS's frame falls inside it.
+photometry used. Each sector records where its aperture came from, its pixel count, the file's sha256, whether the
+target's pixel in TRICERATOPS's frame falls inside it, and the pixels themselves as passed to `calc_depths`
+(`ccd_pixels`, column and row): SPOC's come from the archive at run time, so the run keeps them to be audited later
+(Ruling O).
 
 **Phase binning** (`[triceratops] bin_phase = true`; Ruling G, Proposed). The fold is averaged into phase bins one
 exposure wide: the data's own time sampling, one point per bin instead of one per transit. `flux_err_0` is the median
@@ -77,7 +79,8 @@ the two columns TRICERATOPS reads (separation in arcsec, delta mag, comma separa
 in two columns is not read); from the PHARO `.tbl`, `arcsec` and `dmag`. Rows at zero separation go. A measured curve
 dips here and there, and `np.interp` in TRICERATOPS needs delta mag increasing, so the curve is lowered from outside
 in: each separation keeps the smallest delta mag reached there or at any wider separation, and of equal values the
-closest separation stays. The curve then never rules out a companion the data don't. A file in neither layout, a
+widest separation stays (keeping the closest would interpolate from it to the next, deeper point and claim more than
+the run measured). The curve then never rules out a companion the data don't. A file in neither layout, a
 filter TRICERATOPS lacks, or a missing file refuses the run before it starts. The original's and the converted file's
 sha256, the layout, and how many rows the envelope lowered are recorded.
 
@@ -110,6 +113,16 @@ sha256, the layout, and how many rows the envelope lowered are recorded.
   TRICERATOPS weighs it as the target: a companion the TIC merged into it sits nearer the target than any other star
   and would otherwise count as weighed. The evidence lists every possible host beside the TRICERATOPS star matched to
   it and that star's `tdepth`, the cross-check of the two lists.
+
+**A possible host TRICERATOPS gave no depth** (Ruling M) is evidence, not a blocker. When a possible host matches a
+TIC star whose TRICERATOPS `tdepth` is 0, TRICERATOPS judged that star unable to make the dip and weighed no scenario
+on it. The neighbour table counts the star's whole light in the aperture, an upper bound on its flux there that
+ignores the aperture, so its required depth is the least the star could need; TRICERATOPS's depth comes from the light
+its PSF model puts in the apertures actually used, the better-informed of the two. This departs from the M3 design,
+section 4.4, which says the two must agree on which neighbours are possible. The cost: TRICERATOPS can pass while a
+star it put outside the apertures could host the signal by the table. The review's on-the-star lens and the pixel
+check's per-sector centroid offsets cover that case, and each such host is listed in `hosts_tdepth_zero` (and, with
+its TIC match and `tdepth`, in `hosts`) so the review sees it.
 
 Where TRICERATOPS can still run (RUWE, the neighbour table, the field-star population, a missing host), it runs and its
 numbers are kept as evidence for the review; where it cannot give a meaningful number (no group, no aperture, a target
@@ -169,21 +182,28 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
   - `test_missing_field_population_is_inconclusive`, `test_nan_or_raise_is_inconclusive` (a NaN FPP, an infinite
     NFPP, an exception named, a degenerate run), `test_missing_aperture_is_inconclusive` (a SPOC sector without one,
     and a QLP sector), `test_high_ruwe_is_inconclusive` (6.21, and none),
-    `test_a_possible_host_triceratops_did_not_weigh_is_inconclusive` (a Gaia star 30" out with no TIC star near it),
+    `test_a_possible_host_triceratops_did_not_weigh_is_inconclusive` (a Gaia star 30" out with no TIC star near it,
+    and one 1.5" from the target with only the target near it),
     `test_an_inconclusive_neighbour_table_is_inconclusive`, and
     `test_a_target_triceratops_cannot_weigh_is_inconclusive` (a missing TESScut cutout, a target without a parallax,
     a first star that is not the target, no target light in the apertures).
+  - `test_a_host_triceratops_gave_no_depth_is_evidence_not_a_blocker` (Ruling M: the check passes and lists the host
+    in `hosts_tdepth_zero`).
   - `test_validated_label_needs_contrast_and_2min` and `test_runs_are_seeded_and_averaged` (seeds 0 to runs - 1, a
-    float period from a numpy one, `parallel=False`, the group's exposure, `dilution_corrected`).
+    float period from a numpy one, `parallel=False`, the group's exposure, `dilution_corrected`, and each sector's
+    `ccd_pixels` equal to what `calc_depths` got).
   - `test_cadence_group_picks_the_richest_group`, `test_cadence_group_averages_faster_sectors_to_the_slower_exposure`
     (two transits at 600 s and one at 200 s make a 600 s group of three) and
     `test_faster_sectors_are_averaged_to_the_exposure` (the half-full rule).
   - `test_phase_bins_keep_one_exposure_sampling` (both settings of `bin_phase`).
   - `test_tess_spoc_aperture_comes_from_the_light_curve_file` (bit 2 and the CCD offsets, the cache, a file that is
     not the one fetch read).
-  - `test_contrast_curves_convert_to_triceratops_two_columns` (both layouts, read back by TRICERATOPS's own reader) and
+  - `test_contrast_curves_convert_to_triceratops_two_columns` (both layouts, read back by TRICERATOPS's own reader;
+    interpolated as TRICERATOPS interpolates, the curve never exceeds the measured delta mag at a measured separation)
+    and
     `test_a_contrast_file_in_neither_layout_is_refused`, on small synthetic files in ExoFOP's layouts.
-  - `test_triceratops_runs_on_the_signals_no_check_failed`, `test_contrast_curves_are_converted_into_the_run`,
+  - `test_triceratops_runs_on_the_signals_no_check_failed` (with each sector's `ccd_pixels` in `triceratops.json`),
+    `test_contrast_curves_are_converted_into_the_run`,
     `test_triceratops_refuses_what_it_cannot_stand_behind` and `test_triceratops_refuses_an_evidence_only_run`.
 - The network controls `test_nearby_eb_controls_fail_triceratops` (TOI-1058.01, TOI-1175.01) and
   `test_toi_1399_does_not_pass_triceratops`, one run each, and the controls' production runs at ten runs (M3 plan,
