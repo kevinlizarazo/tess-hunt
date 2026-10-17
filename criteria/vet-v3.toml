@@ -84,3 +84,16 @@ sigma = [1.0, 3.0]          # window half-widths reported, in posterior standard
 radius_arcmin = 1.0          # the spec's radius
 max_required_depth = 1.0     # a neighbour needing a deeper eclipse than total cannot be the source
 bp_rp_range = [0.0, 3.0]     # colours tried for a star with G only; the brightest TESS magnitude counts
+
+[triceratops]
+runs = 10                   # averaged (spec section 4.1)
+draws = 1000000             # calc_probs N, the paper's
+fpp_pass = 0.5              # "likely planet" with nfpp_pass (Giacalone et al. 2021)
+nfpp_pass = 0.001
+nfpp_fail = 0.1             # "likely nearby false positive"
+fpp_validated = 0.015       # recorded as a label only, with a contrast curve and 2-min data
+max_ruwe = 1.4              # an unresolved companion the priors don't condition on
+search_radius_pixels = 10
+match_arcsec = 2.0          # a Gaia neighbour counts as weighed when a TRICERATOPS star sits this close
+min_transits = 3            # the cadence group TRICERATOPS runs on
+bin_phase = true            # the fold averaged into bins one exposure wide (0026); the maintainer confirms it at the controls stop
