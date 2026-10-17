@@ -23,11 +23,21 @@ section 3).
 - Odd and even and sector depths run on each family's cadences, and `per_family` combines the results: the check fails
   if any family failed, passes if at least one passed and none failed, and is otherwise inconclusive. The evidence keeps
   each family's result.
-- The held-out season's depth tension compares each family in the held-out season with the training cadences of the
-  same family and takes the largest. A family with no training cadences, or with fewer than `[holdout] min_points`
-  cadences in predicted transits on either side, is recorded and not compared. With no family compared, the season
-  row records `tension_skipped` and the season is judged on detection alone. Detection (`min_sigma`) and the expected
-  SNR still use every cadence.
+- The held-out seasons compare depths only within a family too, in both places they compare one:
+  - The expected SNR, the power guard that decides whether a season can be tested, takes its expected depth from each
+    family's own training depth: the training depth of each family with cadences in the held-out season's predicted
+    transits, weighted as the held-out depth weights that family's cadences (inverse variance), so it is the depth the
+    held-out measurement should read. A training depth pooled over every family would overstate it for a season
+    mostly in a diluted family, and let a season be tested whose diluted depth sits near `[holdout] min_sigma`. If such
+    a family has no training cadences of its own, or fewer than `[holdout] min_points` in predicted transits, the
+    season is untestable with that reason, never missed. This replaces the M3 plan's rule that the expected SNR use
+    every cadence, which the build's review found could fail a planet on dilution alone near the guard.
+  - The depth tension compares each family's held-out depth with the same family's training depth, where both have
+    `min_points` cadences in predicted transits, and takes the largest. When no family has that many held-out
+    cadences, the season row records `tension_skipped` and the season is judged on detection alone.
+  - Detection itself, the held-out depth over its error against `min_sigma`, still uses every held-out cadence.
+  - Each season row lists every family's held-out depth, training depth and tension (`family_depths`) and the expected
+    depth (`expected_depth`).
 - The checks that ask whether a dip is there use every family: `signal_present` and the secondary at phase 0.5.
   Dilution only makes a dip smaller.
 - The fit, and so shape, density and radius, uses the PDCSAP family alone. With no PDCSAP cadences the three are
@@ -47,17 +57,27 @@ section 3).
   weaker than it is.
 - A signal with no PDCSAP sector gets no fit under vet-v3. Every shortlisted signal has PDCSAP transits to fit (M3
   design, section 4.2).
+- A held-out season holding a family its training seasons lack is untestable, so a signal whose seasons each sit in
+  a different family can leave the held-out check inconclusive where vet-v2 would have tested it.
 
 ## Evidence
 
 - [tests/test_families.py](../../tests/test_families.py): `test_family_of_known_and_unknown_provenance` (the `fit`
   string is not a family, so a substring of it is no member), `test_split_groups_sectors_by_family` and
   `test_per_family_fail_beats_pass_and_none_passing_is_inconclusive`.
-- [tests/test_holdout.py](../../tests/test_holdout.py): `test_family_tension_compares_like_with_like` (QLP at 0.6 of
-  the depth in two sectors of the last season: the check fails without families and passes with them),
-  `test_family_tension_still_fails_a_depth_change_inside_a_family` (the negative control: half the depth in one PDCSAP
-  sector) and `test_tension_skipped_without_a_shared_family` (an all-QLP season trained on PDCSAP seasons is judged on
-  detection and records why).
+- [tests/test_holdout.py](../../tests/test_holdout.py):
+  - `test_family_tension_compares_like_with_like` (QLP at 0.6 of the depth in different shares of the last two
+    seasons: the check fails without families and passes with them) and its negative control,
+    `test_family_tension_still_fails_a_depth_change_inside_a_family` (half the depth in one PDCSAP sector).
+  - `test_expected_snr_stays_within_a_family` (the Task 3 review's case, at a fixed seed: an all-QLP last season,
+    faint and diluted, trained mostly on PDCSAP. The pooled expected SNR clears the guard and the season is missed, so
+    the check fails; QLP's own expected SNR does not clear it, so the season is underpowered and the check passes) and
+    its negative control, `test_a_diluted_family_season_without_its_dip_is_still_missed` (QLP's training depth shows
+    the dip clearly and an all-QLP season without it is missed).
+  - `test_a_held_out_family_without_training_cadences_is_untestable` (an all-QLP season trained on PDCSAP alone: missed
+    without families, untestable with them, with the reason) and
+    `test_tension_skipped_when_no_family_has_enough_held_out_cadences` (three held-out cadences in each of two
+    families: detected, with the tension skipped and recorded).
 - [tests/test_vet.py](../../tests/test_vet.py): `test_diluted_qlp_does_not_fail_a_planet` (PDCSAP at full depth and
   QLP at 0.6 of it in every season: vet-v2 fails sector depths; vet-v3 passes every check, with the fit given the
   PDCSAP sectors alone), `test_one_family_odd_even_binary_still_fails` (the negative control: an eclipsing binary at

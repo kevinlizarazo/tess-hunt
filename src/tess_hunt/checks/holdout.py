@@ -37,7 +37,7 @@ def refit_ephemeris(lc: LightCurve, eph: Ephemeris, cfg: dict) -> Ephemeris:
     )
 
 
-def family_tension(
+def family_depths(
     lc: LightCurve,
     families: np.ndarray,
     test: np.ndarray,
@@ -45,42 +45,53 @@ def family_tension(
     predicted: Ephemeris,
     core_fraction: float,
     min_points: int,
-) -> tuple[float | None, dict]:
-    """The largest depth tension between the held-out season and its training cadences, each product
-    family against itself (docs/decisions/0023-product-families.md). None when no family gives one."""
+) -> list[dict]:
+    """Each product family's held-out depth beside the same family's training depth, and their tension
+    where both have `min_points` cadences in predicted transits (docs/decisions/0023-product-families.md)."""
     rows = []
     for name in np.unique(families[test]):
         held, trained = test & (families == name), train & (families == name)
         depth, err, n = box_depth(
             lc.time[held], lc.flux[held], lc.flux_err[held], predicted, core_fraction
         )
-        row = {"family": str(name), "depth": depth, "err": err, "n": n}
-        if not trained.any():
-            row["skipped"] = "no training cadences in this family"
-        else:
-            ref, ref_err, ref_n = box_depth(
-                lc.time[trained], lc.flux[trained], lc.flux_err[trained], predicted, core_fraction
-            )
-            row.update(ref=ref, ref_err=ref_err, ref_n=ref_n)
-            if min(n, ref_n) < min_points:
-                row["skipped"] = f"fewer than {min_points} cadences in predicted transits"
-            else:
-                row["tension"] = abs(depth - ref) / np.hypot(err, ref_err)
-        rows.append(row)
-    evidence = {"family_tension": rows}
-    tensions = [r["tension"] for r in rows if "tension" in r]
-    if tensions:
-        # np.max keeps a NaN, which then fails the season as vet-v2's single tension would.
-        return float(np.max(tensions)), evidence
-    if not any("ref" in r for r in rows):
-        return None, {
-            **evidence,
-            "tension_skipped": "no training cadences in the held-out season's family",
+        ref, ref_err, ref_n = box_depth(
+            lc.time[trained], lc.flux[trained], lc.flux_err[trained], predicted, core_fraction
+        )
+        row = {
+            "family": str(name),
+            "depth": depth,
+            "err": err,
+            "n": n,
+            "ref": ref,
+            "ref_err": ref_err,
+            "ref_n": ref_n,
+            "training_cadences": int(trained.sum()),
         }
-    return None, {
-        **evidence,
-        "tension_skipped": f"fewer than {min_points} cadences in predicted transits in every shared family",
-    }
+        if min(n, ref_n) >= min_points:
+            row["tension"] = abs(depth - ref) / np.hypot(err, ref_err)
+        rows.append(row)
+    return rows
+
+
+def family_expected_depth(rows: list[dict], min_points: int) -> tuple[float, str | None]:
+    """The depth the held-out season should show: each family's own training depth, weighted as
+    box_depth weights that family's held-out cadences in predicted transits. A training depth over
+    every family would overstate it for a season mostly in a diluted family. Returns a reason instead
+    when a family in the held-out transits has no training depth of its own."""
+    present = [r for r in rows if r["n"] > 0]
+    for r in present:
+        if r["training_cadences"] == 0:
+            return float(
+                "nan"
+            ), f"no training cadences in the held-out season's {r['family']} family"
+        if r["ref_n"] < min_points:
+            return float("nan"), (
+                f"fewer than {min_points} training cadences of the {r['family']} family "
+                "in predicted transits"
+            )
+    weights = np.array([r["err"] ** -2 for r in present])
+    refs = np.array([r["ref"] for r in present])
+    return float(np.sum(weights * refs) / np.sum(weights)), None
 
 
 def holdout(
@@ -90,8 +101,8 @@ def holdout(
     core_fraction: float,
     families_cfg: dict | None = None,
 ) -> CheckResult:
-    """With `families_cfg` (vet-v3), the depth tension compares each product family only with itself;
-    detection and the expected SNR still use every cadence."""
+    """With `families_cfg` (vet-v3), the expected SNR and the depth tension compare each product family
+    only with itself; detection still uses every held-out cadence."""
     labels = season_labels(lc.time, cfg["season_gap_days"])
     families = family_labels(lc, families_cfg) if families_cfg is not None else None
     seasons = []
@@ -133,6 +144,13 @@ def holdout(
             ref_err=ref_err,
             ref_n=ref_n,
         )
+        expected, untestable = ref, None
+        if families is not None and n >= cfg["min_points"]:
+            row["family_depths"] = family_depths(
+                lc, families, test, train, predicted, core_fraction, cfg["min_points"]
+            )
+            expected, untestable = family_expected_depth(row["family_depths"], cfg["min_points"])
+            row["expected_depth"] = expected
         if n < cfg["min_points"]:
             row["status"] = "no_predicted_transit_in_data"
         elif ref_n < cfg["min_points"]:
@@ -140,22 +158,29 @@ def holdout(
                 status="untestable",
                 reason=f"fewer than {cfg['min_points']} training cadences in predicted transits",
             )
-        elif ref / err < cfg["min_expected_snr"]:
+        elif untestable is not None:
+            row.update(status="untestable", reason=untestable)
+        elif expected / err < cfg["min_expected_snr"]:
             # Too few transits in this season to expect the dip to show; absence proves nothing.
-            row.update(status="underpowered", expected_snr=ref / err)
+            row.update(status="underpowered", expected_snr=expected / err)
         else:
-            tension, by_family = abs(depth - ref) / np.hypot(err, ref_err), {}
+            tension = abs(depth - ref) / np.hypot(err, ref_err)
             if families is not None:
-                tension, by_family = family_tension(
-                    lc, families, test, train, predicted, core_fraction, cfg["min_points"]
-                )
+                tensions = [r["tension"] for r in row["family_depths"] if "tension" in r]
+                # np.max keeps a NaN, which then fails the season as vet-v2's single tension would.
+                tension = float(np.max(tensions)) if tensions else None
             ok = depth / err >= cfg["min_sigma"] and (
                 tension is None or tension <= cfg["max_depth_tension"]
             )
             row.update(status="predicted" if ok else "missed", sigma=depth / err)
-            if tension is not None:
+            if tension is None:
+                row["tension_skipped"] = (
+                    f"fewer than {cfg['min_points']} held-out cadences in predicted transits "
+                    "in every family"
+                )
+            else:
                 row["tension"] = tension
-            row.update(expected_snr=ref / err, **by_family)
+            row["expected_snr"] = expected / err
         seasons.append(row)
     tested = [s for s in seasons if s["status"] in ("predicted", "missed")]
     evidence = {"seasons": seasons}
