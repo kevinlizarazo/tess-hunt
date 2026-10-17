@@ -550,7 +550,10 @@ def test_readme_lists_every_call(tmp_path):
             "raised later",
             f"Then it raised, after 1 of {tt.CFG['runs']} calc_probs run(s): RuntimeError: PyTransit failed.",
         ),
-        ("raised first", "TRICERATOPS (inconclusive) raised before it chose its data."),
+        (
+            "raised first",
+            "TRICERATOPS (inconclusive) raised before it chose its data: ConnectionError: TESScut did not answer.",
+        ),
         ("no group", "It stopped before calc_probs: no cadence group"),
         ("no depth", "It stopped before calc_probs: no usable transit depth (nan)."),
         ("no cutout", "It stopped before calc_probs: TESScut gave"),
@@ -608,11 +611,86 @@ def test_a_triceratops_record_from_any_path_renders(tmp_path, monkeypatch, path,
         assert took in said_on_star
         # The "no usable transit depth" stop comes before the fold.
         assert (f"{took} and folded them on" in said_on_star) is (path != "no depth")
+    # The reason for a raise is said once.
+    if e["raised"] is not None:
+        assert said_on_star.count(e["raised"]) == 1
     star_list = "It built no star list, so no possible host was matched to it."
     assert (star_list in said_on_star) is (
         path in ("raised", "raised first", "no group", "no depth")
     )
+    # The vetting run's possible host sits 12.5" from the fake target's other star: not in its star list.
+    if path in ("no cutout", "no light"):
+        assert (
+            "Possible hosts not in its star list: Gaia DR3 7. No calc_probs run weighed any star."
+            in said_on_star
+        )
+    assert ("did not weigh" in said_on_star) is (path == "raised later")
     if path == "raised later":
         assert "TRICERATOPS (inconclusive): mean FPP" in planet and "over 1 run(s)" in planet
     else:
         assert "TRICERATOPS (inconclusive): no calc_probs run finished, so no FPP." in planet
+
+
+def stopped_before_calc_probs(record: dict) -> None:
+    record["outcome"] = "inconclusive"
+    record["evidence"].update(
+        fpp=[],
+        nfpp=[],
+        fpp_mean=None,
+        nfpp_mean=None,
+        fpp_sd=None,
+        nfpp_sd=None,
+        stopped="TESScut gave 1 of 2 sectors' cutouts",
+        hosts_tdepth_zero=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "change, said",
+    [
+        (lambda r: None, "Possible hosts it did not weigh: none."),
+        (
+            stopped_before_calc_probs,
+            "Every possible host is in its star list, and no calc_probs run weighed them.",
+        ),
+        (
+            lambda r: (stopped_before_calc_probs(r), r["evidence"].update(missing_hosts=[7])),
+            "Possible hosts not in its star list: Gaia DR3 7. No calc_probs run weighed any star.",
+        ),
+    ],
+    ids=["weighed", "listed, not weighed", "not listed"],
+)
+def test_the_possible_hosts_sentence_says_what_the_record_shows(
+    tmp_path, monkeypatch, change, said
+):
+    """A host in the star list of a run that stopped before calc_probs was never weighed."""
+    signal, _ = draft(tmp_path, monkeypatch)
+    edit_json(signal / "triceratops.json", change)
+    on_star = section(dossier.render(signal), "On the star?")
+    [said_on_star] = [p for p in on_star.split("\n\n") if p.startswith("TRICERATOPS (")]
+    assert said in said_on_star
+    if said != "Possible hosts it did not weigh: none.":
+        assert "did not weigh" not in said_on_star
+
+
+@pytest.mark.parametrize(
+    "dr3_from, reason",
+    [
+        # A re-run fixes this one.
+        (
+            "missing",
+            "the Gaia DR3 join failed: Gaia archive failed 3 times: OSError: archive unavailable",
+        ),
+        # Not this one.
+        ("dr3_join", "Gaia DR3 101 has no RUWE"),
+    ],
+    ids=["join failed", "none in DR3"],
+)
+def test_a_missing_ruwe_says_why(tmp_path, monkeypatch, dr3_from, reason):
+    signal, _ = draft(tmp_path, monkeypatch)
+    edit_json(
+        signal / "checks.json",
+        lambda c: c["star"].update(ruwe=None, dr3_from=dr3_from, dr3_reason=reason),
+    )
+    on_star = section(dossier.render(signal), "On the star?")
+    assert f"RUWE missing (Gaia DR3), because {reason}." in on_star

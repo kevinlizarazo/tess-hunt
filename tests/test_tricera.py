@@ -405,6 +405,28 @@ def test_a_host_is_matched_at_the_tic_epoch(monkeypatch):
     assert still["pmra"] is None and still["tic"] is None
 
 
+def test_a_host_moved_back_across_ra_zero_stays_in_range():
+    # 16 years at +100 mas/yr on the equator is 0.000444 deg: a host at RA 0.0002 sat west of 0 at J2000.0.
+    host = pd.DataFrame(
+        {
+            "source_id": [7],
+            "ra": [0.0002],
+            "dec": [0.0],
+            "sep_arcsec": [12.5],
+            "required_depth": [0.02],
+            "pmra": [100.0],
+            "pmdec": [0.0],
+        }
+    )
+    west = 0.0002 - 100.0 * 16.0 / 3.6e6
+    ra, _ = tricera.at_tic_epoch(host)
+    assert 0.0 <= ra[0] < 360.0 and ra[0] == pytest.approx(360.0 + west, abs=1e-12)
+    stars = pd.DataFrame({"ID": ["1", "999"], "ra": [0.004, 360.0 + west], "dec": [0.0, 0.0]})
+    assert tricera.missing_hosts(host, stars, 2.0) == []
+    [h] = tricera._hosts(host, stars.assign(tdepth=[0.002, 0.02]), 2.0)
+    assert h["tic"] == "999" and h["ra_2000"] == pytest.approx(360.0 + west, abs=1e-12)
+
+
 def test_a_host_triceratops_gave_no_depth_is_evidence_not_a_blocker(monkeypatch):
     # Ruling M: the TIC star at the host's place is weighed through the aperture and can't make the
     # dip, where the neighbour table assumed all its light in the aperture.

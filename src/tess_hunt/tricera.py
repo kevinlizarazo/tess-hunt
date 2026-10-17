@@ -144,7 +144,8 @@ def at_tic_epoch(possible: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     years = GAIA_DR3_EPOCH - TIC_EPOCH
     # DR3's pmra already carries the cos(dec) factor.
     ra_tic = ra - _motion(possible, "pmra") * years / (MAS_PER_DEGREE * np.cos(np.radians(dec)))
-    return ra_tic, dec - _motion(possible, "pmdec") * years / MAS_PER_DEGREE
+    # A host near RA 0 can move back across it; the evidence keeps RA in [0, 360) as the catalogues do.
+    return ra_tic % 360.0, dec - _motion(possible, "pmdec") * years / MAS_PER_DEGREE
 
 
 def _nearest(possible: pd.DataFrame, stars: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:

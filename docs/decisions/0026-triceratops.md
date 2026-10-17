@@ -120,15 +120,15 @@ sha256, the layout, and how many rows the envelope lowered are recorded.
   TRICERATOPS weighs it as the target: a companion the TIC merged into it sits nearer the target than any other star
   and would otherwise count as weighed. The evidence lists every possible host beside the TRICERATOPS star matched to
   it and that star's `tdepth`, the cross-check of the two lists.
-- The match compares positions at one epoch (Ruling S). TRICERATOPS's stars are TIC v8 positions, at epoch J2000.0;
-  the neighbour table's are Gaia DR3's, at J2016.0 (`tricera.TIC_EPOCH`, `tricera.GAIA_DR3_EPOCH`). Each possible
-  host is moved back to J2000.0 with its DR3 proper motion before matching (`tricera.at_tic_epoch`: `dec - pmdec * 16
-  / 3.6e6` and `ra - pmra * 16 / (3.6e6 cos dec)` in degrees, DR3's `pmra` already carrying cos dec); a host with no
-  proper motion (a two-parameter solution) matches at its DR3 position. Without this, a host and its own TIC star read
-  as two stars when they move fast: 44926986's 12.5" possible host is TIC 44926982, which TRICERATOPS gave the same
-  depth, yet the two positions sit 2.78" apart, beyond `match_arcsec` (the M3 build's smoke runs, Tasks 9 and 10b;
-  moved to J2000.0, the host sits 0.001" from TIC 44926982). `match_arcsec` is unchanged. `hosts` keeps each host's proper motion, its position at J2000.0 (`ra_2000`, `dec_2000`) and its distance
-  there from the nearest TRICERATOPS star.
+- The match compares positions at one epoch (Ruling S). TRICERATOPS's stars are TIC v8 positions, at epoch J2000.0; the
+  neighbour table's are Gaia DR3's, at J2016.0 (`tricera.TIC_EPOCH`, `tricera.GAIA_DR3_EPOCH`). Each possible host is
+  moved back to J2000.0 with its DR3 proper motion before matching (`tricera.at_tic_epoch`: `dec - pmdec * 16 / 3.6e6`
+  and `ra - pmra * 16 / (3.6e6 cos dec)` in degrees, DR3's `pmra` already carrying cos dec); a host with no proper
+  motion (a two-parameter solution) matches at its DR3 position. Without this, a host and its own TIC star read as two
+  stars when they move fast: 44926986's 12.5" possible host is TIC 44926982, which TRICERATOPS gave the same depth, yet
+  the two positions sit 2.78" apart, beyond `match_arcsec` (the M3 build's smoke runs, Tasks 9 and 10b; moved to
+  J2000.0, the host sits 0.001" from TIC 44926982). `match_arcsec` is unchanged. `hosts` keeps each host's proper
+  motion, its position at J2000.0 (`ra_2000`, `dec_2000`) and its distance there from the nearest TRICERATOPS star.
 
 **A possible host TRICERATOPS gave no depth** (Ruling M) is evidence, not a blocker. When a possible host matches a
 TIC star whose TRICERATOPS `tdepth` is 0, TRICERATOPS judged that star unable to make the dip and weighed no scenario
@@ -179,8 +179,11 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
 - A possible host without a DR3 proper motion is matched at its DR3 position, so one that moved more than
   `match_arcsec` between the epochs reads as missing; that leaves the check inconclusive, the safe direction. The
   propagation is linear in RA and Dec and leaves out the change in proper motion from radial velocity, far below
-  `match_arcsec` over 16 years. The match is still to the nearest star, not one to one: two hosts can match one TIC
-  star.
+  `match_arcsec` over 16 years. A spurious DR3 proper motion (common for close or blended pairs with poor astrometry;
+  125 mas/yr or more moves a host 2" or more over 16 years) can move a host onto a different TIC star within
+  `match_arcsec`, which clears a missing-host blocker, the unsafe direction; `hosts` (`distance_arcsec`, the proper
+  motions, `tdepth` beside `required_depth`) is what lets the review see it. The match is still to the nearest star,
+  not one to one: two hosts can match one TIC star.
 - Binning assumes the model changes little across a bin. Each binned point is a one-exposure integration averaged over
   a bin one exposure wide, so the transit's edges are smoothed over up to two exposures where the model sees one.
 - A faster sector averaged to E keeps bins with half their cadences or more, so a bin's integration can be shorter
@@ -214,17 +217,12 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
     in `hosts_tdepth_zero`).
   - `test_a_host_is_matched_at_the_tic_epoch` (Ruling S: a host 2.78" from its TIC star at J2016.0 whose motion brings
     it within 0.03" at J2000.0 is matched; without a proper motion it stays missing, as does one whose motion takes it
-    away; `hosts` keeps the position at J2000.0 and the distance there).
+    away; `hosts` keeps the position at J2000.0 and the distance there), and
+    `test_a_host_moved_back_across_ra_zero_stays_in_range` (`ra_2000` in [0, 360), still matched).
   - `test_every_path_records_the_same_fields` (a finished run and one that raised hold the same fields) and
     `test_a_run_that_raised_keeps_what_it_reached` (a raise in TESScut after the fold, and on the second seed's
     `calc_probs`, which keeps the first run, the star list and the host match); in
     `test_a_target_triceratops_cannot_weigh_is_inconclusive`, `hosts_tdepth_zero` is None before `calc_depths`.
-- [tests/test_vetting.py](../../tests/test_vetting.py): `test_a_star_without_dr3_values_gets_them_from_the_join`
-  (Ruling N: one join, a row with both values never joined again) and
-  `test_a_star_the_join_gives_nothing_keeps_nulls_and_the_reason` (a failed join, and none found: null values, the
-  reason, and the run finishes).
-- [tests/test_dossier.py](../../tests/test_dossier.py): `test_a_triceratops_record_from_any_path_renders` (each
-  sentence true to the record: a raise before the group, after the fold, and on a later seed; each stop).
   - `test_validated_label_needs_contrast_and_2min` and `test_runs_are_seeded_and_averaged` (seeds 0 to runs - 1, a
     float period from a numpy one, `parallel=False`, the group's exposure, `dilution_corrected`, and each sector's
     `ccd_pixels` equal to what `calc_depths` got).
@@ -241,6 +239,15 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
   - `test_triceratops_runs_on_the_signals_no_check_failed` (with each sector's `ccd_pixels` in `triceratops.json`),
     `test_contrast_curves_are_converted_into_the_run`,
     `test_triceratops_refuses_what_it_cannot_stand_behind` and `test_triceratops_refuses_an_evidence_only_run`.
+- [tests/test_vetting.py](../../tests/test_vetting.py): `test_a_star_without_dr3_values_gets_them_from_the_join`
+  (Ruling N: one join, a row with both values never joined again) and
+  `test_a_star_the_join_gives_nothing_keeps_nulls_and_the_reason` (a failed join, and none found: null values, the
+  reason, and the run finishes).
+- [tests/test_dossier.py](../../tests/test_dossier.py): `test_a_triceratops_record_from_any_path_renders` (each
+  sentence true to the record: a raise before the group, said once with its reason, after the fold, and on a later
+  seed; each stop), `test_the_possible_hosts_sentence_says_what_the_record_shows` (a host in the star list of a run
+  that stopped before `calc_probs` is not called weighed) and `test_a_missing_ruwe_says_why` (a failed join reads
+  apart from a star DR3 gives no RUWE).
 - The network controls `test_nearby_eb_controls_fail_triceratops` (TOI-1058.01, TOI-1175.01) and
   `test_toi_1399_does_not_pass_triceratops`, one run each, and the controls' production runs at ten runs (M3 plan,
   Task 11).

@@ -431,7 +431,8 @@ def _triceratops_on_star(r: Record) -> str:
         if e["points"] is not None:
             data += f" and folded them on {fold} ephemeris"
     elif e["groups"] is None:
-        data = "raised before it chose its data"
+        # `run` records the groups first, so only a raise leaves them out.
+        data = f"raised before it chose its data: {e['raised']}"
     else:
         data = "found no cadence group to run on"
     lines = [f"TRICERATOPS ({t['outcome']}) {data}."]
@@ -442,7 +443,9 @@ def _triceratops_on_star(r: Record) -> str:
                 f"Then it raised, after {len(e['fpp'])} of {e['runs']} calc_probs run(s): {e['raised']}."
             )
     elif e["raised"] is not None:
-        lines.append(f"It raised before any calc_probs run finished: {e['raised']}.")
+        # A raise before the cadence group is already the first sentence.
+        if e["groups"] is not None:
+            lines.append(f"It raised before any calc_probs run finished: {e['raised']}.")
     elif e["stopped"] is not None:
         lines.append(f"It stopped before calc_probs: {e['stopped']}.")
     else:
@@ -450,8 +453,18 @@ def _triceratops_on_star(r: Record) -> str:
     if e["missing_hosts"] is None:
         lines.append("It built no star list, so no possible host was matched to it.")
     else:
-        missing = ", ".join(f"Gaia DR3 {s}" for s in e["missing_hosts"]) or "none"
-        lines.append(f"Possible hosts it did not weigh: {missing}.")
+        missing = ", ".join(f"Gaia DR3 {s}" for s in e["missing_hosts"])
+        # A host in the star list is weighed only by a calc_probs run that finished.
+        if e["fpp"]:
+            lines.append(f"Possible hosts it did not weigh: {missing or 'none'}.")
+        elif missing:
+            lines.append(
+                f"Possible hosts not in its star list: {missing}. No calc_probs run weighed any star."
+            )
+        else:
+            lines.append(
+                "Every possible host is in its star list, and no calc_probs run weighed them."
+            )
         zero = e["hosts_tdepth_zero"]
         if zero:
             matched = {h["source_id"]: h["tic"] for h in e["hosts"]}
@@ -466,13 +479,19 @@ def _triceratops_on_star(r: Record) -> str:
 
 def _on_star(r: Record) -> str:
     star = r.checks["star"]
+    # A failed archive query, which a re-run fixes, must read apart from a star Gaia DR3 gives no RUWE.
+    ruwe = (
+        f"RUWE missing (Gaia DR3), because {star['dr3_reason']}."
+        if star["ruwe"] is None
+        else f"RUWE {star['ruwe']:.2f} (Gaia DR3)."
+    )
     return "\n\n".join(
         [
             _centroids(r),
             _neighbours(r),
             _triceratops_on_star(r),
-            f"RUWE {_f(star['ruwe'], '.2f')} (Gaia DR3). A high RUWE points to an unresolved companion, which "
-            "TRICERATOPS's priors don't condition on; above vet-v3's limit TRICERATOPS is inconclusive.",
+            f"{ruwe} A high RUWE points to an unresolved companion, which TRICERATOPS's priors don't condition "
+            "on; above vet-v3's limit, or without a RUWE, TRICERATOPS is inconclusive.",
         ]
     )
 
