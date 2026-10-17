@@ -29,18 +29,22 @@ seen.
   than it is and could be ruled out wrongly. The brightest T can add a possible host but never lose one
   (`tmag_from = "g_only"`).
 - A star with no G has no TESS magnitude (`tmag_from = "none"`).
-- The target is left out by its Gaia DR3 `source_id` (the targets table's `dr3_source_id`), or without one, the
-  nearest star within 1" of its TIC position.
+- The target is left out by its Gaia DR3 `source_id` (the targets table's `dr3_source_id`), or without one, the one
+  star within 1" of its TIC position. When the cone does not identify the target, `required_depths` raises
+  `NeighbourError` and the table is inconclusive: a given source id that is not in the cone (an id rounded through a
+  float is one way to get there), or, without an id, no star within 1" (the target moved or is missing) or more than
+  one (the target can't be told from a close companion). A wrong guess would keep the target in the table as its own
+  possible host at the observed depth, or leave out a close companion.
 - Each other star gets `required_depth = depth * 10 ** (0.4 * (tmag - t_target))`, with `depth` the observed depth as
   a fraction and `t_target` the target's TIC `tmag`: the target's flux over the neighbour's. It counts the
   neighbour's whole light and no light from any third star, so it is the smallest depth the neighbour could need. A
   star is a possible host when `required_depth <= [neighbours] max_required_depth` (1.0): an eclipse deeper than total
   cannot make the dip.
 - `neighbours.neighbour_check` (`"neighbours"`) passes with `possible_hosts` (each one's source id, separation and
-  required depth) and the whole table as evidence. It is inconclusive when the Gaia query failed (the error is
-  recorded), when a star within the radius has no G (`no_g` lists them), since the table can't say whether that star
-  could host the signal, and when a required depth is not finite (a missing observed depth or target magnitude), which
-  would otherwise read as no possible host at all.
+  required depth) and the whole table as evidence. It is inconclusive when there is no table (the Gaia query failed or
+  the target was not identified; the error is recorded), when a star within the radius has no G (`no_g` lists them),
+  since the table can't say whether that star could host the signal, and when a required depth is not finite (a
+  missing observed depth or target magnitude), which would otherwise read as no possible host at all.
 - It never fails. This is an exception to the spec's rule that every check ships a negative control that makes it fail
   (`docs/design.md` section 5.2), as for `signal_present` (decision 0017). A star that could host the signal does not
   show that it does: the dip is as possible on the target as on each possible host, and a field can hold several (each
@@ -59,8 +63,8 @@ seen.
 
 - The separations are from the TIC position (epoch 2000) to Gaia DR3 positions (epoch 2016.0) with no proper motion
   applied, so a fast-moving star's separation is off by its motion over those years. Without a source id, a target
-  that moved more than 1" between the epochs is not matched and stays in the table, where it reads as a possible host
-  at the observed depth. That is why the targets table's source id comes first.
+  that moved more than 1" between the epochs, or one with a companion within 1", leaves the table inconclusive. Every
+  sample target has a `dr3_source_id`; a control's targets table may not, and then the table rests on the 1" match.
 - Eq. 1 is applied to observed magnitudes; the TIC applies it to de-reddened ones and adds the extinction back. It is
   fitted for -0.2 < BP-RP < 3.5 and is extrapolated outside that range.
 - The required depth assumes the neighbour's whole light falls in the aperture. A star away from the aperture puts
@@ -76,8 +80,9 @@ seen.
   - `test_tess_mag_at_a_solar_colour_matches_eq_2` (eq. 1 at BP-RP 0.82 gives eq. 2's G - 0.430 within 0.001 mag).
   - `test_required_depth_and_possible` (a neighbour 5 mag fainter than a 233 ppm target needs 2.33%, a possible host;
     10 mag fainter needs 2.33, not one; the check passes and lists only the first).
-  - `test_target_is_not_its_own_neighbour` (by source id, by the nearest star within 1", and nothing left out when no
-    star is that close).
+  - `test_target_is_not_its_own_neighbour` (by source id and by the one star within 1"; `NeighbourError` for a source
+    id rounded through a float, for no star within 1", and for an empty cone with or without an id).
+  - `test_close_companion_without_an_id_is_inconclusive` (two stars within 1" and no id: inconclusive).
   - `test_g_only_takes_the_brightest_magnitude` (the brightest T over the range matches a 3,001-point grid and eq. 1 at
     the red end; a relation with a turning point inside the range is searched there).
   - `test_star_without_g_is_inconclusive`, `test_missing_target_magnitude_is_inconclusive` and

@@ -61,11 +61,31 @@ def test_target_is_not_its_own_neighbour():
     by_id = neighbours.required_depths(table, DEPTH, T_TARGET, 1, CFG)
     assert list(by_id["source_id"]) == [7, 8]
 
-    nearest = neighbours.required_depths(table, DEPTH, T_TARGET, None, CFG)
-    assert list(nearest["source_id"]) == [1, 8]
+    only_close = neighbours.required_depths(table.iloc[1:], DEPTH, T_TARGET, None, CFG)
+    assert list(only_close["source_id"]) == [8]
 
-    nothing_close = neighbours.required_depths(table.iloc[2:], DEPTH, T_TARGET, None, CFG)
-    assert list(nothing_close["source_id"]) == [8]
+    # A target the cone does not identify would otherwise stay in the table as its own possible host.
+    big = 4623036865373793408
+    rounded = int(float(big))  # the float parse gaia.dr3_join guards against
+    unidentified = [
+        (cone(star(big, 0.2, 9.0), star(8, 1.5, 13.0)), rounded),
+        (table.iloc[2:], None),
+        (cone(), 1),
+        (cone(), None),
+    ]
+    for cone_rows, source_id in unidentified:
+        with pytest.raises(neighbours.NeighbourError):
+            neighbours.required_depths(cone_rows, DEPTH, T_TARGET, source_id, CFG)
+
+
+def test_close_companion_without_an_id_is_inconclusive():
+    # Without an id, the nearer of two stars within 1" need not be the target: dropping it could hide the
+    # companion and leave the target listed as its own host.
+    table = cone(star(7, 0.2, 12.0), star(1, 0.4, 9.0), star(8, 1.5, 13.0))
+    with pytest.raises(neighbours.NeighbourError) as caught:
+        neighbours.required_depths(table, DEPTH, T_TARGET, None, CFG)
+    result = neighbours.neighbour_check(None, str(caught.value))
+    assert result.outcome is Outcome.INCONCLUSIVE and "2 Gaia DR3 stars" in result.reason
 
 
 def test_g_only_takes_the_brightest_magnitude(monkeypatch):

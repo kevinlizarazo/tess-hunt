@@ -78,13 +78,24 @@ def required_depths(
     """The cone without the target, each star with its TESS magnitude and the eclipse depth it would need to make
     the observed `depth` (a fraction); `cfg` is the criteria's `[neighbours]`. The required depth counts the
     target's light and the neighbour's whole light in the aperture and nothing else, so it is the smallest depth the
-    neighbour could need."""
+    neighbour could need. Raises `NeighbourError` when the cone does not identify the target: its source id is not
+    in it, or without an id, the stars within `TARGET_MATCH_ARCSEC` are not exactly one."""
     if target_source_id is not None:
-        out = table[table["source_id"] != target_source_id]
+        target = table["source_id"] == target_source_id
+        if not target.any():
+            raise NeighbourError(
+                f"the target's Gaia DR3 source {target_source_id} is not in the cone"
+            )
     else:
-        close = table[table["sep_arcsec"] <= TARGET_MATCH_ARCSEC]
-        out = table.drop(close["sep_arcsec"].idxmin()) if len(close) else table
-    out = out.copy()
+        target = table["sep_arcsec"] <= TARGET_MATCH_ARCSEC
+        # None means the target moved or is missing; two mean it can't be told from a close companion. Either way
+        # a wrong guess lists the target as its own possible host or hides the companion.
+        if target.sum() != 1:
+            raise NeighbourError(
+                f"{target.sum()} Gaia DR3 stars within {TARGET_MATCH_ARCSEC}\" of the target's TIC position, "
+                "where the target should be the only one"
+            )
+    out = table[~target].copy()
     colour = out["bp_rp"].notna()
     out["tmag"] = [
         tess_mag(g, c) if has else tess_mag_bright(g, cfg["bp_rp_range"])
@@ -101,7 +112,7 @@ def neighbour_check(table: pd.DataFrame | None, error: str | None) -> CheckResul
     """Never fails (decision 0025): a neighbour that could host the signal is evidence for TRICERATOPS and the
     review, not a verdict on its own."""
     if table is None or error is not None:
-        return inconclusive(CHECK, f"the Gaia DR3 query failed: {error}", error=error)
+        return inconclusive(CHECK, f"no neighbour table: {error}", error=error)
     rows = table.to_dict("records")
     hosts = [
         {
