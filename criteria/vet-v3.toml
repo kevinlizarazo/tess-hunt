@@ -79,3 +79,8 @@ fit = "pdcsap"                         # the family both fits use
 sectors_file = "benchmarks/tess_sectors.csv"
 first_sector = 110          # sectors before it are observed already (2026-10-16)
 sigma = [1.0, 3.0]          # window half-widths reported, in posterior standard deviations
+
+[neighbours]
+radius_arcmin = 1.0          # the spec's radius
+max_required_depth = 1.0     # a neighbour needing a deeper eclipse than total cannot be the source
+bp_rp_range = [0.0, 3.0]     # colours tried for a star with G only; the brightest TESS magnitude counts
