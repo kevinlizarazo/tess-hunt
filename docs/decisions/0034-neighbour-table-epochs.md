@@ -41,11 +41,11 @@ measurement" below):
      id): on 2026-10-20 the archive aborted the self-join at its time-out in 10 tries of 10 while answering each of the
      two queries in under 10 s, as its note of 2025-12-17 says cone searches combined with joins can
      (https://www.cosmos.esa.int/web/gaia/news).
-   - Nothing is guessed. If either query fails after its 3 attempts, or the archive has no row for the id,
+   - With an id, nothing is guessed. If either query fails after its 3 attempts, or the archive has no row for the id,
      `gaia_cone` raises `NeighbourError` and the table is inconclusive with the reason, as a failed cone was before.
-   - Without an id, the cone stays on the TIC position and the target is the one star within 1" of it (0025), so a
-     target that moved more than 1" by J2016.0 leaves the table inconclusive rather than measured from a stale
-     position.
+   - Without an id, the cone stays on the TIC position and the target is the one star within 1" of it (0025). A target
+     that moved more than 1" by J2016.0 usually leaves no star there and the table inconclusive, but a field star that
+     happens to sit within 1" of the stale position would be taken for it, as before this record.
    - The check's evidence names what the separations run from: `centre` is `"Gaia DR3 <id>, J2016.0"` or
      `"TIC position, J2000"`. The dossier's possible-host table says it.
    - Ruling S ([decision 0026](0026-triceratops.md)) is unchanged: it moves each possible host to J2000 with its own
