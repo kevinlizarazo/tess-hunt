@@ -399,9 +399,9 @@ def _neighbours(r: Record) -> str:
                 ]
         rows.append(row)
     return (
-        f"{head} Each Gaia DR3 star that could make the dip, with the eclipse depth it would need, scaled from "
-        f"the depth in {evidence['depth_from']} ({_ppm(evidence['depth'])} ppm) as if all its light fell in "
-        "the aperture"
+        f"{head} Each Gaia DR3 star that could make the dip, with its separation from the target "
+        f"({evidence['centre']}) and the eclipse depth it would need, scaled from the depth in "
+        f"{evidence['depth_from']} ({_ppm(evidence['depth'])} ppm) as if all its light fell in the aperture"
         + (
             ", and the TRICERATOPS star matched to it with the distance between them at the TIC's epoch"
             if matched is not None

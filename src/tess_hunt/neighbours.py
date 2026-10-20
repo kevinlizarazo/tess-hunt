@@ -31,11 +31,20 @@ SELECT source_id, ra, dec, phot_g_mean_mag, bp_rp,
 FROM gaiadr3.gaia_source
 WHERE 1 = CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', {ra:.10f}, {dec:.10f}, {radius_deg:.10f}))
 """
+# The target's own DR3 position, for the cone to centre on, so the centre and every star are at DR3's epoch, J2016.0.
+# Centred on the TIC position (J2000), a fast star's separations and the cone's edge are off by its motion between the
+# epochs: 2.6" on 44926986's companion (decision 0034). It is a query of its own because the archive aborts a cone
+# centred through a self-join on the source id at its time-out, as its note of 2025-12-17 says cone searches combined
+# with joins can (https://www.cosmos.esa.int/web/gaia/news).
+TARGET_QUERY = "SELECT ra, dec FROM gaiadr3.gaia_source WHERE source_id = {source_id:d}"
 # Stassun et al. 2019 (AJ 158, 138), section 2.3.1, eq. 1: T = G - 0.00522555 c^3 + 0.0891337 c^2 - 0.633923 c
 # + 0.0324473 with c = BP - RP, valid for -0.2 < c < 3.5. The TIC applies it to de-reddened magnitudes; here it
 # takes the observed ones.
 TESS_COLOUR_TERM = np.polynomial.Polynomial([0.0324473, -0.633923, 0.0891337, -0.00522555])
-# Without the target's source id, the nearest Gaia star this close to its TIC position is taken to be the target.
+# Without the target's source id, the nearest Gaia star this close to its TIC position is taken to be the target. That
+# cone stays on the TIC position (J2000), so a target that moved further than this by DR3's epoch leaves no star here
+# and its table is inconclusive, not measured from a stale position (decision 0034). Only a field star that happens to
+# sit this close to the stale position could stand in for it.
 TARGET_MATCH_ARCSEC = 1.0
 
 
@@ -47,23 +56,40 @@ def gaia_cone(
     ra: float,
     dec: float,
     radius_arcmin: float,
+    source_id: int | None = None,
     launch=launch_gaia,
     attempts: int = 3,
     backoff: float = 30.0,
 ) -> pd.DataFrame:
-    """Every Gaia DR3 source within the radius, nearest first."""
-    query = QUERY.format(ra=float(ra), dec=float(dec), radius_deg=radius_arcmin / 60.0)
-    raw = retry(
-        partial(launch, query, None),
-        attempts=attempts,
-        backoff=backoff,
-        # The archive answers outages with assorted exception types.
-        retry_on=Exception,
-        error=NeighbourError,
-        what="Gaia archive",
+    """Every Gaia DR3 source within the radius of the target, nearest first: of its own DR3 position when its
+    `source_id` is given (the target among them), else of `ra` and `dec`, its TIC position. Raises `NeighbourError`
+    when either query fails after its attempts or the archive has no row for the id, so a cone is never centred on a
+    guess."""
+
+    def ask(query: str, what: str) -> pd.DataFrame:
+        raw = retry(
+            partial(launch, query, None),
+            attempts=attempts,
+            backoff=backoff,
+            # The archive answers outages with assorted exception types.
+            retry_on=Exception,
+            error=NeighbourError,
+            what=what,
+        )
+        # The archive names some gaia_source columns in upper case (SOURCE_ID).
+        raw.columns = [str(c).lower() for c in raw.columns]
+        return raw
+
+    if source_id is not None:
+        target = ask(
+            TARGET_QUERY.format(source_id=source_id), "Gaia archive (the target's DR3 row)"
+        )
+        if target.empty:
+            raise NeighbourError(f"the target's Gaia DR3 source {source_id} is not in gaia_source")
+        ra, dec = target["ra"].iloc[0], target["dec"].iloc[0]
+    raw = ask(
+        QUERY.format(ra=float(ra), dec=float(dec), radius_deg=radius_arcmin / 60.0), "Gaia archive"
     )
-    # The archive names some gaia_source columns in upper case (SOURCE_ID).
-    raw.columns = [str(c).lower() for c in raw.columns]
     return raw[COLUMNS].sort_values("sep_arcsec").reset_index(drop=True)
 
 

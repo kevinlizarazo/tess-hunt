@@ -236,6 +236,8 @@ def test_page_one_answers_the_three_questions(tmp_path, monkeypatch):
     [host] = checks["neighbours"]["evidence"]["possible_hosts"]
     needed = f"{100 * host['required_depth']:.3g}%"
     assert f'| Gaia DR3 7 | 12.0 | {needed} | TIC 99 (0.4") | 0% |' in on_star
+    # And what the separations run from (decision 0034).
+    assert "its separation from the target (Gaia DR3 101, J2016.0)" in on_star
     assert f"{tric['nfpp_mean']:.3g}" in on_star
     assert "zero depth" in on_star and "RUWE 0.85" in on_star
 
@@ -723,7 +725,8 @@ def test_a_missing_ruwe_says_why(tmp_path, monkeypatch, dr3_from, reason):
 def no_table(neighbours: dict) -> None:
     """The neighbour check's record when the Gaia cone failed: no table, so no possible hosts key."""
     kept = {
-        k: neighbours["evidence"][k] for k in ("depth", "depth_from", "tmag", "target_source_id")
+        k: neighbours["evidence"][k]
+        for k in ("depth", "depth_from", "tmag", "target_source_id", "centre")
     }
     neighbours.update(
         outcome="inconclusive",

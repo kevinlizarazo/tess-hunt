@@ -96,7 +96,8 @@ not a rule set before them.
    a star 121" away that varies on its own: in each of those sectors a null image lands on the same point with a larger
    loss. The transit sits at the target in all five sectors (box z at the star 4.7, 5.4, 3.2, 1.9 and 1.5 against 3.7,
    6.6, 3.5, 1.6 and 1.4 expected, in S103, S102, S65, S39 and S12). Pixels is its only fail. Like any pixel record,
-   this one says nothing about stars within 15" of the target; the neighbour table's possible hosts from 6.5" out are
+   this one says nothing about stars within 15" of the target; the neighbour table's possible hosts from 8.42" out
+   (corrected in 0034, which also moves Gaia DR3 5836453499849301760 inside 15", from 16.61" to 14.98") are
    TRICERATOPS's question (the diagnosis, section 2).
    - It gets what a promoted row gets: a dossier, TRICERATOPS, a review whose refuters test this finding, and the
      maintainer's call.

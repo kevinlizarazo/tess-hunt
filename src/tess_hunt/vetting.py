@@ -113,15 +113,23 @@ def fit_duration(fit: FitResult) -> float:
 def _neighbours(star: dict, depth: float, cfg: dict) -> tuple[dict, pd.DataFrame | None]:
     tmag, source_id = _number(star.get("tmag")), _source_id(star)
     try:
-        cone = neighbours.gaia_cone(float(star["ra"]), float(star["dec"]), cfg["radius_arcmin"])
+        cone = neighbours.gaia_cone(
+            float(star["ra"]), float(star["dec"]), cfg["radius_arcmin"], source_id=source_id
+        )
         table = neighbours.required_depths(cone, depth, tmag, source_id, cfg)
         error = None
     except neighbours.NeighbourError as exc:
         table, error = None, str(exc)
     result = neighbours.neighbour_check(table, error).to_dict()
-    # The required depths scale from this depth, so the dossier must say which it was.
+    # The required depths scale from this depth and the separations run from this centre (decision 0034), so the
+    # dossier must say which they were.
+    centre = "TIC position, J2000" if source_id is None else f"Gaia DR3 {source_id}, J2016.0"
     result["evidence"].update(
-        depth=depth, depth_from="the signals file", tmag=tmag, target_source_id=source_id
+        depth=depth,
+        depth_from="the signals file",
+        tmag=tmag,
+        target_source_id=source_id,
+        centre=centre,
     )
     return result, table
 

@@ -1,10 +1,12 @@
 import io
+import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 import requests
+from astropy.coordinates import SkyCoord
 
 from tess_hunt import neighbours
 from tess_hunt.catalogs import TOI_URL
@@ -171,6 +173,110 @@ def test_gaia_cone_asks_for_the_radius_and_sorts_by_separation():
     assert "pmra, pmdec, ref_epoch" in queries[0]
 
 
+# TIC 44926986 (decision 0034): its TIC position, at J2000, and four Gaia DR3 rows, at J2016.0: the target, which
+# moved 2.75" between the two epochs, its bound companion TIC 44926982, a field star and one near the cone's edge.
+TIC_44926986 = (146.852182941572, -39.8797286285282)
+TARGET, COMPANION, FIELD, EDGE = (
+    5431607545961330560,
+    5431607545963652864,
+    5431607610382753536,
+    5431607644742487424,
+)
+# Positions to 10 decimals, 3.6e-7".
+DR3_44926986 = pd.DataFrame(
+    [
+        (TARGET, 146.8512349542, -39.8799633192, 9.969851, 0.8970566, -163.63, -52.65, 2016.0),
+        (COMPANION, 146.8483459688, -39.8815709756, 11.201227, 1.143877, -165.81, -52.51, 2016.0),
+        (FIELD, 146.8459195820, -39.8795135394, 17.862907, 1.0609055, -6.57, 4.10, 2016.0),
+        (EDGE, 146.8673306792, -39.8681610837, 17.649206, 1.0582619, -7.96, 4.33, 2016.0),
+    ],
+    columns=[c for c in neighbours.COLUMNS if c != "sep_arcsec"],
+)
+
+
+def archive(stars: pd.DataFrame):
+    """The Gaia archive over `stars`, for `gaia_cone`'s two queries: a row by source id, and a cone whose centre and
+    the point each separation runs from are read from the query and measured as the archive measures them."""
+
+    def launch(query, ids):
+        lookup = re.search(r"WHERE source_id = (\d+)", query)
+        if lookup:
+            return stars.loc[stars["source_id"] == int(lookup[1]), ["ra", "dec"]]
+        number = r"(-?[\d.]+)"
+        circle = re.search(rf"CIRCLE\('ICRS', {number}, {number}, {number}\)", query)
+        distance = re.search(rf"POINT\('ICRS', {number}, {number}\)\) \* 3600", query)
+        positions = SkyCoord(stars["ra"], stars["dec"], unit="deg")
+        centre = SkyCoord(float(circle[1]), float(circle[2]), unit="deg")
+        inside = positions.separation(centre).deg <= float(circle[3])
+        point = SkyCoord(float(distance[1]), float(distance[2]), unit="deg")
+        out = stars[inside].assign(sep_arcsec=positions[inside].separation(point).arcsec)
+        return out.rename(columns={"source_id": "SOURCE_ID"})
+
+    return launch
+
+
+def test_the_cone_centres_on_the_targets_own_dr3_row():
+    # With the source id, every separation runs from the target's DR3 position, and the star's motion since the TIC's
+    # epoch no longer moves them or the cone's edge.
+    launch = archive(DR3_44926986)
+    out = neighbours.gaia_cone(*TIC_44926986, CFG["radius_arcmin"], source_id=TARGET, launch=launch)
+    sep = out.set_index("source_id")["sep_arcsec"]
+    assert list(out["source_id"]) == [TARGET, COMPANION, FIELD]
+    assert sep[TARGET] == pytest.approx(0.0, abs=1e-6)
+    assert sep[COMPANION] == pytest.approx(9.859, abs=1e-3)
+    assert sep[FIELD] == pytest.approx(14.77, abs=0.01)
+    # 61.50" from the target, past the 1' radius.
+    assert EDGE not in sep.index
+
+    # At 44926986-1's depth and TESS magnitude, the companion is a possible host at its true separation.
+    table = neighbours.required_depths(out, 0.0007763817834557, 9.4929, TARGET, CFG)
+    [host] = neighbours.neighbour_check(table, None).evidence["possible_hosts"]
+    assert host["source_id"] == COMPANION and host["sep_arcsec"] == pytest.approx(9.859, abs=1e-3)
+
+
+def test_without_an_id_the_cone_stays_on_the_tic_position():
+    launch = archive(DR3_44926986)
+    out = neighbours.gaia_cone(*TIC_44926986, CFG["radius_arcmin"], launch=launch)
+    sep = out.set_index("source_id")["sep_arcsec"]
+    # As the archive measured them from the TIC position (decision 0034's evidence).
+    assert sep[TARGET] == pytest.approx(2.752, abs=1e-3)
+    assert sep[COMPANION] == pytest.approx(12.504, abs=1e-3)
+    assert sep[EDGE] == pytest.approx(59.039, abs=1e-3)
+    # A target that moved more than 1" isn't found at its TIC position, so the table is inconclusive, not measured
+    # from the wrong place.
+    with pytest.raises(neighbours.NeighbourError, match="0 Gaia DR3 stars within"):
+        neighbours.required_depths(out, DEPTH, T_TARGET, None, CFG)
+
+
+@pytest.mark.parametrize(
+    "down, source_id, asked, reason",
+    [
+        ("lookup", TARGET, ["lookup"] * 3, r"Gaia archive \(the target's DR3 row\) failed 3 times"),
+        ("cone", TARGET, ["lookup"] + ["cone"] * 3, "Gaia archive failed 3 times"),
+        (None, 1, ["lookup"], "the target's Gaia DR3 source 1 is not in gaia_source"),
+    ],
+    ids=["lookup fails", "cone fails", "no DR3 row"],
+)
+def test_a_cone_is_never_centred_on_a_guess(down, source_id, asked, reason):
+    found, calls = archive(DR3_44926986), []
+
+    def launch(query, ids):
+        kind = "cone" if "CIRCLE" in query else "lookup"
+        calls.append(kind)
+        if kind == down:
+            raise OSError("archive unavailable")
+        return found(query, ids)
+
+    with pytest.raises(neighbours.NeighbourError, match=reason) as caught:
+        neighbours.gaia_cone(
+            *TIC_44926986, CFG["radius_arcmin"], source_id=source_id, launch=launch, backoff=0.0
+        )
+    # Without the target's DR3 row there is no cone at all, not one on the TIC position.
+    assert calls == asked
+    result = neighbours.neighbour_check(None, str(caught.value))
+    assert result.outcome is Outcome.INCONCLUSIVE and str(caught.value) in result.reason
+
+
 @pytest.fixture(scope="module")
 def toi_table():
     response = requests.get(TOI_URL, timeout=120)
@@ -179,12 +285,17 @@ def toi_table():
 
 
 @pytest.mark.network
-# Each control with the Gaia source of the eclipsing binary it was retired to, TIC 31553886 and TIC 30329564
-# (benchmarks/README.md); the TIC's DR2 ids are their DR3 ids too.
+# Each control with its target's Gaia DR3 source, as `vetting run` joins it (Ruling N, decision 0025), and the source
+# of the eclipsing binary it was retired to, TIC 31553886 and TIC 30329564 (benchmarks/README.md); the TIC's DR2 ids
+# are their DR3 ids too.
 @pytest.mark.parametrize(
-    "toi, eb", [("1058.01", 6757952648798471040), ("1175.01", 2039904204830247296)]
+    "toi, target, eb",
+    [
+        ("1058.01", 6757952644494426624, 6757952648798471040),
+        ("1175.01", 2039904204830244096, 2039904204830247296),
+    ],
 )
-def test_nearby_eb_controls_show_a_possible_host(toi, eb, toi_table):
+def test_nearby_eb_controls_show_a_possible_host(toi, target, eb, toi_table):
     row = (
         pd.read_csv(ROOT / "benchmarks" / "pixel_controls.csv", dtype={"toi": str})
         .set_index("toi")
@@ -192,9 +303,9 @@ def test_nearby_eb_controls_show_a_possible_host(toi, eb, toi_table):
     )
     toi_row = toi_table.set_index("TOI").loc[toi]
     depth, tmag = toi_row["Depth (ppm)"] * 1e-6, toi_row["TESS Mag"]
-    table = neighbours.required_depths(
-        neighbours.gaia_cone(row.ra, row.dec, CFG["radius_arcmin"]), depth, tmag, None, CFG
-    )
+    # Centred on the target's own DR3 row, as production centres it (decision 0034).
+    cone = neighbours.gaia_cone(row.ra, row.dec, CFG["radius_arcmin"], source_id=target)
+    table = neighbours.required_depths(cone, depth, tmag, target, CFG)
     result = neighbours.neighbour_check(table, None)
     hosts = result.evidence["possible_hosts"]
     print(f"TOI-{toi} (TIC {int(row.tic)}): depth {depth * 1e6:.0f} ppm, Tmag {tmag}")

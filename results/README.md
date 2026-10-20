@@ -2,9 +2,10 @@
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
 this directory). The exceptions are Gaia DR3 data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
-tables, the RUWE values the published controls quote, the Gaia DR3 values the pixel check's diagnosis quotes (both
-under [Runs](#runs)), and the Gaia DR3 parts of the vetting records, listed under [Vetting](#vetting). They stay under
-ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
+tables, the RUWE values the published controls quote, the Gaia DR3 values the pixel check's diagnosis and the
+neighbour-epoch measurements quote or hold (all under [Runs](#runs)), and the Gaia DR3 parts of the vetting records,
+listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO terms
+(https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -77,6 +78,14 @@ second list, made outside the pipeline. Its scripts and their small outputs are 
 [decision 0033](../docs/decisions/0033-second-list-decisions.md). The Gaia DR3 source ids and the neighbour table's
 values in its section 2 are Gaia DR3 data (above).
 
+`neighbour-epoch-reach-2026-10-20.md` measures how far the neighbour table's mixed epochs (the TIC position at J2000
+against Gaia DR3 at J2016.0) reach across M3's 62 tables, and `pixel-check-reference-position-2026-10-20.md` which
+position the pixel check measures its offsets from. Both are read-only, made outside the pipeline, and gate nothing;
+[decision 0034](../docs/decisions/0034-neighbour-table-epochs.md) cites them. Their scripts and small outputs are in
+`neighbour-epoch-reach-2026-10-20-scripts.tar.gz` beside them, byte for byte, one folder each (`t13-epoch/`,
+`pixel-diag/`). The Gaia DR3 source ids, positions, proper motions, magnitudes and separations in both files and in
+the tarball are Gaia DR3 data (above).
+
 ## Triage
 
 Each run directory under `triage/` is one triage run, which `tess-hunt triage publish` copied unchanged from the run
@@ -141,9 +150,10 @@ planet.
   flat-prior fit's summary (`fit`) and the density-prior fit's (`fit_prior`); the star's targets row, its Gaia DR3 id
   and RUWE joined where the row lacks them, with where they came from (`star`: `dr3_from`, `dr3_reason`); each
   sector's light-curve source (`sources`); the neighbour table (`neighbours`,
-  [decision 0025](../docs/decisions/0025-neighbours.md)); every catalogued row on the star with the transits of ours it
-  overlaps (`catalogued`); the upcoming sectors and predicted transit windows; triage's ModShift and pixel evidence and
-  the search's other signals on the star.
+  [decision 0025](../docs/decisions/0025-neighbours.md); its `centre` names the position the separations run from,
+  [decision 0034](../docs/decisions/0034-neighbour-table-epochs.md)); every catalogued row on the star with the
+  transits of ours it overlaps (`catalogued`); the upcoming sectors and predicted transit windows; triage's ModShift and
+  pixel evidence and the search's other signals on the star.
 - `checks-with-suspect.json`: the same vet with the timing-suspect sectors kept in, as evidence only, never used for
   the call ([decision 0022](../docs/decisions/0022-vet-without-timing-suspect-sectors.md)).
 - `neighbours.csv`: the Gaia DR3 stars in the neighbour cone, each with its TESS magnitude and the eclipse depth it

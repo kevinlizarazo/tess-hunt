@@ -18,12 +18,14 @@ seen.
 ## Decision
 
 - `neighbours.gaia_cone` takes every `gaiadr3.gaia_source` row within `[neighbours] radius_arcmin` (1.0) of the
-  target's TIC position: `source_id`, `ra`, `dec`, `phot_g_mean_mag`, `bp_rp`, the separation in arcseconds, and the
-  proper motion `pmra` (times cos dec) and `pmdec` in mas/yr (null for a two-parameter solution) with the positions'
-  `ref_epoch`, nearest first. The table keeps the proper motions so TRICERATOPS's cross-check can match each possible
-  host at the TIC's epoch (Ruling S, decision 0026). It goes through `gaia.launch_gaia` (an asynchronous job, removed
-  from the archive afterwards) with `retry.retry`: 3 attempts, 30 s times the attempt number between them. After the
-  last it raises `NeighbourError`.
+  target's own Gaia DR3 position, which it first asks the archive for by the target's source id, or without an id, of
+  its TIC position ([decision 0034](0034-neighbour-table-epochs.md)): `source_id`, `ra`, `dec`, `phot_g_mean_mag`,
+  `bp_rp`, the separation in arcseconds from that centre, and the proper motion `pmra` (times cos dec) and `pmdec` in
+  mas/yr (null for a two-parameter solution) with the positions' `ref_epoch`, nearest first. The check's evidence names
+  the centre (`centre`). The table keeps the proper motions so TRICERATOPS's cross-check can match each possible host
+  at the TIC's epoch (Ruling S, decision 0026). Each query goes through `gaia.launch_gaia` (an asynchronous job,
+  removed from the archive afterwards) with `retry.retry`: 3 attempts, 30 s times the attempt number between them.
+  After the last, or when the archive has no row for the source id, it raises `NeighbourError`.
 - Each star's TESS magnitude comes from Stassun et al. 2019 (AJ 158, 138), section 2.3.1, eq. 1:
   `T = G - 0.00522555 c^3 + 0.0891337 c^2 - 0.633923 c + 0.0324473`, `c = BP - RP`, on Gaia's observed magnitudes
   (`tmag_from = "colour"`).
@@ -67,12 +69,14 @@ seen.
 
 ## Limitations
 
-- The separations are from the TIC position (epoch 2000) to Gaia DR3 positions (epoch 2016.0) with no proper motion
-  applied, so a fast-moving star's separation is off by its motion over those years. Without a source id, a target
-  that moved more than 1" between the epochs, or one with a companion within 1", leaves the table inconclusive. Every
-  sample target has a `dr3_source_id`. A control's targets table has none, so `vetting run` joins one (Ruling N); only
-  where that join fails or finds no DR3 source (`checks.json`'s `star` row says so in `dr3_from` and `dr3_reason`)
-  does the table rest on the 1" match.
+- With the target's source id, the separations run from its own DR3 position to the other DR3 positions, all at epoch
+  2016.0 (decision 0034). Until decision 0034 they ran from the TIC position (epoch 2000), with no proper motion
+  applied, so a fast-moving target's separations were off by its motion over those years: TIC 44926986's companion
+  read 12.50" for 9.86". Without a source id they still run from the TIC position, off by under 1" where the target is
+  found, and a target that moved more than 1" between the epochs, or one with a companion within 1", leaves the table
+  inconclusive. Every sample target has a `dr3_source_id`. A control's targets table has none, so `vetting run` joins
+  one (Ruling N); only where that join fails or finds no DR3 source (`checks.json`'s `star` row says so in `dr3_from`
+  and `dr3_reason`) does the table rest on the TIC position and the 1" match.
 - Eq. 1 is applied to observed magnitudes; the TIC applies it to de-reddened ones and adds the extinction back. It is
   fitted for -0.2 < BP-RP < 3.5 and is extrapolated outside that range.
 - The required depth assumes the neighbour's whole light falls in the aperture. A star away from the aperture puts

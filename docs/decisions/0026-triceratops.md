@@ -131,10 +131,11 @@ sha256, the layout, and how many rows the envelope lowered are recorded.
   moved back to J2000.0 with its DR3 proper motion before matching (`tricera.at_tic_epoch`: `dec - pmdec * 16 / 3.6e6`
   and `ra - pmra * 16 / (3.6e6 cos dec)` in degrees, DR3's `pmra` already carrying cos dec); a host with no proper
   motion (a two-parameter solution) matches at its DR3 position. Without this, a host and its own TIC star read as two
-  stars when they move fast: 44926986's 12.5" possible host is TIC 44926982, which TRICERATOPS gave the same depth, yet
-  the two positions sit 2.78" apart, beyond `match_arcsec` (the M3 build's smoke runs, Tasks 9 and 10b; moved to
-  J2000.0, the host sits 0.001" from TIC 44926982). `match_arcsec` is unchanged. `hosts` keeps each host's proper
-  motion, its position at J2000.0 (`ra_2000`, `dec_2000`) and its distance there from the nearest TRICERATOPS star.
+  stars when they move fast: 44926986's 9.86" (corrected in 0034) possible host is TIC 44926982, which TRICERATOPS gave
+  the same depth, yet the two positions sit 2.78" apart, beyond `match_arcsec` (the M3 build's smoke runs, Tasks 9 and
+  10b; moved to J2000.0, the host sits 0.001" from TIC 44926982). `match_arcsec` is unchanged. `hosts` keeps each
+  host's proper motion, its position at J2000.0 (`ra_2000`, `dec_2000`) and its distance there from the nearest
+  TRICERATOPS star.
 
 **A possible host TRICERATOPS gave no depth** (Ruling M) is evidence, not a blocker. When a possible host matches a
 TIC star whose TRICERATOPS `tdepth` is 0, TRICERATOPS judged that star unable to make the dip and weighed no scenario

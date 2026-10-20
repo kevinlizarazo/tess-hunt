@@ -889,7 +889,12 @@ def control_triceratops(toi, toi_table, tmp_path):
     depth = toi_table.set_index("TOI").loc[toi, "Depth (ppm)"] * 1e-6
     eph = Ephemeris(float(row.period), float(row.t0), float(row.duration), float(depth))
     assert in_transit(pdcsap.time, eph).any()
-    cone = neighbours.gaia_cone(star["ra"], star["dec"], VET["neighbours"]["radius_arcmin"])
+    cone = neighbours.gaia_cone(
+        star["ra"],
+        star["dec"],
+        VET["neighbours"]["radius_arcmin"],
+        source_id=star["dr3_source_id"],
+    )
     table = neighbours.required_depths(
         cone, depth, star["tmag"], star["dr3_source_id"], VET["neighbours"]
     )

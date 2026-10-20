@@ -202,6 +202,9 @@ position; the cutout's TIC lists TIC 322826642 a second time as TIC 916591898):
 | 458290782-1 | TIC 1343588382 (5971009774267118464) | 13.41 | 24.2" | 0.3" | 1.9%; 2.0 to 3.7% |
 | 458290782-1 | TIC 458290807 (5971009769967461632) | 11.80 | 27.1" | 3.2" | 0.43%; 0.5 to 1.0% |
 
+Note (2026-10-20): the "From target" distances carry the neighbour table's mixed epochs, by 0.2" to 2.2"; see
+[decision 0034](../../docs/decisions/0034-neighbour-table-epochs.md). No number above is changed.
+
 - **322826591-1: off-target source supported.** The fit lands within 3" of one sky point in all five sectors (S37,
   S38, S64 and S100 on camera 3, S99 on camera 4), a sky scatter of 1.8" against a detector scatter of 28.7". Quality
   0.83 to 0.96, and no null image reaches it (0 of 16 in every sector). The fixed fit gives the neighbour z 5.0 to 21.0
