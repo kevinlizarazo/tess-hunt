@@ -56,14 +56,13 @@ def test_two_seasons_are_untestable_not_fail():
 
 def last_season_with_one_transit(in_gap):
     """The planet in three seasons, the last cut to four days of S28 around one transit, which falls in a
-    data gap when `in_gap`, as 441010857-1's only S11 transit did (docs/decisions/0035)."""
+    data gap when `in_gap`, as 441010857-1's only S11 transit did (docs/decisions/0035). At 30 min the
+    transit holds 6 cadences, 3 of them in its core, as sparse as 438857197-1's S11."""
     lc = make_lc(
         sectors=(1, 2, 3, 14, 15, 16, 28),
         noise_ppm=300.0,
         signals=[(3.7, 1326.1, 0.12, 1500e-6)],
         seed=7,
-        # One transit's core holds 9 cadences at 10 min, under min_points at 30.
-        cadences={28: 10.0},
     )
     near = np.abs(lc.time - (EPH.t0 + 202 * EPH.period))  # BTJD 2073.5, in S28's first orbit
     s28 = lc.sector == 28
@@ -87,11 +86,14 @@ def test_a_training_season_whose_transit_falls_in_a_gap_does_not_count():
     assert last["status"] == "no_predicted_transit_in_data", last
 
 
-def test_a_training_season_with_one_transit_in_its_data_counts():
+def test_a_training_season_whose_transit_has_few_core_cadences_still_counts():
     result = holdout(last_season_with_one_transit(in_gap=False), EPH, CFG, 0.5)
     seasons = result.evidence["seasons"]
     assert [s["training_seasons_with_transits"] for s in seasons] == [2, 2, 2]
-    assert [s["status"] for s in seasons] == ["predicted"] * 3, seasons
+    statuses = [s["status"] for s in seasons]
+    assert statuses == ["predicted", "predicted", "no_predicted_transit_in_data"], seasons
+    # Too few core cadences to measure the season's own depth, enough to time its transit for the others.
+    assert seasons[2]["n"] < CFG["min_points"]
     assert result.outcome is Outcome.PASS
 
 

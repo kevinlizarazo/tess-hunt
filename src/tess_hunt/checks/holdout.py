@@ -106,12 +106,14 @@ def holdout(
     labels = season_labels(lc.time, cfg["season_gap_days"])
     families = family_labels(lc, families_cfg) if families_cfg is not None else None
     # A season whose transits all fall in its gaps has cadences but gives the refit nothing to fit, so it
-    # can't count toward min_training_seasons (docs/decisions/0035-holdout-training-seasons.md).
-    core = in_transit(lc.time, eph, width=core_fraction)
+    # can't count toward min_training_seasons. Its cadences are counted over the whole transit, not the
+    # core: the core is where depths are measured, and a sparsely sampled season still times its transits
+    # (docs/decisions/0035-holdout-training-seasons.md).
+    transits = in_transit(lc.time, eph)
     with_transits = {
         int(label)
         for label in np.unique(labels)
-        if (core & (labels == label)).sum() >= cfg["min_points"]
+        if (transits & (labels == label)).sum() >= cfg["min_points"]
     }
     seasons = []
     for label in np.unique(labels):

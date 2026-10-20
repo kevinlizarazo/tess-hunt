@@ -15,22 +15,23 @@ The runs, as `~/.cache/tess-hunt/logs/m3-vars.sh` names them:
 ## Answer
 
 - **The screen** flags two signals in `VET_RUN`, each with both tested seasons trained on one season holding a
-  transit: 441010857-1 (holdout fail) and 438857197-1 (holdout pass). It flags none of `CONTROL_VET`'s 24.
-- **The fixed check**, run on each signal's inputs rebuilt as `vet_with_fits` builds them (section 2):
-  - `VET_RUN`: 441010857-1 goes from fail to inconclusive and 438857197-1 from pass to inconclusive. The other 17
-    are unchanged.
+  transit by its count: 441010857-1 (holdout fail) and 438857197-1 (holdout pass). It counts a season's core cadences
+  at its own refit ephemeris. It flags none of `CONTROL_VET`'s 24.
+- **The fix** counts each season's cadences inside the whole transit at the check's input ephemeris. Run on each
+  signal's inputs rebuilt as `vet_with_fits` builds them (section 2):
+  - `VET_RUN`: 441010857-1 goes from fail to inconclusive. The other 18 are unchanged, 438857197-1 among them.
+  - `VET_SUSPECT_RUN`: 441010857-1 goes from fail to inconclusive. The other 18 are unchanged.
   - `CONTROL_VET`: no outcome changes.
-  - `VET_SUSPECT_RUN`: 441010857-1 goes from fail to inconclusive. The other 18 are unchanged, 438857197-1 among
-    them: its QLP season gives each tested season a second training season with a transit.
   - In all 62 records, every season whose status the fix leaves alone reproduces the run's `checks.json` field for
     field.
-- **438857197-1's S11 holds transits, and the rule leaves it out** (section 3). At 30-minute cadence it holds 8
-  cadences inside the transit and 4 in the core after detrending, under `min_points`. It pins the refit's period:
+- **438857197-1's S11 holds transits** (section 3). At 30-minute cadence it holds 8 cadences inside the transit and 4
+  in the core after detrending, so a core count, under `min_points`, would leave it out. It pins the refit's period:
   trained with it, as the vet was, seasons 1 and 2 are predicted 0.09 h and 0.07 h from the flat fit, against a core
   half-width of 0.25 h, and show the transit at 8.3 and 7.0 sigma; trained without it, 8.88 h and 6.86 h off, at -0.5
   and -1.0 sigma.
-- **Counting cadences in the whole transit**, in place of the core, would change only 441010857-1, in `VET_RUN` and
-  `VET_SUSPECT_RUN` (section 4). 438857197-1 would keep its pass.
+- **Both windows on the three runs** (section 4). Counting the core would change 441010857-1 in `VET_RUN` and
+  `VET_SUSPECT_RUN`, and 438857197-1 in `VET_RUN` (pass to inconclusive). Counting the whole transit changes only
+  441010857-1, in both. Neither changes a control.
 - **The four published single-signal vets** (vet-v1 and vet-v2) are not flagged by the screen's count (section 5).
 
 ## 1. The screen
@@ -96,7 +97,8 @@ TOI-826.01 pass bearing [0, 1, 2, 3] tested [(0, 'predicted', 3, 3), (1, 'predic
 
 ## 2. The fixed check on the runs' inputs
 
-The screen counts each season at its own refit ephemeris; the fix counts at the check's input ephemeris. `exact.py`
+The screen counts core cadences at each season's own refit ephemeris; the fix counts cadences inside the whole
+transit at the check's input ephemeris. `exact.py`
 runs the fixed `holdout` on each signal's vet-v3 inputs, rebuilt as `vet_with_fits` builds them: the light curve
 (checked against the sha256 the run recorded), without its timing-suspect sectors except in `VET_SUSPECT_RUN`,
 detrended around the run's `masked` transits, with red-noise errors; the criteria files are checked against the run's
@@ -167,11 +169,10 @@ uv run python /tmp/t13b/exact.py "$VET_SUSPECT_RUN" --suspect`:
     season 0 predicted (2, 2)
     season 1 predicted (2, 2)
     season 2 predicted (2, 2)
-438857197-1 pass -> inconclusive | other seasons reproduce
+438857197-1 pass == pass | other seasons reproduce
     season 0 no_predicted_transit_in_data (2, 2)
-    season 1 predicted -> untestable (2, 1)
-    season 2 predicted -> untestable (2, 1)
-    reason: 0 season(s) could be tested; need 2
+    season 1 predicted (2, 2)
+    season 2 predicted (2, 2)
 441010857-1 fail -> inconclusive | other seasons reproduce
     season 0 no_predicted_transit_in_data (2, 2)
     season 1 missed -> untestable (2, 1)
@@ -191,7 +192,7 @@ uv run python /tmp/t13b/exact.py "$VET_SUSPECT_RUN" --suspect`:
     season 0 predicted (2, 2)
     season 1 predicted (2, 2)
     season 2 untestable (2, 2)
-2 outcome(s) changed of 19
+1 outcome(s) changed of 19
 == CONTROL_VET
 TOI-1052.01 pass == pass | other seasons reproduce
     season 0 predicted (4, 4)
@@ -396,9 +397,9 @@ TOI-826.01 pass == pass | other seasons reproduce
     season 3 untestable (3, 3)
 438857197-1 pass == pass | other seasons reproduce
     season 0 no_predicted_transit_in_data (3, 3)
-    season 1 predicted (3, 2)
-    season 2 predicted (3, 2)
-    season 3 untestable (3, 2)
+    season 1 predicted (3, 3)
+    season 2 predicted (3, 3)
+    season 3 untestable (3, 3)
 441010857-1 fail -> inconclusive | other seasons reproduce
     season 0 no_predicted_transit_in_data (3, 2)
     season 1 missed -> untestable (3, 1)
@@ -448,7 +449,7 @@ season 2 held out, trained without S11: P 3.657675, epoch 397 -6.86 h from the f
 the whole transit, on the rebuilt, detrended light curve, and gives the holdout outcome each count would give: a
 tested season becomes untestable when fewer than `min_training_seasons` of its training seasons hold `min_points` such
 cadences. Making a season untestable changes no other season's status, so the outcome follows from the run's own
-statuses. Under the core count its outcomes match section 2's.
+statuses. Under the whole-transit count its outcomes match section 2's.
 
 `for r in VET_RUN CONTROL_VET; do /tmp/t13/heavy.sh uv run python /tmp/t13b/variant.py "${!r}"; done;
 /tmp/t13/heavy.sh uv run python /tmp/t13b/variant.py "$VET_SUSPECT_RUN" --suspect`:
