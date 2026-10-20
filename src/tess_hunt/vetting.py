@@ -843,7 +843,7 @@ def cmd_literature(args) -> int:
         searched = literature.searchable(simbad["names"], vetted[names[0]]["star"], cfg["forms"])
         search = {
             "simbad": simbad,
-            **literature.search_all(tic, searched, session, token, cfg, kept),
+            **literature.search_all(tic, searched, session, token, cfg, kept, simbad=simbad),
         }
         check = literature.literature_check(search).to_dict()
         for name in names:

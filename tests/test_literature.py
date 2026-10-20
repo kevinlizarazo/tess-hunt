@@ -238,7 +238,9 @@ def slept(request, monkeypatch):
 
 
 def search(web, names=("TIC 164767175", "HIP 8152"), token=TOKEN, cfg=CFG, done=None) -> dict:
-    return literature.search_all(TIC, list(names), web, token, cfg, done)
+    # SIMBAD's record as `vetting literature` passes it: whether SIMBAD knows the star decides how ADS's "0" reads.
+    simbad = literature.simbad_record(TIC, web)
+    return literature.search_all(TIC, list(names), web, token, cfg, done, simbad=simbad)
 
 
 def complete(record: dict) -> dict:
@@ -453,7 +455,8 @@ def test_ads_without_a_token_is_not_searched():
     assert result["query"] == QUERY and result["resolved"] == {"simbad": True, "ned": False}
     assert result["note"] is None
     assert [h["arxiv"] for h in result["hits"]] == ["2306.16587"]
-    assert literature.literature_check(complete(record)).outcome == Outcome.PASS
+    check = literature.literature_check(complete(record))
+    assert check.outcome == Outcome.PASS and check.evidence["notes"] == []
 
 
 def test_a_star_no_catalog_resolves_is_searched_by_its_phrase():
@@ -468,9 +471,48 @@ def test_a_star_no_catalog_resolves_is_searched_by_its_phrase():
         "and keywords of its astronomy collection."
     )
     # The search still runs and its hits count; the by-name searches cover the star's other names (decision 0027).
-    check = literature.literature_check(complete(record))
+    # SIMBAD answered, without the star.
+    check = literature.literature_check({"simbad": literature.simbad_record(TIC, web), **record})
     assert check.outcome == Outcome.PASS
     assert check.evidence["hits"][0]["found_by"] == ["ads TIC 164767175"]
+    # The note sits in the evidence, beside a reason that reads as any complete search's.
+    assert check.evidence["notes"] == [result["note"]]
+    assert check.reason == "complete: 1 hits to screen"
+
+
+def ads_lookup_failed(name, body):
+    """ADS's object service when its own SIMBAD and NED lookups failed: "0" for both, as for a star neither holds."""
+    query = f'((=abs:"{name}" OR simbid:"0" OR nedid:"0") database:astronomy)'
+    return json.dumps({"query": query}).encode()
+
+
+def test_ads_not_resolving_a_star_simbad_knows_is_ads_failing():
+    web = Web(hits={("ads", "TIC 164767175"): [AKANA]})
+    web.objects = ads_lookup_failed
+    record = search(web)
+    error = "ADS objects: SIMBAD knows TIC 164767175 but ADS's object service did not resolve it"
+    assert record["sources"]["ads"]["TIC 164767175"] == {
+        "status": "error",
+        "hits": [],
+        "total": None,
+        "error": error,
+    }
+    # No search on the phrase alone.
+    assert [c["service"] for c in web.calls if c["service"] in ("objects", "ads")] == ["objects"]
+    check = literature.literature_check(complete(record))
+    assert check.outcome == Outcome.INCONCLUSIVE
+    assert check.evidence["incomplete"] == [f"ads TIC 164767175: error ({error})"]
+
+    # With SIMBAD's own lookup failed, nothing says SIMBAD knows the star: the phrase is searched, and SIMBAD's error
+    # already leaves the search incomplete.
+    failed = Web(status={"simbad": 400}, hits={("ads", "TIC 164767175"): [AKANA]})
+    failed.objects = ads_lookup_failed
+    record = search(failed)
+    ads = record["sources"]["ads"]["TIC 164767175"]
+    assert ads["status"] == "ok" and ads["note"] and len(ads["hits"]) == 1
+    check = literature.literature_check({"simbad": literature.simbad_record(TIC, failed), **record})
+    assert check.outcome == Outcome.INCONCLUSIVE
+    assert check.evidence["incomplete"] == ["SIMBAD: error (SIMBAD: HTTP 400)"]
 
 
 def test_a_failed_translation_is_ads_failing():
@@ -729,6 +771,35 @@ def test_resume_fills_only_what_the_earlier_run_left_incomplete(tmp_path, monkey
         main([*argv, "--resume-from", str(first)])
 
 
+def test_resume_asks_ads_again_after_its_lookup_failed(tmp_path, monkeypatch):
+    run, argv = vetting_run(tmp_path, monkeypatch)
+    monkeypatch.setenv("ADS_API_TOKEN", TOKEN)
+    # SIMBAD knows TIC 1, and ADS's object service did not resolve it.
+    failed = Web(names=NAMES, hits={("ads", "TIC 1"): [AKANA]})
+    failed.objects = ads_lookup_failed
+    online(monkeypatch, failed)
+    assert main(argv) == 0
+    [first] = literature_runs(tmp_path)
+    record = json.loads((first / "signals" / "1-1" / "literature.json").read_text())
+    assert record["search"]["sources"]["ads"]["TIC 1"]["status"] == "error"
+    assert record["outcome"] == "inconclusive"
+
+    web = online(monkeypatch, Web(names=NAMES, hits={("ads", "TIC 1"): [AKANA]}))
+    assert main([*argv, "--resume-from", str(first)]) == 0
+    [second] = [p for p in literature_runs(tmp_path) if p != first]
+    # Of the searches, only ADS's is made again.
+    assert {(c["service"], c["name"]) for c in web.calls} == {
+        ("simbad", "TIC 1"),
+        ("exofop", "TIC 1"),
+        ("objects", "TIC 1"),
+        ("ads", "TIC 1"),
+    }
+    record = json.loads((second / "signals" / "1-1" / "literature.json").read_text())
+    ads = record["search"]["sources"]["ads"]["TIC 1"]
+    assert ads["status"] == "ok" and ads["resolved"]["simbad"] and "from_run" not in ads
+    assert record["outcome"] == "pass"
+
+
 def other_vet_criteria(tmp_path, run) -> list[str]:
     path = tmp_path / "vet-other.toml"
     path.write_text(tv.VET3.read_text() + "# not the file the vetting run used\n")
@@ -768,9 +839,12 @@ def test_literature_refuses_an_evidence_only_run(tmp_path, monkeypatch):
 @pytest.mark.skipif(not os.environ.get("ADS_API_TOKEN"), reason="ADS needs ADS_API_TOKEN")
 def test_hip_8152_finds_akana_murphy_2023():
     session = requests.Session()
-    names = literature.searchable(literature.simbad_names(TIC, session), {"tic": TIC}, CFG["forms"])
+    simbad = literature.simbad_record(TIC, session)
+    names = literature.searchable(simbad["names"], {"tic": TIC}, CFG["forms"])
     assert "HIP 8152" in names
-    record = literature.search_all(TIC, names, session, os.environ["ADS_API_TOKEN"], CFG)
+    record = literature.search_all(
+        TIC, names, session, os.environ["ADS_API_TOKEN"], CFG, simbad=simbad
+    )
     ads = record["sources"]["ads"]["TIC 164767175"]
     # ADS itself must find Akana Murphy et al. 2023, AJ 166, 153 (TOI-266's planets as HIP 8152 b and c): arXiv's hit
     # for "HIP 8152" once hid an ADS search that failed for every star.

@@ -147,9 +147,10 @@ def literature_record(vetting_run: Path, monkeypatch) -> dict:
     monkeypatch.setattr(literature.time, "sleep", lambda s: None)
     web = tl.Web(names={1: ["TIC 1", "HD 1"]}, hits={("arxiv", "HD 1"): [tl.AKANA]})
     # Without the ADS token, as every literature run so far: inconclusive.
+    simbad = literature.simbad_record(1, web)
     search = {
-        "simbad": literature.simbad_record(1, web),
-        **literature.search_all(1, ["TIC 1", "HD 1"], web, None, tl.CFG),
+        "simbad": simbad,
+        **literature.search_all(1, ["TIC 1", "HD 1"], web, None, tl.CFG, simbad=simbad),
     }
     check = literature.literature_check(search).to_dict()
     return {
@@ -284,9 +285,10 @@ def test_real_and_new_says_when_ads_searched_only_the_phrase(tmp_path, monkeypat
     signal, _ = draft(tmp_path, monkeypatch)
     # With the token, and TIC 1 in neither SIMBAD nor NED: ADS's object service resolved nothing.
     web = tl.Web(names={})
+    simbad = literature.simbad_record(1, web)
     search = {
-        "simbad": literature.simbad_record(1, web),
-        **literature.search_all(1, ["TIC 1"], web, tl.TOKEN, tl.CFG),
+        "simbad": simbad,
+        **literature.search_all(1, ["TIC 1"], web, tl.TOKEN, tl.CFG, simbad=simbad),
     }
     check = literature.literature_check(search).to_dict()
     edit_json(signal / "literature.json", lambda r: r.update(search=search, **check))

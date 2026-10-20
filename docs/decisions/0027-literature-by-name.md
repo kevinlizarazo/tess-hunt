@@ -32,10 +32,15 @@ as "nothing published".
   ADS's astronomy collection. The plan sent `object:"TIC n"` straight to the search endpoint, which on 2026-10-19
   answered HTTP 400 (`undefined field object`); ADS's documentation (adsabs-dev-api, `openapi/services/objects.yaml`)
   gives the object service for expanding an object query. The record keeps the translated query and whether SIMBAD or
-  NED resolved the star (an id other than "0"). Where neither did, ADS searched only the phrase, and the record and
-  the dossier say so. Its hits still count and the search is not inconclusive for it: the by-name searches cover the
-  star's other names. A failed translation, or a 200 without a query (the service answers its own errors with a 200),
-  is ADS's search failing. ExoFOP's target JSON is read live.
+  NED resolved the star (an id other than "0"). The object service writes "0" for a star a catalog does not hold and
+  also when its own lookup in that catalog failed (adsabs/object_service, `get_object_translations`). It asks SIMBAD
+  for "TIC n", the identifier `literature.simbad_names` asks SIMBAD's TAP service for, so where the record's SIMBAD
+  answer lists names for the star and the query has `simbid:"0"`, ADS's lookup failed: ADS's search is recorded
+  `error` without being made, the check is inconclusive and a resumed run asks again. Otherwise, where neither
+  catalog resolved the star, ADS searched only the phrase, and the record, the check's evidence (`notes`, not the
+  reason) and the dossier say so. Its hits still count and the search is not inconclusive for it: the by-name
+  searches cover the star's other names. A failed translation, or a 200 without a query (the service answers its own
+  errors with a 200), is ADS's search failing. ExoFOP's target JSON is read live.
 - **Paging.** Each search pages until it holds every hit its service reports, at the most each service serves a page
   without a key (Zenodo refuses more than 25). A search whose reported total exceeds `[literature] max_hits` (200) stops
   at that page and is recorded `too_broad` with the total and no hits. For a by-name search that is complete, not
@@ -95,9 +100,9 @@ as "nothing published".
   control rests on ADS's object search, and the record is inconclusive in any case.
 - SIMBAD is asked by the TIC identifier. A star SIMBAD holds without that identifier gets only the names from the
   targets row, and ADS's object search for the TIC may not resolve it either.
-- ADS's object service writes "0" both for a star a catalog does not hold and when its own lookup in that catalog
-  failed (adsabs/object_service, `get_object_translations`), so the record can't tell the two apart. Where the
-  record's SIMBAD answer lists names for the star and ADS's query has `simbid:"0"`, the lookup failed on ADS's side.
+- Where SIMBAD does not know the star, or SIMBAD's own answer failed, a "0" from ADS's object service can't be told
+  from a failed lookup on ADS's side, in SIMBAD or NED: the star is searched by its phrase alone, as unresolved. With
+  SIMBAD's answer failed, the search is incomplete through SIMBAD's error anyway.
 - The control tables carry no `dr3_source_id`, so for a star SIMBAD lacks, the search may run on the TIC name alone.
 - A star ADS lists more than `max_hits` papers for never gets a complete search under vet-v3, so its signal can't be
   passed (M3 design, section 4.9) until the maintainer reads ADS for it by hand and a decision record says how that
@@ -123,9 +128,13 @@ as "nothing published".
   - `test_ads_without_a_token_is_not_searched` (no request to ADS, inconclusive; with the token, the object service's
     POST body, the search paging with the translated query, the bearer header on both, and the query and the
     catalogs that resolved the star in the record).
-  - `test_a_star_no_catalog_resolves_is_searched_by_its_phrase` (ids "0" from both catalogs: the record says ADS
-    searched only the phrase, and the search still passes); `test_real_and_new_says_when_ads_searched_only_the_phrase`
-    in `tests/test_dossier.py` (the dossier's line).
+  - `test_a_star_no_catalog_resolves_is_searched_by_its_phrase` (ids "0" from both catalogs for a star SIMBAD does not
+    know: the record and the check's `notes` say ADS searched only the phrase, the reason does not, and the search
+    still passes); `test_real_and_new_says_when_ads_searched_only_the_phrase` in `tests/test_dossier.py` (the
+    dossier's line).
+  - `test_ads_not_resolving_a_star_simbad_knows_is_ads_failing` (SIMBAD names the star, ADS's query has
+    `simbid:"0"`: `error`, no search made, inconclusive; with SIMBAD's own answer failed, the phrase is searched) and
+    `test_resume_asks_ads_again_after_its_lookup_failed` (a resumed run makes only ADS's search again, and it passes).
   - `test_a_failed_translation_is_ads_failing` (the object service's HTTP 400, or a 200 without a query: ADS recorded
     `error`, the search never made, no token text in the record).
   - `test_the_token_never_reaches_the_record` (the object service or the search echoes the request's headers in a 401
