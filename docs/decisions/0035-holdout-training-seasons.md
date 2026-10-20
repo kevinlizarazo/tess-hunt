@@ -24,7 +24,7 @@ Task 13's adversarial review of 441010857-1 found it (its finding F1; both refut
 it). S11's only transit (epoch 0, BTJD 1613.83) falls in its mid-sector gap (1609.162 to 1615.912), so season 1 was
 predicted from S64's single transit. The BLS grid, not transits, set the refit period: 268 of 801 grid periods sit
 within 0.5 of the best likelihood. The prediction put the two S38 transits 3.60 h and 3.47 h from the flat fit's
-mid-times, against a core half-width of 0.37 h, the season was missed and the check failed. At the flat fit's
+mid-times, against a core half-width of 0.37 h. The season was missed and the check failed. At the flat fit's
 ephemeris, season 1 holds an 11.8 sigma transit. The M3 design, section 4.8: "A finding that shows a check is wrong
 goes to a decision record, never a quiet rerun." This is that record.
 
@@ -54,13 +54,14 @@ This record writes down that call.
    - The check's code serves every criteria version, so a vet under vet-v1 or vet-v2 applies the rule too. By the
      review's screen it reaches none of the four vets published under `results/benchmarks/`.
 2. **How the window was chosen.** The first version of the fix counted core cadences, the window and count of
-   `box_depth`. Run on the three M3 vetting runs it also turned 438857197-1's holdout pass inconclusive. That
-   signal's S11, at 30-minute cadence, holds 8 cadences inside the transit and 4 in the core after detrending, so the
-   core count left it out, yet it pins the refit's period. Trained with S11, as the vet was, seasons 1 and 2 are
+   `box_depth`. Run on the three M3 vetting runs it also turned 438857197-1's holdout pass inconclusive. That signal's
+   S11, at 30-minute cadence (`cadence_s` 1800 in `sources` of its `checks.json` in vetting run
+   `20261020T010149Z-vetting-run-62882b5-c3ee`), holds 8 cadences inside the transit and 4 in the core after detrending,
+   so the core count left it out, yet it pins the refit's period. Trained with S11, as the vet was, seasons 1 and 2 are
    predicted 0.09 h and 0.07 h from the flat fit, against a core half-width of 0.25 h, and show the transit at 8.3 and
    7.0 sigma. Trained without it, they are predicted 8.88 h and 6.86 h off and show -0.5 and -1.0 sigma. The fix was
-   switched to the whole transit before the maintainer answered. Both windows' reach on the three runs, from the
-   runs' own season statuses:
+   switched to the whole transit before the maintainer answered. Both windows' reach on the three runs, from the runs'
+   own season statuses:
 
    | Run | Core window | Whole transit |
    |---|---|---|

@@ -59,9 +59,9 @@ measurement" below):
 3. **The controls are not rerun.** The control vet, its TRICERATOPS runs
    (`20261017T162256Z-vetting-triceratops-62882b5-d0f8` and `20261018T012940Z-vetting-triceratops-62882b5-e3d7`) and
    the published controls run `20261020T082333Z-benchmark-controls-16418d2-f45a` (cited by 0026, 0031 and 0032) stand,
-   with this record as their note. The measurement shows no neighbour outcome, blocker or count the controls summary
-   publishes changes on the 24 control tables, and TRICERATOPS takes from the table only the outcome and the possible
-   hosts, which match its star list before and after (its sections 3 and 5).
+   with this record as their note. The measurement shows no change on the 24 control tables to a neighbour outcome, a
+   blocker or a count the controls summary publishes, and TRICERATOPS takes from the table only the outcome and the
+   possible hosts, which match its star list before and after (its sections 3 and 5).
    - What does change in the published controls:
      [`controls.csv`](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/controls.csv)'s
      `possible_hosts` for TOI-652.01 (3 to 2) and TOI-755.01 (9 to 10), and, in the control vet's tables,

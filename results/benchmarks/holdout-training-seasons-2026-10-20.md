@@ -105,8 +105,11 @@ detrended around the run's `masked` transits, with red-noise errors; the criteri
 sha256s. Each season prints its status, then `(training_seasons, training_seasons_with_transits)`. Every season whose
 status did not change is compared with `checks.json` field for field, the new count aside.
 
-`for r in VET_RUN CONTROL_VET; do /tmp/t13/heavy.sh uv run python /tmp/t13b/exact.py "${!r}"; done; /tmp/t13/heavy.sh
-uv run python /tmp/t13b/exact.py "$VET_SUSPECT_RUN" --suspect`:
+```sh
+for r in VET_RUN CONTROL_VET; do echo "== $r"; /tmp/t13/heavy.sh uv run python /tmp/t13b/exact.py "${!r}"; done
+echo "== VET_SUSPECT_RUN"
+/tmp/t13/heavy.sh uv run python /tmp/t13b/exact.py "$VET_SUSPECT_RUN" --suspect; echo EXIT $?
+```
 
 ```
 == VET_RUN
@@ -431,6 +434,8 @@ EXIT 0
 
 `refit.py` rebuilds 438857197-1's inputs as `exact.py` does and refits each tested season with S11 in its training set,
 as the vet did, and without it. Offsets are from the flat fit's transit time at the epoch nearest the season's middle.
+S11 is TESS-SPOC at 30-minute cadence: `sources["11"]` in `VET_RUN`'s `checks.json` for 438857197-1 gives
+`cadence_s` 1800.0.
 
 `uv run python /tmp/t13b/refit.py`:
 
@@ -451,8 +456,11 @@ tested season becomes untestable when fewer than `min_training_seasons` of its t
 cadences. Making a season untestable changes no other season's status, so the outcome follows from the run's own
 statuses. Under the whole-transit count its outcomes match section 2's.
 
-`for r in VET_RUN CONTROL_VET; do /tmp/t13/heavy.sh uv run python /tmp/t13b/variant.py "${!r}"; done;
-/tmp/t13/heavy.sh uv run python /tmp/t13b/variant.py "$VET_SUSPECT_RUN" --suspect`:
+```sh
+for r in VET_RUN CONTROL_VET; do echo "== $r"; /tmp/t13/heavy.sh uv run python /tmp/t13b/variant.py "${!r}"; done
+echo "== VET_SUSPECT_RUN"
+/tmp/t13/heavy.sh uv run python /tmp/t13b/variant.py "$VET_SUSPECT_RUN" --suspect; echo EXIT $?
+```
 
 ```
 == VET_RUN
