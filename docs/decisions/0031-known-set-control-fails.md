@@ -75,10 +75,10 @@ correctness." This record writes down that call. It is a call made on these resu
 - **Not covered here.** TRICERATOPS is inconclusive on four known planets (the summary): TOI-747.01 (mean FPP 0.568
   in the summary, sd 0.458 in `controls.csv`; decision 0026's Controls paragraph), TOI-451.03 and TOI-1097.02 (NFPP
   between the bars; [decision 0032](0032-nearby-binary-triceratops.md)), and TOI-396.01 (mean FPP 1, on a linear fold
-  as well; its cause was not diagnosed further). The pixel check fails four known planets (TOI-144.01, TOI-2011.02, TOI-396.03 and
-  TOI-4307.01, the summary). It is triage-v1's check, not vet-v3's: a pixel fail keeps a signal off triage's
-  shortlist, and the check's completeness on the known set belongs to Task 15's triage completeness. This record does
-  not decide it.
+  as well; its cause was not diagnosed further). The pixel check fails four known planets (TOI-144.01, TOI-2011.02,
+  TOI-396.03 and TOI-4307.01, the summary). It is triage-v1's check, not vet-v3's: a pixel fail keeps a signal off
+  triage's shortlist, and the check's completeness on the known set belongs to Task 15's triage completeness. This
+  record does not decide it.
 
 ## Evidence
 
