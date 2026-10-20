@@ -13,7 +13,8 @@ from tess_hunt.provenance import scrub, start_run
 from tess_hunt.triage import OUTCOMES
 
 KINDS = ("control", "negative_control")
-# Judged beside vet-v3's checks: the neighbour table (never a fail), triage's pixel check and TRICERATOPS.
+# Outcomes outside checks.json's `checks` list, so the rates and the fails table add them after it: the neighbour
+# table and TRICERATOPS, judged under vet-v3's [neighbours] and [triceratops], and triage's pixel check.
 BESIDE = ("neighbours", "pixels", "triceratops")
 TRICERATOPS_VALUES = ("fpp_mean", "fpp_sd", "nfpp_mean", "nfpp_sd")
 
@@ -58,7 +59,7 @@ def _row(name: str, checks: dict, order: list[str], pixel: dict | None, judged: 
         "name": name,
         "kind": checks["signal"]["kind"],
         "tic": int(checks["star"]["tic"]),
-        **{c: outcomes.get(c) for c in order},
+        **{c: outcomes[c] for c in order},
         "neighbours": neighbours["outcome"],
         # None where the table was never built: no count, rather than none counted.
         "possible_hosts": None if table is None else sum(bool(r["possible"]) for r in table),
@@ -120,6 +121,14 @@ def _flagged(table: pd.DataFrame, checks: list[str], reasons: dict[str, dict]) -
     )
 
 
+def _errors(provenance: dict) -> str:
+    """A TRICERATOPS run's errors: a rerun that raised writes no record, so the summary would not show it was tried."""
+    errors = provenance["summary"]["errors"]
+    if not errors:
+        return "none"
+    return "; ".join(f"{name} ({scrub(error)})" for name, error in sorted(errors.items()))
+
+
 def _negatives(table: pd.DataFrame) -> str:
     rows = table[table["kind"].eq("negative_control")]
     if rows.empty:
@@ -164,8 +173,19 @@ def cmd_controls(args) -> int:
             raise SystemExit(
                 f"production benchmark controls needs production runs, not {', '.join(lacking)}"
             )
+    vet_criteria, pixel_criteria = vetted["criteria"][1]["file"], pixel_run["criteria"][0]["file"]
     controls = _controls(args.vet_run)
     names = list(controls)
+    if not names:
+        raise SystemExit(f"{vet_id} vetted no control or negative control")
+    # A check missing from one signal would sit in a rate's count of signals but in none of its outcomes.
+    order = [c["check"] for c in controls[names[0]]["checks"]]
+    for name in names[1:]:
+        theirs = [c["check"] for c in controls[name]["checks"]]
+        if theirs != order:
+            raise SystemExit(
+                f"{name}'s checks ({', '.join(theirs)}) differ from {names[0]}'s ({', '.join(order)})"
+            )
     records = _records(args.triceratops, names)
     unjudged = [n for n in names if not records[n]]
     if unjudged:
@@ -209,10 +229,6 @@ def cmd_controls(args) -> int:
     run.record_input("pixel_provenance", args.pixels / "provenance.json")
     run.record_input("pixels", args.pixels / "pixels.csv")
 
-    # The order `vetting run` prints them in.
-    order = list(
-        dict.fromkeys(c["check"] for checks in controls.values() for c in checks["checks"])
-    )
     table = pd.DataFrame(
         [_row(n, controls[n], order, by_name.get(n), records[n]) for n in names]
     ).astype({"possible_hosts": "Int64"})
@@ -237,7 +253,6 @@ def cmd_controls(args) -> int:
     flagged = _flagged(table, checks, reasons)
     n_controls = int(table["kind"].eq("control").sum())
     kept = n_controls - len(left_out)
-    vet_criteria, pixel_criteria = vetted["criteria"][1]["file"], pixel_run["criteria"][0]["file"]
 
     def rate_table(label: str) -> str:
         return md_table(rates[rates["controls"].eq(label)].drop(columns="controls"))
@@ -251,12 +266,15 @@ def cmd_controls(args) -> int:
         f"given that judged it. A known planet's pixel check comes from pixel-completeness run `{pixel_id}`: "
         f"`{pixel_criteria}`'s `[pixels]` at the catalog ephemeris. `vetting run` takes pixels from triage, and the "
         "controls never went through triage. `possible_hosts` counts the neighbour table's possible hosts; "
-        "`offset_qual_arcsec` is the best-quality sector's centroid offset.",
+        "`offset_qual_arcsec` is the best-quality sector's centroid offset. `pass_rate` is pass over all the "
+        "`signals` counted, inconclusives in the denominator. Novelty fails every known planet by design, since each "
+        "is in the catalogs it checks against.",
         "",
         "## Inputs",
         "",
         f"- Vetting run: `{vet_id}`",
-        "- TRICERATOPS runs, in the order given: " + ", ".join(f"`{r}`" for r in tric_ids),
+        "- TRICERATOPS runs, in the order given, with the signals each failed to judge:",
+        *(f"  - `{run_id}`: {_errors(p)}" for run_id, p in tric_runs.items()),
         f"- Pixel-completeness run: `{pixel_id}`",
         "",
         f"## Pass rates over all {n_controls} controls",

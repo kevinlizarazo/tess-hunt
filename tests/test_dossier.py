@@ -716,35 +716,65 @@ def none_possible(neighbours: dict) -> None:
         row["possible"] = False
 
 
-@pytest.mark.parametrize("stopped", [False, True], ids=["weighed", "stopped before calc_probs"])
+NO_G = "1 Gaia DR3 star(s) within the radius have no G magnitude"
+
+
+def none_possible_unjudged(neighbours: dict) -> None:
+    """A table built, with a star it could not judge: never marked possible, so the list is empty (296819076-1)."""
+    none_possible(neighbours)
+    neighbours.update(outcome="inconclusive", reason=NO_G)
+
+
+def weighed(record: dict) -> None:
+    # With no possible host, TRICERATOPS matches none and misses none.
+    record["evidence"].update(hosts=[], missing_hosts=[], hosts_tdepth_zero=[])
+
+
+def stopped_with_no_hosts(record: dict) -> None:
+    stopped_before_calc_probs(record)
+    record["evidence"].update(hosts=[], missing_hosts=[])
+
+
+def raised_before_its_data(record: dict) -> None:
+    """TRICERATOPS raised in `target()`: no cadence group, no star list."""
+    stopped_before_calc_probs(record)
+    record["evidence"].update(
+        stopped=None,
+        raised="ConnectionError: TESScut did not answer",
+        groups=None,
+        exposure_s=None,
+        points=None,
+        hosts=None,
+        missing_hosts=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "triceratops",
+    [weighed, stopped_with_no_hosts, raised_before_its_data],
+    ids=["weighed", "stopped before calc_probs", "raised before its data"],
+)
 @pytest.mark.parametrize(
     "neighbours, said",
     [
         (none_possible, "The neighbour table lists no possible host for it to weigh."),
         (
-            no_table,
-            "No neighbour table was built, so no possible host could be checked against its star list.",
+            none_possible_unjudged,
+            f"The neighbour table lists no possible host, but it could not judge every star: {NO_G}.",
         ),
+        (no_table, "No neighbour table was built, so whether a possible host exists is unknown."),
     ],
-    ids=["none possible", "no table"],
+    ids=["none possible", "none possible, some unjudged", "no table"],
 )
 def test_the_triceratops_paragraph_claims_no_host_the_neighbour_table_lacks(
-    tmp_path, monkeypatch, neighbours, said, stopped
+    tmp_path, monkeypatch, neighbours, said, triceratops
 ):
     signal, _ = draft(tmp_path, monkeypatch)
     edit_json(signal / "checks.json", lambda c: neighbours(c["neighbours"]))
-
-    def no_hosts(record: dict) -> None:
-        if stopped:
-            stopped_before_calc_probs(record)
-        # With no possible host, TRICERATOPS matches none and misses none.
-        record["evidence"].update(hosts=[], missing_hosts=[])
-        if not stopped:
-            record["evidence"]["hosts_tdepth_zero"] = []
-
-    edit_json(signal / "triceratops.json", no_hosts)
+    edit_json(signal / "triceratops.json", triceratops)
     on_star = section(dossier.render(signal), "On the star?")
     [said_on_star] = [p for p in on_star.split("\n\n") if p.startswith("TRICERATOPS (")]
     assert said in said_on_star
-    # Nothing else in the paragraph speaks of possible hosts.
-    assert "possible host" not in said_on_star.replace(said, "").lower()
+    # Nothing else in the paragraph speaks of possible hosts or a star list.
+    rest = said_on_star.replace(said, "").lower()
+    assert "possible host" not in rest and "star list" not in rest

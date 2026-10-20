@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -14,11 +15,11 @@ RERUN = "20261020T020000Z-vetting-triceratops-abc1234-c"
 PIXELS = "20261019T000000Z-benchmark-pixel-completeness-abc1234-d"
 # Not in alphabetical order, so the columns show they keep the vetting run's order.
 CHECKS = ["novelty", "odd_even", "secondary", "holdout"]
-# name: (kind, tic, each check's outcome, the neighbour table's `possible` column)
+# name: (kind, tic, each check's outcome, the neighbour table's `possible` column or None for no table)
 SIGNALS = {
     "TOI-1.01": ("control", 11, ["fail", "pass", "pass", "pass"], [True, False]),
     "TOI-2.01": ("control", 12, ["fail", "pass", "fail", "pass"], [False]),
-    "TOI-3.01": ("control", 13, ["fail", "pass", "pass", "inconclusive"], [True, True, False]),
+    "TOI-3.01": ("control", 13, ["fail", "pass", "pass", "inconclusive"], None),
     "TOI-9.01": ("negative_control", 19, ["fail", "fail", "pass", "pass"], [True]),
     # Not a control: left out, and it needs no TRICERATOPS result.
     "5-1": ("candidate", 5, ["pass", "pass", "pass", "pass"], []),
@@ -42,6 +43,8 @@ PIXEL_ROWS = [
 ]
 RUWE = "RUWE 1.48 > 1.4: an unresolved companion the priors don't condition on"
 STOPPED = "TESScut gave 1 of 2 sectors' cutouts"
+NO_TABLE = "no neighbour table: Gaia archive failed"
+CRASHED = "raised RuntimeError: PyTransit failed"
 COLUMNS = [
     "name",
     "kind",
@@ -64,6 +67,20 @@ COLUMNS = [
 
 def checks_json(name: str) -> dict:
     kind, tic, outcomes, possible = SIGNALS[name]
+    if possible is None:
+        neighbours = {
+            "outcome": "inconclusive",
+            "reason": NO_TABLE,
+            "evidence": {"error": "Gaia archive failed"},
+        }
+    else:
+        neighbours = {
+            "outcome": "pass",
+            "reason": f"{sum(possible)} of {len(possible)} neighbours could host the signal",
+            "evidence": {
+                "table": [{"source_id": i, "possible": p} for i, p in enumerate(possible)]
+            },
+        }
     return {
         "signal": {"name": name, "kind": kind},
         "star": {"tic": tic},
@@ -71,13 +88,7 @@ def checks_json(name: str) -> dict:
             {"check": c, "outcome": o, "reason": f"{c} {o}"}
             for c, o in zip(CHECKS, outcomes, strict=True)
         ],
-        "neighbours": {
-            "outcome": "pass",
-            "reason": f"{sum(possible)} of {len(possible)} neighbours could host the signal",
-            "evidence": {
-                "table": [{"source_id": i, "possible": p} for i, p in enumerate(possible)]
-            },
-        },
+        "neighbours": neighbours,
         # Controls never went through triage.
         "pixels": None,
     }
@@ -148,14 +159,16 @@ def runs(tmp_path, monkeypatch) -> dict[str, Path]:
             "vetting-triceratops",
             {f"signals/{n}/triceratops.json": r for n, r in FIRST.items()},
             vetting_run=VET,
+            summary={"errors": {}},
         ),
-        # TOI-3.01 again, with every sector's cutout.
+        # TOI-3.01 again, with every sector's cutout; TOI-1.01 raised, so it wrote no record.
         "rerun": write_run(
             data,
             RERUN,
             "vetting-triceratops",
             {"signals/TOI-3.01/triceratops.json": tric_json("pass", fpp=0.05)},
             vetting_run=VET,
+            summary={"errors": {"TOI-1.01": CRASHED}},
         ),
         "pixels": write_run(
             data,
@@ -203,7 +216,9 @@ def test_controls_counts_each_check_over_the_known_planets(tmp_path, monkeypatch
     assert list(table.index) == ["TOI-1.01", "TOI-2.01", "TOI-3.01", "TOI-9.01"]
     assert table.loc["TOI-2.01", "secondary"] == "fail"
     assert table.loc["TOI-3.01", "holdout"] == "inconclusive"
-    assert [table.loc[n, "possible_hosts"] for n in table.index] == [1, 0, 2, 1]
+    # TOI-3.01's neighbour table was never built: no count, not none counted.
+    assert list(table["possible_hosts"]) == ["1", "0", "", "1"]
+    assert table.loc["TOI-3.01", "neighbours"] == "inconclusive"
     assert table.loc["TOI-2.01", "pixels"] == "fail"
     assert float(table.loc["TOI-2.01", "offset_qual_arcsec"]) == 20.5
     # The pixel check ran on the known planets only.
@@ -219,7 +234,7 @@ def test_controls_counts_each_check_over_the_known_planets(tmp_path, monkeypatch
         "odd_even": (3, 3, 0, 0),
         "secondary": (3, 2, 1, 0),
         "holdout": (3, 2, 0, 1),
-        "neighbours": (3, 3, 0, 0),
+        "neighbours": (3, 2, 0, 1),
         "pixels": (3, 1, 1, 1),
         "triceratops": (3, 1, 0, 2),
     }
@@ -230,17 +245,25 @@ def test_controls_counts_each_check_over_the_known_planets(tmp_path, monkeypatch
 
     summary = (run / "summary.md").read_text()
     assert summary.startswith("# vet-v3 controls (")
-    for run_id in (VET, TRIC, PIXELS):
-        assert f"`{run_id}`" in summary
+    assert (
+        f"- Vetting run: `{VET}`" in summary and f"- Pixel-completeness run: `{PIXELS}`" in summary
+    )
+    assert f"  - `{TRIC}`: none\n" in summary
+    assert (
+        "`pass_rate` is pass over all the `signals` counted, inconclusives in the denominator."
+        in summary
+    )
+    assert "Novelty fails every known planet by design" in summary
     # Each fail and inconclusive of a known planet, by check, with the reason its run gave.
     head = "## Failed and inconclusive controls, by check\n\n"
     flagged = summary.split(head)[1].split("\n\n")[0].split("\n")
     # The header, its rule and one row for each.
-    assert len(flagged) == 2 + 3 + 1 + 1 + 2 + 2
+    assert len(flagged) == 2 + 3 + 1 + 1 + 1 + 2 + 2
     for line in (
         "| novelty | TOI-1.01 | fail | novelty fail |",
         "| secondary | TOI-2.01 | fail | secondary fail |",
         "| holdout | TOI-3.01 | inconclusive | holdout inconclusive |",
+        f"| neighbours | TOI-3.01 | inconclusive | {NO_TABLE} |",
         '| pixels | TOI-2.01 | fail | centroid offset 20.5" exceeds 15" |',
         "| pixels | TOI-3.01 | inconclusive | no sector with data |",
         f"| triceratops | TOI-2.01 | inconclusive | {RUWE} |",
@@ -299,7 +322,10 @@ def test_the_last_triceratops_run_given_wins(tmp_path, monkeypatch, order):
     assert set(table.drop(index="TOI-3.01")["superseded"]) == {""}
     summary = (run / "summary.md").read_text()
     assert f"| TOI-3.01 | {first} | {earlier} | {reason} | {last} |" in summary
-    assert ", ".join(f"`{r[role].name}`" for role in order) in summary
+    # Each run in the order given, with what it failed to judge: the rerun's crash on TOI-1.01 shows.
+    errors = {TRIC: "none", RERUN: f"TOI-1.01 ({CRASHED})"}
+    listed = "\n".join(f"  - `{run_id}`: {errors[run_id]}" for run_id in (first, last))
+    assert listed in summary
     provenance = json.loads((run / "provenance.json").read_text())
     assert provenance["triceratops_runs"] == [first, last]
     assert {"triceratops_1_TOI-3.01", "triceratops_2_TOI-3.01"} <= set(provenance["inputs"])
@@ -313,6 +339,19 @@ def edit(path: Path, **changes) -> None:
 
 def pixel_rows(r: dict[str, Path], rows: list[dict]) -> None:
     pd.DataFrame(rows).to_csv(r["pixels"] / "pixels.csv", index=False)
+
+
+def edit_checks(r: dict[str, Path], name: str, change) -> None:
+    file = r["vet"] / "signals" / name / "checks.json"
+    checks = json.loads(file.read_text())
+    change(checks)
+    file.write_text(json.dumps(checks))
+
+
+def only_the_candidate(r: dict[str, Path]) -> None:
+    for name, (kind, *_) in SIGNALS.items():
+        if kind != "candidate":
+            shutil.rmtree(r["vet"] / "signals" / name)
 
 
 @pytest.mark.parametrize(
@@ -362,6 +401,22 @@ def pixel_rows(r: dict[str, Path], rows: list[dict]) -> None:
         (None, ["--leave-out", "TOI-7.01"], "--leave-out takes a control"),
         (None, ["--triceratops", "{tric}"], "a TRICERATOPS run is given more than once"),
         (None, ["--production"], f"needs production runs, not {VET}, {TRIC}, {PIXELS}"),
+        (lambda r: edit(r["tric"], ended_at=None), [], f"{TRIC} has not finished"),
+        (None, ["--triceratops", "{pixels}"], f"{PIXELS} is not a vetting-triceratops run"),
+        # The last --pixels given is the one read.
+        (None, ["--pixels", "{tric}"], f"{TRIC} is not a benchmark-pixel-completeness run"),
+        (
+            lambda r: edit_checks(r, "TOI-2.01", lambda c: c["checks"].pop()),
+            [],
+            "TOI-2.01's checks (novelty, odd_even, secondary) differ from TOI-1.01's "
+            "(novelty, odd_even, secondary, holdout)",
+        ),
+        (
+            lambda r: edit_checks(r, "TOI-9.01", lambda c: c["checks"].reverse()),
+            [],
+            "TOI-9.01's checks (holdout, secondary, odd_even, novelty) differ from TOI-1.01's",
+        ),
+        (only_the_candidate, [], f"{VET} vetted no control or negative control"),
     ],
     ids=[
         "evidence only",
@@ -375,6 +430,12 @@ def pixel_rows(r: dict[str, Path], rows: list[dict]) -> None:
         "leave out an unknown name",
         "a run twice",
         "production",
+        "unfinished",
+        "not a triceratops run",
+        "not a pixel run",
+        "a check missing",
+        "checks in another order",
+        "no control",
     ],
 )
 def test_controls_refuses(tmp_path, monkeypatch, prepare, extra, message):
