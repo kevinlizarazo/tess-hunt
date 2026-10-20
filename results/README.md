@@ -86,6 +86,11 @@ position the pixel check measures its offsets from. Both are read-only, made out
 `pixel-diag/`), with the pixel follow-up's memory-cap wrapper in `t13/`. The Gaia DR3 source ids, positions, proper
 motions, magnitudes and separations in both files and in the tarball are Gaia DR3 data (above).
 
+`holdout-training-seasons-2026-10-20.md` measures which held-out seasons in M3's vetting runs trained on a single
+season whose data hold a transit, and what [decision 0035](../docs/decisions/0035-holdout-training-seasons.md)'s fix
+changes there. It is read-only, made outside the pipeline, and gates nothing; its scripts and their outputs are quoted
+in it in full.
+
 ## Triage
 
 Each run directory under `triage/` is one triage run, which `tess-hunt triage publish` copied unchanged from the run

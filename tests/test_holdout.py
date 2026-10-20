@@ -54,6 +54,47 @@ def test_two_seasons_are_untestable_not_fail():
     assert [s["status"] for s in result.evidence["seasons"]] == ["untestable", "untestable"]
 
 
+def last_season_with_one_transit(in_gap):
+    """The planet in three seasons, the last cut to four days of S28 around one transit, which falls in a
+    data gap when `in_gap`, as 441010857-1's only S11 transit did (docs/decisions/0035)."""
+    lc = make_lc(
+        sectors=(1, 2, 3, 14, 15, 16, 28),
+        noise_ppm=300.0,
+        signals=[(3.7, 1326.1, 0.12, 1500e-6)],
+        seed=7,
+        # One transit's core holds 9 cadences at 10 min, under min_points at 30.
+        cadences={28: 10.0},
+    )
+    near = np.abs(lc.time - (EPH.t0 + 202 * EPH.period))  # BTJD 2073.5, in S28's first orbit
+    s28 = lc.sector == 28
+    keep = ~s28 | (near < 2.0)
+    if in_gap:
+        keep &= ~(s28 & (near < 0.25))
+    return lc.select(keep)
+
+
+def test_a_training_season_whose_transit_falls_in_a_gap_does_not_count():
+    result = holdout(last_season_with_one_transit(in_gap=True), EPH, CFG, 0.5)
+    assert result.outcome is Outcome.INCONCLUSIVE
+    first, second, last = result.evidence["seasons"]
+    for season in (first, second):
+        assert season["status"] == "untestable", season
+        assert (season["training_seasons"], season["training_seasons_with_transits"]) == (2, 1)
+        assert season["reason"] == (
+            "1 of 2 training seasons hold a transit in their data, need 2: "
+            "one season can't predict a season a year away"
+        )
+    assert last["status"] == "no_predicted_transit_in_data", last
+
+
+def test_a_training_season_with_one_transit_in_its_data_counts():
+    result = holdout(last_season_with_one_transit(in_gap=False), EPH, CFG, 0.5)
+    seasons = result.evidence["seasons"]
+    assert [s["training_seasons_with_transits"] for s in seasons] == [2, 2, 2]
+    assert [s["status"] for s in seasons] == ["predicted"] * 3, seasons
+    assert result.outcome is Outcome.PASS
+
+
 def test_underpowered_seasons_are_inconclusive_not_fail():
     lc = make_lc(sectors=SECTORS, noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 60e-6)], seed=4)
     result = holdout(lc, EPH, CFG, 0.5)
@@ -158,9 +199,15 @@ def test_tension_skipped_when_no_family_has_enough_held_out_cadences():
 
 
 def test_a_season_without_cadences_in_predicted_transits_is_not_tested():
-    lc = make_lc(sectors=SECTORS, noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 1500e-6)], seed=6)
-    lc = lc.select(~((lc.sector >= 28) & in_transit(lc.time, EPH, 2.0)))
+    # A fourth season, so each season tested still trains on two that hold transits (decision 0035).
+    lc = make_lc(
+        sectors=SECTORS + (41, 42, 43),
+        noise_ppm=300.0,
+        signals=[(3.7, 1326.1, 0.12, 1500e-6)],
+        seed=6,
+    )
+    lc = lc.select(~((lc.sector >= 41) & in_transit(lc.time, EPH, 2.0)))
     result = holdout(lc, EPH, CFG, 0.5)
     statuses = [s["status"] for s in result.evidence["seasons"]]
-    assert statuses == ["predicted", "predicted", "no_predicted_transit_in_data"], statuses
+    assert statuses == ["predicted"] * 3 + ["no_predicted_transit_in_data"], statuses
     assert result.outcome is Outcome.PASS

@@ -6,7 +6,7 @@ from astropy.timeseries import BoxLeastSquares
 from tess_hunt.checks import CheckResult, failed, inconclusive, passed
 from tess_hunt.checks.families import family_labels
 from tess_hunt.checks.photometry import box_depth
-from tess_hunt.ephemeris import Ephemeris
+from tess_hunt.ephemeris import Ephemeris, in_transit
 from tess_hunt.lightcurve import LightCurve
 
 
@@ -105,15 +105,25 @@ def holdout(
     only with itself; detection still uses every held-out cadence."""
     labels = season_labels(lc.time, cfg["season_gap_days"])
     families = family_labels(lc, families_cfg) if families_cfg is not None else None
+    # A season whose transits all fall in its gaps has cadences but gives the refit nothing to fit, so it
+    # can't count toward min_training_seasons (docs/decisions/0035-holdout-training-seasons.md).
+    core = in_transit(lc.time, eph, width=core_fraction)
+    with_transits = {
+        int(label)
+        for label in np.unique(labels)
+        if (core & (labels == label)).sum() >= cfg["min_points"]
+    }
     seasons = []
     for label in np.unique(labels):
         test, train = labels == label, labels != label
         training_seasons = len(np.unique(labels[train]))
+        training_with_transits = len(with_transits - {int(label)})
         row = {
             "season": int(label),
             "start": float(lc.time[test].min()),
             "end": float(lc.time[test].max()),
             "training_seasons": training_seasons,
+            "training_seasons_with_transits": training_with_transits,
         }
         if training_seasons < cfg["min_training_seasons"]:
             # A period fitted on one season drifts out of the core window a year later.
@@ -123,6 +133,17 @@ def holdout(
                     "status": "untestable",
                     "reason": f"{training_seasons} training season(s), need "
                     f"{cfg['min_training_seasons']}: one season can't predict a season a year away",
+                }
+            )
+            continue
+        if training_with_transits < cfg["min_training_seasons"]:
+            seasons.append(
+                {
+                    **row,
+                    "status": "untestable",
+                    "reason": f"{training_with_transits} of {training_seasons} training seasons hold a "
+                    f"transit in their data, need {cfg['min_training_seasons']}: one season can't "
+                    "predict a season a year away",
                 }
             )
             continue
