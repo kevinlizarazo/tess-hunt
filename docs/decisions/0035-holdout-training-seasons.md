@@ -70,8 +70,10 @@ This record writes down that call.
    | `20261017T155223Z-vetting-run-62882b5-4867` (the 24 controls) | none | none |
 
    The windows differ only on 438857197-1's S11. 441010857-1's S11 holds no cadence inside a transit at all.
-3. **Reach** ([the evidence](../../results/benchmarks/holdout-training-seasons-2026-10-20.md)): the fixed check, run
-   on each signal's inputs rebuilt as the vet builds them, reproduces every season it leaves alone field for field.
+3. **Reach** ([the evidence](../../results/benchmarks/holdout-training-seasons-2026-10-20.md)): the fixed check, run on
+   each signal's inputs rebuilt as the vet builds them, reproduces every season it leaves alone field for field. That
+   compare is exact float equality: in one of the review's six reruns, 277774870-1 showed a difference the reviewer
+   could not pin to a field, with its outcome and every season status unchanged.
    - **441010857-1:** fail to inconclusive, in the vet and in the evidence-only vet. The signal stays killed by
      density (its review's F2).
    - **438857197-1:** its holdout pass stands. It is a promoted second-list row

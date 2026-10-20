@@ -23,7 +23,9 @@ The runs, as `~/.cache/tess-hunt/logs/m3-vars.sh` names them:
   - `VET_SUSPECT_RUN`: 441010857-1 goes from fail to inconclusive. The other 18 are unchanged.
   - `CONTROL_VET`: no outcome changes.
   - In all 62 records, every season whose status the fix leaves alone reproduces the run's `checks.json` field for
-    field.
+    field, by exact float equality, in the run shown. In the review's reruns, `VET_RUN`'s 277774870-1 printed
+    `OTHER SEASONS DIFFER` in one pass of six, with its outcome and every season status unchanged; the field could not
+    be pinned down (section 2).
 - **438857197-1's S11 holds transits** (section 3). At 30-minute cadence it holds 8 cadences inside the transit and 4
   in the core after detrending, so a core count, under `min_points`, would leave it out. It pins the refit's period:
   trained with it, as the vet was, seasons 1 and 2 are predicted 0.09 h and 0.07 h from the flat fit, against a core
@@ -97,13 +99,16 @@ TOI-826.01 pass bearing [0, 1, 2, 3] tested [(0, 'predicted', 3, 3), (1, 'predic
 
 ## 2. The fixed check on the runs' inputs
 
-The screen counts core cadences at each season's own refit ephemeris; the fix counts cadences inside the whole
-transit at the check's input ephemeris. `exact.py`
-runs the fixed `holdout` on each signal's vet-v3 inputs, rebuilt as `vet_with_fits` builds them: the light curve
-(checked against the sha256 the run recorded), without its timing-suspect sectors except in `VET_SUSPECT_RUN`,
-detrended around the run's `masked` transits, with red-noise errors; the criteria files are checked against the run's
-sha256s. Each season prints its status, then `(training_seasons, training_seasons_with_transits)`. Every season whose
-status did not change is compared with `checks.json` field for field, the new count aside.
+The screen counts core cadences at each season's own refit ephemeris; the fix counts cadences inside the whole transit
+at the check's input ephemeris. `exact.py` runs the fixed `holdout` on each signal's vet-v3 inputs, rebuilt as
+`vet_with_fits` builds them: the light curve (checked against the sha256 the run recorded), without its timing-suspect
+sectors except in `VET_SUSPECT_RUN`, detrended around the run's `masked` transits, with red-noise errors; the criteria
+files are checked against the run's sha256s. Each season prints its status, then
+`(training_seasons, training_seasons_with_transits)`. Every season whose status did not change is compared with
+`checks.json` field for field, the new count aside. The compare is exact float equality, so a rerun can differ in the
+last bit. In the review's reruns of the command below, `VET_RUN`'s 277774870-1 printed
+`pass == pass | OTHER SEASONS DIFFER` in one pass of six, with its outcome and every season status unchanged; it did not
+recur in 14 more tries, so which field moved is not known. The block below is the run as made.
 
 ```sh
 for r in VET_RUN CONTROL_VET; do echo "== $r"; /tmp/t13/heavy.sh uv run python /tmp/t13b/exact.py "${!r}"; done
