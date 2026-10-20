@@ -2,9 +2,9 @@
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
 this directory). The exceptions are Gaia DR3 data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
-tables, the RUWE values the published controls quote and the Gaia DR3 values the pixel check's diagnosis quotes
-(both under [Runs](#runs)) and the Gaia DR3 parts of the vetting records, listed under [Vetting](#vetting). They stay
-under ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
+tables, the RUWE values the published controls quote, the Gaia DR3 values the pixel check's diagnosis quotes (both
+under [Runs](#runs)), and the Gaia DR3 parts of the vetting records, listed under [Vetting](#vetting). They stay under
+ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 

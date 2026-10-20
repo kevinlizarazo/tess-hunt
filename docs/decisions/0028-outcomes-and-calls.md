@@ -1,19 +1,20 @@
 # 0028: Passed, killed or held; the "passed" bar `vetting publish` holds a call to; the record of each call
 
 - Date: 2026-10-17
-- Status: Accepted in part. Approved by the maintainer in the M3 design (2026-10-16): the three outcomes, the five
-  items of the "passed" bar, the record, what the dossier shows, and the second list's rule that a pixel fail kills a
-  row as it would have in triage (M3 design, sections 4.7 to 4.10). Proposed, pending the maintainer's review: five
-  rulings the M3 build's controller made after that approval, Ruling Q (bar 2's "ExoFOP shows nothing at the period"
-  checked against every ExoFOP planet-parameter row on period alone, at the novelty harmonics), Ruling R (`hits_read`
-  names every hit the review flagged), Ruling U (how the second list's pixel check reaches the call: `pixels.json`
-  through `--second-list`, an inconclusive or missing pixel check blocking a second-list row's pass, and a failed pixel
-  check counted as a kill's ground for every signal), Ruling V (the second list's SPOC DV statistics and ExoMiner score
-  matched at the novelty harmonics and looked up on the stars novelty matched as well as the signal's own, each row
-  naming the TIC, TCE and ratio it came from) and Ruling W (every pass, not only a second-list row's, needs a pixel
-  pass); and the choices this record makes in building it: each run's provenance copied into the record, production
-  runs only, unknown call keys refused, a signal a TRICERATOPS or literature run never judged allowed in, the README
-  listing only published calls that stand, and the timing-suspect marks in the centroid table.
+- Status: Accepted in part. Approved by the maintainer in the M3 design (2026-10-16): the three outcomes, the five items
+  of the "passed" bar, the record, what the dossier shows, and the second list's rule that a pixel fail kills a row as
+  it would have in triage (M3 design, sections 4.7 to 4.10). [0033](0033-second-list-decisions.md) sets the second
+  list's pixel kill aside for one row, 423100454-1, on the maintainer's call of 2026-10-20. Proposed, pending the
+  maintainer's review: five rulings the M3 build's controller made after that approval, Ruling Q (bar 2's "ExoFOP shows
+  nothing at the period" checked against every ExoFOP planet-parameter row on period alone, at the novelty harmonics),
+  Ruling R (`hits_read` names every hit the review flagged), Ruling U (how the second list's pixel check reaches the
+  call: `pixels.json` through `--second-list`, an inconclusive or missing pixel check blocking a second-list row's pass,
+  and a failed pixel check counted as a kill's ground for every signal), Ruling V (the second list's SPOC DV statistics
+  and ExoMiner score matched at the novelty harmonics and looked up on the stars novelty matched as well as the signal's
+  own, each row naming the TIC, TCE and ratio it came from) and Ruling W (every pass, not only a second-list row's,
+  needs a pixel pass); and the choices this record makes in building it: each run's provenance copied into the record,
+  production runs only, unknown call keys refused, a signal a TRICERATOPS or literature run never judged allowed in, the
+  README listing only published calls that stand, and the timing-suspect marks in the centroid table.
 
 ## Context
 

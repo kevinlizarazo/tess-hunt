@@ -373,8 +373,9 @@ Novelty is inconclusive on all six by design (`known_to_spoc`); neighbours is in
 ## Scripts
 
 The scripts and their small outputs are in `pixel-check-diagnosis-2026-10-20-scripts.tar.gz` beside this file
-(sha256 `1dc96ca3c1a6ccecc4e47d08bfc9d98d7fe5f337c75fa52c3bec104787e43939`), byte for byte as they stand in
-`/tmp/pixel-diag/`. They ran there, from Git Bash as
+(sha256 `1dc96ca3c1a6ccecc4e47d08bfc9d98d7fe5f337c75fa52c3bec104787e43939`), byte for byte as they ran in
+`/tmp/pixel-diag/`. 14 of the 19 scripts read and write by that absolute path, so a rerun unpacks the tarball there.
+They ran from Git Bash as
 `MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu-26.04 --cd /tmp/pixel-diag -- bash -l -s` with, inside:
 
 ```

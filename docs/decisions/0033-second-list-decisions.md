@@ -6,12 +6,14 @@
 
 ## Context
 
-The second list is the ten signals triage's novelty matched only to SPOC TCE or ExoMiner rows.
-[Decision 0013](0013-novelty-sources.md) leaves them for the maintainer to promote by hand. The M3 design (section
-4.10) runs triage's pixel check on them, which triage never ran, and a pixel fail kills a row as it would have in
-triage; a promoted row becomes a full M3 signal, with a dossier, TRICERATOPS, a review and a call. The design's section
-4.3 says: "A check that fails a confirmed planet is understood, with a decision record and Kevin's call, before it can
-kill a candidate."
+The second list is the ten signals, of the 466 that triage's novelty matched only to SPOC TCE or ExoMiner rows
+([`known_to_spoc.csv`](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/known_to_spoc.csv)), that also passed
+LEO-Vetter's flux tests with a normal RUWE. Twelve passed LEO-Vetter; TIC 162892242 (RUWE 2.92) and TIC 327555274 (RUWE
+7.05) were left out (the file's `ruwe`). [Decision 0013](0013-novelty-sources.md) leaves such rows for the maintainer to
+promote by hand. The M3 design (section 4.10) runs triage's pixel check on the ten, which triage never ran, and a pixel
+fail kills a row as it would have in triage; a promoted row becomes a full M3 signal, with a dossier, TRICERATOPS, a
+review and a call. The design's section 4.3 says: "A check that fails a confirmed planet is understood, with a decision
+record and Kevin's call, before it can kill a candidate."
 
 Triage's pixel check fails 4 of the 20 known planets in the pixel completeness run,
 `20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33`
@@ -25,11 +27,16 @@ and adds null images and a fixed-position fit. It is a read-only analysis outsid
 scripts and small outputs are published beside it, byte for byte, in
 [`pixel-check-diagnosis-2026-10-20-scripts.tar.gz`](../../results/benchmarks/pixel-check-diagnosis-2026-10-20-scripts.tar.gz).
 
-On 2026-10-20 the maintainer was asked: "Second-list calls. I recommend promoting 241522065, 277774870, 370977908,
-438857197, and 423100454 as the exception, and leaving notes on the other five." The same message asked about Ruling G
-([decision 0026](0026-triceratops.md)) and the Task 13 reviews. The reply, the same day: "please go with your
-recommendations. whats next now?" This record writes down that call. It is a call made on these results, not a rule
-set before them.
+On 2026-10-20 the maintainer was asked:
+
+> 1. **Second-list calls.** I recommend promoting 241522065, 277774870, 370977908, 438857197, and 423100454 as the
+>    exception, and leaving notes on the other five.
+> 2. **Ruling G** (TRICERATOPS on phase-binned data): yes or no.
+> 3. **Go-ahead for the Task 13 reviews.** All at once, or one at a time.
+
+The reply, the same day: "please go with your recommendations. whats next now?" Item 2 is
+[decision 0026](0026-triceratops.md)'s. This record writes down the call on item 1. It is a call made on these results,
+not a rule set before them.
 
 ## Decision
 
@@ -52,7 +59,8 @@ set before them.
    - Its caveats ("What this could not determine") stand: which of two stars 1" to 3" apart hosts 322826591-1 and
      458290782-1, and which northern star, if any one, hosts 295140687-1; what TIC 423100496 is; whether the second
      list's ephemerides have drifted by the latest sectors; each z's uncertainty of roughly a fifth, from 8 to 16 null
-     images per sector; and the 3 x 3 box behind the aperture-share depths.
+     images per sector, and the nulls hold only their own sector's systematics; and the 3 x 3 box behind the
+     aperture-share depths.
 2. **The ten rows.** From the second list's `second-list.csv` (run `20261020T012658Z-vetting-second-list-62882b5-3fca`)
    and, for each note, the diagnosis's rating (section 2; section 3 for SPOC's TCE on TIC 1343588382). Pixels is the
    outcome with the best-quality sector's offset; Fails names each vet-v3 check that failed, and the pixel check when
@@ -76,18 +84,20 @@ set before them.
    is inconclusive on 241522065-1 and 370977908-1, and neighbours on 322826591-1, 370977908-1, 423100454-1 and
    458290782-1.
    - **Promoted on the nine's bar.** 241522065-1, 277774870-1, 370977908-1 and 438857197-1 pass the pixel check and
-     fail no check. Every second-list row passed LEO-Vetter's flux tests in triage (`known_to_spoc.csv`), so these four
-     meet the bar the nine shortlisted signals met in triage, with the promotion standing in for novelty.
+     fail no check. They passed LEO-Vetter's flux tests in triage, as every second-list row did by the list's
+     definition, so these four meet the bar the nine shortlisted signals met in triage, with the promotion standing in
+     for novelty.
    - **Noted, not promoted.** 173369850-1, 295140687-1, 322826591-1, 337885456-1 and 458290782-1 each fail the pixel
      check, which kills a second-list row (design, section 4.10), and at least one vet-v3 check besides, so none rests
      on pixels alone (the diagnosis, section 4). They stay as 0013 leaves them: matched to SPOC, not shortlisted.
-3. **423100454-1, the exception.** Design 4.10's pixel kill is set aside for this row only, because its fail measures a
-   neighbour, not the transit (the diagnosis, sections 2 and 4). In S103, S39 and S12 the fits sit 5.7" to 8.7" from
-   the target. In S102 and S65 they jump to 118.6" and 115.7", beside TIC 423100496, a star 121" away that varies on its
-   own: in each of those sectors a null image lands on the same point with a larger loss. The transit sits at the
-   target in all five sectors (box z at the star 4.7, 5.4, 3.2, 1.9 and 1.5 against 3.7, 6.6, 3.5, 1.6 and 1.4
-   expected). Pixels is its only fail. Like any pixel record, this one says nothing about stars within 15" of the
-   target; the neighbour table's possible hosts from 6.5" out are TRICERATOPS's question (the diagnosis, section 2).
+3. **423100454-1, the exception.** Design 4.10's pixel kill ([0028](0028-outcomes-and-calls.md)) is set aside for this
+   row only, because its fail measures a neighbour, not the transit (the diagnosis, sections 2 and 4). In S103, S39 and
+   S12 the fits sit 5.7" to 8.7" from the target. In S102 and S65 they jump to 118.6" and 115.7", beside TIC 423100496,
+   a star 121" away that varies on its own: in each of those sectors a null image lands on the same point with a larger
+   loss. The transit sits at the target in all five sectors (box z at the star 4.7, 5.4, 3.2, 1.9 and 1.5 against 3.7,
+   6.6, 3.5, 1.6 and 1.4 expected, in S103, S102, S65, S39 and S12). Pixels is its only fail. Like any pixel record,
+   this one says nothing about stars within 15" of the target; the neighbour table's possible hosts from 6.5" out are
+   TRICERATOPS's question (the diagnosis, section 2).
    - It gets what a promoted row gets: a dossier, TRICERATOPS, a review whose refuters test this finding, and the
      maintainer's call.
    - It can't pass on this record. Every pass needs a pixel pass (Ruling W; [0028](0028-outcomes-and-calls.md),
@@ -103,8 +113,8 @@ set before them.
    sector picked by quality, which measures how PRF-like the image is, not how much transit it holds, while the
    direction of each sector's fit, which `pixels.json` does not keep, separates a real source from noise; the fit
    roams the whole 21 x 21 pixel cutout, so a variable star anywhere in it can capture the fit, which null images
-   expose; and a fit that repeats its sky position across sectors and cameras, with nothing at the target in a
-   fixed-position fit, marks a real off-target source.
+   expose; and in this data a fit that repeats its sky position across sectors and cameras, with nothing at the target
+   in a fixed-position fit, marks a real off-target source.
 
 ## Evidence
 
@@ -121,8 +131,8 @@ set before them.
   TCE and ExoMiner row. Each host's Tmag is in its `checks.json` in vetting run
   `20261020T010149Z-vetting-run-62882b5-c3ee`, not yet under `results/` either.
 - The triage run's
-  [`known_to_spoc.csv`](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/known_to_spoc.csv): the second-list
-  rows' LEO-Vetter flux outcomes.
+  [`known_to_spoc.csv`](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/known_to_spoc.csv): the 466 rows,
+  with the LEO-Vetter flux outcomes and RUWE that pick the ten.
 - [tests/test_calls.py](../../tests/test_calls.py): `test_promotion_stands_in_for_known_to_spoc` (a promotion stands
   in for a `known_to_spoc` novelty on a second-list row only), `test_a_second_list_pass_needs_the_pixel_check_to_pass`
   (a missing, failed or inconclusive `pixels.json` refuses the pass), `test_a_candidate_pass_needs_triages_pixel_pass`
