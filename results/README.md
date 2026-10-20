@@ -2,9 +2,9 @@
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
 this directory). The exceptions are Gaia DR3 data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
-tables, the RUWE values the published controls quote (under [Runs](#runs)) and the Gaia DR3 parts of the vetting
-records, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO terms
-(https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
+tables, the RUWE values the published controls quote and the Gaia DR3 values the pixel check's diagnosis quotes
+(both under [Runs](#runs)) and the Gaia DR3 parts of the vetting records, listed under [Vetting](#vetting). They stay
+under ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -30,6 +30,9 @@ Published runs are never edited; a correction is a new run.
   outcome it replaced. `pass_rates.csv` counts each check's outcomes over the known planets, all of them and without
   the ones left out; `summary.md` collects them with each fail's reason. The RUWE values quoted in `blockers` and in
   the TRICERATOPS reasons are Gaia DR3 data (above).
+- `benchmark-pixel-completeness`: triage's pixel check on the known-planet set at their catalog ephemerides.
+  `pixels.csv` has one row per planet: the outcome, its reason, the best-quality sector's offset and the number of
+  sectors measured (`good_sectors`); `summary.md` is the table.
 - `search`: a production search. `controls.csv` has one row per positive control, the known-planet set searched
   alongside the sample ([decision 0011](../docs/decisions/0011-positive-controls-in-production.md)); the signals
   themselves stay in the run directory. The null search (`--scramble`,
@@ -67,6 +70,12 @@ The loose files beside the run directories in `benchmarks/` were written by the 
 One loose file has no script: `vet-v3-control-diagnosis-2026-10-17.md`, a read-only diagnosis of the known planets
 vet-v3's controls fail, made outside the pipeline. It gates nothing; its causes are cited by
 [decision 0031](../docs/decisions/0031-known-set-control-fails.md).
+
+`pixel-check-diagnosis-2026-10-20.md` is a read-only diagnosis of the pixel check's fails on the known planets and the
+second list, made outside the pipeline. Its scripts and their small outputs are in
+`pixel-check-diagnosis-2026-10-20-scripts.tar.gz` beside it, byte for byte. It gates nothing; its causes are cited by
+[decision 0033](../docs/decisions/0033-second-list-decisions.md). The Gaia DR3 source ids and the neighbour table's
+values in its section 2 are Gaia DR3 data (above).
 
 ## Triage
 

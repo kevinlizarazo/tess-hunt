@@ -71,7 +71,8 @@ point goes in and `flux_err_0` is the median cadence error, the plan's literal i
 faster, and the controls ran that way. If you say no, the control runs repeat unbinned, which takes days." The reply,
 the same day and after the controls' results were seen: "please go with your recommendations, keeping in mind i want
 integrity and correctness." The acceptance is read from that reply. The controls ran binned and were not made again
-unbinned.
+unbinned. On 2026-10-20 the maintainer was asked "Ruling G (TRICERATOPS on phase-binned data): yes or no." and
+answered "please go with your recommendations", the recommendation being to accept.
 
 **Runs.** `[triceratops] runs` (10) runs, each after `np.random.seed(i)` for run i from 0, with `N = [triceratops]
 draws` (1,000,000, the paper's), `P_orb` as a Python float, `parallel=False` (PyTransit then evaluates every transiting
