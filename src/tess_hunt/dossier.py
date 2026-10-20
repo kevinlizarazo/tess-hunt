@@ -398,9 +398,11 @@ def _neighbours(r: Record) -> str:
                     "not computed" if m["tdepth"] is None else f"{100 * m['tdepth']:.3g}%",
                 ]
         rows.append(row)
+    # A record made before decision 0034 doesn't name its centre: every such table ran from the TIC position.
+    centre = evidence.get("centre", "TIC position, J2000")
     return (
         f"{head} Each Gaia DR3 star that could make the dip, with its separation from the target "
-        f"({evidence['centre']}) and the eclipse depth it would need, scaled from the depth in "
+        f"({centre}) and the eclipse depth it would need, scaled from the depth in "
         f"{evidence['depth_from']} ({_ppm(evidence['depth'])} ppm) as if all its light fell in the aperture"
         + (
             ", and the TRICERATOPS star matched to it with the distance between them at the TIC's epoch"

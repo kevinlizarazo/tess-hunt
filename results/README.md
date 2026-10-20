@@ -83,8 +83,8 @@ against Gaia DR3 at J2016.0) reach across M3's 62 tables, and `pixel-check-refer
 position the pixel check measures its offsets from. Both are read-only, made outside the pipeline, and gate nothing;
 [decision 0034](../docs/decisions/0034-neighbour-table-epochs.md) cites them. Their scripts and small outputs are in
 `neighbour-epoch-reach-2026-10-20-scripts.tar.gz` beside them, byte for byte, one folder each (`t13-epoch/`,
-`pixel-diag/`). The Gaia DR3 source ids, positions, proper motions, magnitudes and separations in both files and in
-the tarball are Gaia DR3 data (above).
+`pixel-diag/`), with the pixel follow-up's memory-cap wrapper in `t13/`. The Gaia DR3 source ids, positions, proper
+motions, magnitudes and separations in both files and in the tarball are Gaia DR3 data (above).
 
 ## Triage
 

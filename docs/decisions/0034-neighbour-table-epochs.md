@@ -38,9 +38,9 @@ measurement" below):
    centres the cone on its `ra` and `dec`. Every position and separation in the table is then DR3's own, at J2016.0,
    and needs no proper motion, which two-parameter solutions lack. Every M3 target has an id.
    - Two queries, not the measurement's tested self-join (one ADQL query joining `gaia_source` to itself on the source
-     id): on 2026-10-20 the archive aborted the self-join at its time-out in 10 tries of 10 while answering each of the
-     two queries in under 10 s, as its note of 2025-12-17 says cone searches combined with joins can
-     (https://www.cosmos.esa.int/web/gaia/news).
+     id): the archive answered the self-join for the measurement earlier on 2026-10-20, then aborted it at its time-out
+     in 10 tries of 10 between 15:18 and 15:34 UTC while the id lookup and the cone each took about 10 s, as its note
+     of 2025-12-17 says cone searches combined with joins can (https://www.cosmos.esa.int/web/gaia/news).
    - With an id, nothing is guessed. If either query fails after its 3 attempts, or the archive has no row for the id,
      `gaia_cone` raises `NeighbourError` and the table is inconclusive with the reason, as a failed cone was before.
    - Without an id, the cone stays on the TIC position and the target is the one star within 1" of it (0025). A target
@@ -59,9 +59,9 @@ measurement" below):
 3. **The controls are not rerun.** The control vet, its TRICERATOPS runs
    (`20261017T162256Z-vetting-triceratops-62882b5-d0f8` and `20261018T012940Z-vetting-triceratops-62882b5-e3d7`) and
    the published controls run `20261020T082333Z-benchmark-controls-16418d2-f45a` (cited by 0026, 0031 and 0032) stand,
-   with this record as their note. The measurement shows no neighbour outcome, blocker or published count changes on
-   the 24 control tables, and TRICERATOPS takes from the table only the outcome and the possible hosts, which match
-   its star list before and after (its sections 3 and 5).
+   with this record as their note. The measurement shows no neighbour outcome, blocker or count the controls summary
+   publishes changes on the 24 control tables, and TRICERATOPS takes from the table only the outcome and the possible
+   hosts, which match its star list before and after (its sections 3 and 5).
    - What does change in the published controls:
      [`controls.csv`](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/controls.csv)'s
      `possible_hosts` for TOI-652.01 (3 to 2) and TOI-755.01 (9 to 10), and, in the control vet's tables,

@@ -73,10 +73,11 @@ seen.
   2016.0 (decision 0034). Until decision 0034 they ran from the TIC position (epoch 2000), with no proper motion
   applied, so a fast-moving target's separations were off by its motion over those years: TIC 44926986's companion
   read 12.50" for 9.86". Without a source id they still run from the TIC position, off by under 1" where the target is
-  found, and a target that moved more than 1" between the epochs, or one with a companion within 1", leaves the table
-  inconclusive. Every sample target has a `dr3_source_id`. A control's targets table has none, so `vetting run` joins
-  one (Ruling N); only where that join fails or finds no DR3 source (`checks.json`'s `star` row says so in `dr3_from`
-  and `dr3_reason`) does the table rest on the TIC position and the 1" match.
+  found. A target with a companion within 1" then leaves the table inconclusive, and so, usually, does a target that
+  moved more than 1" between the epochs, but a field star that happens to sit within 1" of its stale position would be
+  taken for it (decision 0034). Every sample target has a `dr3_source_id`. A control's targets table has none, so
+  `vetting run` joins one (Ruling N); only where that join fails or finds no DR3 source (`checks.json`'s `star` row
+  says so in `dr3_from` and `dr3_reason`) does the table rest on the TIC position and the 1" match.
 - Eq. 1 is applied to observed magnitudes; the TIC applies it to de-reddened ones and adds the extinction back. It is
   fitted for -0.2 < BP-RP < 3.5 and is extrapolated outside that range.
 - The required depth assumes the neighbour's whole light falls in the aperture. A star away from the aperture puts

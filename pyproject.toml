@@ -57,8 +57,7 @@ addopts = "-m 'not network'"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-# Published results are never edited, and ruff formats the Python blocks in Markdown: a measurement's scripts there
-# are quoted as they ran.
+# Ruff formats the Python blocks in Markdown, and the scripts quoted in published results must stay as they ran.
 extend-exclude = ["results"]
 
 [tool.ruff.lint]

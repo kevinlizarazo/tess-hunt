@@ -697,6 +697,15 @@ def test_the_possible_hosts_sentence_says_what_the_record_shows(
     assert "could not judge" not in said_on_star
 
 
+def test_a_neighbour_table_from_before_0034_says_it_ran_from_the_tic_position(
+    tmp_path, monkeypatch
+):
+    signal, _ = draft(tmp_path, monkeypatch)
+    edit_json(signal / "checks.json", lambda c: c["neighbours"]["evidence"].pop("centre"))
+    on_star = section(dossier.render(signal), "On the star?")
+    assert "its separation from the target (TIC position, J2000)" in on_star
+
+
 @pytest.mark.parametrize(
     "dr3_from, reason",
     [
