@@ -52,9 +52,10 @@ correctness." This record writes down that call. It is a call made on these resu
   can't account for that. The ephemeris is the likeliest cause, though the test also builds its light curve its own way;
   it was not diagnosed. Task 13's reviewers are told that TRICERATOPS's NFPP can move with the ephemeris.
 - **The tests.** `test_nearby_eb_controls_fail_triceratops` is marked `xfail(strict=True, raises=AssertionError)`, its
-  reason naming this record: the design's expectation stays visible, and if either binary starts to fail TRICERATOPS
-  the strict mark reports it. `test_nearby_eb_controls_do_not_pass_triceratops` holds the standard accepted here. Both
-  stay network and slow.
+  reason naming this record: the design's expectation stays visible, and if TOI-1058.01 starts to fail TRICERATOPS
+  the strict mark reports it. TOI-1175.01 can't fail while its RUWE blocker (1.48 > 1.4) holds, so for it the strict
+  mark watches nothing. `test_nearby_eb_controls_do_not_pass_triceratops` holds the standard accepted here. Both stay
+  network and slow.
 
 ## Evidence
 

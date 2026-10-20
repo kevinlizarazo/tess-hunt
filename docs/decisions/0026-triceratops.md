@@ -1,11 +1,11 @@
 # 0026: TRICERATOPS: the false-positive and nearby-false-positive probabilities, inconclusive wherever they mean nothing
 
 - Date: 2026-10-17
-- Status: Accepted (approved by the maintainer in the M3 design). Phase binning (`[triceratops] bin_phase`) was
-  accepted by the maintainer on 2026-10-19 at the controls stop (M3 plan, Task 11 Step 7), after the controls' results
-  were seen; amended 2026-10-20 with the controls. Rulings N (RUWE joined for a star whose targets row lacks it) and S
-  (possible hosts matched at the TIC's epoch), which the M3 build's controller made after that approval, are Proposed
-  until the maintainer reviews them
+- Status: Accepted (approved by the maintainer in the M3 design). Phase binning (`[triceratops] bin_phase`, Ruling G)
+  is Accepted as read from the maintainer's reply of 2026-10-19 at the controls stop (M3 plan, Task 11 Step 7), which
+  came after the controls' results were seen; the exchange is quoted under Phase binning. Amended 2026-10-20 with the
+  controls. Rulings N (RUWE joined for a star whose targets row lacks it) and S (possible hosts matched at the TIC's
+  epoch), which the M3 build's controller made after that approval, are Proposed until the maintainer reviews them
 
 ## Context
 
@@ -63,12 +63,15 @@ target's pixel in TRICERATOPS's frame falls inside it, and the pixels themselves
 (`ccd_pixels`, column and row): SPOC's come from the archive at run time, so the run keeps them to be audited later
 (Ruling O).
 
-**Phase binning** (`[triceratops] bin_phase = true`; Ruling G, accepted by the maintainer on 2026-10-19 at the controls
-stop, after the controls' results were seen). The fold is averaged into phase bins one exposure wide: the data's own
-time sampling, one point per bin instead of one per transit. `flux_err_0` is the median over bins of the median cadence
-error over the square root of the bin's count. With `bin_phase = false` every point goes in and `flux_err_0` is the
-median cadence error, the plan's literal input. The controls ran binned, and the maintainer kept the binned input, so
-they were not made again unbinned.
+**Phase binning** (`[triceratops] bin_phase = true`; Ruling G, Accepted as below). The fold is averaged into phase
+bins one exposure wide: the data's own time sampling, one point per bin instead of one per transit. `flux_err_0` is the
+median over bins of the median cadence error over the square root of the bin's count. With `bin_phase = false` every
+point goes in and `flux_err_0` is the median cadence error, the plan's literal input. At the controls stop, on
+2026-10-19, the maintainer was asked: "Ruling G: confirm that TRICERATOPS runs on phase-binned data. It's 10 times
+faster, and the controls ran that way. If you say no, the control runs repeat unbinned, which takes days." The reply,
+the same day and after the controls' results were seen: "please go with your recommendations, keeping in mind i want
+integrity and correctness." The acceptance is read from that reply. The controls ran binned and were not made again
+unbinned.
 
 **Runs.** `[triceratops] runs` (10) runs, each after `np.random.seed(i)` for run i from 0, with `N = [triceratops]
 draws` (1,000,000, the paper's), `P_orb` as a Python float, `parallel=False` (PyTransit then evaluates every transiting
@@ -172,9 +175,9 @@ If it passes, a TRICERATOPS pass does not cover a blend inside 15", and the buil
 TOI-1399.01 fails as required. TOI-1058.01 and TOI-1175.01 read inconclusive, not fail; the maintainer accepted that on
 2026-10-19, after the results were seen, since neither can pass ([decision 0032](0032-nearby-binary-triceratops.md)).
 TRICERATOPS's per-run FPP can land near either end on a deep hot Jupiter: TOI-747.01's ten runs give a mean FPP of
-0.568 with an sd of 0.458 (the summary), and the check is inconclusive. For values between 0 and 1, an sd that large
-means the runs disagree, so the mean could have landed on either side of 0.5. The recorded sd matters when a mean sits
-near 0.5. No change follows from it.
+0.568 (the summary) with an sd of 0.458 (its `controls.csv`), and the check is inconclusive. For values between 0 and
+1, an sd that large means the runs disagree, so the mean could have landed on either side of 0.5. The recorded sd
+matters when a mean sits near 0.5. No change follows from it.
 
 **The DDT ask** (M4; M3 design, section 4.5) is for passed signals whose next TESS look is FFI-only: the TRICERATOPS
 paper's own caveat that 30-minute data cannot validate is the case for 2-min data. A held signal whose deciding

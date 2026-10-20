@@ -14,7 +14,7 @@ The controls ran on 2026-10-17. The published controls run, `20261020T082333Z-be
 ([summary.md](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md), "the summary"
 below, with its `controls.csv` and `pass_rates.csv`), gathers the vetting run, the TRICERATOPS runs and the pixel check
 on the known planets. Besides novelty, which fails every known planet by design, five confirmed planets fail a vet-v3
-check and three more are inconclusive on two. A read-only diagnosis,
+check and three more are inconclusive on holdout and signal_present. A read-only diagnosis,
 [`vet-v3-control-diagnosis-2026-10-17.md`](../../results/benchmarks/vet-v3-control-diagnosis-2026-10-17.md) ("the
 diagnosis"), rebuilt each one from the run's files and found no coding error. It was made outside the pipeline, with
 no committed script, and gates nothing.
@@ -31,8 +31,10 @@ correctness." This record writes down that call. It is a call made on these resu
   - **TOI-107.01 (WASP-94 A b) and TOI-747.01 (WASP-87 b), secondary.** Outcome: a dip at phase 0.5 of 94 ppm at 3.6
     sigma, and of 119 ppm at 3.2 sigma. Cause: probably each planet's own occultation, which vet-v3's secondary makes
     no allowance for. WASP-87 b's thermal emission alone can reach 241.6 ppm in the TESS band; WASP-94 A b's dip
-    needs a geometric albedo near 0.3. Neither planet has a published TESS occultation, so this is unconfirmed
-    (diagnosis, items 1 and 2).
+    needs a geometric albedo near 0.3. No published TESS occultation was found for either planet (the archive's `ps`
+    table and a web search), so this is unconfirmed. For TOI-747.01 the diagnosis adds a check-logic mismatch: the
+    box's errors are scaled for red noise at half its timescale, and measured against scrambled periods the dip is
+    about 2.5 sigma (diagnosis, items 1 and 2).
   - **TOI-191.01 (WASP-8 b), density.** Outcome: the transit implies 0.611 g/cm3 where the TIC gives 1.41, 3.5 sigma.
     Cause: an eccentric orbit (e 0.304, ω 274°), transiting near apoapsis; corrected for it, the tension is 0.44 sigma
     (diagnosis, item 3).
@@ -65,14 +67,15 @@ correctness." This record writes down that call. It is a call made on these resu
   | Partly covered transits left out of depth comparisons | TOI-576.01 | TOI-1175.01's holdout fail stays | may cost holdout or odd/even power at 3 to 5 transits |
   | Archive ephemerides for TOI-451.03 and TOI-1097.02 | nothing (they stay inconclusive at 4.1 and 3.9) | none | none |
 
-  Why none was taken: the secondary bounds barely move the shortlist, so they would kill and keep the same signals
-  vet-v3 does; the density term loosens the check most on TIC 48010903, the deepest, highest-SNR signal on the
-  shortlist; and the partial-transit rule could cost power on the signals with the fewest transits. A lower pass rate
-  on the known set is the cost, and it is published.
-- **Not covered here.** TRICERATOPS is inconclusive on four known planets (the summary): TOI-747.01 (mean FPP 0.568,
-  sd 0.458; decision 0026's Controls paragraph), TOI-451.03 and TOI-1097.02 (NFPP between the bars;
-  [decision 0032](0032-nearby-binary-triceratops.md)), and TOI-396.01 (mean FPP 1, on a linear fold as well; its cause
-  was not diagnosed further). The pixel check fails four known planets (TOI-144.01, TOI-2011.02, TOI-396.03 and
+  Why none was taken: the secondary bounds would vet the shortlist almost exactly as vet-v3 does, close to neutral
+  in the diagnosis's words (their phase-0.5 errors are unknown until they are vetted, and the bound moves the 3-sigma
+  line by up to 8.7 ppm); the density term loosens the check most on TIC 48010903, the deepest, highest-SNR signal on
+  the shortlist; and the partial-transit rule could cost power on the signals with the fewest transits. A lower pass
+  rate on the known set is the cost, and it is published.
+- **Not covered here.** TRICERATOPS is inconclusive on four known planets (the summary): TOI-747.01 (mean FPP 0.568
+  in the summary, sd 0.458 in `controls.csv`; decision 0026's Controls paragraph), TOI-451.03 and TOI-1097.02 (NFPP
+  between the bars; [decision 0032](0032-nearby-binary-triceratops.md)), and TOI-396.01 (mean FPP 1, on a linear fold
+  as well; its cause was not diagnosed further). The pixel check fails four known planets (TOI-144.01, TOI-2011.02, TOI-396.03 and
   TOI-4307.01, the summary). It is triage-v1's check, not vet-v3's: a pixel fail keeps a signal off triage's
   shortlist, and the check's completeness on the known set belongs to Task 15's triage completeness. This record does
   not decide it.

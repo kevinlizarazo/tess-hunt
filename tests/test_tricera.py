@@ -908,8 +908,9 @@ def control_triceratops(toi, toi_table, tmp_path):
 
 @pytest.mark.network
 @pytest.mark.slow
-# The design's expectation, kept visible; strict, so a binary that starts to fail TRICERATOPS is reported, and only the
-# assertion counts, so a network error is not taken for the expected failure.
+# The design's expectation, kept visible; strict, so a binary that starts to fail TRICERATOPS is reported. `raises`
+# keeps out only errors that escape the test: a network failure inside TRICERATOPS becomes a blocker and an
+# inconclusive outcome, which counts as the expected failure.
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
