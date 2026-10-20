@@ -661,9 +661,12 @@ def _real_new(r: Record) -> str:
         items.append(f"Literature: {r.absent('literature', 'literature')}")
     else:
         lit = r.literature
+        [ads] = lit["search"]["sources"]["ads"].values()
+        # Only a search ADS answered has a note.
+        note = f" {ads['note']}" if ads.get("note") else ""
         items.append(
             f"Literature by name ({', '.join(lit['search']['names'])}) and NASA ADS: {lit['outcome']}, "
-            f"{lit['reason']}. The hits are listed below."
+            f"{lit['reason']}.{note} The hits are listed below."
         )
     return _list(items) + "\n\n" + _exofop(r)
 

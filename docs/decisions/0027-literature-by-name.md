@@ -1,7 +1,8 @@
 # 0027: Literature by every name, NASA ADS and ExoFOP; a search that is not complete is inconclusive
 
 - Date: 2026-10-17
-- Status: Accepted (approved by the maintainer in the M3 design)
+- Status: Accepted (approved by the maintainer in the M3 design); amended 2026-10-19: ADS's object query goes through
+  ADS's object service, since the search endpoint refuses the `object:` field
 
 ## Context
 
@@ -23,8 +24,18 @@ as "nothing published".
   an integer is left out: one rounded through a float names another star. The targets tables carry no 2MASS ID, so a
   2MASS name comes from SIMBAD only.
 - **Searches.** Each name goes to arXiv (`all:"name"`), OpenAlex (`fulltext.search:"name"`) and Zenodo (`"name"`), as
-  triage's phrase search did. ADS takes one query, `object:"TIC n"`, which resolves the star's aliases through SIMBAD
-  and so covers the forms the full-text searches skip. ExoFOP's target JSON is read live.
+  triage's phrase search did. ADS takes one query, `object:"TIC n"`, translated by ADS's object service (a POST to
+  `/v1/objects/query` with `{"query": ["object:\"TIC n\""]}`), which resolves the star through SIMBAD and NED. ADS's
+  search then pages with the query the service returns, `((=abs:"TIC n" OR simbid:"<SIMBAD id>" OR nedid:"<NED id>")
+  database:astronomy)`, translated once per star: the papers SIMBAD or NED tag with the star, whatever name they use,
+  which covers the forms the full-text searches skip, and the phrase "TIC n" in the abstracts, titles and keywords of
+  ADS's astronomy collection. The plan sent `object:"TIC n"` straight to the search endpoint, which on 2026-10-19
+  answered HTTP 400 (`undefined field object`); ADS's documentation (adsabs-dev-api, `openapi/services/objects.yaml`)
+  gives the object service for expanding an object query. The record keeps the translated query and whether SIMBAD or
+  NED resolved the star (an id other than "0"). Where neither did, ADS searched only the phrase, and the record and
+  the dossier say so. Its hits still count and the search is not inconclusive for it: the by-name searches cover the
+  star's other names. A failed translation, or a 200 without a query (the service answers its own errors with a 200),
+  is ADS's search failing. ExoFOP's target JSON is read live.
 - **Paging.** Each search pages until it holds every hit its service reports, at the most each service serves a page
   without a key (Zenodo refuses more than 25). A search whose reported total exceeds `[literature] max_hits` (200) stops
   at that page and is recorded `too_broad` with the total and no hits. For a by-name search that is complete, not
@@ -84,6 +95,9 @@ as "nothing published".
   control rests on ADS's object search, and the record is inconclusive in any case.
 - SIMBAD is asked by the TIC identifier. A star SIMBAD holds without that identifier gets only the names from the
   targets row, and ADS's object search for the TIC may not resolve it either.
+- ADS's object service writes "0" both for a star a catalog does not hold and when its own lookup in that catalog
+  failed (adsabs/object_service, `get_object_translations`), so the record can't tell the two apart. Where the
+  record's SIMBAD answer lists names for the star and ADS's query has `simbid:"0"`, the lookup failed on ADS's side.
 - The control tables carry no `dr3_source_id`, so for a star SIMBAD lacks, the search may run on the TIC name alone.
 - A star ADS lists more than `max_hits` papers for never gets a complete search under vet-v3, so its signal can't be
   passed (M3 design, section 4.9) until the maintainer reads ADS for it by hand and a decision record says how that
@@ -106,15 +120,22 @@ as "nothing published".
   - `test_a_failed_source_leaves_the_search_incomplete` (OpenAlex's 429 is not retried, a server error is tried three
     times, arXiv paced; an empty page short of the total is an error; a failed SIMBAD or ExoFOP, a missing source, or
     an empty record is inconclusive).
-  - `test_ads_without_a_token_is_not_searched` (no request to ADS, inconclusive; with the token, the object search by
-    TIC with the bearer header).
-  - `test_the_token_never_reaches_the_record` (an ADS that echoes the request's headers in a 401 body or a 200 body, or
-    raises naming them: no token text in the record or the check).
+  - `test_ads_without_a_token_is_not_searched` (no request to ADS, inconclusive; with the token, the object service's
+    POST body, the search paging with the translated query, the bearer header on both, and the query and the
+    catalogs that resolved the star in the record).
+  - `test_a_star_no_catalog_resolves_is_searched_by_its_phrase` (ids "0" from both catalogs: the record says ADS
+    searched only the phrase, and the search still passes); `test_real_and_new_says_when_ads_searched_only_the_phrase`
+    in `tests/test_dossier.py` (the dossier's line).
+  - `test_a_failed_translation_is_ads_failing` (the object service's HTTP 400, or a 200 without a query: ADS recorded
+    `error`, the search never made, no token text in the record).
+  - `test_the_token_never_reaches_the_record` (the object service or the search echoes the request's headers in a 401
+    body or a 200 body, or raises naming them: no token text in the record or the check).
   - `test_exofop_record_keeps_comments_and_imaging` (also the planet parameters with their periods; a page without
     them is a failed read), `test_hits_are_deduplicated_by_doi_arxiv_id_or_title`.
   - `test_vetting_literature_writes_one_record_per_signal`, `test_resume_fills_only_what_the_earlier_run_left_incomplete`
     (only the incomplete searches are made again; no file of the run holds the token; a changed earlier record is
     refused), `test_literature_refuses_what_it_cannot_stand_behind`, `test_literature_refuses_an_evidence_only_run`.
 - The network test `test_hip_8152_finds_akana_murphy_2023` (skipped without `ADS_API_TOKEN`): SIMBAD names TIC
-  164767175 HIP 8152, and ADS's object search or arXiv by HIP 8152 returns Akana Murphy et al. 2023 (arXiv
-  2306.16587).
+  164767175 HIP 8152, and ADS's object search itself, resolved through SIMBAD, returns Akana Murphy et al. 2023
+  (`2023AJ....166..153A`). Until 2026-10-19 arXiv's hit by HIP 8152 also passed it, which hid an ADS search that
+  failed for every star.

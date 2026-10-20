@@ -19,6 +19,7 @@ ARXIV = "https://export.arxiv.org/api/query"
 OPENALEX = "https://api.openalex.org/works"
 SIMBAD_TAP = "https://simbad.cds.unistra.fr/simbad/sim-tap/sync"
 ADS = "https://api.adsabs.harvard.edu/v1/search/query"
+ADS_OBJECTS = "https://api.adsabs.harvard.edu/v1/objects/query"
 EXOFOP_TARGET = "https://exofop.ipac.caltech.edu/tess/target.php"
 ATOM = "{http://www.w3.org/2005/Atom}"
 OPENSEARCH = "{http://a9.com/-/spec/opensearch/1.1/}"
@@ -87,10 +88,21 @@ def search(tic: int, session, pause: float = 3.0) -> dict:
     return out
 
 
-def _fetch(session, url: str, params: dict, what: str, headers: dict | None = None):
+def _fetch(
+    session,
+    url: str,
+    params: dict | None,
+    what: str,
+    headers: dict | None = None,
+    body: dict | None = None,
+):
     def call():
         try:
-            response = session.get(url, timeout=60, params=params, headers=headers)
+            response = (
+                session.get(url, timeout=60, params=params, headers=headers)
+                if body is None
+                else session.post(url, timeout=60, json=body, headers=headers)
+            )
         except requests.RequestException as exc:
             # The exception's text and its request object can carry the headers, ADS's token among them.
             raise TransientError(type(exc).__name__) from None
@@ -214,9 +226,25 @@ def _zenodo_page(session, name: str, page: int, size: int) -> tuple[list[dict], 
     return hits, int(data["total"])
 
 
-def _ads_page(session, query: str, page: int, size: int, token: str) -> tuple[list[dict], int]:
+def _ads_query(session, star: str, headers: dict) -> str:
+    """The query ADS's search takes for `object:"<star>"`, from ADS's object service: its search endpoint has refused
+    the `object:` field since at least 2026-10-19 (decision 0027)."""
+    body = {"query": [f'object:"{star}"']}
+    query = _fetch(session, ADS_OBJECTS, None, "ADS objects", headers, body).json().get("query")
+    if not isinstance(query, str):
+        # The object service answers its own errors with a 200 and no query.
+        raise LiteratureError("ADS objects: no query in the answer")
+    return query
+
+
+def _resolved(query: str, field: str) -> bool:
+    # The object service writes "0" for an object the catalog did not resolve.
+    match = re.search(rf'\b{field}:"([^"]*)"', query)
+    return match is not None and match.group(1) != "0"
+
+
+def _ads_page(session, query: str, page: int, size: int, headers: dict) -> tuple[list[dict], int]:
     params = {"q": query, "fl": "bibcode,title,doi,identifier", "rows": size, "start": page * size}
-    headers = {"Authorization": f"Bearer {token}"}
     data = _fetch(session, ADS, params, "ADS", headers).json()["response"]
     hits = []
     for doc in data["docs"]:
@@ -244,6 +272,23 @@ def _paged(page_of: Callable[[int, int], tuple[list[dict], int]], size: int, max
                 f"page {page + 1} came back empty with {len(hits)} of {total} hits"
             )
         page += 1
+
+
+def _ads(session, star: str, token: str, size: int, max_hits: int) -> dict:
+    """ADS's object search for `star`: translated once, then paged. The record keeps the query ADS searched and which
+    catalogs resolved the star."""
+    headers = {"Authorization": f"Bearer {token}"}
+    query = _ads_query(session, star, headers)
+    resolved = {"simbad": _resolved(query, "simbid"), "ned": _resolved(query, "nedid")}
+    # Unresolved, the query is the phrase alone. Its hits still count: the by-name searches cover the other names.
+    note = (
+        None
+        if any(resolved.values())
+        else f'No catalog resolved the star, so ADS searched only the phrase "{star}" in the abstracts, titles and '
+        "keywords of its astronomy collection."
+    )
+    found = _paged(partial(_ads_page, session, query, headers=headers), size, max_hits)
+    return {**found, "query": query, "resolved": resolved, "note": note}
 
 
 def _float(value) -> float | None:
@@ -318,16 +363,17 @@ def search_all(
     done: Mapping | None = None,
 ) -> dict:
     """Each name through arXiv, OpenAlex and Zenodo, the star through ADS's object search, and ExoFOP's target page.
-    Each search is {status, hits, total, error}; `done` holds searches an earlier run completed, kept as they are."""
+    Each search is {status, hits, total, error}, and an answered ADS search also {query, resolved, note}; `done` holds
+    searches an earlier run completed, kept as they are."""
     done = done or {}
 
-    def search(source: str, name: str, page_of) -> dict:
+    def search(source: str, name: str, find: Callable[[int, int], dict] | None) -> dict:
         if name in done.get(source, {}):
             return done[source][name]
-        if page_of is None:
+        if find is None:
             return _result("not_searched", error=NO_TOKEN)
         try:
-            return _paged(page_of, min(PAGE[source], cfg["max_hits"]), cfg["max_hits"])
+            return find(min(PAGE[source], cfg["max_hits"]), cfg["max_hits"])
         except Exception as exc:
             # A failed search is recorded, never a negative: the record says the search is incomplete.
             return _result("error", error=_message(exc))
@@ -338,16 +384,16 @@ def search_all(
         "zenodo": _zenodo_page,
     }
     sources = {
-        source: {name: search(source, name, partial(page_of, session, name)) for name in names}
+        source: {
+            name: search(source, name, partial(_paged, partial(page_of, session, name)))
+            for name in names
+        }
         for source, page_of in by_name.items()
     }
-    # ADS's object search resolves every alias through SIMBAD, so the TIC stands for all the names.
+    # ADS's object service resolves the TIC through SIMBAD and NED, and the search then finds the papers they tag with
+    # the star, whatever name the papers use: the TIC stands for all the names.
     star = f"TIC {int(tic)}"
-    ads = (
-        None
-        if ads_token is None
-        else partial(_ads_page, session, f'object:"{star}"', token=ads_token)
-    )
+    ads = None if ads_token is None else partial(_ads, session, star, ads_token)
     sources["ads"] = {star: search("ads", star, ads)}
     return {
         "tic": int(tic),

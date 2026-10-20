@@ -280,6 +280,24 @@ def section(text: str, heading: str) -> str:
     return text.split(f"\n## {heading}\n")[1].split("\n## ")[0]
 
 
+def test_real_and_new_says_when_ads_searched_only_the_phrase(tmp_path, monkeypatch):
+    signal, _ = draft(tmp_path, monkeypatch)
+    # With the token, and TIC 1 in neither SIMBAD nor NED: ADS's object service resolved nothing.
+    web = tl.Web(names={})
+    search = {
+        "simbad": literature.simbad_record(1, web),
+        **literature.search_all(1, ["TIC 1"], web, tl.TOKEN, tl.CFG),
+    }
+    check = literature.literature_check(search).to_dict()
+    edit_json(signal / "literature.json", lambda r: r.update(search=search, **check))
+    real = section(dossier.render(signal), "Real and new?")
+    # Still a complete search: the by-name searches cover the star's other names.
+    assert (
+        "NASA ADS: pass, complete: 0 hits to screen. No catalog resolved the star, so ADS searched only the phrase "
+        '"TIC 1" in the abstracts, titles and keywords of its astronomy collection. The hits are listed below.'
+    ) in real
+
+
 def test_render_fails_on_a_missing_value(tmp_path, monkeypatch):
     signal, _ = draft(tmp_path, monkeypatch)
     dossier.render(signal)

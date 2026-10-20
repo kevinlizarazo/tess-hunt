@@ -93,8 +93,12 @@ SERVICES = {
     literature.OPENALEX: "openalex",
     literature.ZENODO: "zenodo",
     literature.ADS: "ads",
+    literature.ADS_OBJECTS: "objects",
     literature.EXOFOP_TARGET: "exofop",
 }
+# ADS's object service's answer for TIC 164767175 on 2026-10-19: SIMBAD's id for the star, and "0" from NED.
+SIMBID = "1289183"
+QUERY = '((=abs:"TIC 164767175" OR simbid:"1289183" OR nedid:"0") database:astronomy)'
 ATOM = (
     '<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" '
     'xmlns:arxiv="http://arxiv.org/schemas/atom">'
@@ -126,7 +130,8 @@ def atom(entries: list[dict], total: int) -> bytes:
 
 class Web:
     """The services the literature search reads. `hits` maps (service, name) to papers; `status` maps a service, or
-    (service, name), to the HTTP status it answers instead. ADS answers only the bearer `token`."""
+    (service, name), to the HTTP status it answers instead. ADS's object service resolves a star SIMBAD holds in
+    `names`. ADS answers only the bearer `token`."""
 
     def __init__(self, hits=None, status=None, names=None, token=TOKEN):
         self.hits = hits or {}
@@ -136,27 +141,37 @@ class Web:
         self.calls = []
 
     def get(self, url, timeout, params=None, headers=None):
-        service = SERVICES[url]
-        params = dict(params or {})
-        name = self.name(service, params)
+        return self.answer(SERVICES[url], "params", dict(params or {}), headers)
+
+    def post(self, url, timeout, json=None, headers=None):
+        return self.answer(SERVICES[url], "body", json, headers)
+
+    def answer(self, service: str, kind: str, sent: dict, headers: dict | None) -> FakeResponse:
+        name = self.name(service, sent)
         self.calls.append(
-            {"service": service, "name": name, "params": params, "headers": dict(headers or {})}
+            {"service": service, "name": name, kind: sent, "headers": dict(headers or {})}
         )
         status = self.status.get((service, name), self.status.get(service))
         if status:
             return FakeResponse(status)
-        if service == "ads" and (headers or {}).get("Authorization") != f"Bearer {self.token}":
+        bearer = (headers or {}).get("Authorization") == f"Bearer {self.token}"
+        if service in ("ads", "objects") and not bearer:
             return FakeResponse(401)
-        return FakeResponse(200, getattr(self, service)(name, params))
+        return FakeResponse(200, getattr(self, service)(name, sent))
 
     @staticmethod
-    def name(service: str, params: dict) -> str:
+    def name(service: str, sent: dict) -> str:
         if service == "simbad":
-            return re.search(r"'(TIC \d+)'", params["QUERY"]).group(1)
+            return re.search(r"'(TIC \d+)'", sent["QUERY"]).group(1)
         if service == "exofop":
-            return f"TIC {params['id']}"
-        key = {"arxiv": "search_query", "openalex": "filter", "zenodo": "q", "ads": "q"}[service]
-        return re.search(r'"(.*)"', params[key]).group(1)
+            return f"TIC {sent['id']}"
+        if service == "objects":
+            [query] = sent["query"]
+            return re.fullmatch(r'object:"(.*)"', query).group(1)
+        if service == "ads":
+            return re.search(r'=abs:"(.*?)"', sent["q"]).group(1)
+        key = {"arxiv": "search_query", "openalex": "filter", "zenodo": "q"}[service]
+        return re.search(r'"(.*)"', sent[key]).group(1)
 
     def page(self, service: str, name: str, start: int, size: int) -> tuple[list[dict], int]:
         found = self.hits.get((service, name), [])
@@ -190,6 +205,11 @@ class Web:
             for i, p in enumerate(found)
         ]
         return json.dumps({"hits": {"total": total, "hits": records}}).encode()
+
+    def objects(self, name, body):
+        simbid = SIMBID if self.names.get(int(name.split()[1])) else "0"
+        query = f'((=abs:"{name}" OR simbid:"{simbid}" OR nedid:"0") database:astronomy)'
+        return json.dumps({"query": query}).encode()
 
     def ads(self, name, params):
         found, total = self.page("ads", name, params["start"], params["rows"])
@@ -414,40 +434,95 @@ def test_ads_without_a_token_is_not_searched():
             "error": "no ADS_API_TOKEN at run time",
         }
     }
-    assert not any(c["service"] == "ads" for c in web.calls)
+    assert not any(c["service"] in ("objects", "ads") for c in web.calls)
     check = literature.literature_check(complete(record))
     assert check.outcome == Outcome.INCONCLUSIVE
     assert check.evidence["incomplete"] == [
         "ads TIC 164767175: not_searched (no ADS_API_TOKEN at run time)"
     ]
-    # With the token, ADS's object search goes by the TIC, the token as a bearer header.
+    # With the token, ADS's object service translates the object query once, and the search pages with the query it
+    # returned. Both carry the token as a bearer header.
     record = search(web)
-    [call] = [c for c in web.calls if c["service"] == "ads"]
-    assert call["params"]["q"] == 'object:"TIC 164767175"'
-    assert call["headers"] == {"Authorization": f"Bearer {TOKEN}"}
-    assert [h["arxiv"] for h in record["sources"]["ads"]["TIC 164767175"]["hits"]] == ["2306.16587"]
+    translate, ads = [c for c in web.calls if c["service"] in ("objects", "ads")]
+    assert translate["service"] == "objects"
+    assert translate["body"] == {"query": ['object:"TIC 164767175"']}
+    assert ads["service"] == "ads" and ads["params"]["q"] == QUERY
+    for call in (translate, ads):
+        assert call["headers"] == {"Authorization": f"Bearer {TOKEN}"}
+    result = record["sources"]["ads"]["TIC 164767175"]
+    assert result["query"] == QUERY and result["resolved"] == {"simbad": True, "ned": False}
+    assert result["note"] is None
+    assert [h["arxiv"] for h in result["hits"]] == ["2306.16587"]
     assert literature.literature_check(complete(record)).outcome == Outcome.PASS
 
 
-class EchoingAds(Web):
-    """An ADS that answers with the request's headers in its body, or fails naming them."""
+def test_a_star_no_catalog_resolves_is_searched_by_its_phrase():
+    # Neither SIMBAD nor NED knows the star (as TIC 295140687 on the second list): both ids come back "0".
+    web = Web(names={}, hits={("ads", "TIC 164767175"): [AKANA]})
+    record = search(web)
+    result = record["sources"]["ads"]["TIC 164767175"]
+    assert result["query"] == QUERY.replace(SIMBID, "0")
+    assert result["resolved"] == {"simbad": False, "ned": False}
+    assert result["note"] == (
+        'No catalog resolved the star, so ADS searched only the phrase "TIC 164767175" in the abstracts, titles '
+        "and keywords of its astronomy collection."
+    )
+    # The search still runs and its hits count; the by-name searches cover the star's other names (decision 0027).
+    check = literature.literature_check(complete(record))
+    assert check.outcome == Outcome.PASS
+    assert check.evidence["hits"][0]["found_by"] == ["ads TIC 164767175"]
 
-    def __init__(self, mode):
+
+def test_a_failed_translation_is_ads_failing():
+    # The object service answers its own errors with a 200 and no query (adsabs-dev-api, openapi/services/objects.yaml).
+    no_query = Web()
+    no_query.objects = lambda name, body: json.dumps(
+        {"Error": "Unable to get results!", "Error Info": f"Bearer {TOKEN}"}
+    ).encode()
+    for web, error in (
+        (Web(status={"objects": 400}), "ADS objects: HTTP 400"),
+        (no_query, "ADS objects: no query in the answer"),
+    ):
+        record = search(web)
+        assert record["sources"]["ads"]["TIC 164767175"] == {
+            "status": "error",
+            "hits": [],
+            "total": None,
+            "error": error,
+        }
+        # Asked once, not retried, and the search never runs without a query.
+        assert [c["service"] for c in web.calls if c["service"] in ("objects", "ads")] == [
+            "objects"
+        ]
+        check = literature.literature_check(complete(record))
+        assert check.outcome == Outcome.INCONCLUSIVE
+        assert check.evidence["incomplete"] == [f"ads TIC 164767175: error ({error})"]
+        text = json.dumps([record, check.to_dict()])
+        assert TOKEN not in text and "Bearer" not in text
+
+
+class EchoingAds(Web):
+    """An ADS service, the object service's POST or the search's GET, that answers with the request's headers in its
+    body, or fails naming them."""
+
+    def __init__(self, service, mode):
         super().__init__()
+        self.service = service
         self.mode = mode
 
-    def get(self, url, timeout, params=None, headers=None):
-        if SERVICES[url] != "ads":
-            return super().get(url, timeout, params, headers)
+    def answer(self, service, kind, sent, headers):
+        if service != self.service:
+            return super().answer(service, kind, sent, headers)
         if self.mode == "raise":
             raise requests.ConnectionError(f"refused with {headers}")
         body = json.dumps({"error": "unauthorized", "headers": headers}).encode()
         return FakeResponse(401 if self.mode == "401" else 200, body)
 
 
+@pytest.mark.parametrize("service", ["objects", "ads"])
 @pytest.mark.parametrize("mode", ["401", "raise", "200"])
-def test_the_token_never_reaches_the_record(mode):
-    record = search(EchoingAds(mode))
+def test_the_token_never_reaches_the_record(service, mode):
+    record = search(EchoingAds(service, mode))
     ads = record["sources"]["ads"]["TIC 164767175"]
     assert ads["status"] == "error"
     check = literature.literature_check(complete(record))
@@ -626,6 +701,7 @@ def test_resume_fills_only_what_the_earlier_run_left_incomplete(tmp_path, monkey
         ("simbad", "TIC 1"),
         ("exofop", "TIC 1"),
         ("openalex", "HD 1"),
+        ("objects", "TIC 1"),
         ("ads", "TIC 1"),
     }
     record = json.loads((second / "signals" / "1-1" / "literature.json").read_text())
@@ -695,7 +771,9 @@ def test_hip_8152_finds_akana_murphy_2023():
     names = literature.searchable(literature.simbad_names(TIC, session), {"tic": TIC}, CFG["forms"])
     assert "HIP 8152" in names
     record = literature.search_all(TIC, names, session, os.environ["ADS_API_TOKEN"], CFG)
-    sources = record["sources"]
-    found = [*sources["ads"]["TIC 164767175"]["hits"], *sources["arxiv"]["HIP 8152"]["hits"]]
-    # Akana Murphy et al. 2023, AJ 166, 153 (arXiv:2306.16587): TOI-266's planets as HIP 8152 b and c.
-    assert any(h["arxiv"] == "2306.16587" or h["id"] == "2023AJ....166..153A" for h in found)
+    ads = record["sources"]["ads"]["TIC 164767175"]
+    # ADS itself must find Akana Murphy et al. 2023, AJ 166, 153 (TOI-266's planets as HIP 8152 b and c): arXiv's hit
+    # for "HIP 8152" once hid an ADS search that failed for every star.
+    assert ads["status"] == "ok", ads["error"]
+    assert ads["resolved"]["simbad"]
+    assert any(h["id"] == "2023AJ....166..153A" for h in ads["hits"])
