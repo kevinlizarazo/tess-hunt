@@ -692,5 +692,59 @@ def test_a_missing_ruwe_says_why(tmp_path, monkeypatch, dr3_from, reason):
         signal / "checks.json",
         lambda c: c["star"].update(ruwe=None, dr3_from=dr3_from, dr3_reason=reason),
     )
+    text = dossier.render(signal)
+    assert f"RUWE missing (Gaia DR3), because {reason}." in section(text, "On the star?")
+    # Page one's star table says why too.
+    assert f"| RUWE (Gaia DR3) | missing, because {reason} |" in text
+
+
+def no_table(neighbours: dict) -> None:
+    """The neighbour check's record when the Gaia cone failed: no table, so no possible hosts key."""
+    kept = {
+        k: neighbours["evidence"][k] for k in ("depth", "depth_from", "tmag", "target_source_id")
+    }
+    neighbours.update(
+        outcome="inconclusive",
+        reason="no neighbour table: Gaia archive failed",
+        evidence={**kept, "error": "Gaia archive failed"},
+    )
+
+
+def none_possible(neighbours: dict) -> None:
+    neighbours["evidence"]["possible_hosts"] = []
+    for row in neighbours["evidence"]["table"]:
+        row["possible"] = False
+
+
+@pytest.mark.parametrize("stopped", [False, True], ids=["weighed", "stopped before calc_probs"])
+@pytest.mark.parametrize(
+    "neighbours, said",
+    [
+        (none_possible, "The neighbour table lists no possible host for it to weigh."),
+        (
+            no_table,
+            "No neighbour table was built, so no possible host could be checked against its star list.",
+        ),
+    ],
+    ids=["none possible", "no table"],
+)
+def test_the_triceratops_paragraph_claims_no_host_the_neighbour_table_lacks(
+    tmp_path, monkeypatch, neighbours, said, stopped
+):
+    signal, _ = draft(tmp_path, monkeypatch)
+    edit_json(signal / "checks.json", lambda c: neighbours(c["neighbours"]))
+
+    def no_hosts(record: dict) -> None:
+        if stopped:
+            stopped_before_calc_probs(record)
+        # With no possible host, TRICERATOPS matches none and misses none.
+        record["evidence"].update(hosts=[], missing_hosts=[])
+        if not stopped:
+            record["evidence"]["hosts_tdepth_zero"] = []
+
+    edit_json(signal / "triceratops.json", no_hosts)
     on_star = section(dossier.render(signal), "On the star?")
-    assert f"RUWE missing (Gaia DR3), because {reason}." in on_star
+    [said_on_star] = [p for p in on_star.split("\n\n") if p.startswith("TRICERATOPS (")]
+    assert said in said_on_star
+    # Nothing else in the paragraph speaks of possible hosts.
+    assert "possible host" not in said_on_star.replace(said, "").lower()

@@ -271,7 +271,12 @@ def _star(r: Record) -> str:
             f"Teff {_f(star['teff'], '.0f')} K, radius {_f(star['rad'], '.2f')} solar radii, "
             f"Tmag {_f(star['tmag'], '.2f')}",
         ],
-        ["RUWE (Gaia DR3)", _f(star["ruwe"], ".2f")],
+        [
+            "RUWE (Gaia DR3)",
+            f"missing, because {star['dr3_reason']}"
+            if star["ruwe"] is None
+            else f"{star['ruwe']:.2f}",
+        ],
         ["CROWDSAP", _crowdsap(r)],
         ["Sectors vetted", f"{families}; left out as timing-suspect: {dropped}"],
         ["Criteria", criteria],
@@ -450,7 +455,15 @@ def _triceratops_on_star(r: Record) -> str:
         lines.append(f"It stopped before calc_probs: {e['stopped']}.")
     else:
         lines.append(f"It made no calc_probs run: {t['reason']}.")
-    if e["missing_hosts"] is None:
+    hosts = r.checks["neighbours"]["evidence"].get("possible_hosts")
+    if hosts is None:
+        # Whether a possible host exists is unknown, not none.
+        lines.append(
+            "No neighbour table was built, so no possible host could be checked against its star list."
+        )
+    elif not hosts:
+        lines.append("The neighbour table lists no possible host for it to weigh.")
+    elif e["missing_hosts"] is None:
         lines.append("It built no star list, so no possible host was matched to it.")
     else:
         missing = ", ".join(f"Gaia DR3 {s}" for s in e["missing_hosts"])

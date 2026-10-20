@@ -2,8 +2,9 @@
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
 this directory). The exceptions are Gaia DR3 data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
-tables and the Gaia DR3 parts of the vetting records, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC
-3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
+tables, the RUWE values the published controls quote (under [Runs](#runs)) and the Gaia DR3 parts of the vetting
+records, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO terms
+(https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -22,6 +23,13 @@ Published runs are never edited; a correction is a new run.
   planet; `summary.md` is the table.
 - `benchmark-inject`: injection-recovery. `injections.csv` has one row per injected planet and search engine; the
   `completeness_*.csv` tables and `completeness_*.png` maps bin the recovered fraction; `summary.md` collects them.
+- `benchmark-controls`: vet-v3's controls, the known planets and the negative controls, from a vetting run, the
+  TRICERATOPS runs on it and triage's pixel check on the known planets. `controls.csv` has one row per control: each
+  check's outcome, the neighbour table's count of possible hosts, the pixel check's outcome and offset (known planets
+  only), and TRICERATOPS's outcome, mean and sd of FPP and NFPP, blockers, the run it came from and any earlier run's
+  outcome it replaced. `pass_rates.csv` counts each check's outcomes over the known planets, all of them and without
+  the ones left out; `summary.md` collects them with each fail's reason. The RUWE values quoted in `blockers` and in
+  the TRICERATOPS reasons are Gaia DR3 data (above).
 - `search`: a production search. `controls.csv` has one row per positive control, the known-planet set searched
   alongside the sample ([decision 0011](../docs/decisions/0011-positive-controls-in-production.md)); the signals
   themselves stay in the run directory. The null search (`--scramble`,

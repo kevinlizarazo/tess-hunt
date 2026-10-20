@@ -1,5 +1,5 @@
-"""Benchmarks: recover known planets and injected transits, compare search engines, and measure what
-triage passes (completeness.py)."""
+"""Benchmarks: recover known planets and injected transits, compare search engines, measure what
+triage passes (completeness.py), and gather vet-v3's controls (controls.py)."""
 
 import sys
 import time
@@ -314,8 +314,9 @@ def add_parser(sub) -> None:
         )
         mode.add_argument("--workers", type=int, default=8)
         mode.add_argument("--production", action="store_true")
-    # completeness builds on this module's injection pieces, so it is imported once this one has loaded.
-    from tess_hunt import completeness
+    # completeness builds on this module's injection pieces, and controls on completeness, so they are imported
+    # once this one has loaded.
+    from tess_hunt import completeness, controls
 
     t = modes.add_parser(
         "triage-completeness",
@@ -345,6 +346,31 @@ def add_parser(sub) -> None:
         mode.add_argument("--criteria-triage", type=Path, default=Path("criteria/triage-v1.toml"))
         mode.add_argument("--workers", type=int, default=8)
         mode.add_argument("--production", action="store_true")
+    c = modes.add_parser(
+        "controls",
+        help="vet-v3's controls: each check's outcome on the known planets and the negative controls",
+    )
+    c.add_argument("--vet-run", type=Path, required=True, help="the controls' vetting run")
+    c.add_argument(
+        "--triceratops",
+        type=Path,
+        action="append",
+        required=True,
+        help="a TRICERATOPS run on that vetting run; repeatable, and a later run's outcome replaces an "
+        "earlier one's",
+    )
+    c.add_argument(
+        "--pixels", type=Path, required=True, help="the pixel-completeness run on the known planets"
+    )
+    c.add_argument(
+        "--leave-out",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="a control left out of the second pass-rate table; repeatable",
+    )
+    c.add_argument("--production", action="store_true")
+    c.set_defaults(func=controls.cmd_controls)
     pub = modes.add_parser("publish", help="copy a benchmark run's summary into results/")
     pub.add_argument("--run", required=True)
     pub.set_defaults(func=cmd_publish)
