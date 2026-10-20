@@ -376,8 +376,10 @@ def search_all(
     service failing to resolve a star SIMBAD knows is told apart from a star SIMBAD lacks."""
     done = done or {}
 
-    def search(source: str, name: str, find: Callable[[int, int], dict] | None) -> dict:
-        if name in done.get(source, {}):
+    def search(
+        source: str, name: str, find: Callable[[int, int], dict] | None, keep: bool = True
+    ) -> dict:
+        if keep and name in done.get(source, {}):
             return done[source][name]
         if find is None:
             return _result("not_searched", error=NO_TOKEN)
@@ -404,7 +406,11 @@ def search_all(
     star = f"TIC {int(tic)}"
     simbad_knows = simbad["status"] == "ok" and bool(simbad["names"])
     ads = None if ads_token is None else partial(_ads, session, star, ads_token, simbad_knows)
-    sources["ads"] = {star: search("ads", star, ads)}
+    # An earlier answer SIMBAD did not resolve came while SIMBAD's own answer failed or lacked the star. With SIMBAD
+    # knowing the star now, keeping it would pass the phrase alone where the rule in _ads says ADS failed.
+    kept = done.get("ads", {}).get(star, {})
+    stale = simbad_knows and not kept.get("resolved", {}).get("simbad")
+    sources["ads"] = {star: search("ads", star, ads, keep=not stale)}
     return {
         "tic": int(tic),
         "names": list(names),
@@ -462,9 +468,9 @@ def _dedupe(found: list[tuple[str, dict]]) -> list[dict]:
 
 
 def literature_check(record: Mapping) -> CheckResult:
-    """Inconclusive while any search failed or was never made (a rate limit is not a negative), or ADS's object search
-    was too broad; otherwise the hits, one per paper, for the maintainer and the review to read. It never fails
-    (decision 0027)."""
+    """Inconclusive while any search failed or was never made (a rate limit is not a negative), ADS's object search
+    was too broad, or a by-name search was too broad where ADS searched only the TIC's phrase; otherwise the hits, one
+    per paper, for the maintainer and the review to read. It never fails (decision 0027)."""
     sources = record.get("sources") or {}
     searches = [("SIMBAD", "SIMBAD", record.get("simbad"))]
     for source in SOURCES:
@@ -475,12 +481,19 @@ def literature_check(record: Mapping) -> CheckResult:
             else [(source, source, None)]
         )
     searches.append(("ExoFOP", "ExoFOP", record.get("exofop")))
+    # ADS's object search stands for a too-broad by-name search only where a catalog resolved the star.
+    phrase_only = any(r.get("note") for r in (sources.get("ads") or {}).values())
     incomplete = []
     for source, label, r in searches:
         if r is None:
             incomplete.append(f"{label}: not_searched")
         elif source == "ads" and r["status"] == "too_broad":
             incomplete.append(f"{label}: too_broad ({r['total']} papers; nothing stands for it)")
+        elif source in SOURCES and r["status"] == "too_broad" and phrase_only:
+            incomplete.append(
+                f"{label}: too_broad ({r['total']} hits; ADS searched only the TIC's phrase, so nothing stands "
+                "for it)"
+            )
         elif r["status"] not in ANSWERED:
             error = f" ({r['error']})" if r.get("error") else ""
             incomplete.append(f"{label}: {r['status']}{error}")

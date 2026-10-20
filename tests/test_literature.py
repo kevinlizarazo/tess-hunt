@@ -480,6 +480,23 @@ def test_a_star_no_catalog_resolves_is_searched_by_its_phrase():
     assert check.reason == "complete: 1 hits to screen"
 
 
+def test_an_unresolved_star_leaves_a_too_broad_name_uncovered():
+    cfg = {**CFG, "max_hits": 3}
+    many = [paper(f"Paper {i}", f"10.1/{i}", f"2601.{i:05d}") for i in range(5)]
+    hits = {("openalex", "HIP 8152"): many}
+    # Resolved through SIMBAD, ADS's object search stands for the name OpenAlex found too much for.
+    resolved = search(Web(hits=hits), cfg=cfg)
+    assert literature.literature_check(complete(resolved)).outcome == Outcome.PASS
+    # Unresolved, ADS searched the TIC's phrase alone, which does not cover the name.
+    web = Web(names={}, hits=hits)
+    record = search(web, cfg=cfg)
+    check = literature.literature_check({"simbad": literature.simbad_record(TIC, web), **record})
+    assert check.outcome == Outcome.INCONCLUSIVE
+    assert check.evidence["incomplete"] == [
+        "openalex HIP 8152: too_broad (5 hits; ADS searched only the TIC's phrase, so nothing stands for it)"
+    ]
+
+
 def ads_lookup_failed(name, body):
     """ADS's object service when its own SIMBAD and NED lookups failed: "0" for both, as for a star neither holds."""
     query = f'((=abs:"{name}" OR simbid:"0" OR nedid:"0") database:astronomy)'
@@ -798,6 +815,46 @@ def test_resume_asks_ads_again_after_its_lookup_failed(tmp_path, monkeypatch):
     ads = record["search"]["sources"]["ads"]["TIC 1"]
     assert ads["status"] == "ok" and ads["resolved"]["simbad"] and "from_run" not in ads
     assert record["outcome"] == "pass"
+
+
+def test_resume_asks_ads_again_once_simbad_knows_the_star(tmp_path, monkeypatch):
+    run, argv = vetting_run(tmp_path, monkeypatch)
+    monkeypatch.setenv("ADS_API_TOKEN", TOKEN)
+    # A SIMBAD outage: our SIMBAD answer fails, and ADS's own lookup gives "0", so ADS searches the phrase alone.
+    outage = Web(names=NAMES, status={"simbad": 400}, hits={("ads", "TIC 1"): [AKANA]})
+    outage.objects = ads_lookup_failed
+    online(monkeypatch, outage)
+    assert main(argv) == 0
+    [first] = literature_runs(tmp_path)
+    record = json.loads((first / "signals" / "1-1" / "literature.json").read_text())
+    ads = record["search"]["sources"]["ads"]["TIC 1"]
+    assert ads["status"] == "ok" and ads["note"] and record["outcome"] == "inconclusive"
+
+    def resumed(web: Web) -> dict:
+        before = set(literature_runs(tmp_path))
+        online(monkeypatch, web)
+        assert main([*argv, "--resume-from", str(first)]) == 0
+        [path] = set(literature_runs(tmp_path)) - before
+        return json.loads((path / "signals" / "1-1" / "literature.json").read_text())
+
+    # SIMBAD names the star now, so the phrase-only answer is not kept: ADS is asked again, and a "0" again is ADS
+    # failing.
+    still = Web(names=NAMES, hits={("ads", "TIC 1"): [AKANA]})
+    still.objects = ads_lookup_failed
+    record = resumed(still)
+    called = {(c["service"], c["name"]) for c in still.calls}
+    assert ("objects", "TIC 1") in called and ("ads", "TIC 1") not in called
+    assert record["search"]["sources"]["ads"]["TIC 1"] == {
+        "status": "error",
+        "hits": [],
+        "total": None,
+        "error": "ADS objects: SIMBAD knows TIC 1 but ADS's object service did not resolve it",
+    }
+    assert record["outcome"] == "inconclusive"
+    # With ADS's lookup working, the search is resolved through SIMBAD and passes.
+    record = resumed(Web(names=NAMES, hits={("ads", "TIC 1"): [AKANA]}))
+    ads = record["search"]["sources"]["ads"]["TIC 1"]
+    assert ads["resolved"]["simbad"] and "from_run" not in ads and record["outcome"] == "pass"
 
 
 def other_vet_criteria(tmp_path, run) -> list[str]:
