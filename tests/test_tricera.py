@@ -908,10 +908,26 @@ def control_triceratops(toi, toi_table, tmp_path):
 
 @pytest.mark.network
 @pytest.mark.slow
+# The design's expectation, kept visible; strict, so a binary that starts to fail TRICERATOPS is reported, and only the
+# assertion counts, so a network error is not taken for the expected failure.
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="decision 0032: both nearby binaries read inconclusive, not fail; the pixel check kills them",
+)
 @pytest.mark.parametrize("toi", ["1058.01", "1175.01"])
 def test_nearby_eb_controls_fail_triceratops(toi, toi_table, tmp_path):
     result = control_triceratops(toi, toi_table, tmp_path)
     assert result.outcome is Outcome.FAIL, result.reason
+
+
+@pytest.mark.network
+@pytest.mark.slow
+@pytest.mark.parametrize("toi", ["1058.01", "1175.01"])
+def test_nearby_eb_controls_do_not_pass_triceratops(toi, toi_table, tmp_path):
+    """Decision 0032's standard: TRICERATOPS never passes them, so their pixel fail stands."""
+    result = control_triceratops(toi, toi_table, tmp_path)
+    assert result.outcome is not Outcome.PASS, result.reason
 
 
 @pytest.mark.network

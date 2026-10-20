@@ -64,6 +64,10 @@ The loose files beside the run directories in `benchmarks/` were written by the 
 - `sector-structure-2026-10-13.txt`: each sector's span and gaps on 500 random fetched stars (`sector_structure.py`,
   decision 0019).
 
+One loose file has no script: `vet-v3-control-diagnosis-2026-10-17.md`, a read-only diagnosis of the known planets
+vet-v3's controls fail, made outside the pipeline. It gates nothing; its causes are cited by
+[decision 0031](../docs/decisions/0031-known-set-control-fails.md).
+
 ## Triage
 
 Each run directory under `triage/` is one triage run, which `tess-hunt triage publish` copied unchanged from the run

@@ -1,10 +1,11 @@
 # 0026: TRICERATOPS: the false-positive and nearby-false-positive probabilities, inconclusive wherever they mean nothing
 
 - Date: 2026-10-17
-- Status: Accepted (approved by the maintainer in the M3 design), except phase binning (`[triceratops] bin_phase`),
-  which is Proposed until the maintainer confirms it at the controls stop (M3 plan, Task 11 Step 7), and Rulings N
-  (RUWE joined for a star whose targets row lacks it) and S (possible hosts matched at the TIC's epoch), which the M3
-  build's controller made after that approval and are Proposed until the maintainer reviews them
+- Status: Accepted (approved by the maintainer in the M3 design). Phase binning (`[triceratops] bin_phase`) was
+  accepted by the maintainer on 2026-10-19 at the controls stop (M3 plan, Task 11 Step 7), after the controls' results
+  were seen; amended 2026-10-20 with the controls. Rulings N (RUWE joined for a star whose targets row lacks it) and S
+  (possible hosts matched at the TIC's epoch), which the M3 build's controller made after that approval, are Proposed
+  until the maintainer reviews them
 
 ## Context
 
@@ -62,11 +63,12 @@ target's pixel in TRICERATOPS's frame falls inside it, and the pixels themselves
 (`ccd_pixels`, column and row): SPOC's come from the archive at run time, so the run keeps them to be audited later
 (Ruling O).
 
-**Phase binning** (`[triceratops] bin_phase = true`; Ruling G, Proposed). The fold is averaged into phase bins one
-exposure wide: the data's own time sampling, one point per bin instead of one per transit. `flux_err_0` is the median
-over bins of the median cadence error over the square root of the bin's count. With `bin_phase = false` every point
-goes in and `flux_err_0` is the median cadence error, the plan's literal input. If the maintainer chooses the unbinned
-input at the controls stop, the controls' TRICERATOPS runs are made again unbinned and this record is amended.
+**Phase binning** (`[triceratops] bin_phase = true`; Ruling G, accepted by the maintainer on 2026-10-19 at the controls
+stop, after the controls' results were seen). The fold is averaged into phase bins one exposure wide: the data's own
+time sampling, one point per bin instead of one per transit. `flux_err_0` is the median over bins of the median cadence
+error over the square root of the bin's count. With `bin_phase = false` every point goes in and `flux_err_0` is the
+median cadence error, the plan's literal input. The controls ran binned, and the maintainer kept the binned input, so
+they were not made again unbinned.
 
 **Runs.** `[triceratops] runs` (10) runs, each after `np.random.seed(i)` for run i from 0, with `N = [triceratops]
 draws` (1,000,000, the paper's), `P_orb` as a Python float, `parallel=False` (PyTransit then evaluates every transiting
@@ -165,6 +167,15 @@ If it passes, a TRICERATOPS pass does not cover a blend inside 15", and the buil
 (its triage centroid offset is 10.9" in the
 [triage shortlist](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/shortlist.csv)).
 
+**Controls (2026-10-19).** The controls' results are in
+[the controls summary](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md).
+TOI-1399.01 fails as required. TOI-1058.01 and TOI-1175.01 read inconclusive, not fail; the maintainer accepted that on
+2026-10-19, after the results were seen, since neither can pass ([decision 0032](0032-nearby-binary-triceratops.md)).
+TRICERATOPS's per-run FPP can land near either end on a deep hot Jupiter: TOI-747.01's ten runs give a mean FPP of
+0.568 with an sd of 0.458 (the summary), and the check is inconclusive. For values between 0 and 1, an sd that large
+means the runs disagree, so the mean could have landed on either side of 0.5. The recorded sd matters when a mean sits
+near 0.5. No change follows from it.
+
 **The DDT ask** (M4; M3 design, section 4.5) is for passed signals whose next TESS look is FFI-only: the TRICERATOPS
 paper's own caveat that 30-minute data cannot validate is the case for 2-min data. A held signal whose deciding
 evidence is the transit's shape may go to the DDT ask on the maintainer's call; one held on blending may not, since
@@ -179,11 +190,11 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
 - A possible host without a DR3 proper motion is matched at its DR3 position, so one that moved more than
   `match_arcsec` between the epochs reads as missing; that leaves the check inconclusive, the safe direction. The
   propagation is linear in RA and Dec and leaves out the change in proper motion from radial velocity, far below
-  `match_arcsec` over 16 years. A spurious DR3 proper motion (common for close or blended pairs with poor astrometry;
-  125 mas/yr or more moves a host 2" or more over 16 years) can move a host onto a different TIC star within
-  `match_arcsec`, which clears a missing-host blocker, the unsafe direction; `hosts` (`distance_arcsec`, the proper
-  motions, `tdepth` beside `required_depth`) is what lets the review see it. The match is still to the nearest star,
-  not one to one: two hosts can match one TIC star.
+  `match_arcsec` over 16 years. A spurious DR3 proper motion (common for close or blended pairs with poor astrometry)
+  can move a host onto a different TIC star within `match_arcsec`, which clears a missing-host blocker, the unsafe
+  direction; `hosts` (`distance_arcsec`, the proper motions, `tdepth` beside `required_depth`) is what lets the review
+  see it. A proper motion of 125 mas/yr moves a host by `match_arcsec` (2") over the 16 years; that is arithmetic, not a
+  setting the code reads. The match is still to the nearest star, not one to one: two hosts can match one TIC star.
 - Binning assumes the model changes little across a bin. Each binned point is a one-exposure integration averaged over
   a bin one exposure wide, so the transit's edges are smoothed over up to two exposures where the model sees one.
 - A faster sector averaged to E keeps bins with half their cadences or more, so a bin's integration can be shorter
@@ -197,8 +208,8 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
   parallax has no stand-in, and its absence is a blocker.
 - The runs share one target (the TIC query, TESScut and the field-star population), so their spread measures only the
   Monte Carlo noise.
-- A star without a RUWE is inconclusive: one whose DR3 join failed or found no source, or whose DR3 source has no
-  RUWE.
+- A star without a RUWE is inconclusive: one whose TIC gives no Gaia DR2 id to join on, whose DR3 join failed or found
+  no source, or whose DR3 source has no RUWE.
 
 ## Evidence
 
@@ -248,6 +259,8 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
   seed; each stop), `test_the_possible_hosts_sentence_says_what_the_record_shows` (a host in the star list of a run
   that stopped before `calc_probs` is not called weighed) and `test_a_missing_ruwe_says_why` (a failed join reads
   apart from a star DR3 gives no RUWE).
-- The network controls `test_nearby_eb_controls_fail_triceratops` (TOI-1058.01, TOI-1175.01) and
+- The network controls `test_nearby_eb_controls_fail_triceratops` (TOI-1058.01, TOI-1175.01; expected to fail,
+  strict, since decision 0032), `test_nearby_eb_controls_do_not_pass_triceratops` and
   `test_toi_1399_does_not_pass_triceratops`, one run each, and the controls' production runs at ten runs (M3 plan,
-  Task 11).
+  Task 11), published in
+  [the controls summary](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md).
