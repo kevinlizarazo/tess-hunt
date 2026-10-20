@@ -457,15 +457,16 @@ def _triceratops_on_star(r: Record) -> str:
         lines.append(f"It made no calc_probs run: {t['reason']}.")
     nb = r.checks["neighbours"]
     hosts = nb["evidence"].get("possible_hosts")
+    # A star the table could not judge is never marked possible, so its list can leave a host out.
+    unjudged = f"it could not judge every star: {nb['reason']}"
+    if hosts and nb["outcome"] != "pass":
+        lines.append(f"The neighbour table lists possible hosts, but {unjudged}.")
     if hosts is None:
         lines.append("No neighbour table was built, so whether a possible host exists is unknown.")
     elif not hosts and nb["outcome"] == "pass":
         lines.append("The neighbour table lists no possible host for it to weigh.")
     elif not hosts:
-        # A star the table could not judge is never marked possible, so an empty list is not "none to weigh".
-        lines.append(
-            f"The neighbour table lists no possible host, but it could not judge every star: {nb['reason']}."
-        )
+        lines.append(f"The neighbour table lists no possible host, but {unjudged}.")
     elif e["missing_hosts"] is None:
         lines.append("It built no star list, so no possible host was matched to it.")
     else:

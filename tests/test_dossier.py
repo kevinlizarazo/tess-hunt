@@ -691,6 +691,8 @@ def test_the_possible_hosts_sentence_says_what_the_record_shows(
     assert said in said_on_star
     if said != "Possible hosts it did not weigh: none.":
         assert "did not weigh" not in said_on_star
+    # The neighbour table passed: it judged every star.
+    assert "could not judge" not in said_on_star
 
 
 @pytest.mark.parametrize(
@@ -798,3 +800,34 @@ def test_the_triceratops_paragraph_claims_no_host_the_neighbour_table_lacks(
     # Nothing else in the paragraph speaks of possible hosts or a star list.
     rest = said_on_star.replace(said, "").lower()
     assert "possible host" not in rest and "star list" not in rest
+
+
+@pytest.mark.parametrize(
+    "triceratops, hosts_said",
+    [
+        (lambda r: None, "Possible hosts it did not weigh: none."),
+        (
+            stopped_before_calc_probs,
+            "Every possible host is in its star list, and no calc_probs run weighed them.",
+        ),
+        (raised_before_its_data, "It built no star list, so no possible host was matched to it."),
+    ],
+    ids=["weighed", "stopped before calc_probs", "raised before its data"],
+)
+def test_the_triceratops_paragraph_says_the_table_listing_hosts_could_not_judge_every_star(
+    tmp_path, monkeypatch, triceratops, hosts_said
+):
+    """The fixture's table lists Gaia DR3 7 as a possible host; a star it could not judge may be one too."""
+    signal, _ = draft(tmp_path, monkeypatch)
+    edit_json(
+        signal / "checks.json",
+        lambda c: c["neighbours"].update(outcome="inconclusive", reason=NO_G),
+    )
+    edit_json(signal / "triceratops.json", triceratops)
+    on_star = section(dossier.render(signal), "On the star?")
+    [said_on_star] = [p for p in on_star.split("\n\n") if p.startswith("TRICERATOPS (")]
+    assert (
+        f"The neighbour table lists possible hosts, but it could not judge every star: {NO_G}."
+        in said_on_star
+    )
+    assert hosts_said in said_on_star

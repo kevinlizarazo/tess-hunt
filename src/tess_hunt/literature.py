@@ -372,8 +372,9 @@ def search_all(
 ) -> dict:
     """Each name through arXiv, OpenAlex and Zenodo, the star through ADS's object search, and ExoFOP's target page.
     Each search is {status, hits, total, error}, and an answered ADS search also {query, resolved, note}; `done` holds
-    searches an earlier run completed, kept as they are. `simbad` is the star's simbad_record: with it, ADS's object
-    service failing to resolve a star SIMBAD knows is told apart from a star SIMBAD lacks."""
+    searches an earlier run completed, kept as they are but for one: an ADS answer not resolved through SIMBAD is asked
+    again when SIMBAD now knows the star. `simbad` is the star's simbad_record: with it, ADS's object service failing
+    to resolve a star SIMBAD knows is told apart from a star SIMBAD lacks."""
     done = done or {}
 
     def search(

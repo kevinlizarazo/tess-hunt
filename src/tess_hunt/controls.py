@@ -212,6 +212,7 @@ def cmd_controls(args) -> int:
     wrong = [n for n in left_out if n not in controls or controls[n]["signal"]["kind"] != "control"]
     if wrong:
         raise SystemExit(f"--leave-out takes a control {vet_id} vetted, not {', '.join(wrong)}")
+    tric_errors = {run_id: _errors(p) for run_id, p in tric_runs.items()}
 
     run = start_run("benchmark-controls", [], args.production, sys.argv)
     run.record("vetting_run", vet_id)
@@ -274,7 +275,7 @@ def cmd_controls(args) -> int:
         "",
         f"- Vetting run: `{vet_id}`",
         "- TRICERATOPS runs, in the order given, with the signals each failed to judge:",
-        *(f"  - `{run_id}`: {_errors(p)}" for run_id, p in tric_runs.items()),
+        *(f"  - `{run_id}`: {errors}" for run_id, errors in tric_errors.items()),
         f"- Pixel-completeness run: `{pixel_id}`",
         "",
         f"## Pass rates over all {n_controls} controls",
