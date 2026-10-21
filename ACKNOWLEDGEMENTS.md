@@ -66,6 +66,12 @@ paper on that solution among those describing Gaia EDR3, the early instalment of
 - Lindegren, L., Klioner, S., Hernández, J., et al. 2021b, Gaia Early Data Release 3. The astrometric solution
   (A&A 649, A2; doi:10.1051/0004-6361/202039709)
 
+The TIC-duplicate measurement's tarball under `results/benchmarks/` holds Gaia DR2 source ids and parallaxes, which
+come through the TIC. For those, cite the Gaia DR2 release paper with the mission paper above:
+
+- Gaia Collaboration, Brown, A. G. A., et al. 2018, Gaia Data Release 2. Summary of the contents and survey
+  properties (A&A 616, A1)
+
 Gaia data are distributed under the CC BY-NC 3.0 IGO license (https://www.cosmos.esa.int/web/gaia-users/license),
 with credit to "ESA/Gaia/DPAC". The `ruwe` column in the triage tables under `results/triage/` is Gaia DR3 data and
 stays under those terms, not CC BY 4.0.
