@@ -217,4 +217,5 @@ of the repo; cutouts cached in `/tmp/t13-dup/lkcache`).
 The scripts read and write `/tmp/t13-dup/` by that absolute path, so a rerun unpacks the tarball's `t13-dup/` folder
 there; `/tmp/t13/heavy.sh` (section 3) is the tarball's `t13/heavy.sh`. The tarball leaves out `lkcache/` (TESScut
 cutouts, which `depths.py` and `rerun.py` fetch again), `rerun/TOI-763.02/178819686_gaia_background.csv` (the run's
-field-star file, which `rerun.py` copies from the run again) and the paper, which is cited, not republished.
+field-star file, which `rerun.py` copies from the run again) and the paper, which is cited, not republished. The
+tarball's sha256 is `2e26c3d72b5cadc86a48690fa2f04f123508930079196db616abeed6fa08153c`.

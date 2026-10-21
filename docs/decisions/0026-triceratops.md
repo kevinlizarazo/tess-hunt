@@ -11,10 +11,11 @@
 
 A dip in a TESS light curve can come from the target or from another star whose light falls in the same 21" pixels.
 TRICERATOPS (Giacalone et al. 2021, AJ 161, 24; version 1.1.0, locked in `uv.lock`) weighs the transit as on the
-target, on an unresolved companion, on a background star, and on each TIC star within 10 pixels, and returns the
-false-positive probability (FPP) and the part of it from nearby stars (NFPP). The spec runs it on every signal no check
-has failed, ten times, averaged (`docs/design.md`; M3 design, section 4.5). This is the step that decides "not another
-star's light", so a number that means nothing has to come out inconclusive, never pass.
+target, on an unresolved companion, on a background star, and on each TIC star within 10 pixels (less the TIC's
+DUPLICATE and ARTIFACT rows, decision 0036), and returns the false-positive probability (FPP) and the part of it from
+nearby stars (NFPP). The spec runs it on every signal no check has failed, ten times, averaged (`docs/design.md`; M3
+design, section 4.5). This is the step that decides "not another star's light", so a number that means nothing has to
+come out inconclusive, never pass.
 
 Reading TRICERATOPS 1.1.0's source turned up several ways it returns such a number without an error: it skips a
 sector whose TESScut cutout fails and carries on with its stars' pixel positions out of step with the sectors; without

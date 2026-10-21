@@ -67,12 +67,16 @@ measurement" below):
    five promoted second-list rows (241522065-1, 277774870-1, 370977908-1, 423100454-1 and 438857197-1): their run,
    `20261021T025929Z-vetting-triceratops-61b5944-55f4`, was stopped unfinished for this fix after judging only
    277774870-1. 146282666-1 and 164767175-1 keep `20261020T181658Z-vetting-triceratops-61b5944-1bbf`: their star lists
-   hold no such row, so the fix computes exactly what that run computed. The dossiers and the affected reviews follow.
-   The controller records the new run ids in a later commit.
+   hold no such row, so the fix computes exactly what that run computed. A `triceratops.json` from a run made before
+   this record (that run, and the controls' `20261017T162256Z-vetting-triceratops-62882b5-d0f8` and
+   `20261018T012940Z-vetting-triceratops-62882b5-e3d7`) has no `dropped_stars` and no `disposition` in its `stars`.
+   The dossiers and the affected reviews follow. The controller records the new run ids in a later commit.
 3. **What must reproduce:** every outcome. NFPP and FPP move as the measurement's section 3 predicts: 399023421-1's
-   mean NFPP to about 0.0163 and 296819076-1's to about 0.0545, within Monte Carlo noise. The fix moves 103312990-1
-   and 44926986-1 only at float level, since their flagged rows are not weighed (section 2), so their numbers move no
-   more than a rerun without the fix moves them (item 5).
+   mean NFPP to about 0.0163 and 296819076-1's to about 0.0545, within Monte Carlo noise. 103312990-1's and
+   44926986-1's flagged rows are not weighed (section 2), so the fix reaches them only through the flux those rows
+   add to the apertures. For 44926986-1 that moves other stars' `tdepth` by 2.9e-6 relative at most (section 1b);
+   103312990-1's rows are 118" and 139" out, and their effect was not measured. Both are expected below the run-to-run
+   noise in item 5, so these two signals' numbers should move no more than a rerun without the fix moves them.
 4. **The controls are not rerun** (Ruling BH, put to the maintainer, who can ask for it). The controls' TRICERATOPS
    runs (`20261017T162256Z-vetting-triceratops-62882b5-d0f8` and `20261018T012940Z-vetting-triceratops-62882b5-e3d7`)
    and the published controls run `20261020T082333Z-benchmark-controls-16418d2-f45a` stand, with this record as their

@@ -1,11 +1,12 @@
 # Results
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
-this directory). The exceptions are Gaia DR3 data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
+this directory). The exceptions are Gaia data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
 tables, the RUWE values the published controls quote, the Gaia DR3 values the pixel check's diagnosis, the
-neighbour-epoch measurements and the TIC-duplicate measurement quote or hold (all under [Runs](#runs)), and the Gaia
-DR3 parts of the vetting records, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO terms
-(https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
+neighbour-epoch measurements and the TIC-duplicate measurement quote or hold, the TIC-carried Gaia DR2 values the
+TIC-duplicate measurement holds (all under [Runs](#runs)), and the Gaia DR3 parts of the vetting records, listed under
+[Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license),
+not CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -97,7 +98,8 @@ and gates nothing; [decision 0036](../docs/decisions/0036-triceratops-tic-duplic
 their outputs are in `triceratops-tic-duplicates-2026-10-21-scripts.tar.gz` beside it, byte for byte (`t13-dup/`,
 with the single-seed rerun's memory-cap wrapper in `t13/`), without the TESScut cutouts, the field-star file or the TIC
 paper. The RUWE values in the tarball's `signals.csv` and the Gaia DR3 source ids in its `hosts_check.txt` are Gaia DR3
-data (above).
+data, and the Gaia DR2 values the TIC carries are Gaia DR2 data: the `GAIA` source ids in `tic.csv`, `flagged.csv` and
+`reach.txt`, and `tic.csv`'s `plx`. Both stay under ESA's terms (above).
 
 ## Triage
 
@@ -177,7 +179,8 @@ planet.
 - `triceratops.json`, `probs.csv`: TRICERATOPS ([decision 0026](../docs/decisions/0026-triceratops.md)): the outcome,
   each run's FPP and NFPP, the stars it weighed and the possible hosts matched to them, and the TIC's DUPLICATE and
   ARTIFACT rows it left out (`dropped_stars`, [decision 0036](../docs/decisions/0036-triceratops-tic-duplicates.md));
-  `probs.csv` is the last run's scenario table. A signal a check killed has none.
+  `probs.csv` is the last run's scenario table. A record from a run made before decision 0036 has no `dropped_stars`
+  and no `disposition` in its `stars`. A signal a check killed has none.
 - `literature.json`: the literature search by name, NASA ADS and ExoFOP
   ([decision 0027](../docs/decisions/0027-literature-by-name.md)).
 - `pixels.json`, `pixels.png`: a second-list row's pixel check, which triage runs only on novelty passes, run on it as

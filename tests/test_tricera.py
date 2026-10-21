@@ -383,7 +383,9 @@ def test_a_target_the_tic_flags_is_inconclusive(monkeypatch, flag):
     assert f"the TIC flags the target {flag}" in result.reason
     assert made[0].depths == [] and made[0].calls == []
     ev = result.to_dict()["evidence"]
-    assert (ev["stars"][0]["ID"], ev["stars"][0]["disposition"]) == (str(TIC), flag)
+    # The star list recorded at the stop holds no flagged neighbour either: its host match must not reach them.
+    assert [s["ID"] for s in ev["stars"]] == [str(TIC), "13", "14", "999"]
+    assert ev["stars"][0]["disposition"] == flag
     assert [s["ID"] for s in ev["dropped_stars"]] == ["11", "12"]
 
 
