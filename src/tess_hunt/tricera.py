@@ -26,7 +26,10 @@ WINDOW_DURATIONS = 2.0
 FILTERS = ("TESS", "Vis", "J", "H", "K")
 SPOC, TESS_SPOC = "SPOC", "TESS-SPOC"
 TWO_MINUTES_S = 120.0
-STAR_COLUMNS = ("ID", "ra", "dec", "Tmag", "tdepth")
+STAR_COLUMNS = ("ID", "ra", "dec", "Tmag", "disposition", "tdepth")
+# The TIC's flags for a row that is not a star of its own: DUPLICATE, a second entry for a star already in the TIC, and
+# ARTIFACT, a spurious 2MASS source (Paegert et al. 2021, arXiv:2108.04778, section 3.1).
+DROPPED_DISPOSITIONS = ("DUPLICATE", "ARTIFACT")
 # TIC v8 gives each star's position at epoch J2000.0, moved there from its source catalogue's epoch (Stassun et al.
 # 2019, AJ 158, 138); TRICERATOPS's star list takes the TIC's ra and dec.
 TIC_EPOCH = 2000.0
@@ -48,6 +51,7 @@ RUN_FIELDS = (
     "flux_err_0",
     "field_population",
     "field_population_file",
+    "dropped_stars",
     "apertures",
     "stars",
     "fpp",
@@ -372,6 +376,32 @@ def new_target(tic: int, sectors: list[int], search_radius: int):
     return target(ID=tic, sectors=np.array(sectors), search_radius=search_radius)
 
 
+def _drop_flagged(target) -> list[dict]:
+    """Drops the rows after the target that the TIC flags DUPLICATE or ARTIFACT from TRICERATOPS's star list and its
+    pixel positions, and returns them (ID, disposition, duplicate_id). The TIC flags them so that they are not taken
+    into account (Paegert et al. 2021, arXiv:2108.04778), but TRICERATOPS selects the column and never reads it: it
+    weighs a duplicate as a second star and an artifact as a star that does not exist (decision 0036). A SPLIT row and
+    a row with only a duplicate_id are real stars and stay. The target's own row stays too; `_target_problems` stops
+    on a flagged one."""
+    stars = target.stars
+    if "disposition" not in stars:
+        return []
+    drop = stars["disposition"].isin(DROPPED_DISPOSITIONS).to_numpy() & (np.arange(len(stars)) > 0)
+    dropped = [
+        {
+            "ID": str(row["ID"]),
+            "disposition": row["disposition"],
+            "duplicate_id": None if pd.isna(row.get("duplicate_id")) else str(row["duplicate_id"]),
+        }
+        for row in stars[drop].to_dict("records")
+    ]
+    # One mask for both. calc_depths reads each star's pixel position by row, so a row dropped from the list alone, as
+    # TRICERATOPS's own remove_star drops it, would give every star after it its neighbour's position.
+    target.stars = stars[~drop].reset_index(drop=True)
+    target.pix_coords = [p[~drop] for p in target.pix_coords]
+    return dropped
+
+
 def _stars(target) -> pd.DataFrame:
     return target.stars[[c for c in STAR_COLUMNS if c in target.stars]].reset_index(drop=True)
 
@@ -385,6 +415,9 @@ def _target_problems(target, tic: int, sectors: list[int]) -> list[str]:
     first = target.stars.iloc[0]
     if str(first["ID"]) != str(tic):
         problems.append(f"TRICERATOPS's first star is TIC {first['ID']}, not the target")
+    flag = first.get("disposition")
+    if flag in DROPPED_DISPOSITIONS:
+        problems.append(f"the TIC flags the target {flag}, a row it says not to use")
     lacking = [p for p in TARGET_PARAMETERS if not np.isfinite(_number(first.get(p)))]
     if lacking:
         problems.append(f"the TIC gives the target no {', '.join(lacking)}")
@@ -448,6 +481,7 @@ def run(
     out["field_population"] = isinstance(target.trilegal_fname, str)
     if out["field_population"]:
         out["field_population_file"] = Path(target.trilegal_fname).name
+    out["dropped_stars"] = _drop_flagged(target)
     out["stars"] = _stars(target)
     problems = _target_problems(target, tic, sectors)
     found, out["apertures"] = apertures(tic, sectors, lc.sources, target)

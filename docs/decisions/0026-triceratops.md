@@ -112,8 +112,9 @@ sha256, the layout, and how many rows the envelope lowered are recorded.
 - an inconclusive neighbour table (decision 0025);
 - no cadence group with `min_transits` transits;
 - no aperture for a group sector;
-- TESScut giving fewer cutouts than sectors, a first star that is not the target, or a target without mass, radius,
-  Teff or parallax;
+- TESScut giving fewer cutouts than sectors, a first star that is not the target, a target the TIC flags DUPLICATE or
+  ARTIFACT ([decision 0036](0036-triceratops-tic-duplicates.md), which drops such rows after the target), or a target
+  without mass, radius, Teff or parallax;
 - calc_depths leaving the target no light in the apertures;
 - no usable depth (not a fraction between 0 and 1);
 - no field-star population (`target.trilegal_fname` not a path): TRICERATOPS skipped DTP, DEB, DEBx2P, BTP, BEB and

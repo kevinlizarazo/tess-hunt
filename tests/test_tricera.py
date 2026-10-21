@@ -62,8 +62,27 @@ def hosts(*seps) -> pd.DataFrame:
     )
 
 
+# As the TIC lists a split star after the target: TIC 11, a second entry for TIC 13 at its position; TIC 12, a spurious
+# 2MASS source; TIC 13, the entry the TIC keeps; and TIC 14, the fainter Gaia star split from it, which names it in
+# duplicate_id (Paegert et al. 2021, section 3.1).
+SPLIT_FIELD = (
+    {
+        "ID": "11",
+        "Tmag": 13.0,
+        "ra": east(20.0),
+        "dec": DEC,
+        "disposition": "DUPLICATE",
+        "duplicate_id": "13",
+    },
+    {"ID": "12", "Tmag": 14.0, "ra": east(5.0), "dec": DEC, "disposition": "ARTIFACT"},
+    {"ID": "13", "Tmag": 13.0, "ra": east(20.0), "dec": DEC, "disposition": "SPLIT"},
+    {"ID": "14", "Tmag": 15.0, "ra": east(25.0), "dec": DEC, "duplicate_id": "13"},
+)
+
+
 class FakeTarget:
-    """TRICERATOPS's target as far as tricera uses it: the target and a TIC star 12.5" east of it."""
+    """TRICERATOPS's target as far as tricera uses it: the target and a TIC star 12.5" east of it, with `between`'s
+    rows listed between them. Its star list has a `disposition` column only when `between` or `flag` gives one."""
 
     def __init__(
         self,
@@ -82,6 +101,8 @@ class FakeTarget:
         raises=None,
         runs_before_raise=0,
         degenerate=False,
+        between=(),
+        flag=None,
     ):
         self.ID, self.sectors, self.search_radius = tic, np.asarray(sectors), search_radius
         self.stars = pd.DataFrame(
@@ -96,11 +117,24 @@ class FakeTarget:
                 "plx": [10.0, 2.0],
             }
         )
+        if between:
+            self.stars = pd.concat(
+                [self.stars.iloc[:1], pd.DataFrame(list(between)), self.stars.iloc[1:]],
+                ignore_index=True,
+            )
+        if flag:
+            self.stars.loc[0, "disposition"] = flag
         for name in lacking:
             self.stars.loc[0, name] = np.nan
         self.trilegal_fname = f"{tic}_gaia_background.csv" if field else None
         n = len(self.sectors) if cutouts is None else cutouts
-        self.pix_coords = [np.array([[100.0, 200.0], [100.6, 200.0]]) for _ in range(n)]
+        # Each star in a pixel of its own, moved a little from sector to sector.
+        x = 100.0 + 0.6 * np.arange(len(self.stars))
+        self.pix_coords = [np.column_stack([x, np.full(len(x), 200.0 + 0.1 * k)]) for k in range(n)]
+        self.pixels = {
+            star: [p[i].tolist() for p in self.pix_coords]
+            for i, star in enumerate(self.stars["ID"])
+        }
         self.spoc, self.dark, self.outside = spoc, dark, outside
         self.fpp, self.nfpp, self.raises, self.degenerate = fpp, nfpp, raises, degenerate
         self.runs_before_raise = runs_before_raise
@@ -112,8 +146,18 @@ class FakeTarget:
 
     def calc_depths(self, tdepth, all_ap_pixels=None, dilution_corrected=True):
         self.depths.append((tdepth, all_ap_pixels, dilution_corrected))
-        self.stars["fluxratio"] = [0.0, 1.0] if self.dark else [0.9, 0.1]
-        self.stars["tdepth"] = [0.0, tdepth] if self.dark else [tdepth, 9.0 * tdepth]
+        # Each star's pixel position in each sector as calc_depths reads it, by row (triceratops.py:777-778).
+        self.seen = {
+            star: [p[i].tolist() for p in self.pix_coords]
+            for i, star in enumerate(self.stars["ID"])
+        }
+        others = len(self.stars) - 1
+        self.stars["fluxratio"] = (
+            [0.0] + [1.0 / others] * others if self.dark else [0.9] + [0.1 / others] * others
+        )
+        self.stars["tdepth"] = (
+            [0.0] + [tdepth] * others if self.dark else [tdepth] + [9.0 * tdepth] * others
+        )
         if self.outside:
             # Too little of its light in the apertures to make the dip.
             self.stars.loc[1, "tdepth"] = 0.0
@@ -253,6 +297,7 @@ def test_a_run_that_raised_keeps_what_it_reached(monkeypatch):
     assert ev["exposure_s"] == pytest.approx(120.0) and ev["sectors"] == [1, 2, 3]
     assert ev["groups"] and ev["points"] > 0 and ev["flux_err_0"] > 0
     assert ev["stars"] is ev["apertures"] is ev["missing_hosts"] is ev["hosts_tdepth_zero"] is None
+    assert ev["dropped_stars"] is None
     assert ev["fpp"] == [] and ev["raised"] == "ConnectionError: TESScut did not answer"
 
     # On the second seed's calc_probs: the first run, the star list and the host match are kept.
@@ -264,7 +309,7 @@ def test_a_run_that_raised_keeps_what_it_reached(monkeypatch):
     assert len(made[0].calls) == 2
     assert len(ev["fpp"]) == len(ev["nfpp"]) == len(ev["degenerate"]) == 1
     assert ev["fpp_mean"] == ev["fpp"][0]
-    assert [s["ID"] for s in ev["stars"]] == [str(TIC), "999"]
+    assert [s["ID"] for s in ev["stars"]] == [str(TIC), "999"] and ev["dropped_stars"] == []
     assert set(ev["apertures"]) == {1, 2, 3}
     assert ev["missing_hosts"] == [] and ev["hosts"][0]["tic"] == "999"
     assert ev["hosts_tdepth_zero"] == []
@@ -299,6 +344,56 @@ def test_a_target_triceratops_cannot_weigh_is_inconclusive(monkeypatch, behaviou
     assert result.evidence["missing_hosts"] == []
     zero = result.evidence["hosts_tdepth_zero"]
     assert zero is None if made[0].depths == [] else zero == []
+
+
+def test_triceratops_weighs_no_tic_duplicate_or_artifact(monkeypatch):
+    """The TIC flags a second entry for a star already in it DUPLICATE and a spurious 2MASS source ARTIFACT, so that
+    neither is taken into account; TRICERATOPS selects the column and never reads it (decision 0036). Both go from its
+    star list and its pixel positions before calc_depths. A SPLIT star and the star split from it stay."""
+    made = install(monkeypatch, between=SPLIT_FIELD)
+    # Gaia DR3 8 sits on TIC 13, whose duplicate TIC 11 comes first in the star list.
+    result = check(possible=hosts(12.5, 20.0))
+    assert result.outcome is Outcome.PASS, result.reason
+    [target] = made
+    # Every star calc_depths weighs keeps its own pixel in every sector. With TRICERATOPS's remove_star, which leaves
+    # the pixel positions alone, each star after a dropped row would take its neighbour's.
+    assert list(target.seen) == ["1", "13", "14", "999"]
+    assert target.seen == {star: target.pixels[star] for star in target.seen}
+    ev = result.to_dict()["evidence"]
+    assert ev["dropped_stars"] == [
+        {"ID": "11", "disposition": "DUPLICATE", "duplicate_id": "13"},
+        {"ID": "12", "disposition": "ARTIFACT", "duplicate_id": None},
+    ]
+    assert [(s["ID"], s["disposition"]) for s in ev["stars"]] == [
+        ("1", None),
+        ("13", "SPLIT"),
+        ("14", None),
+        ("999", None),
+    ]
+    # The host is matched to the entry the TIC keeps.
+    assert [h["tic"] for h in ev["hosts"]] == ["999", "13"] and ev["missing_hosts"] == []
+
+
+@pytest.mark.parametrize("flag", ["DUPLICATE", "ARTIFACT"])
+def test_a_target_the_tic_flags_is_inconclusive(monkeypatch, flag):
+    """Only rows after the target are dropped: a flagged target stops the run before calc_depths."""
+    made = install(monkeypatch, between=SPLIT_FIELD, flag=flag)
+    result = check()
+    assert result.outcome is Outcome.INCONCLUSIVE
+    assert f"the TIC flags the target {flag}" in result.reason
+    assert made[0].depths == [] and made[0].calls == []
+    ev = result.to_dict()["evidence"]
+    assert (ev["stars"][0]["ID"], ev["stars"][0]["disposition"]) == (str(TIC), flag)
+    assert [s["ID"] for s in ev["dropped_stars"]] == ["11", "12"]
+
+
+def test_a_star_list_without_dispositions_runs_as_before(monkeypatch):
+    made = install(monkeypatch)
+    result = check()
+    assert result.outcome is Outcome.PASS, result.reason
+    assert result.evidence["dropped_stars"] == []
+    assert list(made[0].seen) == [str(TIC), "999"]
+    assert all("disposition" not in s for s in result.evidence["stars"])
 
 
 def test_missing_aperture_is_inconclusive(monkeypatch):
