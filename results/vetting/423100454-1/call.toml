@@ -1,0 +1,8 @@
+signal = "423100454-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Every light-curve check passes, the held-out seasons included, and the transit sits on the target in every sector's difference image; the pixel check's fail measured a variable star two arcminutes away (decision 0033). It can't pass because TRICERATOPS can't place the dip on the target: almost all of its NFPP is one dwarf star half an arcminute away, which the pixels argue against but TRICERATOPS can't take in."
+rests_on = ["F1", "triceratops", "pixels"]
+criteria = ["vet-v3"]
+deciding_evidence = "Seeing-limited ground-based photometry on a predicted transit showing no eclipse on TIC 423100450 or TIC 423100455, or the dip on the target (F1). A pass would also need two recorded decisions, made on controls for every signal: how stars cleared by such photometry leave TRICERATOPS's NFPP, and how a pixel fail that measures a variable neighbour is treated (0033, item 3)."
+promotion = "The TCE matched is ExoMiner vetting_catalog_FFI 423100454-1-S39; SPOC's own S12 TCE also exists, though the snapshot's TCE table lacks it (F5). Promoted by the maintainer in decision 0033 as an exception to design 4.10's pixel kill, because the pixel fail measured a variable star two arcminutes away."
