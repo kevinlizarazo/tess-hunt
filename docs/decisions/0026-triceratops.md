@@ -5,7 +5,7 @@
   is Accepted as read from the maintainer's reply of 2026-10-19 at the controls stop (M3 plan, Task 11 Step 7), which
   came after the controls' results were seen; the exchange is quoted under Phase binning. Amended 2026-10-20 with the
   controls. Rulings N (RUWE joined for a star whose targets row lacks it) and S (possible hosts matched at the TIC's
-  epoch), which the M3 build's controller made after that approval, are Proposed until the maintainer reviews them
+  epoch), which the M3 build's controller made after that approval, were accepted by the maintainer on 2026-10-22
 
 ## Context
 
