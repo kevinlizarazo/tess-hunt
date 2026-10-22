@@ -135,8 +135,12 @@ not a rule set before them.
   [`pixels.csv`](../../results/benchmarks/20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33/pixels.csv): the
   pixel check on the 20 known planets and its four fails.
 - The second list's table, `second-list.csv` and `second-list.md` of run
-  `20261020T012658Z-vetting-second-list-62882b5-3fca`, not yet under `results/`: each row's checks, pixel check, SPOC
-  TCE and ExoMiner row. Each host's Tmag is in its `checks.json` in vetting run
+  `20261020T012658Z-vetting-second-list-62882b5-3fca`: each row's checks, pixel check, SPOC TCE and ExoMiner row. Its
+  rerun on the fixed neighbour table (0034, item 2), `20261020T180844Z-vetting-second-list-61b5944-7096`, wrote a
+  byte-identical `second-list.csv` and is published:
+  [`second-list.md`](../../results/benchmarks/20261020T180844Z-vetting-second-list-61b5944-7096/second-list.md) and
+  [`second-list.csv`](../../results/benchmarks/20261020T180844Z-vetting-second-list-61b5944-7096/second-list.csv). Each
+  host's Tmag is in its `checks.json` in vetting run
   `20261020T010149Z-vetting-run-62882b5-c3ee`, not yet under `results/` either.
 - The triage run's
   [`known_to_spoc.csv`](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/known_to_spoc.csv): the 466 rows,

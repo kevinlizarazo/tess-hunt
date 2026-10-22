@@ -60,6 +60,12 @@ Published runs are never edited; a correction is a new run.
   and the rule that dropped it.
 - `vet`: every vetting check on one signal. `checks.json` holds each check's outcome and evidence, the per-sector
   red-noise factors and the transit-fit summary.
+- `vetting-second-list`: the second list, the light checks on the ten triage signals that matched only a SPOC TCE or
+  ExoMiner row and passed LEO-Vetter's flux tests with a normal RUWE
+  ([decision 0033](../docs/decisions/0033-second-list-decisions.md)). `second-list.csv` has one row per signal: each
+  vet-v3 check's outcome, the pixel check's outcome, reason and offsets, SPOC's DV statistics and ExoMiner's score for
+  the TCE it matched, and its upcoming sectors; `second-list.md` is the table. Each row's pixel files and the vetting
+  run's records stay in the run directories; a promoted row's are in its `vetting/` record.
 
 The loose files beside the run directories in `benchmarks/` were written by the scripts listed in
 [benchmarks/README.md](../benchmarks/README.md):
