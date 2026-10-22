@@ -1,0 +1,8 @@
+signal = "370977908-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Probably an eclipsing binary, not a planet, though the public data don't show it. A dip about as deep as the transit sits just before the half-orbit point in every orbit with data there, at the target's pixels, which vet-v3's half-orbit check can't see; if real, it is a binary's second eclipse. TRICERATOPS's only blocker is immaterial, and without it its NFPP would fail, though SPOC's difference-image centroid sits well away from every star that carries it."
+rests_on = ["F1", "F2", "triceratops", "holdout"]
+criteria = ["vet-v3"]
+deciding_evidence = "Seeing-limited ground-based photometry at predicted transit times and at the times of the near-half-orbit dip, showing whether either dip is on the target or on one of the neighbours that carry TRICERATOPS's NFPP (F1, F2). No TESS sector is scheduled, so the held-out check stays at one testable season."
+promotion = "The TCEs matched are SPOC's multi-sector TCE 00370977908-01 (s0001-s0039 and s0001-s0065) and ExoMiner's planet-candidate rows on it; it never became a TOI. Promoted by the maintainer in decision 0033 on the bar the nine shortlisted signals met in triage."

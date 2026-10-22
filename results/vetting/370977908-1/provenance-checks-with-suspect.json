@@ -1,0 +1,540 @@
+{
+  "argv": [
+    "tess-hunt",
+    "vetting",
+    "run",
+    "--signals",
+    "$TESS_HUNT_DATA/logs/m3-signals.csv",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-b0d4/targets.parquet",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-17T142814Z",
+    "--triage-run",
+    "$TESS_HUNT_DATA/runs/20261015T155441Z-triage-7b12e25-3f57",
+    "--include-suspect",
+    "--workers",
+    "4",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    },
+    {
+      "file": "criteria/vet-v3.toml",
+      "sha256": "9b01a9067e0728ddc2eaded3e7cb2b4de98e4fb15c3353a5413706979ec1aec4"
+    }
+  ],
+  "dr3_join": {
+    "error": null,
+    "tics": [],
+    "worked": null
+  },
+  "ended_at": "2026-10-20T18:08:36.766306+00:00",
+  "evidence_only": true,
+  "git": {
+    "commit": "61b59443ed7bc90c447d3b313e9db16ae301fb50",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "catalog_manifest": {
+      "file": "manifest.json",
+      "sha256": "f722fdd58328b01eabfc8e4fbc1fc576a3de934f0b97e836087086a577a6ba5d"
+    },
+    "known": {
+      "file": "known.parquet",
+      "sha256": "8a87504a96e483e921aeb8fba567538e77c9b3acb66944d7121fc284c40495ed"
+    },
+    "light_curve_103312990": {
+      "file": "103312990.npz",
+      "sha256": "955172c695e312119374aac16c67cf7a0649c1ce087b527b5b8de21c0d058398"
+    },
+    "light_curve_146282666": {
+      "file": "146282666.npz",
+      "sha256": "dcd23b2ab8cbae1d246cc4333db451eaf0c121152227d0dc35d4eba76ee9a76d"
+    },
+    "light_curve_164767175": {
+      "file": "164767175.npz",
+      "sha256": "4cab500f2d355a65eff295a77bc0d57fc56327a193689c78893dc51e7867bd80"
+    },
+    "light_curve_173369850": {
+      "file": "173369850.npz",
+      "sha256": "3dd00fd2bdf904a531bd23011354651a206ce372e956c134c27975209f5d3366"
+    },
+    "light_curve_241522065": {
+      "file": "241522065.npz",
+      "sha256": "010beb2551a15c870c0dca8032e6fb7f951fbd6c602caae706d49977e4513362"
+    },
+    "light_curve_277774870": {
+      "file": "277774870.npz",
+      "sha256": "18eae3af9a11df9e759f623261b08eceb7e842be72f6080be6f34da4c0bbc7d3"
+    },
+    "light_curve_295140687": {
+      "file": "295140687.npz",
+      "sha256": "2f953bb274eb6915c00f9a10e3d2b8cc7c0de4e82d194e1f0777ff51680dbaf7"
+    },
+    "light_curve_296819076": {
+      "file": "296819076.npz",
+      "sha256": "4bb3d64ea85517cc22bab6b7d11fc62e6f81ed3029f0a191b6c09974a005bb6b"
+    },
+    "light_curve_322826591": {
+      "file": "322826591.npz",
+      "sha256": "a0ac516816be668d7243ce89fdc59abda918cfe78efc18b1198b6c1cfe8e375f"
+    },
+    "light_curve_337885456": {
+      "file": "337885456.npz",
+      "sha256": "015591ec41afe6554c9e321664c540e7dc81df6bd2dbf86cfb48bf7617aea410"
+    },
+    "light_curve_370977908": {
+      "file": "370977908.npz",
+      "sha256": "cf6cc3e4bb701b3e46420aff791575c8ac43b6b539be73a9708874a74f3be30d"
+    },
+    "light_curve_399023421": {
+      "file": "399023421.npz",
+      "sha256": "45aea53680b1f0d294ac53898ad27e692f320e14e61e7e29470c5cea839c98af"
+    },
+    "light_curve_410399327": {
+      "file": "410399327.npz",
+      "sha256": "021bc063bcaef80b41b9363fe85035c897207ea78fa91f5e5cb2dbbbae874bd4"
+    },
+    "light_curve_423100454": {
+      "file": "423100454.npz",
+      "sha256": "7fb744d3030a0096b401f11b63fe27a5413acc1ed435a1288e761e5d50bff03f"
+    },
+    "light_curve_438857197": {
+      "file": "438857197.npz",
+      "sha256": "7d9651a8982fbed7c8bcd1ccaa8e7594eaaedfbee106d87a727649c827889e18"
+    },
+    "light_curve_441010857": {
+      "file": "441010857.npz",
+      "sha256": "61ea9d48c3c3d9fe3beab7aeed58aa22afa626b74a591bc214e5adb6318cf8d1"
+    },
+    "light_curve_44926986": {
+      "file": "44926986.npz",
+      "sha256": "ca0ddbaa50576cfdc6de9f8343f2c2a13d8b0c1e131767d5f911b381816294f3"
+    },
+    "light_curve_458290782": {
+      "file": "458290782.npz",
+      "sha256": "e0a619b5d4d2735037d7e1f02c2f050e2f5cc2d5408aca31b28257693df13b28"
+    },
+    "light_curve_48010903": {
+      "file": "48010903.npz",
+      "sha256": "4dbabf0936c8a87834261247ba22a2739f4a4079180db6abd77d10d0c228bba1"
+    },
+    "search_signals": {
+      "file": "signals.parquet",
+      "sha256": "3b6cfeee10a63b47ff24d2b68c474bdfc561e39fc754acd62b9c6f6f95ebae3a"
+    },
+    "signals": {
+      "file": "m3-signals.csv",
+      "sha256": "c7b7abe91623d3d6daf0d03883bee63d7427729c302c23e6b060b6c54af2c595"
+    },
+    "targets_1": {
+      "file": "targets.parquet",
+      "sha256": "04029fd9f9172976d43bf9669938072560a92c900bb1d2f29d06fed27f333dbb"
+    },
+    "tess_sectors": {
+      "file": "tess_sectors.csv",
+      "sha256": "2055f8a42c38bea916a78a58af778126b8d844386fe2217fa466589a5ae88092"
+    },
+    "triage_evidence_103312990-1": {
+      "file": "103312990-1.json",
+      "sha256": "f8c6dd33389b52e2a4842f398d79398b5dc24ee42bc37af49f60aa42ad2f2860"
+    },
+    "triage_evidence_146282666-1": {
+      "file": "146282666-1.json",
+      "sha256": "83b2d0e87e76d8c42e3de5691a1781669edf541a39f1f2a52676402caec55b65"
+    },
+    "triage_evidence_164767175-1": {
+      "file": "164767175-1.json",
+      "sha256": "fa492acc7d3edf897394a7de277a9aebc2684283a32f0e5ae0006dfdf60ed87e"
+    },
+    "triage_evidence_173369850-1": {
+      "file": "173369850-1.json",
+      "sha256": "b01069d676917eef2ee9f42ce47640cf235ae68d87d17ab2b63ba1375134860d"
+    },
+    "triage_evidence_241522065-1": {
+      "file": "241522065-1.json",
+      "sha256": "9c51639ceae1952bb189be064dd88fc4cabd0bedf00b7d906f5805d64b835895"
+    },
+    "triage_evidence_277774870-1": {
+      "file": "277774870-1.json",
+      "sha256": "28c8ea6999802b57dac46ac999592ec3a71a0749823fca44174911c3230f5309"
+    },
+    "triage_evidence_295140687-1": {
+      "file": "295140687-1.json",
+      "sha256": "c77ea789bc249477b75d8696f0dbbcf6b8b5761fc18a2314e0b9cf7c28d594e6"
+    },
+    "triage_evidence_296819076-1": {
+      "file": "296819076-1.json",
+      "sha256": "f27256624bcaa5675fe3548795540df896b1a260fad3ae2ec61f11db2bf5af7e"
+    },
+    "triage_evidence_322826591-1": {
+      "file": "322826591-1.json",
+      "sha256": "90b594a96dd55b311b97a43af5fc0fd8814dc1bd67fbc9d12d49d3cdbe65d5a4"
+    },
+    "triage_evidence_337885456-1": {
+      "file": "337885456-1.json",
+      "sha256": "2dfb150f17cae0ec602365ed2044a0155d9be60166459a6554a9f0e98eb0c9f7"
+    },
+    "triage_evidence_370977908-1": {
+      "file": "370977908-1.json",
+      "sha256": "70c572b1f411cbfd8deab9d7bc89a2a27d4811a48b08093ef6b7294a7fa80727"
+    },
+    "triage_evidence_399023421-1": {
+      "file": "399023421-1.json",
+      "sha256": "6f2cf5584af27f134efc363729a340d4519f74f4ae9b55514c52d3257ae5cc1d"
+    },
+    "triage_evidence_410399327-1": {
+      "file": "410399327-1.json",
+      "sha256": "e6239fea570ffca4b45cd62e43fb15f5b341bbee41be9161c8e293de7d84d2ab"
+    },
+    "triage_evidence_423100454-1": {
+      "file": "423100454-1.json",
+      "sha256": "b14b51b68131702e61c215f1a33f4ae8cec3f06540886f81d2cf8765c61cacaf"
+    },
+    "triage_evidence_438857197-1": {
+      "file": "438857197-1.json",
+      "sha256": "8cf98bdda6c50c0e58c6b91c7749b5425d7ee798e9e4944a3f35e562bb97f921"
+    },
+    "triage_evidence_441010857-1": {
+      "file": "441010857-1.json",
+      "sha256": "33979ebc83e29ea5d1ce756918d359282eed95daebd84737aa1f1f435ed8076b"
+    },
+    "triage_evidence_44926986-1": {
+      "file": "44926986-1.json",
+      "sha256": "c6181c7aa43f836af09fec05b60aba8461f17de85800d9a3790e856bae8037ba"
+    },
+    "triage_evidence_458290782-1": {
+      "file": "458290782-1.json",
+      "sha256": "6666d60a65a219eadb227dffa82dee42676416a960439fbc77e6ab236322f30d"
+    },
+    "triage_evidence_48010903-1": {
+      "file": "48010903-1.json",
+      "sha256": "1fe36d5e399aa4f047cc1b6549f47ef80f50bfe8116caa5a0c73f790c6460e83"
+    },
+    "triage_provenance": {
+      "file": "provenance.json",
+      "sha256": "de77b02419a456b77ded962705ff5b23c821fb40d57af1bb9d8887e8ea1da545"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261020T175536Z-vetting-run-61b5944-7f4e",
+  "search_run": "20261014T205855Z-search-fe29585-cdf2",
+  "stage": "vetting-run",
+  "started_at": "2026-10-20T17:55:36.467384+00:00",
+  "summary": {
+    "errors": {},
+    "evidence_only": true,
+    "signals": {
+      "103312990-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "pass",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "146282666-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "inconclusive",
+          "novelty": "pass",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "164767175-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "inconclusive",
+          "novelty": "pass",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "173369850-1": {
+        "kind": "second",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "fail",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "241522065-1": {
+        "kind": "second",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "277774870-1": {
+        "kind": "second",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "fail",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "295140687-1": {
+        "kind": "second",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "fail",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "296819076-1": {
+        "kind": "candidate",
+        "neighbours": "inconclusive",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "inconclusive",
+          "novelty": "pass",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "fail",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "322826591-1": {
+        "kind": "second",
+        "neighbours": "inconclusive",
+        "outcomes": {
+          "density": "fail",
+          "holdout": "fail",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "fail",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "337885456-1": {
+        "kind": "second",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "fail",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "fail",
+          "sector_depth": "fail",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "370977908-1": {
+        "kind": "second",
+        "neighbours": "inconclusive",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "inconclusive",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "399023421-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "pass",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "410399327-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "fail",
+          "novelty": "pass",
+          "odd_even": "fail",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "fail",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "423100454-1": {
+        "kind": "second",
+        "neighbours": "inconclusive",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "438857197-1": {
+        "kind": "second",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "441010857-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "fail",
+          "holdout": "inconclusive",
+          "novelty": "pass",
+          "odd_even": "inconclusive",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "44926986-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "fail",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "458290782-1": {
+        "kind": "second",
+        "neighbours": "inconclusive",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "fail",
+          "novelty": "inconclusive",
+          "odd_even": "pass",
+          "radius": "pass",
+          "secondary": "fail",
+          "sector_depth": "fail",
+          "shape": "pass",
+          "signal_present": "pass"
+        },
+        "windows": null
+      },
+      "48010903-1": {
+        "kind": "candidate",
+        "neighbours": "pass",
+        "outcomes": {
+          "density": "pass",
+          "holdout": "pass",
+          "novelty": "pass",
+          "odd_even": "pass",
+          "radius": "fail",
+          "secondary": "pass",
+          "sector_depth": "pass",
+          "shape": "fail",
+          "signal_present": "pass"
+        },
+        "windows": null
+      }
+    }
+  },
+  "triage_run": "20261015T155441Z-triage-7b12e25-3f57",
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a"
+}
