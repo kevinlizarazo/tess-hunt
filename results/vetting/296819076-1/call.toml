@@ -1,0 +1,7 @@
+signal = "296819076-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Nothing failed, but the public data can't place the dip on the target. A reanalysis of triage's difference images puts the transit's loss west of the target, on TIC 296819054 or two fainter stars beside it, but it rests on weak images outside the frozen pixel check and falls short of the project's binary controls, so it holds rather than kills. TRICERATOPS, the neighbour table and the held-out check are inconclusive."
+rests_on = ["F1", "triceratops", "neighbours", "holdout"]
+criteria = ["vet-v3"]
+deciding_evidence = "Seeing-limited ground-based photometry on a predicted transit that resolves the target from TIC 296819054 and the two fainter stars beside it, west of the target (F1). The dossier's next-look windows are too wide for that, so the ephemeris needs refitting first, from the sector 114 light curve or a QLP redelivery of sectors 99 to 102; the same data give the held-out check a testable season."
