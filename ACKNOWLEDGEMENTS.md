@@ -73,8 +73,9 @@ come through the TIC. For those, cite the Gaia DR2 release paper with the missio
   properties (A&A 616, A1)
 
 Gaia data are distributed under the CC BY-NC 3.0 IGO license (https://www.cosmos.esa.int/web/gaia-users/license),
-with credit to "ESA/Gaia/DPAC". The `ruwe` column in the triage tables under `results/triage/` is Gaia DR3 data and
-stays under those terms, not CC BY 4.0.
+with credit to "ESA/Gaia/DPAC". The `ruwe` column in the triage tables under `results/triage/`, the vetting records'
+neighbour tables and the other Gaia values [results/README.md](results/README.md) lists stay under those terms, not
+CC BY 4.0.
 
 ## ExoFOP
 
@@ -86,6 +87,14 @@ ExoFOP's data-use guidelines (https://exofop.ipac.caltech.edu/tess/pcp.php) trea
 provider as that provider's property. Published data is cited to its article; unpublished data can be cited by the
 contributor name and the ExoFOP URL, e.g. (Author, from exofop.ipac.caltech.edu). Any TOI or CTOI row quoted in a
 dossier is credited to its ExoFOP contributor and the ExoFOP page, or to the published paper when one exists.
+
+M3's vetting reads more from the ExoFOP website (DOI: 10.26134/ExoFOP5). The literature search reads each vetted
+star's target page: its TOIs, CTOIs, comments, planet parameters and imaging rows, kept in each record's
+`literature.json`. TRICERATOPS reads the machine-readable contrast curves ExoFOP holds for TIC 164767175: Gemini
+'Alopeke speckle (2019-10-15), WIYN NESSI speckle (2019-01-21) and Palomar PHARO adaptive optics (2018-12-22), each
+named with its ExoFOP contributor in the imaging rows of `results/vetting/164767175-1/literature.json`, with its file
+and sha256 in `provenance-triceratops.json` beside it. Each curve is credited to its contributor and the ExoFOP page,
+or to the published paper when one exists.
 
 ## NASA Exoplanet Archive
 
@@ -111,6 +120,12 @@ This research has made use of the CDS cross-match service, Strasbourg Astronomic
 
 - Boch et al. 2012, ASPC, 461, 291, "The CDS Cross-Match Service"
 - Pineau et al. 2020, ASPC, 522, 125, "The CDS Cross-match Service: Key Figures, Internals and Future Plans"
+
+M3's literature search asks SIMBAD's TAP service for each vetted star's names. From the same page:
+
+This research has made use of the SIMBAD database, CDS, Strasbourg Astronomical Observatory, France.
+
+- Wenger et al. 2000, A&AS, 143, 9, "The SIMBAD astronomical database"
 
 VizieR's rules of usage (https://cds.unistra.fr/vizier-org/licences_vizier.html) ask that each catalogue's authors,
 producer and publisher be cited; the catalogues are cited below.
@@ -178,7 +193,8 @@ Each citation is the one the record's Zenodo or Dataverse page gives. Every Zeno
 
 ## Literature search
 
-Triage searches Zenodo, arXiv and OpenAlex by TIC for shortlisted signals.
+Triage searches Zenodo, arXiv and OpenAlex by TIC for shortlisted signals. M3's vetting searches them again by every
+name SIMBAD gives a vetted star, and searches NASA ADS by its object search.
 
 - arXiv's API page (https://info.arxiv.org/help/api/index.html) asks all API users: "Acknowledge arXiv data usage with
   this statement on your product":
@@ -188,6 +204,11 @@ Triage searches Zenodo, arXiv and OpenAlex by TIC for shortlisted signals.
 - OpenAlex's "Citing OpenAlex" page (https://help.openalex.org/how-to/citing-openalex/) asks for: Priem, J.,
   Piwowar, H., & Orr, R. (2022). OpenAlex: A fully-open index of scholarly works, authors, venues, institutions, and
   concepts. ArXiv. https://arxiv.org/abs/2205.01833
+- NASA ADS's terms page (https://adsabs.github.io/help/terms/, read 2026-10-22) asks those who acknowledge its
+  services to "use a phrase such as the following":
+
+  This research has made use of the Astrophysics Data System, funded by NASA under Cooperative Agreement
+  80NSSC25M7105.
 
 ## Software
 
@@ -197,6 +218,13 @@ lightkurve (Lightkurve Collaboration 2018), astropy (Astropy Collaboration 2013,
 LEO-Vetter (Kunimoto et al. 2025), transit-diffImage, tess-point (Burke et al. 2020), SpiceyPy (Annex et al. 2020)
 and the SPICE toolkit (Acton 1996; Acton et al. 2017).
 
+- TRICERATOPS 1.1.0 (MIT), which the vetting stage runs for the false-positive probabilities. Its README
+  (https://github.com/stevengiacalone/triceratops, as shipped with 1.1.0) asks users to "cite both the paper and the
+  code":
+  - Giacalone, S., Dressing, C. D., Jensen, E. L. N., et al. 2021, Vetting of 384 TESS Objects of Interest with
+    TRICERATOPS and Statistical Validation of 12 Planet Candidates, AJ 161, 24 (doi:10.3847/1538-3881/abc6af)
+  - Giacalone, S., & Dressing, C. D. 2020, triceratops: Candidate exoplanet rating tool, Astrophysics Source Code
+    Library, ascl:2002.004
 - LEO-Vetter (GPL-3.0). Its README (https://github.com/mkunimoto/LEO-Vetter) asks users to cite its paper:
   Kunimoto, M., Bryson, S., Jaffee, D., et al. (2025) The Astronomical Journal, 170, 280
 - transit-diffImage (https://github.com/stevepur/transit-diffImage, by Steve Bryson, GPL-3.0), pinned at commit

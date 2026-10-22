@@ -2,7 +2,9 @@
 
 Status: approved 2026-10-08.
 Amended for M2 from the M2 design of 2026-10-12 (kept outside the repository): sections 3, 4.1, 4.2, 5.2, 5.4, 5.6,
-6.1, 6.2, 7 and 8. Each changed rule links its decision record in [docs/decisions/](decisions/).
+6.1, 6.2, 7 and 8. Amended for M3 from the M3 design of 2026-10-16 (kept outside the repository) and M3's decisions:
+sections 4.1, 5.2, 5.4, 5.7, 5.8, 6, 6.2, 7 and 8. Each changed rule links its decision record in
+[docs/decisions/](decisions/).
 Repo: `kevinlizarazo/tess-hunt` (private, written to go public later).
 
 ## 1. Goal
@@ -137,8 +139,9 @@ from a run directory and writes its own.
 - A product whose error column is entirely non-finite gets errors from its flux scatter, flagged
   `errors_from_scatter` in the manifest ([0010](decisions/0010-fetch-route-and-qlp-timing.md)).
 - QLP S99-S104 (`v01`) carry wrong barycentric timestamps [L8]. They are used for detection and flagged
-  `timing_suspect`. Timing-sensitive work (M3's fits and held-out-season check, M4's predicted windows) excludes them
-  until MAST redelivers them or a correction is validated ([0010](decisions/0010-fetch-route-and-qlp-timing.md)).
+  `timing_suspect`. Every vet check and fit excludes them, and so M4's predicted windows, until MAST redelivers them or
+  a correction is validated ([0010](decisions/0010-fetch-route-and-qlp-timing.md),
+  [0022](decisions/0022-vet-without-timing-suspect-sectors.md)).
 - Keeps only time, flux, flux error, quality flags and per-sector metadata in one compressed file per star, then
   discards the FITS. eumemic moved about 130 GB but stored 12 GB for about 10,000 stars [L4].
 - The manifest records each source key and checksum, so any star can be re-fetched exactly.
@@ -194,8 +197,8 @@ from a run directory and writes its own.
   not shortlisted and goes to a "known to SPOC" table that the maintainer can promote by hand
   ([0013](decisions/0013-novelty-sources.md)).
 - **Literature:** Zenodo, arXiv and OpenAlex, searched by TIC without keys, for shortlisted signals only. Hits are
-  evidence for M3, not an outcome. ADS needs a token and is searched by hand in M3
-  ([0013](decisions/0013-novelty-sources.md)).
+  evidence, not an outcome ([0013](decisions/0013-novelty-sources.md)). M3's vet searches again by every name, with
+  NASA ADS ([0027](decisions/0027-literature-by-name.md)).
 - **LEO-Vetter 1.2.0:** its automated false-alarm and false-positive tests [T10] with the thresholds of the paper's
   text, which differ from 1.2.0's code defaults in two tests, each written out in `criteria/triage-v1.toml` [T49].
   Its input is the native-cadence light curve, re-detrended with the signal's transits held out of the trend and the
@@ -208,8 +211,21 @@ from a run directory and writes its own.
 - **Shortlist:** a novelty pass, a flux-level planet candidate and a pixel pass. Only explicit passes advance (section
   5.1).
 
-**vet** (per shortlisted signal)
-- **Fit:** batman plus emcee, with a stellar-density prior from TIC/Gaia.
+**vet** (per shortlisted signal, and per second-list row the maintainer promotes)
+- **Masks:** vet-v3 masks only the kinds of known object the search masked (TOI, CTOI and archive planets). Every
+  other catalogued row stays in the light curve, and the dossier lists each with the signal's transits it overlaps
+  ([0021](decisions/0021-vet-masks-search-kinds.md)).
+- **Timing-suspect sectors:** every check and both fits run without the sectors fetch flagged `timing_suspect`. An
+  evidence-only vet with them in is shown beside the vet and never used for the call
+  ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)).
+- **Product families:** depths are compared only within one family, crowding-corrected PDCSAP (SPOC 2-min and
+  TESS-SPOC) or QLP. Odd/even, sector depths and the held-out seasons' depth tension fail if any family fails, and pass
+  if one passes and none fails. `signal_present` and the secondary at phase 0.5 use every family, and the fits use
+  PDCSAP alone ([0023](decisions/0023-product-families.md)).
+- **Fits:** batman plus emcee, twice. The first, with a flat prior on the stellar density, is the one the shape,
+  density and radius checks read. The second takes the TIC density as a prior and gives Rp, b, a/R* and the ephemeris
+  for the dossier, TRICERATOPS and M4, with each transit in TESS's next sectors predicted from its samples
+  ([0024](decisions/0024-density-prior-fit-and-windows.md)).
 - **Light-curve checks:**
   - signal present: the combined in-transit depth over its red-noise error
     ([0017](decisions/0017-signal-present-check.md))
@@ -222,20 +238,48 @@ from a run directory and writes its own.
   - radius: the fitted Rp/R* times the TIC radius, failing above 22 Earth radii
     ([0018](decisions/0018-deep-eclipsing-binary-rule.md))
 - **Held-out-season prediction (Pavel's test):** fit on all seasons but one, predict the hidden season's transits,
-  and test only those windows. Repeat for each season.
-- **Criteria:** `criteria/vet-v2.toml`, built in M2 with one decision record per rule
-  ([0014](decisions/0014-vet-constants-in-criteria.md) to [0018](decisions/0018-deep-eclipsing-binary-rule.md)). M1's
-  vets stay under vet-v1.
-- **Pixels:** read from triage's evidence (above). M3 reviews the per-sector offsets.
-- **Neighbors:** Gaia DR3 stars within about 1', each with the depth it would need if it were the source.
-- **TRICERATOPS 1.1.0:** FPP and NFPP averaged over 10 runs [L4]. Thresholds from the TRICERATOPS paper [T48]:
-  - validated: FPP < 0.015 and NFPP < 10^-3
-  - likely planet: FPP < 0.5 and NFPP < 10^-3
-  - likely nearby false positive: NFPP > 10^-1
+  and test only those windows. Repeat for each season. A training season counts only when its data hold
+  `[holdout] min_points` cadences inside the transits predicted for it
+  ([0035](decisions/0035-holdout-training-seasons.md)).
+- **Criteria:** `criteria/vet-v3.toml` for M3, committed before the first control ran
+  ([0031](decisions/0031-known-set-control-fails.md)). It adds the rules of
+  [0021](decisions/0021-vet-masks-search-kinds.md) to [0027](decisions/0027-literature-by-name.md) to vet-v2's, which
+  M2 built with one decision record per rule ([0014](decisions/0014-vet-constants-in-criteria.md) to
+  [0018](decisions/0018-deep-eclipsing-binary-rule.md)). M1's vets stay under vet-v1 and M2's under vet-v2.
+- **Pixels:** triage's pixel check, read from its evidence. A second-list row, which triage never ran it on, gets the
+  same check from `vetting second-list`. Every pass needs a pixel pass (Ruling W,
+  [0028](decisions/0028-outcomes-and-calls.md)).
+- **Neighbours:** every Gaia DR3 star within 1' of the target's own DR3 position, each with the eclipse depth it would
+  need if it were the source, from its TESS magnitude (Gaia G and BP-RP); a star that would need 100% or less is a
+  possible host. The table is evidence and never fails; a failed Gaia query or a star with no G makes it inconclusive
+  ([0025](decisions/0025-neighbours.md), [0034](decisions/0034-neighbour-table-epochs.md)).
+- **TRICERATOPS 1.1.0** on every signal no check failed ([0026](decisions/0026-triceratops.md)):
+  - input: the vet's light curve, PDCSAP family only (QLP publishes no aperture), folded on the density-prior fit's
+    ephemeris; one cadence group at one exposure time, faster sectors averaged to it; apertures from SPOC and from the
+    TESS-SPOC light-curve files; ExoFOP's machine-readable contrast curves where they exist, never a curve read off a
+    PDF. The fold is averaged into phase bins one exposure wide, about ten times faster than unbinned, with FPP and
+    NFPP within about one run-to-run spread of the unbinned run (Ruling G);
+  - runs: 10, seeded and averaged [L4], each with the paper's N of 10^6;
+  - outcomes, from the TRICERATOPS paper [T48]: pass ("likely planet") when mean FPP < 0.5 and mean NFPP < 10^-3,
+    fail ("likely nearby false positive") when mean NFPP > 10^-1, otherwise inconclusive. "Validated" (FPP < 0.015 and
+    NFPP < 10^-3) is a label recorded only with a contrast curve and 2-min data, never an outcome;
+  - inconclusive whatever the numbers when RUWE is over 1.4 or missing, the neighbour table is inconclusive, a
+    possible host is not among the stars TRICERATOPS weighed (matched at the TIC's epoch, Ruling S), there is no
+    cadence group with 3 transits or no aperture for one of its sectors, the field-star population is missing, a run
+    raises, is degenerate or gives a non-finite number, or TRICERATOPS can't weigh the target;
+  - the TIC's DUPLICATE and ARTIFACT rows are not weighed ([0036](decisions/0036-triceratops-tic-duplicates.md)).
 
   Caveat: with 30-min data alone "there does not appear to be a region of parameter space in which planets can be
   confidently validated" [T48].
-- **Output:** a dossier rendered from the run's outputs (section 5.5).
+- **Literature** ([0027](decisions/0027-literature-by-name.md)): every name SIMBAD gives the star in the forms papers
+  use (TIC, TOI, HD, HIP, Gaia DR3, 2MASS, TYC and WDS), or without one the TIC and Gaia DR3 names from the targets
+  row, each searched in arXiv, OpenAlex and Zenodo; NASA ADS by its object search, which resolves the star through
+  SIMBAD and NED; and ExoFOP's target page, read live. The search is inconclusive when a source failed or was not
+  searched, when ADS's search was too broad (over 200 hits), or when a by-name search was too broad for a star ADS
+  could search only by its TIC phrase. Otherwise it passes with the hits to read. It never fails.
+- **Output:** each signal's record under `results/vetting/<tic>-<rank>/`: the published runs, a dossier rendered from
+  them (section 5.5), the adversarial review (section 5.8) and the maintainer's call, passed, killed or held
+  ([0028](decisions/0028-outcomes-and-calls.md)).
 
 **publish** (M4, only for a candidate Kevin passes)
 - **Preregistration:** predicted transit windows with uncertainties for TESS's upcoming sectors, plus the pass/fail
@@ -277,7 +321,10 @@ Each check ships with a negative-control test on synthetic data that must make i
 | Check | Planted failure |
 |---|---|
 | Odd/even, secondary | Eclipsing binary at twice the period |
+| Odd/even within a product family | Eclipsing binary at twice the period in PDCSAP, beside a diluted QLP sector that passes ([0023](decisions/0023-product-families.md)) |
+| Timing-suspect sectors | A flagged QLP sector whose even transits are deeper ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)) |
 | Centroids (triage's pixel check) | Offset blend (below) |
+| TRICERATOPS | Real nearby eclipsing binaries (below) |
 | Held-out season | Wrong period |
 | Novelty | A known TOI |
 | Duration vs density | A giant-star host |
@@ -292,10 +339,27 @@ shallower one as a false positive through odd/even ([0012](decisions/0012-leo-ve
 production search that misses a required positive control is invalid
 ([0011](decisions/0011-positive-controls-in-production.md)).
 
-One exception: `signal_present` never fails, because a weak dip is a lack of evidence for a planet, not evidence
-against one. Its negative control, pure noise at an arbitrary ephemeris, is inconclusive rather than a fail. The
-control that matters is the pipeline's: such a signal does not advance (the pure-noise test in `tests/test_vet.py`;
-[0017](decisions/0017-signal-present-check.md)).
+vet-v3 passes a planet whose QLP sectors are diluted to 0.6 of its depth, and still fails odd/even on an eclipsing
+binary at twice the period in the PDCSAP family ([0023](decisions/0023-product-families.md)). A flagged QLP sector
+with deeper even transits reaches no check: the vet passes, and only the evidence-only vet fails odd/even on it
+([0022](decisions/0022-vet-without-timing-suspect-sectors.md)). TRICERATOPS fails TOI-1399.01, the nearby eclipsing
+binary inside the pixel rule's 15". It reads TOI-1058.01 and TOI-1175.01, binaries 20.90" and 23.53" from their
+targets, inconclusive rather than fail; the maintainer accepted that on 2026-10-19, since neither can pass and both
+fail the pixel check ([0032](decisions/0032-nearby-binary-triceratops.md)). The neighbour table lists each of the two
+binaries among its possible hosts ([0025](decisions/0025-neighbours.md)). vet-v3's pass rate per check on the 20 known
+planets, with each fail understood and no criteria change:
+[summary.md](../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md)
+([0031](decisions/0031-known-set-control-fails.md)).
+
+Three checks never fail. `signal_present` asks only whether there is a dip, and a weak dip is a lack of evidence for a
+planet, not evidence against one. Its negative control, pure noise at an arbitrary ephemeris, is inconclusive rather
+than a fail. The control that matters is the pipeline's: such a signal does not advance (the pure-noise test in
+`tests/test_vet.py`; [0017](decisions/0017-signal-present-check.md)). The neighbour table and the literature search
+are evidence. A star that could host the signal does not show that it does; deciding among the possible hosts is
+TRICERATOPS's job and the review's, and the table's control is that a real blend shows up as a possible host
+([0025](decisions/0025-neighbours.md)). A literature hit is a paper that names the star, not one that reports the
+signal; the check guards that an incomplete search can't pass, and its control finds Akana Murphy et al. 2023, the
+paper on HIP 8152's planets that triage's search by TIC missed ([0027](decisions/0027-literature-by-name.md)).
 
 A check without a passing negative-control test is not merged.
 
@@ -329,7 +393,11 @@ A check without a passing negative-control test is not merged.
   tests (`criteria/triage-v1.toml` `[threshold]`); a signal LEO-Vetter cannot judge counts as passing. The expected
   number of false alarms is the sample size over the null's size. Production takes the threshold as its
   `continue_sde`, and triage refuses a search whose criteria or search code differ from the null's, or whose
-  `continue_sde` is below the highest threshold computed for them ([0019](decisions/0019-null-threshold.md)). M2's
+  `continue_sde` is below the highest threshold computed for them ([0019](decisions/0019-null-threshold.md)). Triage
+  also refuses a threshold run made under other LEO-Vetter code (another `uv.lock` or `src/tess_hunt/leo.py`), a search
+  whose triaged stars have light curves other than the ones the null searched, and, for a production triage, a
+  threshold run that was not production; any later stage that judges signals with LEO-Vetter against a threshold or
+  triage run refuses other LEO-Vetter code in the same way ([0020](decisions/0020-threshold-guards.md)). M2's
   threshold, with the null it came from:
   [threshold.json](../results/benchmarks/20261014T175116Z-threshold-0d6748e-40ac/threshold.json).
 - **Injection-recovery:** one planet per light curve, injected before detrending:
@@ -365,13 +433,22 @@ Each run directory carries `provenance.json`:
 - data manifest hash
 - command line, start and end time
 
-Runs are immutable once finished.
+Runs are immutable once finished. A TRICERATOPS rerun on the same inputs repeats every outcome but not every digit:
+its Gaia DR3 query for the field-star population returns rows in no fixed order, so a seeded run's means can move (by
+up to 2.9e-3 relative between two of M3's runs; [0036](decisions/0036-triceratops-tic-duplicates.md), item 5).
 
 ### 5.8 Independent review
 - **Each milestone** ends with Kevin's review workflow: reviewer lenses plus two refuters per finding, fresh
   read-only sessions.
-- **Each shortlisted signal** gets a fresh read-only session asked to kill it.
-- Kevin makes the pass/fail call and records it in the dossier.
+- **Each shortlisted signal**, and each promoted second-list row, gets a fresh read-only session asked to kill it,
+  through three lenses: on the star, a planet, and real and new. It rates each finding kill, hold or note, and two
+  fresh refuters test each kill or hold finding; a finding no refuter refutes is confirmed. A signal a check already
+  killed gets one reviewer asked whether the kill is wrong.
+- The review kills and passes nothing. Kevin makes the call (passed, killed or held) in the signal's `call.toml`,
+  which must answer every confirmed finding before a pass, and the dossier renders it
+  ([0028](decisions/0028-outcomes-and-calls.md)). A finding that shows a check is wrong goes to a decision record,
+  never a quiet rerun ([0034](decisions/0034-neighbour-table-epochs.md) to
+  [0036](decisions/0036-triceratops-tic-duplicates.md) are three).
 
 ## 6. Repo
 
@@ -384,7 +461,7 @@ tess-hunt/
   benchmarks/         known-planet set, injection config
   tests/              unit tests and negative controls on synthetic light curves
   docs/               design.md (this spec), decisions/
-  results/            CC BY 4.0, except the triage tables' ruwe column (Gaia DR3, CC BY-NC 3.0 IGO): candidate
+  results/            CC BY 4.0, except the Gaia data results/README.md lists (CC BY-NC 3.0 IGO): candidate
                       tables, dossiers, plots
   LICENSE (MIT), results/LICENSE (CC BY 4.0), CITATION.cff, ACKNOWLEDGEMENTS.md, README.md
   .github/workflows/ci.yml
@@ -416,7 +493,11 @@ Windows is supported through WSL only. LEO-Vetter and transit-diffImage are GPL-
 imports them.
 
 ### 6.2 Public-readiness from day one
-- **No secrets.** All data is public and S3 is read unsigned. No credentials appear in code, config or CI.
+- **No secrets.** All data is public and S3 is read unsigned. No credentials appear in code, config or CI. The
+  vetting stage's NASA ADS search needs the maintainer's token: it is read from `ADS_API_TOKEN` at run time, sent only
+  as ADS's bearer header, and never written to code, criteria, a run directory, provenance, a log or CI. Without it,
+  ADS is recorded as not searched and the literature search can't pass
+  ([0027](decisions/0027-literature-by-name.md)).
 - **No machine paths.** The cache comes from `TESS_HUNT_DATA`; nothing assumes a username or drive.
 - **Commits** use a repo-local GitHub noreply email.
 - **README** states that every candidate is a candidate, not a confirmed planet.
@@ -430,6 +511,8 @@ imports them.
   - the acknowledgement or citation each source M2 added asks for: Gaia DR3, CDS's VizieR and cross-match service,
     VSX, the eclipsing-binary and novelty catalogs, arXiv and OpenAlex, LEO-Vetter, transit-diffImage, tess-point,
     TESScut, SpiceyPy and SPICE
+  - the same for the sources M3 added: TRICERATOPS, SIMBAD and NASA ADS, with ExoFOP's DOI for its target pages and
+    contrast curves
 - **Raw data never enters git.** Only small results go under `results/`.
 
 ### 6.3 CI
@@ -466,9 +549,20 @@ Done when:
 - the search fix's benchmark reruns and the typical-star completeness map are published under `results/`
 - CI is green
 
-**M3: Vetting.** Dossiers for every shortlisted signal, one adversarial review per signal, and Kevin's calls. Done
-when each signal is passed or killed with reasons in `results/`. M3 also takes up a treatment for short-period
-variables whose other multiples take the search's ranks ([0008](decisions/0008-search-fix.md)).
+**M3: Vetting.** Dossiers for every shortlisted signal, one adversarial review per signal, and Kevin's calls: passed,
+killed or held, the last for a signal the public data can't decide, with the evidence that would decide it
+([0028](decisions/0028-outcomes-and-calls.md)). Done when each signal is called with reasons in `results/`.
+
+M3 also gave the ten second-list rows (signals novelty matched only to SPOC TCE or ExoMiner rows that passed
+LEO-Vetter's flux tests with a normal RUWE) a light check, and promoted five. One of them, 423100454-1, was promoted
+past a pixel fail that measured a variable star 121" away. It can't pass on its record, since every pass needs a pixel
+pass; any change to that rule comes later, for every signal in a new criteria version, and only if ground-based
+photometry clears the star that carries the row's NFPP ([0033](decisions/0033-second-list-decisions.md)). The 14
+calls are in
+[results/vetting/README.md](../results/vetting/README.md): 4 killed, 10 held, none passed. M3 measured triage's
+completeness ([0029](decisions/0029-triage-completeness.md)) and counted the sample stars whose ranks a short-period
+variable fills ([0030](decisions/0030-short-period-variables.md)). The treatment for short-period variables
+([0008](decisions/0008-search-fix.md)) moves from M3 to the search milestone paired with M5.
 
 **M4: Publication** (only if a candidate survives).
 - Preregistered transit windows published before TESS's next look.
@@ -482,6 +576,13 @@ Done when the prediction is public before the data exists.
 
 **M5: Slice B.** A long-period duo/tri-transit search mode on the same light curves, with alias lists for the
 period. It meets the same bar as M2 and M3.
+
+A search milestone paired with M5 takes up what M3 moved there: a treatment for short-period variables, starting from
+M3's count ([0030](decisions/0030-short-period-variables.md)), and another look at LEO-Vetter's false-positive tests
+odd_even and secondary and at the 16 to 40 d bin ([0029](decisions/0029-triage-completeness.md)). A LEO-Vetter change
+needs a new threshold run and a new triage run, and is chosen on injections and controls only, never on which sample
+signals it would add. The treatment changes the search code, so it needs a new null, a new threshold and a new
+production search.
 
 ## 8. Risks and open questions
 
@@ -508,15 +609,26 @@ period. It meets the same bar as M2 and M3.
   neighbour, at its period or a harmonic, and passed 18 of the 56 that match a catalogued planet candidate at its
   period and no eclipsing binary. The tests failed most often were `non_unique` (1,775 signals) and
   `unphysical_duration` (1,578) ([output](../results/triage/leo-strictness-2026-10-16.txt),
-  [0012](decisions/0012-leo-vetter-configuration.md)). Triage therefore misses many real planets; M3 measures
-  triage's completeness before any setting changes.
+  [0012](decisions/0012-leo-vetter-configuration.md)).
+- **Triage's completeness:** M3 measured it ([0029](decisions/0029-triage-completeness.md)). Of the 769 injections
+  the inject run recovered at the threshold, novelty passed 766 and LEO-Vetter's flux tests 637. LEO-Vetter called
+  0.945 of the recovered injections from 4 to 8 d planet candidates and 0.761 from 16 to 40 d, the bin that holds 401
+  of the 769; odd_even and secondary failed 36 and 24 injections whose transits are identical and carry no secondary.
+  The pixel check passed 16 of the 20 known planets, and [0033](decisions/0033-second-list-decisions.md) understands
+  the four fails. The maintainer's answer on 2026-10-22: no LEO-Vetter change now; the search milestone paired with M5
+  looks again (section 7). If that is wrong, real planets LEO-Vetter fails stay missed until then.
 - **Planets on short-period variables:** the search can spend later ranks on a pulsator's other multiples, so
-  completeness on those stars is low ([0008](decisions/0008-search-fix.md)). M3 takes up a treatment.
+  completeness on those stars is low ([0008](decisions/0008-search-fix.md)). M3 counted them
+  ([0030](decisions/0030-short-period-variables.md)): 778 of the 1,994 stars with a signal at or above the threshold
+  have every signal there within 1.24% of n/m times one of them under 5 days, n and m from 1 to 5, each failed by
+  LEO-Vetter as non_unique or sinusoidal. They hold 1,206 of the 2,993 signals, and the inject run recovered 12 of its
+  48 injections on them (0.250) against 757 of 1,952 on the other stars (0.388). The treatment moves to the search
+  milestone paired with M5 (section 7).
 - **QLP S99-S104 timing:** their timestamps are wrong until MAST redelivers them [L8]. An ephemeris-independent
   comparison with SPOC puts every reliable median offset within 10 minutes, the largest -6.50 min
-  ([output](../results/benchmarks/qlp-timing-robust-2026-10-13.txt)). Detection tolerates minutes; M3 and M4 must not
-  fit or predict from those sectors until they are redelivered or corrected
-  ([0010](decisions/0010-fetch-route-and-qlp-timing.md)).
+  ([output](../results/benchmarks/qlp-timing-robust-2026-10-13.txt)). Detection tolerates minutes. vet-v3 leaves those
+  sectors out of every check and fit ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)), and M4 must not
+  predict from them until they are redelivered or corrected ([0010](decisions/0010-fetch-route-and-qlp-timing.md)).
 - **QLP dilution:** on crowded stars, QLP `sap_flux` depths in S99-S103 read 0.60 to 0.99 of SPOC's
   crowding-corrected depths ([output](../results/benchmarks/qlp-dilution-2026-10-13.txt)). For a signal seen mainly
   in QLP sectors, LEO-Vetter's radius tests can read a planet too small
@@ -527,15 +639,77 @@ period. It meets the same bar as M2 and M3.
   ([output](../results/triage/pixel-timing-2026-10-14.txt), [0012](decisions/0012-leo-vetter-configuration.md)).
 - **The pixel rule's known miss:** TOI-1399.01, a nearby-eclipsing-binary false positive, passes the 15" rule at a
   best-quality offset of 11.63" ([output](../results/triage/pixel-controls-2026-10-16.txt),
-  [0012](decisions/0012-leo-vetter-configuration.md)).
+  [0012](decisions/0012-leo-vetter-configuration.md)). TRICERATOPS fails it
+  ([0032](decisions/0032-nearby-binary-triceratops.md)).
+- **The pixel check's one sector:** the rule judges the best-quality sector's offset alone, and the quality measures
+  how PRF-like the image is, not how much transit it holds ([0033](decisions/0033-second-list-decisions.md), item 5).
+  On 296819076-1 the pass rests on S102, a timing-suspect sector vet-v3 leaves out, at 13.0" and quality 0.53, while
+  S65 and S101, at 0.46 and 0.45, read 24.5" and 20.1" ([dossier](../results/vetting/296819076-1/dossier.md)). M3
+  keeps the check frozen.
+- **TRICERATOPS and nearby binaries:** TRICERATOPS reads TOI-1058.01 and TOI-1175.01, binaries 20" to 25" out,
+  inconclusive (mean NFPP 0.027 and 0.0341, between its bars; TOI-1175.01 also on a RUWE of 1.48), so its NFPP fail is
+  not a reliable kill there. The pixel check, which fails both, catches them. TOI-1175.01's NFPP read near 1 in a
+  one-run test on its catalog ephemeris and 0.0341 in production on the density-prior fit's; the ephemeris is the
+  likeliest cause, and it was not diagnosed ([0032](decisions/0032-nearby-binary-triceratops.md)).
+- **TRICERATOPS's silent failures:** TRICERATOPS 1.1.0 can return numbers that mean nothing without an error. Without
+  its Gaia field-star population it skips the DTP, DEB, DEBx2P, BTP, BEB and BEBx2P scenarios and says so only with
+  `verbose=1`. It also carries on after a failed TESScut cutout, takes the next star as the target when the target has
+  no light in the apertures, and still sets an FPP on NaN or infinite scenario evidence. The wrapper reads each as
+  inconclusive ([0026](decisions/0026-triceratops.md)). It weighed the TIC's DUPLICATE and ARTIFACT rows as stars
+  until [0036](decisions/0036-triceratops-tic-duplicates.md), which changed no outcome.
+- **RUWE and TRICERATOPS's priors:** TRICERATOPS's priors don't condition on an unresolved companion, so a RUWE over
+  1.4, or none, makes it inconclusive whatever its numbers ([0026](decisions/0026-triceratops.md)). 103312990-1 (RUWE
+  6.21) can't pass under vet-v3, and its call says a pass also needs a recorded decision on how imaging clears that
+  blocker ([call](../results/vetting/103312990-1/call.toml)). The field-star population is Gaia DR3's, not a TRILEGAL
+  simulation, and TRICERATOPS fills a missing TIC mass, radius or Teff from photometry
+  ([0026](decisions/0026-triceratops.md)); for a SPLIT neighbour that photometry is 2MASS's, blended over the split,
+  which the TIC paper calls "most likely not reliable" ([0036](decisions/0036-triceratops-tic-duplicates.md)).
+- **Possible hosts and TRICERATOPS's stars:** each possible host is matched to the nearest TRICERATOPS star, not one
+  to one, so two hosts can match one TIC star ([0026](decisions/0026-triceratops.md)). In the published records, two
+  Gaia DR3 hosts 44" out match TIC 399023436 for 399023421-1, and two 31" out match TIC 516066139 for 296819076-1
+  (`hosts` in each `triceratops.json`). Both TRICERATOPS results are inconclusive on other grounds.
+- **Depth checks across families:** `signal_present` asks whether a dip is there over every product family, while
+  odd/even and sector depths pass when one family passes and none fails ([0023](decisions/0023-product-families.md)).
+  A depth comparison can then pass on a family whose own dip is too weak to show, the case `signal_present` was added
+  to guard ([0017](decisions/0017-signal-present-check.md)).
+- **Held-out seasons across families:** a season whose predicted transits hold cadences of a family with no training
+  cadences of its own is untestable, not missed, and one such cadence is enough. A dip present in one family and absent
+  in the other is then not caught by the held-out check ([0023](decisions/0023-product-families.md)).
+- **Masks at catalog ephemerides:** vet-v3 masks a catalogued object at the catalog's ephemeris
+  ([0021](decisions/0021-vet-masks-search-kinds.md)), so a wrong catalog period leaves its transits in the light
+  curve. TOI-4298.01 is listed at 722.26 d but repeats every 28.896 d, and one of its transits sits unmasked on
+  146282666-1's epoch 290; masked at 28.896 d, the depth checks still pass (the review's F3,
+  [dossier](../results/vetting/146282666-1/dossier.md)).
+- **Catalog snapshot gaps:** the snapshot's SPOC S12 TCE table lacks SPOC's S12 TCE 01 on TIC 423100454 (14.2069 d),
+  which MAST holds, so the second list shows no SPOC TCE for 423100454-1
+  ([0033](decisions/0033-second-list-decisions.md)).
+- **Secondaries away from phase 0.5:** vet-v3's secondary looks at phase 0.5 only; the dossier shows triage's
+  LEO-Vetter ModShift result for any phase ([0028](decisions/0028-outcomes-and-calls.md)). On 370977908-1 ModShift
+  found a 5.12 sigma dip at phase 0.487 (Fred 1.62), and the review found it, about as deep as the transit, in every
+  orbit with data at that phase; only ModShift's red-noise scaling kept LEO-Vetter from flagging it. The signal is held
+  as probably an eclipsing binary ([dossier](../results/vetting/370977908-1/dossier.md)).
+- **The radius check near the grazing line:** on a fit near the grazing line the radius check turns on the fit's
+  seed. On 48010903-1, PDCSAP-only reruns of vet-v3's fit failed it in 3 of 14 without its epoch 28 and in 6 of 8 with
+  it (a refuter of the review's F2, [dossier](../results/vetting/48010903-1/dossier.md)); its call names shape and
+  radius as the weaker grounds. vet-v3 is frozen in M3.
+- **TESS's next looks:** each dossier lists the upcoming sectors tess-point places its star in, with the predicted
+  windows. The sector dates are in `benchmarks/tess_sectors.csv`, read 2026-10-16, and future pointings are
+  provisional ([0024](decisions/0024-density-prior-fit-and-windows.md)). tess-point 0.9.5.post1, whose pointing table
+  ends at Sector 134, places three shortlisted stars (146282666, 164767175 and 441010857) and two promoted rows
+  (277774870 and 370977908) in no upcoming sector. A passed signal there has no TESS sector to preregister and no DDT
+  ask; M4 decides its route ([0028](decisions/0028-outcomes-and-calls.md)). The DDT page [R2] takes a proposal "at
+  least six weeks before the beginning of the sector" (read for the M3 design on 2026-10-16), so each sector's DDT
+  deadline is six weeks before its start in that file.
 - **Slow or unstable services:** TESScut is slow and rate-limited [T25], so pixels run only on the few signals that
   reach them. MAST's download API documents no rate limit, so fetch uses 4 workers with retries
   ([0010](decisions/0010-fetch-route-and-qlp-timing.md)). The Gaia archive may be unstable before DR4; the targets
   stage retries each chunk and fails the run rather than write a partial join.
 - **Gaia data licence:** Gaia DR3 data are distributed under CC BY-NC 3.0 IGO, not CC BY 4.0. The eclipsing-binary
   rows only drop null signals and fail novelty, and are not republished. The `ruwe` column of the published triage
-  tables is Gaia DR3 data, so it is the one exception to the CC BY 4.0 licence of `results/` and stays under ESA's
-  terms ([results/README.md](../results/README.md), [ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md)).
+  tables, M3's neighbour tables and the RUWE and possible hosts in its TRICERATOPS records are Gaia data, so they are
+  exceptions to the CC BY 4.0 licence of `results/` and stay under ESA's terms.
+  [results/README.md](../results/README.md) lists every one ([0025](decisions/0025-neighbours.md),
+  [0026](decisions/0026-triceratops.md), [ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md)).
 - **Fragile dependencies:** wotan is dormant and transit-diffImage is unpackaged. If either breaks on the pinned
   stack, the fallback is a decision-log entry, not a silent swap.
 - **RNAAS eligibility** is unknown until exofop-support answers.
