@@ -83,10 +83,10 @@ measurement" below):
    - Result, against 1bbf: all four outcomes reproduced, and every reason but for its digits. 399023421-1's mean NFPP
      went from 0.0191 to 0.0161 (estimated above at about 0.0163) and 296819076-1's from 0.0554 to 0.0545.
      103312990-1's and 44926986-1's means moved by 1.4e-4 relative at most (44926986-1's FPP). That is inside the
-     6.6e-4 item 5 saw from a reordered field-star file alone, but above 44926986-1's own move between the two runs
-     before the fix (3.6e-5), so one pair of runs can't separate the fix's effect there from the noise. 296819076-1's
-     three hosts now name the entries the TIC keeps. 277774870-1, whose star list holds no flagged row, matched the
-     stopped 55f4's means to 2.3e-4 relative, with the same outcome.
+     6.6e-4 item 5 saw from a reordered field-star file alone, but above 44926986-1's largest move between the two
+     runs before the fix (3.6e-5, its NFPP), so one pair of runs can't separate the fix's effect there from the noise.
+     296819076-1's three hosts now name the entries the TIC keeps. 277774870-1, whose star list holds no flagged row,
+     matched the stopped 55f4's means to 2.3e-4 relative, with the same outcome.
 4. **The controls are not rerun** (Ruling BH, put to the maintainer, who can ask for it). The controls' TRICERATOPS
    runs (`20261017T162256Z-vetting-triceratops-62882b5-d0f8` and `20261018T012940Z-vetting-triceratops-62882b5-e3d7`)
    and the published controls run `20261020T082333Z-benchmark-controls-16418d2-f45a` stand, with this record as their
