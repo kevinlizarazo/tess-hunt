@@ -56,19 +56,19 @@ measurement" below):
    19 dossiers. Compared run against run, every check outcome must reproduce, the neighbour table's and those of the
    finished TRICERATOPS run `20261020T013408Z-vetting-triceratops-62882b5-e092` included. Only the table's possible
    hosts and separations may differ, and with them its cone and the counts in its reason.
-   - Done on 2026-10-20 and 21, at commit 61b5944: the vet `20261020T174317Z-vetting-run-61b5944-2d70`; the
+   - Done on 2026-10-20 and 21 (UTC), at commit 61b5944: the vet `20261020T174317Z-vetting-run-61b5944-2d70`; the
      evidence-only vet `20261020T175536Z-vetting-run-61b5944-7f4e`; the second list
      `20261020T180844Z-vetting-second-list-61b5944-7096`; literature `20261020T181539Z-vetting-literature-61b5944-69b7`,
-     which left 458290782-1 inconclusive at OpenAlex's daily cap, then
+     which left 458290782-1 inconclusive on an OpenAlex HTTP 429, then
      `20261021T001540Z-vetting-literature-61b5944-07de`, resumed from it, complete for all 19; and TRICERATOPS on the
      six, `20261020T181658Z-vetting-triceratops-61b5944-1bbf`. The five promoted rows' TRICERATOPS run,
      `20261021T025929Z-vetting-triceratops-61b5944-55f4`, was stopped unfinished for
      [decision 0036](0036-triceratops-tic-duplicates.md), which reran them and four of the six (its item 2).
-   - Every check outcome reproduced, in both vets. Outside the neighbour record, every check matched to the bit but
-     the holdout, where [decision 0035](0035-holdout-training-seasons.md) adds a field to every season and changes
-     441010857-1's outcome; every holdout field the old runs had matched. The second list matched cell for cell outside
-     its neighbours column. TRICERATOPS matched e092's every outcome and reason, and its means to within 2.9e-3
-     relative (0036, item 5).
+   - Every check outcome reproduced in both vets but 441010857-1's holdout, which
+     [decision 0035](0035-holdout-training-seasons.md) changed from fail to inconclusive. Outside the neighbour record
+     and the holdout, every check matched to the bit. In the other 18 signals every holdout field the old runs had
+     matched, and each season gained 0035's `training_seasons_with_transits`. The second list matched cell for cell.
+     TRICERATOPS matched e092's every outcome and reason, and its means to within 3e-3 relative (0036, item 5).
 3. **The controls are not rerun.** The control vet, its TRICERATOPS runs
    (`20261017T162256Z-vetting-triceratops-62882b5-d0f8` and `20261018T012940Z-vetting-triceratops-62882b5-e3d7`) and
    the published controls run `20261020T082333Z-benchmark-controls-16418d2-f45a` (cited by 0026, 0031 and 0032) stand,
