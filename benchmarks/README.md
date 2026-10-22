@@ -106,7 +106,7 @@ The scripts behind the loose evidence files under `results/`. Each runs from the
 - `leo_strictness.py`: LEO-Vetter's outcomes by catalogued match, `results/triage/leo-strictness-2026-10-16.txt`.
 - `short_period_variables.py`: the stars whose signals sit at simple ratios of one period under 5 days and that
   LEO-Vetter rejected as non-unique or sinusoidal, and the injection recovery on them against the rest,
-  `results/benchmarks/short-period-variables-<UTC date>.txt`.
+  `results/benchmarks/short-period-variables-2026-10-17.txt`.
 
 `sector-structure-2026-10-13.txt` and `pixel-timing-2026-10-14.txt` were written before the scripts printed their
 one-line header (sample, seed and gap threshold; the in-transit rule); apart from that header, the committed scripts

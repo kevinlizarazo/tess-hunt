@@ -32,6 +32,13 @@ Published runs are never edited; a correction is a new run.
   outcome it replaced. `pass_rates.csv` counts each check's outcomes over the known planets, all of them and without
   the ones left out; `summary.md` collects them with each fail's reason. The RUWE values quoted in `blockers` and in
   the TRICERATOPS reasons are Gaia DR3 data (above).
+- `benchmark-triage-completeness`: triage's novelty and LEO-Vetter flux tests on the injections an inject run
+  recovered, each planted and searched again as the inject run did it and judged as a triage run judged its signals
+  ([decision 0029](../docs/decisions/0029-triage-completeness.md)). `rows.csv` has one row per injection: the inject
+  run's row, the replay's outcome and the signal it judged, and each step's outcome. `by_snr.csv`, `by_period.csv` and
+  `by_radius.csv` give per bin the search completeness, the shares each step passed and their product;
+  `failed_tests.csv` counts the injections that failed, or left unjudged, each LEO-Vetter test; `outcomes.csv` counts
+  each step's outcomes; `summary.md` collects them.
 - `benchmark-pixel-completeness`: triage's pixel check on the known-planet set at their catalog ephemerides.
   `pixels.csv` has one row per planet: the outcome, its reason, the best-quality sector's offset and the number of
   sectors measured (`good_sectors`); `summary.md` is the table.
@@ -68,6 +75,9 @@ The loose files beside the run directories in `benchmarks/` were written by the 
   (`scramble_leo_probe.py`, [decision 0019](../docs/decisions/0019-null-threshold.md)).
 - `sector-structure-2026-10-13.txt`: each sector's span and gaps on 500 random fetched stars (`sector_structure.py`,
   decision 0019).
+- `short-period-variables-2026-10-17.txt`: the sample stars whose signals all sit at simple ratios of one period
+  under 5 days and that LEO-Vetter rejected as non-unique or sinusoidal, and the injection recovery on them against
+  the rest (`short_period_variables.py`, [decision 0030](../docs/decisions/0030-short-period-variables.md)).
 
 One loose file has no script: `vet-v3-control-diagnosis-2026-10-17.md`, a read-only diagnosis of the known planets
 vet-v3's controls fail, made outside the pipeline. It gates nothing; its causes are cited by
