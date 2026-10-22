@@ -84,6 +84,8 @@ This record writes down that call.
    and this rides in the same rerun. Compared run against run, every holdout outcome but 441010857-1's must
    reproduce, in the vet and in the evidence-only vet; every season gains `training_seasons_with_transits`. The
    controls are not rerun (0034, item 3), and no control outcome changes here.
+   - Done: the two vets are in 0034's item 2. 441010857-1's holdout went from fail to inconclusive in both, and every
+     other holdout outcome reproduced.
 
 ## Evidence
 

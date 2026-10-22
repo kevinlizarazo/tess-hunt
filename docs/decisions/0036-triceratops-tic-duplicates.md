@@ -71,12 +71,20 @@ measurement" below):
    this record (that run, and the controls' `20261017T162256Z-vetting-triceratops-62882b5-d0f8` and
    `20261018T012940Z-vetting-triceratops-62882b5-e3d7`) has no `dropped_stars` and no `disposition` in its `stars`.
    The dossiers and the affected reviews follow. The controller records the new run ids in a later commit.
+   - Done on 2026-10-21, at commit cd4e7a2: the five promoted rows as
+     `20261021T044850Z-vetting-triceratops-cd4e7a2-07c3`, and the four as
+     `20261021T194348Z-vetting-triceratops-cd4e7a2-7821`.
 3. **What must reproduce:** every outcome. NFPP and FPP move as the measurement's section 3 predicts: 399023421-1's
    mean NFPP to about 0.0163 and 296819076-1's to about 0.0545, within Monte Carlo noise. 103312990-1's and
    44926986-1's flagged rows are not weighed (section 2), so the fix reaches them only through the flux those rows
    add to the apertures. For 44926986-1 that moves other stars' `tdepth` by 2.9e-6 relative at most (section 1b);
    103312990-1's rows are 118" and 139" out, and their effect was not measured. Both are expected below the run-to-run
    noise in item 5, so these two signals' numbers should move no more than a rerun without the fix moves them.
+   - Result, against 1bbf: all four outcomes reproduced, and every reason but for its digits. 399023421-1's mean NFPP
+     went from 0.0191 to 0.0161 (estimated above at about 0.0163) and 296819076-1's from 0.0554 to 0.0545.
+     103312990-1's and 44926986-1's means moved by 1.4e-4 relative at most, within item 5's noise. 296819076-1's three
+     hosts now name the entries the TIC keeps. 277774870-1, whose star list holds no flagged row, matched the stopped
+     55f4's means to 2.3e-4 relative, with the same outcome.
 4. **The controls are not rerun** (Ruling BH, put to the maintainer, who can ask for it). The controls' TRICERATOPS
    runs (`20261017T162256Z-vetting-triceratops-62882b5-d0f8` and `20261018T012940Z-vetting-triceratops-62882b5-e3d7`)
    and the published controls run `20261020T082333Z-benchmark-controls-16418d2-f45a` stand, with this record as their
