@@ -1,0 +1,7 @@
+signal = "399023421-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Every vet-v3 check, the pixel check and the literature search pass, and nothing on the target looks like a binary. TRICERATOPS can't place the dip on the target: three faint background stars a few arcseconds away could make it with deep eclipses, and TESS's pixels can't separate them from the target."
+rests_on = ["F1", "triceratops"]
+criteria = ["vet-v3"]
+deciding_evidence = "Seeing-limited ground-based photometry on a predicted transit that resolves the three nearest stars and shows which one dims (F1), with the windows refitted on the QLP times first, since the transits run late against the dossier's (F9). Under vet-v3 TRICERATOPS can't drop cleared neighbours, so a pass also needs a recorded decision on how such photometry enters it."
