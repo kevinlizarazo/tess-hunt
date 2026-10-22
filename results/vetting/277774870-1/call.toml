@@ -1,0 +1,8 @@
+signal = "277774870-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "No check fails, but the transit is far too short for a central crossing of this star: on the target it must graze or ride a highly eccentric orbit, and the light curve fits a crossing of a much denser star just as well. TRICERATOPS puts most of its weight on a pair of small stars bound to the target, and Gaia's radial velocities rule out only a stellar companion grazing the target itself."
+rests_on = ["F1", "triceratops"]
+criteria = ["vet-v3"]
+deciding_evidence = "Ground-based transit photometry in two or more bands, which tells a diluted pair of small stars (deeper in the red) from a transit of the target and, at higher signal, a grazing shape from a flat-bottomed one; high-resolution imaging to bound a bound companion; precise radial velocities to bound a grazing body's mass (F1). No TESS sector is scheduled."
+promotion = "The TCE matched is ExoMiner vetting_catalog_FFI 277774870-1-S56-69, a SPOC TCE that never became a TOI. Promoted by the maintainer in decision 0033 on the bar the nine shortlisted signals met in triage."
