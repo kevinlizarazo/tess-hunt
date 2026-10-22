@@ -1,0 +1,163 @@
+{
+  "argv": [
+    "tess-hunt",
+    "vetting",
+    "triceratops",
+    "--run",
+    "$TESS_HUNT_DATA/runs/20261020T174317Z-vetting-run-61b5944-2d70",
+    "--signals",
+    "399023421-1",
+    "103312990-1",
+    "146282666-1",
+    "164767175-1",
+    "296819076-1",
+    "44926986-1",
+    "--contrast",
+    "$TESS_HUNT_DATA/logs/m3-contrast.csv",
+    "--workers",
+    "3",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    },
+    {
+      "file": "criteria/vet-v3.toml",
+      "sha256": "9b01a9067e0728ddc2eaded3e7cb2b4de98e4fb15c3353a5413706979ec1aec4"
+    }
+  ],
+  "ended_at": "2026-10-21T02:59:25.588117+00:00",
+  "git": {
+    "commit": "61b59443ed7bc90c447d3b313e9db16ae301fb50",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "checks_103312990-1": {
+      "file": "checks.json",
+      "sha256": "a513d03f99c0aa8d42a2118a1eff7c5beecdc255304a244ad6a01e2b803332e9"
+    },
+    "checks_146282666-1": {
+      "file": "checks.json",
+      "sha256": "24e741d66b36abd9eb6166414fb228ec910007b707de2de98d443014166b3c63"
+    },
+    "checks_164767175-1": {
+      "file": "checks.json",
+      "sha256": "0feac00bb92cb468b335df6549af48480fcfa469e467615ae1f4c5f4109a89f7"
+    },
+    "checks_296819076-1": {
+      "file": "checks.json",
+      "sha256": "cd5b60f9ce9de318c2d7cece5d31f850068af6d5813a7f34798aace81e4cecf4"
+    },
+    "checks_399023421-1": {
+      "file": "checks.json",
+      "sha256": "39d96c5d2dfc4d5c6cfa0683d4147faba664a479968f7ef1fd20b97004d59928"
+    },
+    "checks_44926986-1": {
+      "file": "checks.json",
+      "sha256": "dd30255752a56310e7845e4a9545569e97d066cff8036f50c32dad53f6f50d9c"
+    },
+    "contrast": {
+      "file": "m3-contrast.csv",
+      "sha256": "23823fdd5789d796ac7472980560d40c0de8ebda60678b9a9135ef931ebd6d18"
+    },
+    "contrast_1": {
+      "file": "TOI266I-ef20191015-832_sensitivity.dat",
+      "sha256": "6276387714702dc267c203f55308c1495b2c4912ee0d504651ac505165a1d51f"
+    },
+    "contrast_2": {
+      "file": "TOI266I-ef20191015-562_sensitivity.dat",
+      "sha256": "442a183a31d6d595aa16fe6be6fa15f18f95cad8a29350703b8f9e38194950a0"
+    },
+    "contrast_3": {
+      "file": "TOI266I-dc20181222-Brgamma_plot.tbl",
+      "sha256": "162fc25350ec154a525c98f4cdf0d122722a022532d7362c9a8bf9890538f97c"
+    },
+    "contrast_4": {
+      "file": "TIC164767175P-jl20190121r.dat",
+      "sha256": "4a6aa400e9e57b1f5cf3d4cc6e32a19552a228d9d3269e556c6c7f3412c8be94"
+    },
+    "contrast_5": {
+      "file": "TIC164767175P-jl20190121b.dat",
+      "sha256": "5d868ed907bd6914300a1ec7756e5dc3347e4e3d8872b28d929cc3a6a14ff0ee"
+    },
+    "light_curve_103312990": {
+      "file": "103312990.npz",
+      "sha256": "955172c695e312119374aac16c67cf7a0649c1ce087b527b5b8de21c0d058398"
+    },
+    "light_curve_146282666": {
+      "file": "146282666.npz",
+      "sha256": "dcd23b2ab8cbae1d246cc4333db451eaf0c121152227d0dc35d4eba76ee9a76d"
+    },
+    "light_curve_164767175": {
+      "file": "164767175.npz",
+      "sha256": "4cab500f2d355a65eff295a77bc0d57fc56327a193689c78893dc51e7867bd80"
+    },
+    "light_curve_296819076": {
+      "file": "296819076.npz",
+      "sha256": "4bb3d64ea85517cc22bab6b7d11fc62e6f81ed3029f0a191b6c09974a005bb6b"
+    },
+    "light_curve_399023421": {
+      "file": "399023421.npz",
+      "sha256": "45aea53680b1f0d294ac53898ad27e692f320e14e61e7e29470c5cea839c98af"
+    },
+    "light_curve_44926986": {
+      "file": "44926986.npz",
+      "sha256": "ca0ddbaa50576cfdc6de9f8343f2c2a13d8b0c1e131767d5f911b381816294f3"
+    },
+    "vetting_provenance": {
+      "file": "provenance.json",
+      "sha256": "74972b74b62d47d332b8f3ce517d1bf8daacf026d06cf20527605de7b46cbb0f"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261020T181658Z-vetting-triceratops-61b5944-1bbf",
+  "stage": "vetting-triceratops",
+  "started_at": "2026-10-20T18:16:58.545633+00:00",
+  "summary": {
+    "errors": {},
+    "signals": {
+      "103312990-1": {
+        "fpp_mean": 0.0587409273425958,
+        "nfpp_mean": 0.01980039204073591,
+        "outcome": "inconclusive",
+        "reason": "RUWE 6.21 > 1.4: an unresolved companion the priors don't condition on"
+      },
+      "146282666-1": {
+        "fpp_mean": 0.029251437582011007,
+        "nfpp_mean": 0.0015261193441347056,
+        "outcome": "inconclusive",
+        "reason": "mean FPP 0.0293, mean NFPP 0.00153 over 10 run(s): neither likely a planet nor likely a nearby false positive"
+      },
+      "164767175-1": {
+        "fpp_mean": 0.02204376189050482,
+        "nfpp_mean": 0.0,
+        "outcome": "pass",
+        "reason": "mean FPP 0.022 < 0.5 and mean NFPP 0 < 0.001 over 10 run(s): likely a planet"
+      },
+      "296819076-1": {
+        "fpp_mean": 0.0707155432415746,
+        "nfpp_mean": 0.05543245813509531,
+        "outcome": "inconclusive",
+        "reason": "the neighbour table is inconclusive: 10 Gaia DR3 star(s) within the radius have no G magnitude"
+      },
+      "399023421-1": {
+        "fpp_mean": 0.06169648719048003,
+        "nfpp_mean": 0.01910591050371816,
+        "outcome": "inconclusive",
+        "reason": "mean FPP 0.0617, mean NFPP 0.0191 over 10 run(s): neither likely a planet nor likely a nearby false positive"
+      },
+      "44926986-1": {
+        "fpp_mean": 0.20398757331954886,
+        "nfpp_mean": 0.16739009412846137,
+        "outcome": "fail",
+        "reason": "mean NFPP 0.167 > 0.1 over 10 run(s): likely a nearby false positive"
+      }
+    },
+    "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+  },
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a",
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}
