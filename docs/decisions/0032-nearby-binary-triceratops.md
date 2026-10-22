@@ -36,7 +36,7 @@ correctness." This record writes down that call. It is a call made on these resu
   - Both fail triage's pixel check, at 21.5" and 25.1" against its 15"
     ([pixel-controls-2026-10-16.txt](../../results/triage/pixel-controls-2026-10-16.txt)). A signal that fails it never
     reaches triage's shortlist, and every pass in vetting needs a pixel pass as well (Ruling W,
-    [decision 0028](0028-outcomes-and-calls.md), Proposed until the maintainer reviews it). Neither can come out
+    [decision 0028](0028-outcomes-and-calls.md), accepted by the maintainer on 2026-10-22). Neither can come out
     passed.
   - What this means: a TRICERATOPS NFPP fail is not a reliable kill for a nearby binary 20" to 25" out. The pixel check
     catches those. Inside 15", where the pixel check can miss, TRICERATOPS caught the one control there is: TOI-1399.01

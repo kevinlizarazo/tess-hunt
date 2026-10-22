@@ -1,8 +1,8 @@
 # 0033: The second list's calls: five rows promoted, one of them past a pixel fail that measured a variable neighbour
 
 - Date: 2026-10-20
-- Status: Accepted (the maintainer's calls of 2026-10-20). Ruling W, which item 3 cites, stays Proposed
-  ([decision 0028](0028-outcomes-and-calls.md))
+- Status: Accepted (the maintainer's calls of 2026-10-20). Ruling W, which item 3 cites, was accepted by the maintainer
+  on 2026-10-22 ([decision 0028](0028-outcomes-and-calls.md))
 
 ## Context
 
@@ -83,6 +83,10 @@ not a rule set before them.
    the period and 337885456-1's ExoMiner row at half. Novelty is inconclusive as `known_to_spoc` on every row; holdout
    is inconclusive on 241522065-1 and 370977908-1, and neighbours on 322826591-1, 370977908-1, 423100454-1 and
    458290782-1.
+
+   SPOC TCE is the second list's lookup in the catalog snapshot's TCE tables, and for 423100454-1 it misses one:
+   SPOC's S12 TCE 01 (14.2069 d) and its DV report are on MAST, but the snapshot's S12 TCE table lacks the row (the
+   row's review, finding F5, in [results/vetting/423100454-1](../../results/vetting/423100454-1/dossier.md)).
    - **Promoted on the nine's bar.** 241522065-1, 277774870-1, 370977908-1 and 438857197-1 pass the pixel check and
      fail no check. They passed LEO-Vetter's flux tests in triage, as every second-list row did by the list's
      definition, so these four meet the bar the nine shortlisted signals met in triage, with the promotion standing in
@@ -102,8 +106,11 @@ not a rule set before them.
    - It gets what a promoted row gets: a dossier, TRICERATOPS, a review whose refuters test this finding, and the
      maintainer's call.
    - It can't pass on this record. Every pass needs a pixel pass (Ruling W; [0028](0028-outcomes-and-calls.md),
-     [0032](0032-nearby-binary-triceratops.md)), which is Proposed, so the maintainer answers it for this row first.
-     `calls.problems` enforces it for every signal, so a pass would also need the code changed, with its own record.
+     [0032](0032-nearby-binary-triceratops.md)), which the maintainer accepted on 2026-10-22. `calls.problems`
+     enforces it for every signal, so a pass would also need the code changed, with its own record. The maintainer's
+     answer of 2026-10-22: no change in M3. Any change comes later as a rule for every signal in a new criteria
+     version, and only if ground-based photometry clears the star that carries the row's NFPP (its call, in
+     [results/vetting/423100454-1](../../results/vetting/423100454-1/dossier.md)).
    - Its pixel fail stays in its record as measured: `pixels.json` and `pixels.png` are the second-list run's,
      unchanged.
 4. **The promotions reach the record** in each promoted row's `call.toml`: `promotion` names the SPOC TCE or ExoMiner
