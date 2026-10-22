@@ -1,0 +1,9 @@
+Short-period variables in search 20261014T205855Z-search-fe29585-cdf2, triage 20261015T155441Z-triage-7b12e25-3f57, inject 20261015T131443Z-benchmark-inject-fe29585-8496.
+Rule: every signal of a star at or above the threshold (SDE 20.24) has a period within 1.24% ([match] sigma_p 2.5 in criteria/search-v2.toml) of n/m times one of them under 5 d, n and m from 1 to 5, and LEO-Vetter failed every one of them on non_unique or sinusoidal.
+
+Sample stars searched (status ok): 30175
+Stars with a signal at or above the threshold: 1994 (2993 signals)
+Stars whose signals sit at n/m of one period under 5 d: 969
+Of those, every signal failed on non_unique or sinusoidal: 778 (1206 signals)
+Injections recovered on those stars: 12 of 48 (0.250)
+Injections recovered on the other stars: 757 of 1952 (0.388)
