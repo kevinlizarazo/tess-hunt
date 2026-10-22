@@ -1,0 +1,7 @@
+signal = "146282666-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Nothing kills it: the dip is periodic, steady across eight years of transits, U-shaped and new, in a system that already holds TOI-4298.01. It can't pass because the public data can't place it on the target: a background star a few arcseconds away could make it, TESS's pixels can't separate the two, and TRICERATOPS sits just over its pass bar. The held-out check is also inconclusive, for lack of power rather than of transits."
+rests_on = ["F1", "triceratops", "holdout"]
+criteria = ["vet-v3"]
+deciding_evidence = "Seeing-limited ground-based photometry on a predicted transit that resolves the background star a few arcseconds away and shows whether it dims (F1); transits measured by CHEOPS or a large ground-based telescope for a second testable held-out season, since no TESS sector is scheduled (F7). Most of TRICERATOPS's excess over its bar comes from a star the difference images exclude, and vet-v3 has no rule that lets such a star leave the NFPP, so a pass also needs a recorded decision on that (F2)."
