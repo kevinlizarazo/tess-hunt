@@ -1,0 +1,6 @@
+signal = "441010857-1"
+outcome = "killed"
+date = 2026-10-22
+reasons = "The transit is far too short for a planet on this star: on a circular orbit at this period a transit across a star this size lasts several times longer, so the fit implies a star far denser than this F star. A planet escapes only on a highly eccentric orbit seen near its closest approach, which only radial velocities could show; the dip may instead be on a denser neighbour. The held-out check's first-run fail was a defect that decision 0035 fixed; it is now inconclusive and plays no part in the kill."
+rests_on = ["density", "F2"]
+criteria = ["vet-v3"]
