@@ -218,13 +218,12 @@ from a run directory and writes its own.
 - **Timing-suspect sectors:** every check and both fits run without the sectors fetch flagged `timing_suspect`. An
   evidence-only vet with them in is shown beside the vet and never used for the call
   ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)).
-- **Product families:** depths are compared only within one family, crowding-corrected PDCSAP (SPOC 2-min and
-  TESS-SPOC) or QLP. Odd/even and sector depths fail if any family fails, and pass if one passes and none fails. A
-  held-out season's depth tension is the largest within-family tension over the families whose held-out and training
-  data both hold `[holdout] min_points` cadences in predicted transits; with none, the season records
-  `tension_skipped` and is judged on detection alone.
-  `signal_present` and the secondary at phase 0.5 use every family, and the fits use PDCSAP alone
-  ([0023](decisions/0023-product-families.md)).
+- **Product families:** depths are compared only within one family, crowding-corrected PDCSAP (SPOC 2-min and TESS-SPOC)
+  or QLP. Odd/even and sector depths fail if any family fails, and pass if one passes and none fails. A held-out
+  season's depth tension is the largest within-family tension over the families whose held-out and training data both
+  hold `[holdout] min_points` cadences in predicted transits; with none, the season records `tension_skipped` and is
+  judged on detection alone. `signal_present` and the secondary at phase 0.5 use every family, and the fits use PDCSAP
+  alone ([0023](decisions/0023-product-families.md)).
 - **Fits:** batman plus emcee, twice. The first, with a flat prior on the stellar density, is the one the shape,
   density and radius checks read. The second takes the TIC density as a prior and gives Rp, b, a/R* and the ephemeris
   for the dossier, TRICERATOPS and M4, with each transit in TESS's next sectors predicted from its samples
