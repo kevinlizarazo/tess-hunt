@@ -64,7 +64,8 @@ Published runs are never edited; a correction is a new run.
   ExoMiner row and passed LEO-Vetter's flux tests with a normal RUWE
   ([decision 0033](../docs/decisions/0033-second-list-decisions.md)). `second-list.csv` has one row per signal: each
   vet-v3 check's outcome, the pixel check's outcome, reason and offsets, SPOC's DV statistics and ExoMiner's score for
-  the TCE it matched, and its upcoming sectors; `second-list.md` is the table. Each row's pixel files and the vetting
+  the rows matched at its period, on its star or a star novelty matched it to (`dv_tic`, `exominer_tic`), and its
+  upcoming sectors; `second-list.md` is the table. Each row's pixel files and the vetting
   run's records stay in the run directories; a promoted row's are in its `vetting/` record.
 
 The loose files beside the run directories in `benchmarks/` were written by the scripts listed in

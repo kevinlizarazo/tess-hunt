@@ -141,7 +141,7 @@ not a rule set before them.
   [`second-list.md`](../../results/benchmarks/20261020T180844Z-vetting-second-list-61b5944-7096/second-list.md) and
   [`second-list.csv`](../../results/benchmarks/20261020T180844Z-vetting-second-list-61b5944-7096/second-list.csv). Each
   host's Tmag is in its `checks.json` in vetting run
-  `20261020T010149Z-vetting-run-62882b5-c3ee`, not yet under `results/` either.
+  `20261020T010149Z-vetting-run-62882b5-c3ee`, not yet under `results/`.
 - The triage run's
   [`known_to_spoc.csv`](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/known_to_spoc.csv): the 466 rows,
   with the LEO-Vetter flux outcomes and RUWE that pick the ten.
