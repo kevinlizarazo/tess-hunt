@@ -1,0 +1,7 @@
+signal = "164767175-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Every other check passes, TRICERATOPS among them, and nothing published or catalogued sits at this period, a third signal on a star with two confirmed planets. But the search found it only just above the threshold, where a false alarm or so is expected across the whole sample, and every held-out season is too weak to test, so TESS can't yet replicate it apart from the search."
+rests_on = ["F1", "holdout"]
+criteria = ["vet-v3"]
+deciding_evidence = "Photometry at the predicted times precise to about 50 ppm per transit: new CHEOPS visits, or the archival CHEOPS visits of HIP 8152 if one covers a predicted transit (F1). Sector 108, observed but not yet public, adds to the last TESS season but can't decide it alone. Ground-based photometry can't reach this depth."

@@ -1,0 +1,968 @@
+{
+  "advances": false,
+  "catalogued": {
+    "fallback_duration_days": 0.25,
+    "mask_width_durations": 2.0,
+    "rows": [
+      {
+        "duration": 0.11909050463867486,
+        "kind": "candidate",
+        "masked": true,
+        "matches_signal": false,
+        "name": "TOI-266.01",
+        "overlaps": [
+          1
+        ],
+        "period": 10.751124783434165,
+        "source": "TOI",
+        "t0": 3973.3546819998883
+      },
+      {
+        "duration": 0.17335474139737403,
+        "kind": "candidate",
+        "masked": true,
+        "matches_signal": false,
+        "name": "TOI-266.02",
+        "overlaps": [],
+        "period": 19.60509660339157,
+        "source": "TOI",
+        "t0": 3986.179949999787
+      },
+      {
+        "duration": 0.182642,
+        "kind": "planet",
+        "masked": true,
+        "matches_signal": false,
+        "name": "HIP 8152 c",
+        "overlaps": [],
+        "period": 19.60562,
+        "source": "archive",
+        "t0": 1398.286900000181
+      },
+      {
+        "duration": 0.12480949166666666,
+        "kind": "planet",
+        "masked": true,
+        "matches_signal": false,
+        "name": "HIP 8152 b",
+        "overlaps": [
+          1
+        ],
+        "period": 10.751014,
+        "source": "archive",
+        "t0": 1393.0855000000447
+      },
+      {
+        "duration": 0.12083333333333333,
+        "kind": "planet",
+        "masked": false,
+        "matches_signal": false,
+        "name": "HIP 8152 b",
+        "overlaps": [
+          1
+        ],
+        "period": 10.75101,
+        "source": "archive_ps",
+        "t0": 1758.6200000001118
+      },
+      {
+        "duration": 0.17916666666666667,
+        "kind": "planet",
+        "masked": false,
+        "matches_signal": false,
+        "name": "HIP 8152 c",
+        "overlaps": [],
+        "period": 19.6053,
+        "source": "archive_ps",
+        "t0": 1751.1949999998324
+      },
+      {
+        "duration": 0.12480949166666666,
+        "kind": "planet",
+        "masked": false,
+        "matches_signal": false,
+        "name": "HIP 8152 b",
+        "overlaps": [
+          1
+        ],
+        "period": 10.751014,
+        "source": "archive_ps",
+        "t0": 1393.0855000000447
+      },
+      {
+        "duration": 0.11909050416666667,
+        "kind": "planet",
+        "masked": false,
+        "matches_signal": false,
+        "name": "HIP 8152 b",
+        "overlaps": [
+          1
+        ],
+        "period": 10.75112478343,
+        "source": "archive_ps",
+        "t0": 3973.3546819998883
+      },
+      {
+        "duration": 0.182642,
+        "kind": "planet",
+        "masked": false,
+        "matches_signal": false,
+        "name": "HIP 8152 c",
+        "overlaps": [],
+        "period": 19.60562,
+        "source": "archive_ps",
+        "t0": 1398.286900000181
+      },
+      {
+        "duration": 0.17335474166666667,
+        "kind": "planet",
+        "masked": false,
+        "matches_signal": false,
+        "name": "HIP 8152 c",
+        "overlaps": [],
+        "period": 19.60509660339,
+        "source": "archive_ps",
+        "t0": 3986.179949999787
+      },
+      {
+        "duration": 0.18456208333333335,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0001-s0036 00164767175-02",
+        "overlaps": [
+          0,
+          128
+        ],
+        "period": 10.9911,
+        "source": "SPOC-TCE",
+        "t0": 1387.3
+      },
+      {
+        "duration": 0.1226425,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0001-s0036 00164767175-01",
+        "overlaps": [
+          1
+        ],
+        "period": 10.751,
+        "source": "SPOC-TCE",
+        "t0": 1382.33
+      },
+      {
+        "duration": 0.11732791666666666,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0003-s0003 00164767175-01",
+        "overlaps": [
+          1,
+          128
+        ],
+        "period": 10.7485,
+        "source": "SPOC-TCE",
+        "t0": 1382.34
+      },
+      {
+        "duration": 0.12730291666666668,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0030-s0030 00164767175-01",
+        "overlaps": [],
+        "period": 11.2261,
+        "source": "SPOC-TCE",
+        "t0": 2123.68
+      },
+      {
+        "duration": 0.12663833333333332,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0097-s0097 00164767175-01",
+        "overlaps": [],
+        "period": 10.7542,
+        "source": "SPOC-TCE",
+        "t0": 3941.09
+      },
+      {
+        "duration": 0.19867541666666666,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0097-s0097 00164767175-02",
+        "overlaps": [
+          126
+        ],
+        "period": 19.6134,
+        "source": "SPOC-TCE",
+        "t0": 3946.95
+      },
+      {
+        "duration": 0.123,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner 164767175-1-S1-36",
+        "overlaps": [
+          1
+        ],
+        "period": 10.751,
+        "source": "ExoMiner-v1",
+        "t0": 1382.334
+      },
+      {
+        "duration": 0.142,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner 164767175-1-S3",
+        "overlaps": [
+          1
+        ],
+        "period": 10.768,
+        "source": "ExoMiner-v1",
+        "t0": 1393.079
+      },
+      {
+        "duration": 0.127,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner 164767175-1-S30",
+        "overlaps": [],
+        "period": 11.226,
+        "source": "ExoMiner-v1",
+        "t0": 2123.68
+      },
+      {
+        "duration": 0.1226426680555723,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner vetting_catalog_2-min 164767175-1-S1-36",
+        "overlaps": [
+          1
+        ],
+        "period": 10.75101065785684,
+        "source": "ExoMiner-v2",
+        "t0": 1382.333862747195
+      },
+      {
+        "duration": 0.18456215806959073,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner vetting_catalog_2-min 164767175-2-S1-36",
+        "overlaps": [
+          0,
+          128
+        ],
+        "period": 10.991053896835396,
+        "source": "ExoMiner-v2",
+        "t0": 1387.29663930989
+      },
+      {
+        "duration": 0.12730294726248967,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner vetting_catalog_2-min 164767175-1-S30",
+        "overlaps": [],
+        "period": 11.226097129693132,
+        "source": "ExoMiner-v2",
+        "t0": 2123.6796804797664
+      },
+      {
+        "duration": 0.1415578929910359,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner vetting_catalog_2-min 164767175-1-S3",
+        "overlaps": [
+          1
+        ],
+        "period": 10.767806826134972,
+        "source": "ExoMiner-v2",
+        "t0": 1393.0787394934546
+      },
+      {
+        "duration": 0.14765372767870807,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "eumemic-tce f1d17f0 164767175",
+        "overlaps": [],
+        "period": 11.265767644781407,
+        "source": "eumemic-tce",
+        "t0": 1391.908516937377
+      },
+      {
+        "duration": 0.05498154510038158,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "eumemic-tce f1d17f0 164767175",
+        "overlaps": [],
+        "period": 10.989222216347647,
+        "source": "eumemic-tce",
+        "t0": 1389.7545344476805
+      },
+      {
+        "duration": 0.1250075187298698,
+        "kind": "candidate",
+        "masked": false,
+        "matches_signal": false,
+        "name": "RAVEN 164767175",
+        "overlaps": [
+          1
+        ],
+        "period": 10.750646650818084,
+        "source": "RAVEN",
+        "t0": 2134.9046493166943
+      }
+    ],
+    "transits": [
+      0,
+      1,
+      2,
+      3,
+      125,
+      126,
+      128,
+      129,
+      437,
+      438,
+      439,
+      440,
+      442,
+      443,
+      444,
+      445,
+      493,
+      494,
+      496,
+      497
+    ]
+  },
+  "checks": [
+    {
+      "check": "novelty",
+      "evidence": {
+        "catalog_rows": 951362,
+        "nearby_rows": 26,
+        "neighbour_arcmin": 2.5,
+        "tce_matches": [],
+        "tce_period_matches": []
+      },
+      "outcome": "pass",
+      "reason": "no known object matches"
+    },
+    {
+      "check": "odd_even",
+      "evidence": {
+        "families": {
+          "pdcsap": {
+            "check": "odd_even",
+            "evidence": {
+              "depth_even": 0.00023621130853790362,
+              "depth_odd": 0.00017517275147094225,
+              "err_even": 3.7738154909157106e-05,
+              "err_odd": 4.0827186085874304e-05,
+              "n_even": 444,
+              "n_odd": 386,
+              "sigma": 1.0978748258625164
+            },
+            "outcome": "pass",
+            "reason": "odd and even depths agree within 1.1 sigma"
+          }
+        }
+      },
+      "outcome": "pass",
+      "reason": "pdcsap: odd and even depths agree within 1.1 sigma"
+    },
+    {
+      "check": "secondary",
+      "evidence": {
+        "depth": -1.6085886876515687e-05,
+        "err": 2.1702534402197875e-05,
+        "n": 1366,
+        "sigma": -0.7411985429170257
+      },
+      "outcome": "pass",
+      "reason": "no dip at phase 0.5 (-0.7 sigma)"
+    },
+    {
+      "check": "sector_depth",
+      "evidence": {
+        "families": {
+          "pdcsap": {
+            "check": "sector_depth",
+            "evidence": {
+              "chi2": 4.039221970500178,
+              "dof": 3,
+              "mean_depth": 0.00020808823898214328,
+              "p_value": 0.25725989365042407,
+              "sectors": [
+                {
+                  "depth": 0.00016267112566947795,
+                  "err": 6.389518783488469e-05,
+                  "n": 134,
+                  "provenance": "SPOC",
+                  "sector": 3
+                },
+                {
+                  "depth": 0.00014534954402167788,
+                  "err": 6.241276028988985e-05,
+                  "n": 180,
+                  "provenance": "SPOC",
+                  "sector": 30
+                },
+                {
+                  "depth": 0.0002732275911582205,
+                  "err": 4.307757641537571e-05,
+                  "n": 346,
+                  "provenance": "SPOC",
+                  "sector": 97
+                },
+                {
+                  "depth": 0.0001779902423222346,
+                  "err": 6.183335621594621e-05,
+                  "n": 170,
+                  "provenance": "SPOC",
+                  "sector": 107
+                }
+              ]
+            },
+            "outcome": "pass",
+            "reason": "depths agree across 4 sectors (p = 0.26)"
+          }
+        }
+      },
+      "outcome": "pass",
+      "reason": "pdcsap: depths agree across 4 sectors (p = 0.26)"
+    },
+    {
+      "check": "holdout",
+      "evidence": {
+        "seasons": [
+          {
+            "depth": 0.0001342649726399081,
+            "end": 1405.7174771159318,
+            "err": 5.6397042115503585e-05,
+            "expected_depth": 0.0001873550652656819,
+            "expected_snr": 3.3220725456127758,
+            "family_depths": [
+              {
+                "depth": 0.0001342649726399081,
+                "err": 5.6397042115503585e-05,
+                "family": "pdcsap",
+                "n": 172,
+                "ref": 0.0001873550652656819,
+                "ref_err": 2.7447461329678194e-05,
+                "ref_n": 874,
+                "tension": 0.8464413773809338,
+                "training_cadences": 50822
+              }
+            ],
+            "n": 172,
+            "predicted_period": 5.839263578311958,
+            "predicted_t0": 2117.1546641683344,
+            "ref": 0.0001873550652656819,
+            "ref_err": 2.7447461329678194e-05,
+            "ref_n": 874,
+            "season": 0,
+            "start": 1386.4423467675394,
+            "status": "underpowered",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 3
+          },
+          {
+            "depth": 0.00012637210404053967,
+            "end": 2141.0809627699314,
+            "err": 7.206804790847097e-05,
+            "expected_depth": 0.00022183540816644864,
+            "expected_snr": 3.0781381569844606,
+            "family_depths": [
+              {
+                "depth": 0.00012637210404053967,
+                "err": 7.206804790847097e-05,
+                "family": "pdcsap",
+                "n": 135,
+                "ref": 0.00022183540816644864,
+                "ref_err": 3.541170626922972e-05,
+                "ref_n": 496,
+                "tension": 1.1888606058629068,
+                "training_cadences": 47898
+              }
+            ],
+            "n": 135,
+            "predicted_period": 5.8392467441889835,
+            "predicted_t0": 1387.2673467675395,
+            "ref": 0.00022183540816644864,
+            "ref_err": 3.541170626922972e-05,
+            "ref_n": 496,
+            "season": 1,
+            "start": 2116.3906016683345,
+            "status": "underpowered",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 3
+          },
+          {
+            "depth": 0.00022830504541315744,
+            "end": 3987.7873931268014,
+            "err": 4.3202620441579424e-05,
+            "expected_depth": 0.00016501852228678615,
+            "expected_snr": 3.8196415078555663,
+            "family_depths": [
+              {
+                "depth": 0.00022830504541315744,
+                "err": 4.3202620441579424e-05,
+                "family": "pdcsap",
+                "n": 344,
+                "ref": 0.00016501852228678615,
+                "ref_err": 3.704301787338183e-05,
+                "ref_n": 462,
+                "tension": 1.112062310807261,
+                "training_cadences": 36968
+              }
+            ],
+            "n": 344,
+            "predicted_period": 5.839249886169232,
+            "predicted_t0": 1387.2626592675394,
+            "ref": 0.00016501852228678615,
+            "ref_err": 3.704301787338183e-05,
+            "ref_n": 462,
+            "season": 2,
+            "start": 3936.90719565457,
+            "status": "underpowered",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 3
+          },
+          {
+            "depth": 0.0002207155073027378,
+            "end": 4290.274657016698,
+            "err": 6.695195755464104e-05,
+            "expected_depth": 0.00019955959432216286,
+            "expected_snr": 2.9806386790005006,
+            "family_depths": [
+              {
+                "depth": 0.0002207155073027378,
+                "err": 6.695195755464104e-05,
+                "family": "pdcsap",
+                "n": 145,
+                "ref": 0.00019955959432216286,
+                "ref_err": 3.102206291983322e-05,
+                "ref_n": 659,
+                "tension": 0.2867051549398789,
+                "training_cadences": 49061
+              }
+            ],
+            "n": 145,
+            "predicted_period": 5.839309291676203,
+            "predicted_t0": 1387.2532842675394,
+            "ref": 0.00019955959432216286,
+            "ref_err": 3.102206291983322e-05,
+            "ref_n": 659,
+            "season": 3,
+            "start": 4265.639829954544,
+            "status": "underpowered",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 3
+          }
+        ]
+      },
+      "outcome": "inconclusive",
+      "reason": "0 season(s) could be tested; need 2"
+    },
+    {
+      "check": "signal_present",
+      "evidence": {
+        "depth": 0.000208088238981885,
+        "err": 2.7712689734427916e-05,
+        "n": 830,
+        "snr": 7.508770926821068
+      },
+      "outcome": "pass",
+      "reason": "combined depth is 7.5 sigma"
+    },
+    {
+      "check": "shape",
+      "evidence": {
+        "acceptance": 0.27618125,
+        "b_median": 0.4821181931493089,
+        "grazing_probability": 0.0024895833333333332,
+        "rp_rs_median": 0.012852051017172204
+      },
+      "outcome": "pass",
+      "reason": "U-shaped: grazing in 0% of samples"
+    },
+    {
+      "check": "density",
+      "evidence": {
+        "acceptance": 0.27618125,
+        "fit_log_rho": -0.0932999251501177,
+        "fit_log_rho_minus": 0.6063620443952003,
+        "fit_log_rho_plus": 0.25218129475383777,
+        "fit_log_rho_sd": 0.25218129475383777,
+        "fit_rho_gcc": 0.8066777436243098,
+        "tension_sigma": 1.3750562762934464,
+        "tic_log_rho": 0.2745521205145566,
+        "tic_log_rho_sd": 0.08927695124270335,
+        "tic_rho_gcc": 1.88170752
+      },
+      "outcome": "pass",
+      "reason": "transit and TIC densities agree (1.4 sigma)"
+    },
+    {
+      "check": "radius",
+      "evidence": {
+        "rad_tic": 0.918917,
+        "rp_rearth": 1.28818408751611,
+        "rp_rs_median": 0.012852051017172204
+      },
+      "outcome": "pass",
+      "reason": "1.3 Earth radii"
+    }
+  ],
+  "criteria_version": "vet-v3",
+  "dropped_suspect": [],
+  "ephemeris": {
+    "depth": 0.0001802618358216,
+    "duration": 0.125,
+    "period": 5.839221608346998,
+    "t0": 1387.2645691909104
+  },
+  "evidence_only": false,
+  "families": {
+    "pdcsap": [
+      3,
+      30,
+      97,
+      107
+    ]
+  },
+  "fit": {
+    "acceptance": 0.27618125,
+    "b": {
+      "median": 0.4821181931493089,
+      "minus": 0.3409589203735004,
+      "plus": 0.37347466841983
+    },
+    "log_rho": {
+      "median": -0.0932999251501177,
+      "minus": 0.6063620443952003,
+      "plus": 0.25218129475383777
+    },
+    "period": {
+      "median": 5.839262863791702,
+      "minus": 2.694977322370562e-05,
+      "plus": 2.5499041747423234e-05
+    },
+    "q1": {
+      "median": 0.5860766753284292,
+      "minus": 0.35204658940324085,
+      "plus": 0.2932979939412156
+    },
+    "q2": {
+      "median": 0.514647175790061,
+      "minus": 0.33765006577982093,
+      "plus": 0.31854731794302427
+    },
+    "rho_prior": null,
+    "rp_rs": {
+      "median": 0.012852051017172204,
+      "minus": 0.0013129295154940962,
+      "plus": 0.002024213780155222
+    },
+    "t0": {
+      "median": 1387.2565191481146,
+      "minus": 0.008549131924382891,
+      "plus": 0.009875454684106444
+    }
+  },
+  "fit_prior": {
+    "a_rs": {
+      "median": 14.513689804159263,
+      "minus": 0.8588697184519614,
+      "plus": 0.8907034627481423
+    },
+    "acceptance": 0.35863749999999994,
+    "b": {
+      "median": 0.21405781256691336,
+      "minus": 0.14888987209219834,
+      "plus": 0.19136596344689366
+    },
+    "ephemeris": {
+      "period": {
+        "median": 5.839259321251369,
+        "sd": 2.487331652171259e-05
+      },
+      "t0": {
+        "median": 1387.25965808129,
+        "sd": 0.008105136848992745
+      }
+    },
+    "log_rho": {
+      "median": 0.2294753491020859,
+      "minus": 0.07947455187140409,
+      "plus": 0.07759882910334975
+    },
+    "period": {
+      "median": 5.839259321251369,
+      "minus": 2.3191308322623172e-05,
+      "plus": 2.2506273141154054e-05
+    },
+    "q1": {
+      "median": 0.42153940071345675,
+      "minus": 0.27773358944595083,
+      "plus": 0.34959726418577475
+    },
+    "q2": {
+      "median": 0.46227175366134376,
+      "minus": 0.3095257788331362,
+      "plus": 0.3328615125725892
+    },
+    "rho_prior": [
+      0.2745521205145566,
+      0.08927695124270335
+    ],
+    "rp_rearth": {
+      "median": 1.2647251107954596,
+      "p16": 1.1793870747283484,
+      "p84": 1.350372501977684
+    },
+    "rp_rs": {
+      "median": 0.012618003749746472,
+      "minus": 0.0008514068787750621,
+      "plus": 0.0008544932759448395
+    },
+    "t0": {
+      "median": 1387.25965808129,
+      "minus": 0.006654219456549981,
+      "plus": 0.006637024122483126
+    }
+  },
+  "fit_prior_reason": null,
+  "masked": [
+    {
+      "depth": null,
+      "duration": 0.11909050463867486,
+      "period": 10.751124783434165,
+      "t0": 3973.3546819998883
+    },
+    {
+      "depth": null,
+      "duration": 0.17335474139737403,
+      "period": 19.60509660339157,
+      "t0": 3986.179949999787
+    },
+    {
+      "depth": null,
+      "duration": 0.182642,
+      "period": 19.60562,
+      "t0": 1398.286900000181
+    },
+    {
+      "depth": null,
+      "duration": 0.12480949166666666,
+      "period": 10.751014,
+      "t0": 1393.0855000000447
+    }
+  ],
+  "modshift": {
+    "Fred": 1.421780918621068,
+    "dep_sec": 6.492216660836103e-05,
+    "err_sec": 2.177426108133679e-05,
+    "phs_pos": 0.38942819288674235,
+    "phs_pri": 0.0006914309501341435,
+    "phs_sec": 0.649384557386443,
+    "phs_ter": 0.309512751974297,
+    "sig_pos": 3.7335340445139913,
+    "sig_pri": 10.008969613784425,
+    "sig_sec": 2.9816013671300787,
+    "sig_ter": 2.9217307950128815
+  },
+  "neighbours": {
+    "check": "neighbours",
+    "evidence": {
+      "centre": "Gaia DR3 5140454049422547200, J2016.0",
+      "depth": 0.0001802618358216,
+      "depth_from": "the signals file",
+      "possible_hosts": [],
+      "table": [],
+      "target_source_id": 5140454049422547200,
+      "tmag": 9.45661
+    },
+    "outcome": "pass",
+    "reason": "0 of 0 neighbours could host the signal"
+  },
+  "other_signals": [
+    {
+      "depth": 6.547579946551853e-05,
+      "duration": 0.125,
+      "period": 1.3889530731231794,
+      "period_ratio": 0.2378661346124818,
+      "rank": 2,
+      "sde": 9.21952848908952,
+      "t0": 1386.893735857577
+    }
+  ],
+  "pixels": {
+    "evidence": {
+      "asked": [
+        107,
+        97,
+        30,
+        3
+      ],
+      "files": {
+        "tic164767175/imageData_164767175.1_sector107.pickle": "55ab57b9e2ca9722cc8ccbe9026e99297338828c14cf7d144301be1087824bcb",
+        "tic164767175/imageData_164767175.1_sector3.pickle": "454a9256fabadb65093d7c2b20d76b074ef3ad102d8fa48cb1a1aace0d950fb9",
+        "tic164767175/imageData_164767175.1_sector30.pickle": "dfc46d8ee978d55326b1391f6cd1cb0eafcdf12898bcec7cc8377594dea316b3",
+        "tic164767175/imageData_164767175.1_sector97.pickle": "bd2ddf3bdd20ffb558d1df1c2e6e8b3700efad852b87780e11db9334b74731c9",
+        "tic164767175/ticKey_tic164767175.txt": "2781d2e5147c2a5a804da44f7e36b9cc2197f0dbba98cc5cc86540d7e2da3672"
+      },
+      "no_image": [],
+      "offset_mean_arcsec": 13.838990741237872,
+      "offset_qual_arcsec": 2.1185961606627126,
+      "sectors": [
+        {
+          "offset_arcsec": 28.579760414600358,
+          "quality": 0.28316212310579103,
+          "sector": 107
+        },
+        {
+          "offset_arcsec": 22.858970065427535,
+          "quality": 0.34968704203968654,
+          "sector": 97
+        },
+        {
+          "offset_arcsec": 17.800748833720164,
+          "quality": 0.6485714059001735,
+          "sector": 30
+        },
+        {
+          "offset_arcsec": 2.1185961606627126,
+          "quality": 0.8444835601643805,
+          "sector": 3
+        }
+      ],
+      "stale_removed": []
+    },
+    "max_offset_arcsec": 15.0,
+    "outcome": "pass",
+    "reason": "centroid offset 2.1\" within 15\""
+  },
+  "red_noise": {
+    "107": {
+      "beta": 1.0728135872571787,
+      "cadences_per_bin": 45.0,
+      "n_bins": 246
+    },
+    "3": {
+      "beta": 1.0662127073244254,
+      "cadences_per_bin": 45.0,
+      "n_bins": 217
+    },
+    "30": {
+      "beta": 1.114678494099107,
+      "cadences_per_bin": 45.0,
+      "n_bins": 280
+    },
+    "97": {
+      "beta": 1.0530879013273367,
+      "cadences_per_bin": 45.0,
+      "n_bins": 489
+    }
+  },
+  "signal": {
+    "kind": "candidate",
+    "name": "164767175-1"
+  },
+  "sources": {
+    "107": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.99875206,
+      "flfrcsap": 0.93659395,
+      "n_good": 14087,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0107/0000/0001/6476/7175/tess2026221103959-s0107-0000000164767175-0309-s_lc.fits",
+      "sha256": "78e8d1aa89ef28372dafb7b39ef388ddb15247d7d446b84007511a656ad50ef3",
+      "timing_suspect": false
+    },
+    "3": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.99946201,
+      "flfrcsap": 0.93501699,
+      "n_good": 12844,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0003/0000/0001/6476/7175/tess2018263035959-s0003-0000000164767175-0123-s_lc.fits",
+      "sha256": "b4561ac3899ddd2538fee30c7cbf0f31a94a1f5254d2d47207a71f616d20f996",
+      "timing_suspect": false
+    },
+    "30": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.99922931,
+      "flfrcsap": 0.92701936,
+      "n_good": 15797,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0030/0000/0001/6476/7175/tess2020266004630-s0030-0000000164767175-0195-s_lc.fits",
+      "sha256": "f7e5aff313b265416a452472053c444423e792330d37d0589051241907eb9466",
+      "timing_suspect": false
+    },
+    "97": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.9995966,
+      "flfrcsap": 0.93793082,
+      "n_good": 28898,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0097/0000/0001/6476/7175/tess2025258001959-s0097-0000000164767175-0294-s_lc.fits",
+      "sha256": "d9d1a45c18c52dfecb78e057cbaf7baf0888a76faab25dd55fca826018eec7ba",
+      "timing_suspect": false
+    }
+  },
+  "star": {
+    "angular_distance": 0.0980377048254013,
+    "contratio": 2.42789447e-05,
+    "dec": -18.4009077127299,
+    "disposition": null,
+    "dr3_from": "targets",
+    "dr3_reason": null,
+    "dr3_source_id": 5140454049422547200,
+    "e_mass": 0.130053,
+    "e_rad": 0.0420301,
+    "e_rho": 0.274729,
+    "e_teff": 116.247,
+    "gaia": "5140454049422547200",
+    "logg": 4.52729,
+    "logg_flame": 4.399864862831639,
+    "logg_gspphot": 4.417399883270264,
+    "mass": 1.037,
+    "mass_flame": 0.8979350328445435,
+    "ra": 26.2096483310017,
+    "rad": 0.918917,
+    "radius_flame": 0.9901250004768372,
+    "rho": 1.33644,
+    "ruwe": 0.8255864977836609,
+    "sectors": "3,30,97,107",
+    "teff": 5784.0,
+    "tic": 164767175,
+    "tmag": 9.45661
+  },
+  "tic": 164767175,
+  "triage_reason": null,
+  "upcoming_sectors": [],
+  "window_duration": {
+    "days": 0.12485015931513758,
+    "from": "fit_prior"
+  },
+  "windows": [],
+  "windows_reason": null
+}
