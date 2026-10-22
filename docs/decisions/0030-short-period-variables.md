@@ -56,7 +56,18 @@ design, section 5); it measures the problem, with a committed script.
 - [`short-period-variables-2026-10-17.txt`](../../results/benchmarks/short-period-variables-2026-10-17.txt): every
   number in item 1. It was written on 2026-10-17 at 04:08 UTC by
   [`benchmarks/short_period_variables.py`](../../benchmarks/short_period_variables.py) as committed in e6719c6, which
-  is unchanged since; run again on 2026-10-22 at 02:04 UTC at commit a060f3c, it wrote the same file byte for byte.
+  is unchanged since. Anyone with the three run directories can repeat the check: at this commit, from the repository
+  root,
+
+  ```
+  uv run python benchmarks/short_period_variables.py \
+      "$TESS_HUNT_DATA/runs/20261014T205855Z-search-fe29585-cdf2" \
+      "$TESS_HUNT_DATA/runs/20261015T155441Z-triage-7b12e25-3f57" \
+      "$TESS_HUNT_DATA/runs/20261015T131443Z-benchmark-inject-fe29585-8496" > short-period-variables.txt
+  ```
+
+  writes a file whose sha256 is the committed file's,
+  `e3c432dbe53daac00f2d7095b5d5a2cc5d4ca29fde8c88ed758e2e3f8dca78a0`.
 - The production search's published
   [provenance.json](../../results/benchmarks/20261014T205855Z-search-fe29585-cdf2/provenance.json), the triage run's
   [summary.md](../../results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md) and the inject run's

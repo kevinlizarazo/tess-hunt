@@ -26,7 +26,7 @@ The M3 design (question 3 and section 4.11, approved by the maintainer on 2026-1
   catalog ephemerides, which should all pass.
 
 Then the maintainer decides whether a LEO-Vetter change is worth making. This record gives the numbers for that
-question and leaves room for his answer.
+question and leaves room for the maintainer's answer.
 
 The two production runs:
 
@@ -66,40 +66,43 @@ The two production runs:
 3. **The numbers for the LEO-Vetter question.**
    - **The share it calls a planet candidate, by bin.** From the summary: `searched` and `search` are the inject run's
      injections and search completeness, `judged` the recovered injections, `leo_pc` the share LEO-Vetter called a
-     planet candidate, `triage_pass` the share that passed both novelty and LEO-Vetter, and `product` `search` times
-     `triage_pass`. The rest of each bin failed or was inconclusive. No injection was recovered below an expected SNR
-     of 10 or a radius of 1 Earth radius, so those bins have no shares (`nan`).
+     planet candidate, `novelty_pass` the share novelty passed, `triage_pass` the share that passed both novelty and
+     LEO-Vetter, and `product` `search` times `triage_pass`. The rest of each bin failed or was inconclusive. No
+     injection was recovered below an expected SNR of 10 or a radius of 1 Earth radius, so those bins have no shares
+     (`nan`).
 
-     | expected SNR | searched | search | judged | leo_pc | triage_pass | product |
-     |---|---|---|---|---|---|---|
-     | [0.0, 5.0) | 755 | 0 | 0 | nan | nan | nan |
-     | [5.0, 7.0) | 89 | 0 | 0 | nan | nan | nan |
-     | [7.0, 10.0) | 105 | 0 | 0 | nan | nan | nan |
-     | [10.0, 15.0) | 111 | 0.0541 | 6 | 0.833 | 0.833 | 0.045 |
-     | [15.0, 20.0) | 79 | 0.43 | 34 | 0.824 | 0.824 | 0.354 |
-     | [20.0, 50.0) | 290 | 0.686 | 199 | 0.844 | 0.844 | 0.579 |
-     | [50.0, inf) | 571 | 0.928 | 530 | 0.823 | 0.819 | 0.76 |
+     | expected SNR | searched | search | judged | leo_pc | novelty_pass | triage_pass | product |
+     |---|---|---|---|---|---|---|---|
+     | [0.0, 5.0) | 755 | 0 | 0 | nan | nan | nan | nan |
+     | [5.0, 7.0) | 89 | 0 | 0 | nan | nan | nan | nan |
+     | [7.0, 10.0) | 105 | 0 | 0 | nan | nan | nan | nan |
+     | [10.0, 15.0) | 111 | 0.0541 | 6 | 0.833 | 1 | 0.833 | 0.045 |
+     | [15.0, 20.0) | 79 | 0.43 | 34 | 0.824 | 1 | 0.824 | 0.354 |
+     | [20.0, 50.0) | 290 | 0.686 | 199 | 0.844 | 1 | 0.844 | 0.579 |
+     | [50.0, inf) | 571 | 0.928 | 530 | 0.823 | 0.994 | 0.819 | 0.76 |
 
-     | period (days) | searched | search | judged | leo_pc | triage_pass | product |
-     |---|---|---|---|---|---|---|
-     | [1, 2) | 45 | 0.489 | 22 | 0.909 | 0.864 | 0.422 |
-     | [2, 4) | 117 | 0.504 | 59 | 0.932 | 0.915 | 0.462 |
-     | [4, 8) | 232 | 0.474 | 110 | 0.945 | 0.945 | 0.448 |
-     | [8, 16) | 418 | 0.423 | 177 | 0.864 | 0.864 | 0.366 |
-     | [16, 40) | 1188 | 0.338 | 401 | 0.761 | 0.761 | 0.257 |
+     | period (days) | searched | search | judged | leo_pc | novelty_pass | triage_pass | product |
+     |---|---|---|---|---|---|---|---|
+     | [1, 2) | 45 | 0.489 | 22 | 0.909 | 0.955 | 0.864 | 0.422 |
+     | [2, 4) | 117 | 0.504 | 59 | 0.932 | 0.983 | 0.915 | 0.462 |
+     | [4, 8) | 232 | 0.474 | 110 | 0.945 | 0.991 | 0.945 | 0.448 |
+     | [8, 16) | 418 | 0.423 | 177 | 0.864 | 1 | 0.864 | 0.366 |
+     | [16, 40) | 1188 | 0.338 | 401 | 0.761 | 1 | 0.761 | 0.257 |
 
-     | radius (Earth radii) | searched | search | judged | leo_pc | triage_pass | product |
-     |---|---|---|---|---|---|---|
-     | [0.5, 1.0) | 402 | 0 | 0 | nan | nan | nan |
-     | [1.0, 2.0) | 400 | 0.0125 | 5 | 1 | 1 | 0.0125 |
-     | [2.0, 4.0) | 393 | 0.285 | 112 | 0.866 | 0.866 | 0.247 |
-     | [4.0, 8.0) | 408 | 0.743 | 303 | 0.861 | 0.861 | 0.64 |
-     | [8.0, 16.0) | 397 | 0.879 | 349 | 0.785 | 0.779 | 0.685 |
+     | radius (Earth radii) | searched | search | judged | leo_pc | novelty_pass | triage_pass | product |
+     |---|---|---|---|---|---|---|---|
+     | [0.5, 1.0) | 402 | 0 | 0 | nan | nan | nan | nan |
+     | [1.0, 2.0) | 400 | 0.0125 | 5 | 1 | 1 | 1 | 0.0125 |
+     | [2.0, 4.0) | 393 | 0.285 | 112 | 0.866 | 1 | 0.866 | 0.247 |
+     | [4.0, 8.0) | 408 | 0.743 | 303 | 0.861 | 1 | 0.861 | 0.64 |
+     | [8.0, 16.0) | 397 | 0.879 | 349 | 0.785 | 0.991 | 0.779 | 0.685 |
 
    - **The tests it failed them on** (`failed_tests.csv`, injections per test; one injection can fail several).
      False-alarm tests: invalid_transits 26, non_unique 20, data_gapped 15, chi 8, single_event 7, dmm 5,
      sinusoidal 4, weak 4, chases 3, unphysical_duration 2. False-positive tests: odd_even 36, secondary 24. Not
-     judged: odd_even 9, asymmetric 1.
+     judged: odd_even 9, asymmetric 1. The nine inconclusives are the injections with a test not judged (`rows.csv`'s
+     `leo_reason`: odd_even 8, asymmetric 1), and the ninth odd_even not judged is an injection that failed on
+     secondary.
    - **M2's measure of its strictness**, on the production triage run's signals
      ([leo-strictness-2026-10-16.txt](../../results/triage/leo-strictness-2026-10-16.txt)): it failed 206 of the 208
      that match a catalogued eclipsing binary, and passed 18 of the 56 that match a catalogued planet candidate (a
