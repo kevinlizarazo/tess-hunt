@@ -60,11 +60,19 @@ DR3 papers (https://www.cosmos.esa.int/web/gaia/dr3-papers):
 - Mowlavi et al. 2023, Gaia Data Release 3: The first catalogue of Gaia eclipsing binaries - Candidate identification
   (A&A 674, A16)
 
-The triage tables publish each star's RUWE, which comes from Gaia's astrometric solution. The credit page lists the
-paper on that solution among those describing Gaia EDR3, the early instalment of DR3:
+The triage tables publish each star's RUWE, and the vetting records publish RUWE and Gaia DR3 positions and proper
+motions, all from Gaia's astrometric solution. The credit page lists the paper on that solution among those
+describing Gaia EDR3, the early instalment of DR3:
 
 - Lindegren, L., Klioner, S., Hernández, J., et al. 2021b, Gaia Early Data Release 3. The astrometric solution
   (A&A 649, A2; doi:10.1051/0004-6361/202039709)
+
+The vetting records' neighbour tables (`neighbours.csv`) also publish Gaia G magnitudes and BP-RP colours. Gaia's
+list of EDR3 papers (https://www.cosmos.esa.int/web/gaia/edr3-papers) gives the paper on that photometry beside
+Lindegren et al. under "Processing papers":
+
+- Riello, M., et al. 2021, Gaia Early Data Release 3: Photometric content and validation (A&A 649, A3;
+  doi:10.1051/0004-6361/202039587)
 
 The TIC-duplicate measurement's tarball under `results/benchmarks/` holds Gaia DR2 source ids and parallaxes, which
 come through the TIC. For those, cite the Gaia DR2 release paper with the mission paper above:

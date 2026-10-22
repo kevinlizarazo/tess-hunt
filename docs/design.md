@@ -139,7 +139,7 @@ from a run directory and writes its own.
 - A product whose error column is entirely non-finite gets errors from its flux scatter, flagged
   `errors_from_scatter` in the manifest ([0010](decisions/0010-fetch-route-and-qlp-timing.md)).
 - QLP S99-S104 (`v01`) carry wrong barycentric timestamps [L8]. They are used for detection and flagged
-  `timing_suspect`. Every vet check and fit excludes them, and so M4's predicted windows, until MAST redelivers them or
+  `timing_suspect`. Every vet check and fit excludes them, as do M4's predicted windows, until MAST redelivers them or
   a correction is validated ([0010](decisions/0010-fetch-route-and-qlp-timing.md),
   [0022](decisions/0022-vet-without-timing-suspect-sectors.md)).
 - Keeps only time, flux, flux error, quality flags and per-sector metadata in one compressed file per star, then
@@ -219,9 +219,12 @@ from a run directory and writes its own.
   evidence-only vet with them in is shown beside the vet and never used for the call
   ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)).
 - **Product families:** depths are compared only within one family, crowding-corrected PDCSAP (SPOC 2-min and
-  TESS-SPOC) or QLP. Odd/even, sector depths and the held-out seasons' depth tension fail if any family fails, and pass
-  if one passes and none fails. `signal_present` and the secondary at phase 0.5 use every family, and the fits use
-  PDCSAP alone ([0023](decisions/0023-product-families.md)).
+  TESS-SPOC) or QLP. Odd/even and sector depths fail if any family fails, and pass if one passes and none fails. A
+  held-out season's depth tension is the largest within-family tension over the families whose held-out and training
+  data both hold `[holdout] min_points` cadences in predicted transits; with none, the season records
+  `tension_skipped` and is judged on detection alone.
+  `signal_present` and the secondary at phase 0.5 use every family, and the fits use PDCSAP alone
+  ([0023](decisions/0023-product-families.md)).
 - **Fits:** batman plus emcee, twice. The first, with a flat prior on the stellar density, is the one the shape,
   density and radius checks read. The second takes the TIC density as a prior and gives Rp, b, a/R* and the ephemeris
   for the dossier, TRICERATOPS and M4, with each transit in TESS's next sectors predicted from its samples
@@ -251,7 +254,8 @@ from a run directory and writes its own.
   [0028](decisions/0028-outcomes-and-calls.md)).
 - **Neighbours:** every Gaia DR3 star within 1' of the target's own DR3 position, each with the eclipse depth it would
   need if it were the source, from its TESS magnitude (Gaia G and BP-RP); a star that would need 100% or less is a
-  possible host. The table is evidence and never fails; a failed Gaia query or a star with no G makes it inconclusive
+  possible host. The table is evidence and never fails. It is inconclusive when the Gaia query fails, the cone can't
+  identify the target, a star within 1' has no G, or a required depth is not finite
   ([0025](decisions/0025-neighbours.md), [0034](decisions/0034-neighbour-table-epochs.md)).
 - **TRICERATOPS 1.1.0** on every signal no check failed ([0026](decisions/0026-triceratops.md)):
   - input: the vet's light curve, PDCSAP family only (QLP publishes no aperture), folded on the density-prior fit's
@@ -341,13 +345,13 @@ production search that misses a required positive control is invalid
 
 vet-v3 passes a planet whose QLP sectors are diluted to 0.6 of its depth, and still fails odd/even on an eclipsing
 binary at twice the period in the PDCSAP family ([0023](decisions/0023-product-families.md)). A flagged QLP sector
-with deeper even transits reaches no check: the vet passes, and only the evidence-only vet fails odd/even on it
-([0022](decisions/0022-vet-without-timing-suspect-sectors.md)). TRICERATOPS fails TOI-1399.01, the nearby eclipsing
-binary inside the pixel rule's 15". It reads TOI-1058.01 and TOI-1175.01, binaries 20.90" and 23.53" from their
-targets, inconclusive rather than fail; the maintainer accepted that on 2026-10-19, since neither can pass and both
-fail the pixel check ([0032](decisions/0032-nearby-binary-triceratops.md)). The neighbour table lists each of the two
-binaries among its possible hosts ([0025](decisions/0025-neighbours.md)). vet-v3's pass rate per check on the 20 known
-planets, with each fail understood and no criteria change:
+with deeper even transits reaches no check: the vet's light-curve checks pass, and only the evidence-only vet fails
+odd/even on it ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)). TRICERATOPS fails TOI-1399.01, the
+nearby eclipsing binary inside the pixel rule's 15". It reads TOI-1058.01 and TOI-1175.01, binaries 20.90" and 23.53"
+from their targets, inconclusive rather than fail; the maintainer accepted that on 2026-10-19, since neither can pass
+and both fail the pixel check ([0032](decisions/0032-nearby-binary-triceratops.md)). The neighbour table lists each of
+the two binaries among its possible hosts ([0025](decisions/0025-neighbours.md)). vet-v3's pass rate per check on the
+20 known planets, with each fail understood and no criteria change:
 [summary.md](../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md)
 ([0031](decisions/0031-known-set-control-fails.md)).
 
@@ -434,8 +438,9 @@ Each run directory carries `provenance.json`:
 - command line, start and end time
 
 Runs are immutable once finished. A TRICERATOPS rerun on the same inputs repeats every outcome but not every digit:
-its Gaia DR3 query for the field-star population returns rows in no fixed order, so a seeded run's means can move (by
-up to 2.9e-3 relative between two of M3's runs; [0036](decisions/0036-triceratops-tic-duplicates.md), item 5).
+its Gaia DR3 query for the field-star population returns its rows in no fixed order and once returned 13 fewer, so a
+seeded run's means can move (6.6e-4 relative from reordering alone, 2.9e-3 with 13 rows fewer;
+[0036](decisions/0036-triceratops-tic-duplicates.md), item 5).
 
 ### 5.8 Independent review
 - **Each milestone** ends with Kevin's review workflow: reviewer lenses plus two refuters per finding, fresh
@@ -695,10 +700,15 @@ production search.
 - **TESS's next looks:** each dossier lists the upcoming sectors tess-point places its star in, with the predicted
   windows. The sector dates are in `benchmarks/tess_sectors.csv`, read 2026-10-16, and future pointings are
   provisional ([0024](decisions/0024-density-prior-fit-and-windows.md)). tess-point 0.9.5.post1, whose pointing table
-  ends at Sector 134, places three shortlisted stars (146282666, 164767175 and 441010857) and two promoted rows
-  (277774870 and 370977908) in no upcoming sector. A passed signal there has no TESS sector to preregister and no DDT
-  ask; M4 decides its route ([0028](decisions/0028-outcomes-and-calls.md)). The DDT page [R2] takes a proposal "at
-  least six weeks before the beginning of the sector" (read for the M3 design on 2026-10-16), so each sector's DDT
+  ends at Sector 134, places three shortlisted stars and two promoted rows in no upcoming sector, as their dossiers'
+  next looks show: [146282666-1](../results/vetting/146282666-1/dossier.md#next-tess-looks),
+  [164767175-1](../results/vetting/164767175-1/dossier.md#next-tess-looks) and
+  [441010857-1](../results/vetting/441010857-1/dossier.md#next-tess-looks), and
+  [277774870-1](../results/vetting/277774870-1/dossier.md#next-tess-looks) and
+  [370977908-1](../results/vetting/370977908-1/dossier.md#next-tess-looks). A passed signal there has no TESS sector
+  to preregister and no DDT ask; M4 decides its route ([0028](decisions/0028-outcomes-and-calls.md)). The DDT page
+  [R2] takes a proposal "at least six weeks before the beginning of the sector", and later "up to two weeks before
+  sector start ... under certain circumstances" (read for the M3 design on 2026-10-16), so each sector's normal DDT
   deadline is six weeks before its start in that file.
 - **Slow or unstable services:** TESScut is slow and rate-limited [T25], so pixels run only on the few signals that
   reach them. MAST's download API documents no rate limit, so fetch uses 4 workers with retries
