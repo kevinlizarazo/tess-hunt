@@ -1,0 +1,6 @@
+signal = "44926986-1"
+outcome = "killed"
+date = 2026-10-22
+reasons = "Not new: eumemic's public all-sky candidate list holds this signal at the same period and epoch, added before tess-hunt made any public claim. TRICERATOPS also fails it, on a planet on the bound companion TIC 44926982, which TESS's pixels can't separate from the target."
+rests_on = ["novelty", "triceratops", "F1", "F2"]
+criteria = ["vet-v3"]
