@@ -1,8 +1,8 @@
 # 0029: Triage completeness: what novelty, LEO-Vetter and the pixel check keep of the planets the search finds
 
 - Date: 2026-10-22
-- Status: Proposed. The measurements are published; the maintainer's answer to the LEO-Vetter question (below,
-  "The maintainer's answer") is not yet given.
+- Status: Accepted (the maintainer's answer to the LEO-Vetter question given on 2026-10-22: below, "The maintainer's
+  answer")
 
 ## Context
 
@@ -26,7 +26,7 @@ The M3 design (question 3 and section 4.11, approved by the maintainer on 2026-1
   catalog ephemerides, which should all pass.
 
 Then the maintainer decides whether a LEO-Vetter change is worth making. This record gives the numbers for that
-question and leaves room for the maintainer's answer.
+question and records the maintainer's answer.
 
 The two production runs:
 
@@ -122,15 +122,21 @@ The two production runs:
 
 ## The maintainer's answer
 
-**Not yet given.** The question (M3 design, section 4.11): on the numbers in item 3, is a LEO-Vetter change worth
-making?
+The question (M3 design, section 4.11): on the numbers in item 3, is a LEO-Vetter change worth making?
 
-- Answer: _to be filled in, in the maintainer's words, with the date._
+- Answer, on 2026-10-22: "go with your recommendation."
+- The recommendation put to the maintainer with these numbers: no change now, and no follow-up of its own. The later
+  search milestone paired with M5's slice B ([decision 0030](0030-short-period-variables.md), item 2) looks again at
+  LEO-Vetter's false-positive tests, odd_even and secondary (36 and 24 of the recovered injections failed), and at
+  the 16 to 40 day bin (`leo_pc` 0.761). That milestone needs a new threshold run and a new triage run anyway. A
+  change on its own would need both runs and M3's treatment for any signal it adds, to win back at most the 132 of
+  the 769 that LEO-Vetter failed or left inconclusive. If that is wrong, real planets LEO-Vetter fails stay missed
+  until that milestone; 96 of the 132 are in the 16 to 40 day bin (`rows.csv`).
 
-Either way M3 builds no change (M3 design, section 5). A change would be its own follow-up after M3: chosen on
+M3 builds no change (M3 design, section 5). If that milestone makes one, it keeps section 4.11's rules: chosen on
 injections and controls only, never on which sample signals it would add, with its own decision record, a new
-threshold run and a new triage run; any signal it adds gets M3's treatment then (section 4.11). Without one,
-LEO-Vetter stays as [decision 0012](0012-leo-vetter-configuration.md) configured it.
+threshold run and a new triage run; any signal it adds gets M3's treatment then. Until then LEO-Vetter stays as
+[decision 0012](0012-leo-vetter-configuration.md) configured it.
 
 ## Limitations
 
