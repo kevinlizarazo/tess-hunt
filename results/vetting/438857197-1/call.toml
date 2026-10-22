@@ -1,0 +1,8 @@
+signal = "438857197-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "The dip is real and not known, and no check fails, but on this star it must be a grazing transit by a body the light curve can't bound from above, and Gaia's flat radial velocities leave only a planet or brown dwarf for that. TRICERATOPS puts most of its weight on an unresolved bound companion, and the pixels can't separate the target from two possible hosts a dozen arcseconds away; SPOC's own sector 64 centroid leans toward one of them."
+rests_on = ["F1", "F2", "F3", "triceratops"]
+criteria = ["vet-v3"]
+deciding_evidence = "Precise radial velocities to weigh a grazing body (F1); high-resolution imaging and multi-band transit photometry for a bound companion (F2); seeing-limited ground-based photometry on a predicted transit that resolves the stars 11 to 14 arcseconds away (F3). Sectors 112 and 114 add transits that sharpen the shape but decide none of these."
+promotion = "The TCEs matched are ExoMiner vetting_catalog_FFI 438857197-1-S38 and 438857197-1-S64, SPOC FFI TCEs that never became TOIs and that ExoMiner scores as false positives. Promoted by the maintainer in decision 0033 on the bar the nine shortlisted signals met in triage."
