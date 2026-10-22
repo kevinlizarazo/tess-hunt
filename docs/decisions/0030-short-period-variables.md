@@ -57,13 +57,14 @@ design, section 5); it measures the problem, with a committed script.
   number in item 1. It was written on 2026-10-17 at 04:08 UTC by
   [`benchmarks/short_period_variables.py`](../../benchmarks/short_period_variables.py) as committed in e6719c6, which
   is unchanged since. Anyone with the three run directories can repeat the check: at this commit, from the repository
-  root,
+  root, with the data directory at its default unless `TESS_HUNT_DATA` is set,
 
   ```
+  D="${TESS_HUNT_DATA:-$HOME/.cache/tess-hunt}"
   uv run python benchmarks/short_period_variables.py \
-      "$TESS_HUNT_DATA/runs/20261014T205855Z-search-fe29585-cdf2" \
-      "$TESS_HUNT_DATA/runs/20261015T155441Z-triage-7b12e25-3f57" \
-      "$TESS_HUNT_DATA/runs/20261015T131443Z-benchmark-inject-fe29585-8496" > short-period-variables.txt
+      "$D/runs/20261014T205855Z-search-fe29585-cdf2" \
+      "$D/runs/20261015T155441Z-triage-7b12e25-3f57" \
+      "$D/runs/20261015T131443Z-benchmark-inject-fe29585-8496" > /tmp/short-period-variables.txt
   ```
 
   writes a file whose sha256 is the committed file's,
