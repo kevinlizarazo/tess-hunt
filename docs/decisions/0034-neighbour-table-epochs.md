@@ -150,8 +150,10 @@ answers it from the check's own saved images:
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_page_one_answers_the_three_questions` (the possible-host
   table names its centre).
 - The network test `test_nearby_eb_controls_show_a_possible_host` in `tests/test_neighbours.py`, now centred on each
-  target's DR3 row, run by hand on 2026-10-20: 7 possible hosts among 91 stars for TOI-1058.01, its binary at 20.95"
-  needing 0.0367, and 13 among 82 for TOI-1175.01, its binary at 23.54" needing 0.0489.
+  target's DR3 row, run by hand on 2026-10-20 and again on 2026-10-23
+  ([output](../../results/benchmarks/neighbour-controls-2026-10-23.txt)): 7 possible hosts among 91 stars for
+  TOI-1058.01, its binary at 20.95" needing 0.0367, and 13 among 82 for TOI-1175.01, its binary at 23.54" needing
+  0.0489.
 - [The measurement](../../results/benchmarks/neighbour-epoch-reach-2026-10-20.md) and
   [the pixel follow-up](../../results/benchmarks/pixel-check-reference-position-2026-10-20.md), read-only analyses
   outside the pipeline that gate nothing; their line references are to commit 295bef4. Their scripts and small

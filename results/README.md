@@ -118,6 +118,12 @@ paper. The RUWE values in the tarball's `signals.csv` and the Gaia DR3 source id
 data, and the Gaia DR2 values the TIC carries are Gaia DR2 data: the `GAIA` source ids in `tic.csv`, `flagged.csv` and
 `reach.txt`, and `tic.csv`'s `plx`. Both stay under ESA's terms (above).
 
+`neighbour-controls-2026-10-23.txt` is the output of the network test `test_nearby_eb_controls_show_a_possible_host` in
+`tests/test_neighbours.py`, run by hand with `-rP`: each of the neighbour check's two real nearby-binary controls lists
+the eclipsing binary it was retired to among its possible hosts.
+[Decision 0034](../docs/decisions/0034-neighbour-table-epochs.md) cites it. Its Gaia DR3 source ids and separations
+are Gaia DR3 data (above).
+
 ## Triage
 
 Each run directory under `triage/` is one triage run, which `tess-hunt triage publish` copied unchanged from the run
