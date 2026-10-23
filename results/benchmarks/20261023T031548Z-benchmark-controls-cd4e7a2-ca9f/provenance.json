@@ -1,0 +1,265 @@
+{
+  "argv": [
+    "tess-hunt",
+    "benchmark",
+    "controls",
+    "--vet-run",
+    "$TESS_HUNT_DATA/runs/20261022T160448Z-vetting-run-cd4e7a2-2d6f",
+    "--triceratops",
+    "$TESS_HUNT_DATA/runs/20261022T163244Z-vetting-triceratops-cd4e7a2-13d5",
+    "--triceratops",
+    "$TESS_HUNT_DATA/runs/20261023T024039Z-vetting-triceratops-cd4e7a2-ef68",
+    "--pixels",
+    "$TESS_HUNT_DATA/runs/20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33",
+    "--leave-out",
+    "TOI-396.01",
+    "--production"
+  ],
+  "criteria": [],
+  "ended_at": "2026-10-23T03:15:48.843770+00:00",
+  "git": {
+    "commit": "cd4e7a2e75c7a530b4e61b0e641b5e7e8b11a87f",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "checks_TOI-1052.01": {
+      "file": "checks.json",
+      "sha256": "03938fc8a5906ac023bcf0e91893d8560bd0aaf4356f88d2c2fbd69bffd9991a"
+    },
+    "checks_TOI-1058.01": {
+      "file": "checks.json",
+      "sha256": "2676d4bb84bc171eb1b03309dd32600324d3754bbd324c7610ccb05d9210427d"
+    },
+    "checks_TOI-107.01": {
+      "file": "checks.json",
+      "sha256": "4eb8a31fac923424d42998a46e7568fd7bdf268a354c76d62abc52f424c3aa7b"
+    },
+    "checks_TOI-1097.02": {
+      "file": "checks.json",
+      "sha256": "377654c8e818028ac77bdec8d3f929e4546ab82ff0c7d19ec870609f22b60b7b"
+    },
+    "checks_TOI-1175.01": {
+      "file": "checks.json",
+      "sha256": "ec2da87a48835a0979cee77f9a2e01660fa28cfe9c9bfa73e4740886b9f2d142"
+    },
+    "checks_TOI-118.01": {
+      "file": "checks.json",
+      "sha256": "fdd1f5c2a55c197ffbfbbb600910511653bd3acccb188b94a8b90fa8eda7e62f"
+    },
+    "checks_TOI-1399.01": {
+      "file": "checks.json",
+      "sha256": "250b39663d685d4c027ef4a8661bb670d1307cf33e1bc3941dac739fa2b3f94d"
+    },
+    "checks_TOI-144.01": {
+      "file": "checks.json",
+      "sha256": "ea7131a7c5ee32fec3a435f8c0daef223df7a021e40de84203854dee778dfce5"
+    },
+    "checks_TOI-188.01": {
+      "file": "checks.json",
+      "sha256": "d4fe300b492a0b14e0320531152b388d7bc14959eafbc2f0e0a998400c57ab17"
+    },
+    "checks_TOI-191.01": {
+      "file": "checks.json",
+      "sha256": "3567cee1b6660b64fd763760179d63dbfce60a14d44f9f49207e82f6f57851ac"
+    },
+    "checks_TOI-2011.02": {
+      "file": "checks.json",
+      "sha256": "a1d1aba04c2d8fd03060c3d6734d9b22b1b80616e1f3310558af4ccb9f55a800"
+    },
+    "checks_TOI-396.01": {
+      "file": "checks.json",
+      "sha256": "0a2058c238fa2b5efa265738e1ef2fcd3281038aef88775481bd19001484427e"
+    },
+    "checks_TOI-396.03": {
+      "file": "checks.json",
+      "sha256": "aa088879950537092a3781eaf2b2bcd070adb700c4018473c42184cc2662819f"
+    },
+    "checks_TOI-411.01": {
+      "file": "checks.json",
+      "sha256": "f10b15af72ab5cd4fdfe8bf6d73166b50a1cac32469d87828a403575c87b1743"
+    },
+    "checks_TOI-4307.01": {
+      "file": "checks.json",
+      "sha256": "720824506241bde06080dd1a262b43c392211086c9ab1d2a158ccc7eb07f2e59"
+    },
+    "checks_TOI-4320.01": {
+      "file": "checks.json",
+      "sha256": "35d0e57485ead8ead103058c16da4a2b684ffd3deea096f7863d04eda101587c"
+    },
+    "checks_TOI-451.02": {
+      "file": "checks.json",
+      "sha256": "3c30557f10b95034ecc1597fed9c88463a6d940b7ba85c143d4eeac6738b5275"
+    },
+    "checks_TOI-451.03": {
+      "file": "checks.json",
+      "sha256": "98b155241a9cad39418a22ef56d3743bd9cbaed3fe478651f52fed6735b9114a"
+    },
+    "checks_TOI-576.01": {
+      "file": "checks.json",
+      "sha256": "065d1512100439379fea60c72417799115c8e83a599b8038c2a00fa896471477"
+    },
+    "checks_TOI-652.01": {
+      "file": "checks.json",
+      "sha256": "9abe8e6a68c94edfb689ccf64cbbc7ffbcb7618aadcb4d2b4765fec048e65c61"
+    },
+    "checks_TOI-747.01": {
+      "file": "checks.json",
+      "sha256": "b72094199f0a3bd47d70ef6d7a74ed28bf260d4df9649383d2e6d6b160880b32"
+    },
+    "checks_TOI-755.01": {
+      "file": "checks.json",
+      "sha256": "fb186dca19758fc297ed0fe4ca29a739afdf85c7fb596f6348beceffe53103a8"
+    },
+    "checks_TOI-763.02": {
+      "file": "checks.json",
+      "sha256": "90ed64c470cf4d8ccf38a04c729e06de92a14f79989de6c9d1b5fb3bc6cf0a42"
+    },
+    "checks_TOI-826.01": {
+      "file": "checks.json",
+      "sha256": "fdde20723aa4d48cbe9b644683c02168367acafc426955b1373dd8932118aa22"
+    },
+    "pixel_provenance": {
+      "file": "provenance.json",
+      "sha256": "d26e37e0ae5cd5b8923f211dd5a325a065d105ce7891bf660e58276c29de1512"
+    },
+    "pixels": {
+      "file": "pixels.csv",
+      "sha256": "2b7d68e22ab862e530b731e13fb0026a9e9f6910930f3b68292ef834bd302984"
+    },
+    "triceratops_1_TOI-1052.01": {
+      "file": "triceratops.json",
+      "sha256": "845d275d9a57656e119317118e1f0582f6063101ca2f7441cbe92592ad0335ba"
+    },
+    "triceratops_1_TOI-1058.01": {
+      "file": "triceratops.json",
+      "sha256": "1e6a7faf24fca014d8722aa283f189913410be8ffc5d8c441df69d8f3fa9d3e5"
+    },
+    "triceratops_1_TOI-107.01": {
+      "file": "triceratops.json",
+      "sha256": "1119de5212ccb84f46c2dce708bd521199d380dc0eda1af277d22b106b97da71"
+    },
+    "triceratops_1_TOI-1097.02": {
+      "file": "triceratops.json",
+      "sha256": "fff4507fa86883168021dd4f2297fa11939e6d218e2bbb546de97adca45d4105"
+    },
+    "triceratops_1_TOI-1175.01": {
+      "file": "triceratops.json",
+      "sha256": "f8da6d65f84c7673e3a9af8d0ebcb20aa7603d165745b9e708bfbbdcad7f52fb"
+    },
+    "triceratops_1_TOI-118.01": {
+      "file": "triceratops.json",
+      "sha256": "8cf98be53358dcace938c2ae55b34a25092697b31d67cccc233dd0bb6c46018a"
+    },
+    "triceratops_1_TOI-1399.01": {
+      "file": "triceratops.json",
+      "sha256": "a8dae22a0e79e9bab5508ffef762f277076e4484032f15cd9547852bfda31cf0"
+    },
+    "triceratops_1_TOI-144.01": {
+      "file": "triceratops.json",
+      "sha256": "4d77ee05d0d052180e0cea84d58c9152f55f28425ac910ae6a550f532af9f0af"
+    },
+    "triceratops_1_TOI-188.01": {
+      "file": "triceratops.json",
+      "sha256": "e69ad5163d0a691ee0683ac2db5ddaa3943847d2d6cd1cc9cfefc7d076d0ae01"
+    },
+    "triceratops_1_TOI-191.01": {
+      "file": "triceratops.json",
+      "sha256": "1276a009abc4d174bac9821e48eb3eb2d912b049ae2890c77733576c4187afe2"
+    },
+    "triceratops_1_TOI-2011.02": {
+      "file": "triceratops.json",
+      "sha256": "0f3e8d957424a3760dfbee6325add4b9b82e3c79bcde7c237f2160530b1b0e2a"
+    },
+    "triceratops_1_TOI-396.01": {
+      "file": "triceratops.json",
+      "sha256": "e7cca3ef9df51e3855a50e4bcff1b4178d10fa459fcf7efdd7b52d760f9f7637"
+    },
+    "triceratops_1_TOI-396.03": {
+      "file": "triceratops.json",
+      "sha256": "e8f56855b174d51e2763163722853f61e44c88796490b39280efe93bcc359ce0"
+    },
+    "triceratops_1_TOI-411.01": {
+      "file": "triceratops.json",
+      "sha256": "4e3204102fcf35740af537b6d0aefad52791654bb13c04bb8834942823a2b91f"
+    },
+    "triceratops_1_TOI-4307.01": {
+      "file": "triceratops.json",
+      "sha256": "037cc5efe36c6eeb72d20adf3b02138228ac3fe43333b1787761366a70cafa20"
+    },
+    "triceratops_1_TOI-4320.01": {
+      "file": "triceratops.json",
+      "sha256": "8e87c9053829fc18f5bd9730e63500d6e7e9d1be4cc797b1dabb7bb9ba044598"
+    },
+    "triceratops_1_TOI-451.02": {
+      "file": "triceratops.json",
+      "sha256": "8592563c2e1cf297692abe2d870146106dc779e0d53316014a9ed1cd009f69af"
+    },
+    "triceratops_1_TOI-451.03": {
+      "file": "triceratops.json",
+      "sha256": "5409e0045e917519e2581abb6d91ba4098499371cbd0ff073a83084aeb3b72b2"
+    },
+    "triceratops_1_TOI-576.01": {
+      "file": "triceratops.json",
+      "sha256": "1c7fd66e5d581aaafd987a1f69838ec6b60e554cad2c018ee3e0aea6389d770b"
+    },
+    "triceratops_1_TOI-652.01": {
+      "file": "triceratops.json",
+      "sha256": "40b6e2f5fedb8b803e5c7bd701e99697d4ef76cba820f2f3ca6dabfa03c5acb7"
+    },
+    "triceratops_1_TOI-747.01": {
+      "file": "triceratops.json",
+      "sha256": "6fadc9d08683ca65d4c30f5a236fb1beb0b2b638d820b41a405d3a44e1ee264f"
+    },
+    "triceratops_1_TOI-755.01": {
+      "file": "triceratops.json",
+      "sha256": "b1df09089fc293810cdc9f7c4e965203f953a406495798f1facf442f7fb29cc6"
+    },
+    "triceratops_1_TOI-763.02": {
+      "file": "triceratops.json",
+      "sha256": "a5071b704029fd3128190d2aaf2e28cd6504eb441c3c873103e80f77d1bea191"
+    },
+    "triceratops_1_TOI-826.01": {
+      "file": "triceratops.json",
+      "sha256": "3517809c2eb0f96376ceb1781f69f5734b657738f8e4ef9c4f00a84e3d68e71e"
+    },
+    "triceratops_2_TOI-118.01": {
+      "file": "triceratops.json",
+      "sha256": "ae932215379c9d79e79d45eb46b6b05e144099dd8e7a3668db1a7b96ffb795e1"
+    },
+    "triceratops_provenance_1": {
+      "file": "provenance.json",
+      "sha256": "4cc4c87bd4ff0e5e11ee31dc23d1429fb2f4927b7c889e1055efdcea71dfe5bf"
+    },
+    "triceratops_provenance_2": {
+      "file": "provenance.json",
+      "sha256": "3ecdacc37e433402f2ca421274a73e41becd529150249d3669875b8a66367a69"
+    },
+    "vetting_provenance": {
+      "file": "provenance.json",
+      "sha256": "0b838ea48a0d6b03017d27393539fffc0338378e9ee6b4d2e4153ee6fc0cdd8c"
+    }
+  },
+  "left_out": [
+    "TOI-396.01"
+  ],
+  "pixel_run": "20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33",
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261023T031548Z-benchmark-controls-cd4e7a2-ca9f",
+  "stage": "benchmark-controls",
+  "started_at": "2026-10-23T03:15:48.806392+00:00",
+  "summary": {
+    "controls": 20,
+    "left_out": [
+      "TOI-396.01"
+    ],
+    "negative_controls": 4,
+    "superseded": 1
+  },
+  "triceratops_runs": [
+    "20261022T163244Z-vetting-triceratops-cd4e7a2-13d5",
+    "20261023T024039Z-vetting-triceratops-cd4e7a2-ef68"
+  ],
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a",
+  "vetting_run": "20261022T160448Z-vetting-run-cd4e7a2-2d6f"
+}
