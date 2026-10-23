@@ -109,4 +109,6 @@ seen.
   [benchmarks/pixel_controls.csv](../../benchmarks/pixel_controls.csv), at their ExoFOP TOI depths and TESS
   magnitudes, each list the eclipsing binary they were retired to (TIC 31553886 and TIC 30329564) among their possible
   hosts. On 2026-10-17 it printed 7 possible hosts among 91 stars for TOI-1058.01, its binary at 20.90" needing a
-  0.0367 eclipse, and 13 among 83 for TOI-1175.01, its binary at 23.53" needing 0.0489.
+  0.0367 eclipse, and 13 among 83 for TOI-1175.01, its binary at 23.53" needing 0.0489. Centred on each target's DR3
+  row, the test's [output of 2026-10-23](../../results/benchmarks/neighbour-controls-2026-10-23.txt) reads 20.95"
+  and 23.54", and 13 among 82 for TOI-1175.01 ([decision 0034](0034-neighbour-table-epochs.md), item 5).

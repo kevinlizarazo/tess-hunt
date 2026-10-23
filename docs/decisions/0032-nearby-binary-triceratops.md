@@ -20,7 +20,9 @@ below, with its `controls.csv`), shows over ten runs each:
   on". Its mean NFPP, 0.0341 (sd 0.0096), is between the bars too, so it would be inconclusive without the blocker.
 - TOI-1399.01: fail, mean NFPP 0.99, as required.
 
-The controls rerun on the fixed code, `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
+The controls rerun of 2026-10-22 and 23 (UTC), on the code the M3 calls ran on ([0034](0034-neighbour-table-epochs.md),
+[0035](0035-holdout-training-seasons.md), [0036](0036-triceratops-tic-duplicates.md)),
+`20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
 ([summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md),
 [`controls.csv`](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/controls.csv)), gives the
 same three outcomes. TOI-1058.01's means moved, to FPP 0.0288 and NFPP 0.0219 (sd 0.0132): the rerun dropped two flagged
@@ -73,7 +75,7 @@ correctness." This record writes down that call. It is a call made on these resu
   controls' outcomes, FPP and NFPP means and sds, blockers and possible-host counts, and the two known planets' NFPP.
 - The rerun's [summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md) and
   [`controls.csv`](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/controls.csv): the same
-  outcomes on the fixed code, and TOI-1058.01's moved means.
+  outcomes on the code the calls ran on, and TOI-1058.01's moved means.
 - [results/triage/pixel-controls-2026-10-16.txt](../../results/triage/pixel-controls-2026-10-16.txt): the pixel
   check's offsets on the three nearby binaries.
 - [tests/test_tricera.py](../../tests/test_tricera.py): `test_nearby_eb_controls_fail_triceratops` (expected to fail,

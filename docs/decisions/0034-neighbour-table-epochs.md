@@ -81,10 +81,12 @@ measurement" below):
      TOI-2011.02's separations, off by up to 26.36".
    - This is Ruling AX, the M3 build controller's, put to the maintainer, who can ask for the rerun: about 11 h, 10.4 h
      of it TRICERATOPS (the measurement, section 5).
-   - Rerun on 2026-10-22 at the maintainer's call, at cd4e7a2: `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
+   - Rerun on 2026-10-22 and 23 (UTC) at the maintainer's call, at cd4e7a2:
+     `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
      ([summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md)). Every outcome
-     and both pass-rate tables match; in `controls.csv` only `possible_hosts` (as above) and TRICERATOPS's means and run
-     ids moved ([0036](0036-triceratops-tic-duplicates.md), item 4).
+     and both pass-rate tables match. In `controls.csv` only `possible_hosts` (as above), TRICERATOPS's means, sds and
+     run ids, and `superseded` (TOI-118.01's lone rerun in place of TOI-4307.01's) moved
+     ([0036](0036-triceratops-tic-duplicates.md), item 4).
 4. **TRICERATOPS on the promoted five.** Its first run on 241522065-1, 277774870-1, 370977908-1, 438857197-1 and
    423100454-1, `20261020T140004Z-vetting-triceratops-d039859-f7bc`, was stopped unfinished because it read the
    defective table. Nothing from it is used.

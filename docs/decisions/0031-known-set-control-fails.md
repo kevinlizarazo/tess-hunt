@@ -19,11 +19,11 @@ check and three more are inconclusive on holdout and signal_present. A read-only
 diagnosis"), rebuilt each one from the run's files and found no coding error. It was made outside the pipeline, with
 no committed script, and gates nothing.
 
-The controls were rerun on 2026-10-22 on the code the M3 calls ran on ([0034](0034-neighbour-table-epochs.md),
-[0035](0035-holdout-training-seasons.md), [0036](0036-triceratops-tic-duplicates.md)), as
-`20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
+The controls were rerun on 2026-10-22 and 23 (UTC) on the code the M3 calls ran on
+([0034](0034-neighbour-table-epochs.md), [0035](0035-holdout-training-seasons.md),
+[0036](0036-triceratops-tic-duplicates.md)), as `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
 ([summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md)). Every outcome and
-both pass-rate tables match the summary's, so what follows holds for both runs.
+both pass-rate tables match the summary's; the means and sds quoted below are the summary's.
 
 The build stopped at Task 11 Step 7 with the results, the diagnosis and its recommendations. On 2026-10-19, after the
 results were seen, the maintainer answered: "please go with your recommendations, keeping in mind i want integrity and

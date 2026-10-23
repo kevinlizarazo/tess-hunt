@@ -438,9 +438,9 @@ Each run directory carries `provenance.json`:
 
 Runs are immutable once finished. A TRICERATOPS rerun on the same inputs has repeated every outcome but not every digit:
 its Gaia DR3 query for the field-star population returns its rows in no fixed order and once returned 13 fewer, so a
-seeded run's means can move (6.6e-4 relative from reordering alone, 2.9e-3 with 13 rows fewer, and 0.1 in TOI-191.01's
-FPP, whose single runs land at 0 or 1, so a mean near a bar could cross it;
-[0036](decisions/0036-triceratops-tic-duplicates.md), item 5).
+seeded run's means can move. In the controls rerun, reordering alone moved TOI-451.03's mean FPP by 1.4e-2 relative, and
+TOI-191.01's from 0.297 to 0.397: its single runs land at about 0 or about 1 and one flipped, so a mean near a bar could
+cross it ([0036](decisions/0036-triceratops-tic-duplicates.md), item 5).
 
 ### 5.8 Independent review
 - **Each milestone** ends with Kevin's review workflow: reviewer lenses plus two refuters per finding, fresh
