@@ -176,6 +176,9 @@ If it passes, a TRICERATOPS pass does not cover a blend inside 15", and the buil
 
 **Controls (2026-10-19).** The controls' results are in
 [the controls summary](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md).
+The rerun of 2026-10-22, on the code the calls ran on, changed no outcome
+([its summary](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md);
+[decision 0036](0036-triceratops-tic-duplicates.md), item 4).
 TOI-1399.01 fails as required. TOI-1058.01 and TOI-1175.01 read inconclusive, not fail; the maintainer accepted that on
 2026-10-19, after the results were seen, since neither can pass ([decision 0032](0032-nearby-binary-triceratops.md)).
 TRICERATOPS's per-run FPP can land near either end on a deep hot Jupiter: TOI-747.01's ten runs give a mean FPP of
@@ -270,4 +273,5 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
   strict, since decision 0032), `test_nearby_eb_controls_do_not_pass_triceratops` and
   `test_toi_1399_does_not_pass_triceratops`, one run each, and the controls' production runs at ten runs (M3 plan,
   Task 11), published in
-  [the controls summary](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md).
+  [the controls summary](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md) and
+  [its rerun of 2026-10-22](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md).

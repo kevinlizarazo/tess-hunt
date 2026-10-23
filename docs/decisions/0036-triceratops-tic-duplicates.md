@@ -94,6 +94,13 @@ measurement" below):
    unchanged. What does change: in
    [`controls.csv`](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/controls.csv),
    TOI-763.02's NFPP of 1.6e-4 would read about 0, and it passes either way.
+   - Rerun on 2026-10-22 at the maintainer's call, at cd4e7a2, as `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
+     ([summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md)), with
+     TOI-118.01 rerun alone after a lost TESScut cutout, as TOI-4307.01 was. Every outcome matches.
+     TOI-763.02's mean NFPP reads 3.96e-9. TOI-1058.01's two flagged rows (TIC 31553884, ARTIFACT, and 1827100470,
+     DUPLICATE) were dropped and its means moved, FPP 0.0334 to 0.0288 and NFPP 0.0270 to 0.0219, where the renormalised
+     estimate said unchanged: the estimate keeps the old draws, and the rerun drew again without the two rows and from
+     its field stars in another order (item 5). Its outcome holds, as does 0032's reasoning on it.
 5. **A rerun repeats outcomes, not every digit.** TRICERATOPS's own Gaia DR3 query for the field-star population
    returns its rows in no fixed order, so a seeded run on the same inputs need not give the same numbers. 0034's rerun
    of the six signals (`20261020T013408Z-vetting-triceratops-62882b5-e092`, then
@@ -105,6 +112,9 @@ measurement" below):
      FPP, from 0.0616558 to 0.0616965 (6.6e-4).
    - For 296819076-1 the query also returned 13 fewer rows (its field-star files hold 40,074 and then 40,061), and its
      mean FPP went from 0.0705087 to 0.0707155 (2.9e-3).
+   - In the controls rerun, TOI-191.01 (no flagged rows, the same 331 field stars in another order) moved furthest: mean
+     FPP 0.297 to 0.397. Its single runs land at about 0 or about 1 and one of the ten flipped, so on such a target the
+     mean moves in steps of 0.1, and one near the 0.5 bar could cross it. It passes in both runs.
    The comparison after this rerun will show differences of the same kind beside the fix's own.
 
 ## Limitations

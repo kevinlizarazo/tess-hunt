@@ -20,6 +20,13 @@ below, with its `controls.csv`), shows over ten runs each:
   on". Its mean NFPP, 0.0341 (sd 0.0096), is between the bars too, so it would be inconclusive without the blocker.
 - TOI-1399.01: fail, mean NFPP 0.99, as required.
 
+The controls rerun on the fixed code, `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
+([summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md),
+[`controls.csv`](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/controls.csv)), gives the
+same three outcomes. TOI-1058.01's means moved, to FPP 0.0288 and NFPP 0.0219 (sd 0.0132): the rerun dropped two flagged
+TIC rows from its star list and read its field stars in another order ([0036](0036-triceratops-tic-duplicates.md), items
+4 and 5). TOI-1175.01's mean NFPP stays 0.0341, and TOI-1399.01's reads 0.988.
+
 The neighbour table lists 7 possible hosts for TOI-1058.01 and 13 for TOI-1175.01 (`possible_hosts` in
 [`controls.csv`](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/controls.csv)). The network
 test `test_nearby_eb_controls_show_a_possible_host` names each binary's Gaia DR3 source and finds it among the possible
@@ -43,8 +50,9 @@ correctness." This record writes down that call. It is a call made on these resu
     passes the pixel check at 11.6" (the same file) and fails TRICERATOPS.
 - **Not taken: a fail bar of NFPP over 0.01.** It would fail both binaries (0.027 and 0.0341). It would also sit just
   above two known planets, TOI-451.03 (mean NFPP 0.00808, sd 0.0092) and TOI-1097.02 (0.00643), from the summary and
-  `controls.csv`. And TOI-1058.01's run-to-run sd (0.0217) is larger than its distance to that bar (0.027 less 0.01), so
-  its outcome would turn on the draws. It would also be a vet-v4 made after the results.
+  `controls.csv`. And TOI-1058.01's run-to-run sd (0.0217) is larger than its distance to that bar (0.027 less 0.01; in
+  the rerun, 0.0132 against 0.0219 less 0.01), so its outcome would turn on the draws. It would also be a vet-v4 made
+  after the results.
 - **Open and unexplained.** TOI-1175.01's network test,
   `tests/test_tricera.py::test_nearby_eb_controls_fail_triceratops` (one run, on the catalog ephemeris in
   `benchmarks/pixel_controls.csv`), gave an NFPP near 1, inconclusive on the same RUWE blocker. Production, on the
@@ -63,6 +71,9 @@ correctness." This record writes down that call. It is a call made on these resu
   [summary.md](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md) and
   [`controls.csv`](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/controls.csv): the three
   controls' outcomes, FPP and NFPP means and sds, blockers and possible-host counts, and the two known planets' NFPP.
+- The rerun's [summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md) and
+  [`controls.csv`](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/controls.csv): the same
+  outcomes on the fixed code, and TOI-1058.01's moved means.
 - [results/triage/pixel-controls-2026-10-16.txt](../../results/triage/pixel-controls-2026-10-16.txt): the pixel
   check's offsets on the three nearby binaries.
 - [tests/test_tricera.py](../../tests/test_tricera.py): `test_nearby_eb_controls_fail_triceratops` (expected to fail,

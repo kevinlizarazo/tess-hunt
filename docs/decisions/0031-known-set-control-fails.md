@@ -19,6 +19,12 @@ check and three more are inconclusive on holdout and signal_present. A read-only
 diagnosis"), rebuilt each one from the run's files and found no coding error. It was made outside the pipeline, with
 no committed script, and gates nothing.
 
+The controls were rerun on 2026-10-22 on the code the M3 calls ran on ([0034](0034-neighbour-table-epochs.md),
+[0035](0035-holdout-training-seasons.md), [0036](0036-triceratops-tic-duplicates.md)), as
+`20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
+([summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md)). Every outcome and
+both pass-rate tables match the summary's, so what follows holds for both runs.
+
 The build stopped at Task 11 Step 7 with the results, the diagnosis and its recommendations. On 2026-10-19, after the
 results were seen, the maintainer answered: "please go with your recommendations, keeping in mind i want integrity and
 correctness." This record writes down that call. It is a call made on these results, not a rule set before them.
@@ -87,6 +93,10 @@ correctness." This record writes down that call. It is a call made on these resu
   [`controls.csv`](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/controls.csv) and
   [`pass_rates.csv`](../../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/pass_rates.csv): every
   outcome above, both pass-rate tables, and the input runs.
+- The rerun's [summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md), with
+  [`controls.csv`](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/controls.csv) and
+  [`pass_rates.csv`](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/pass_rates.csv): the same
+  outcomes and pass rates on the fixed code.
 - [The diagnosis](../../results/benchmarks/vet-v3-control-diagnosis-2026-10-17.md): every cause above and the changes
   table, read-only analysis outside the pipeline.
 - [tests/test_controls.py](../../tests/test_controls.py): `benchmark controls`, which wrote the summary

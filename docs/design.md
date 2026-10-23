@@ -351,7 +351,7 @@ from their targets, inconclusive rather than fail; the maintainer accepted that 
 and both fail the pixel check ([0032](decisions/0032-nearby-binary-triceratops.md)). The neighbour table lists each of
 the two binaries among its possible hosts ([0025](decisions/0025-neighbours.md)). vet-v3's pass rate per check on the
 20 known planets, with each fail understood and no criteria change:
-[summary.md](../results/benchmarks/20261020T082333Z-benchmark-controls-16418d2-f45a/summary.md)
+[summary.md](../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md)
 ([0031](decisions/0031-known-set-control-fails.md)).
 
 Three checks never fail. `signal_present` asks only whether there is a dip, and a weak dip is a lack of evidence for a
@@ -436,9 +436,10 @@ Each run directory carries `provenance.json`:
 - data manifest hash
 - command line, start and end time
 
-Runs are immutable once finished. A TRICERATOPS rerun on the same inputs repeats every outcome but not every digit:
+Runs are immutable once finished. A TRICERATOPS rerun on the same inputs has repeated every outcome but not every digit:
 its Gaia DR3 query for the field-star population returns its rows in no fixed order and once returned 13 fewer, so a
-seeded run's means can move (6.6e-4 relative from reordering alone, 2.9e-3 with 13 rows fewer;
+seeded run's means can move (6.6e-4 relative from reordering alone, 2.9e-3 with 13 rows fewer, and 0.1 in TOI-191.01's
+FPP, whose single runs land at 0 or 1, so a mean near a bar could cross it;
 [0036](decisions/0036-triceratops-tic-duplicates.md), item 5).
 
 ### 5.8 Independent review
@@ -651,10 +652,10 @@ production search.
   S65 and S101, at 0.46 and 0.45, read 24.5" and 20.1" ([dossier](../results/vetting/296819076-1/dossier.md)). M3
   keeps the check frozen.
 - **TRICERATOPS and nearby binaries:** TRICERATOPS reads TOI-1058.01 and TOI-1175.01, binaries 20" to 25" out,
-  inconclusive (mean NFPP 0.027 and 0.0341, between its bars; TOI-1175.01 also on a RUWE of 1.48), so its NFPP fail is
-  not a reliable kill there. The pixel check, which fails both, catches them. TOI-1175.01's NFPP read near 1 in a
-  one-run test on its catalog ephemeris and 0.0341 in production on the density-prior fit's; the ephemeris is the
-  likeliest cause, and it was not diagnosed ([0032](decisions/0032-nearby-binary-triceratops.md)).
+  inconclusive (mean NFPP 0.0219 and 0.0341 in the controls rerun, between its bars; TOI-1175.01 also on a RUWE of
+  1.48), so its NFPP fail is not a reliable kill there. The pixel check, which fails both, catches them. TOI-1175.01's
+  NFPP read near 1 in a one-run test on its catalog ephemeris and 0.0341 in production on the density-prior fit's; the
+  ephemeris is the likeliest cause, and it was not diagnosed ([0032](decisions/0032-nearby-binary-triceratops.md)).
 - **TRICERATOPS's silent failures:** TRICERATOPS 1.1.0 can return numbers that mean nothing without an error. Without
   its Gaia field-star population it skips the DTP, DEB, DEBx2P, BTP, BEB and BEBx2P scenarios and says so only with
   `verbose=1`. It also carries on after a failed TESScut cutout, takes the next star as the target when the target has
