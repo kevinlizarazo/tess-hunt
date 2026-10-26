@@ -10,6 +10,8 @@ import test_calls as tc
 import test_literature as tl
 import test_tricera as tt
 import test_vetting as tv
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
 
 from tess_hunt import dossier, literature, tricera, vetting
 from tess_hunt.cli import main
@@ -277,6 +279,23 @@ def test_page_one_answers_the_three_questions(tmp_path, monkeypatch):
     assert [rest.index(h) for h in order] == sorted(rest.index(h) for h in order)
     assert "plots/transits.png" in rest and "evidence only" in rest
     assert "High-resolution imaging" in rest
+
+
+def test_mid_utc_is_when_the_transit_is_seen_from_earth():
+    # 423100454-1's S113 transit at epoch 197, as the milestone review timed it from Earth; read as TDB without the
+    # light's travel time it was 15:27.
+    star = {"ra": 240.065424623734, "dec": -55.5634985842455}
+    assert dossier._utc(4426.14466314464, star) == "2027-01-20 15:31"
+    # Back to the barycentre: the travel time at the minute shown restores BJD_TDB within the minute cut off.
+    for ra, dec, btjd in (
+        (240.07, -55.56, 4426.1447),
+        (60.0, 20.0, 4500.5),
+        (240.07, 55.0, 4350.25),
+    ):
+        target = SkyCoord(ra, dec, unit="deg")
+        seen = Time(dossier._utc(btjd, {"ra": ra, "dec": dec}), scale="utc")
+        back = seen.tdb + seen.light_travel_time(target, location=dossier.GEOCENTRE)
+        assert 0 <= (back.jd - 2457000.0 - btjd) * 86400 + 60 <= 61
 
 
 def section(text: str, heading: str) -> str:

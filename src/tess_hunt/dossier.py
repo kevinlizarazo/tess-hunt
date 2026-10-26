@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from string import Template
 
+from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.time import Time
 
 from tess_hunt import calls
@@ -101,6 +102,7 @@ SECOND_LIST_CENTROIDS = (
     "pixels.png",
     "The second list's pixel check: each sector's centroid offset, with the neighbours that could host the signal",
 )
+GEOCENTRE = EarthLocation.from_geocentric(0, 0, 0, unit="m")
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
 # Whose pixel check the centroid table shows, keyed by whether the signal is a second-list row: its name, its owner
@@ -674,8 +676,15 @@ def _real_new(r: Record) -> str:
     return _list(items) + "\n\n" + _exofop(r)
 
 
-def _utc(btjd: float) -> str:
-    return Time(btjd + 2457000.0, format="jd", scale="tdb").utc.strftime("%Y-%m-%d %H:%M")
+def _utc(btjd: float, star: dict) -> str:
+    """The mid-time as seen from Earth, in UTC: BJD_TDB less the light's travel time between the geocentre and the
+    barycentre toward the star, which runs to about 8 minutes either way. The travel time is taken at the geocentric
+    time, found by one iteration from the barycentric one."""
+    bjd = Time(btjd + 2457000.0, format="jd", scale="tdb")
+    target = SkyCoord(star["ra"], star["dec"], unit="deg")
+    seen = bjd - bjd.light_travel_time(target, kind="barycentric", location=GEOCENTRE)
+    seen = bjd - seen.light_travel_time(target, kind="barycentric", location=GEOCENTRE)
+    return seen.utc.strftime("%Y-%m-%d %H:%M")
 
 
 def _two_minute(r: Record) -> str:
@@ -750,7 +759,7 @@ def _looks(r: Record) -> str:
                 w["sector"],
                 w["epoch"],
                 f"{w['mid_btjd']:.3f}",
-                _utc(w["mid_btjd"]),
+                _utc(w["mid_btjd"], c["star"]),
                 f"{w['sd_minutes']:.1f}",
                 *(f"{w['half_width_minutes'][s]:.1f}" for s in sigmas),
             ]
@@ -762,7 +771,8 @@ def _looks(r: Record) -> str:
             "No sector with known dates holds a predicted transit."
             if not dated
             else "Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods "
-            f"from its t0); duration {duration['days']:.4f} d from {source}:\n\n"
+            f"from its t0); duration {duration['days']:.4f} d from {source}. Mid (UTC) is when the transit is seen "
+            "from Earth: the barycentric time less the light's travel time toward the star:\n\n"
             + _table(
                 ["Sector", "Epoch", "Mid (BTJD)", "Mid (UTC)", "sd (min)"]
                 + [f"{s} sigma half-width (min)" for s in sigmas],
