@@ -413,7 +413,7 @@ def test_review_renders_findings_ratings_and_both_refuters(tmp_path):
     assert "2306.16587" in text
 
 
-def test_the_review_and_the_call_are_quoted_with_the_maintainers_notes(tmp_path, monkeypatch):
+def test_the_review_and_the_call_are_quoted_with_notes_beside_them(tmp_path, monkeypatch):
     signal, runs = draft(tmp_path, monkeypatch, review=REVIEW, call=HELD)
     (signal / "review-notes.toml").write_text(tc.NOTE)
     # A draft made again keeps the notes beside the review and the call.
@@ -428,7 +428,8 @@ def test_the_review_and_the_call_are_quoted_with_the_maintainers_notes(tmp_path,
     # The note sits under F2, after its refuters and before F3; the review's own text is unchanged.
     f2 = review.split("### F2")[1].split("### F3")[0]
     assert f2.rstrip().endswith(
-        "**Note from the maintainer, 2026-10-26:** The magnitudes give 0.358."
+        "**Note added on 2026-10-26 under [decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md), "
+        "not part of the review or the call:** The magnitudes give 0.358."
     )
     assert REVIEW["findings"][1]["evidence"] in f2
 

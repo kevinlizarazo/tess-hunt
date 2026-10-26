@@ -1209,7 +1209,7 @@ def _copy(files: dict[str, Path], dest: Path) -> None:
 
 def _clear(draft: Path) -> None:
     """A draft's earlier record, so files from other runs never sit beside the new ones; the review, the
-    maintainer's notes on it and the call stay."""
+    notes on it and the call stay."""
     if not draft.is_dir():
         return
     for path in draft.iterdir():

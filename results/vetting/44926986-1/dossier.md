@@ -183,7 +183,7 @@ Evidence: triceratops.json (TRIC3B_RUN signals/44926986-1/, identical to ~/.cach
 
 No refuter has answered yet.
 
-**Note from the maintainer, 2026-10-26:** F2's flux ratio of 0.359 is off in its last digit: the TESS magnitudes it quotes, 9.4929 and 10.6073, give 0.358. The call does not rest on it. F2 uses the ratio to check that the depths add up, and the target's share of the pair's light is 0.736 at either value; the kill rests on TRICERATOPS's NFPP and on novelty.
+**Note added on 2026-10-26 under [decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md), not part of the review or the call:** F2 gives a flux ratio of 0.359; the TESS magnitudes F2 quotes, 9.4929 and 10.6073, give 0.358. F2's conclusion holds either way.
 
 ### F3 (on the star, note)
 

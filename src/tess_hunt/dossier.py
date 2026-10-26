@@ -984,7 +984,7 @@ def _suspect(r: Record) -> str:
 
 def render_review(review: dict, notes: dict[str, list[dict]] | None = None) -> str:
     """The review's findings, each with its lens, rating and both refuters' verdicts (M3 design, section 4.8), and
-    beside a finding any note the maintainer made on it (review-notes.toml)."""
+    beside a finding any note added on it under decision 0037 (review-notes.toml), marked as no part of the review."""
     confirmed = set(calls.confirmed(review))
     notes = notes or {}
     parts = [
@@ -1008,7 +1008,10 @@ def render_review(review: dict, notes: dict[str, list[dict]] | None = None) -> s
         elif f["rating"] != "note":
             body += "\n\nNo refuter has answered yet."
         for note in notes.get(f["id"], []):
-            body += f"\n\n**Note from the maintainer, {note['date']}:** {note['text']}"
+            body += (
+                f"\n\n**Note added on {note['date']} under {_decision('0037')}, not part of the review or the "
+                f"call:** {note['text']}"
+            )
         parts.append(f"{head}\n\n{body}")
     flagged = ", ".join(review["hits_flagged"]) or "none"
     parts.append(f"Literature hits flagged for the maintainer to read: {flagged}.")

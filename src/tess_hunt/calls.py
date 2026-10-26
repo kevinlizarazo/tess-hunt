@@ -100,8 +100,9 @@ def load_review(path: Path) -> dict:
 
 
 def load_notes(path: Path, review: dict) -> dict[str, list[dict]]:
-    """review-notes.toml: the maintainer's notes on the review's quoted text, by the finding each sits beside
-    (decision 0037). The review stays as written; a slip found later is noted here. Raises CallError."""
+    """review-notes.toml: notes on the review's quoted text, added to the record under decision 0037 and not part of
+    the review or the call, by the finding each sits beside. The review stays as written; a slip found later is
+    noted here. Raises CallError."""
     try:
         notes = tomllib.loads(path.read_text())
     except tomllib.TOMLDecodeError as exc:

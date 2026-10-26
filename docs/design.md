@@ -427,7 +427,8 @@ missing from the run.
 The one exception is quoted, attributed text ([0037](decisions/0037-quoted-text-in-the-dossier.md), the
 maintainer's decision of 2026-10-23). A dossier quotes the review and the maintainer's call word for word, and says
 so where each begins; their numbers are their authors', not rendered from the runs. A slip found later is noted
-beside the quote in the maintainer's `review-notes.toml`, never edited in it.
+beside the quote in the record's `review-notes.toml`, as a dated note that is not part of the review or the call,
+never edited in it.
 
 ### 5.6 Positive controls in every run
 Each production run includes the known-planet set (section 7, M1) with their masks off. If the run does not recover

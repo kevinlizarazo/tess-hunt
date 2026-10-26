@@ -27,8 +27,9 @@ or make the call loader refuse digits, which would need new calls for the 14 pub
   maintainer's words" (`dossier.render_review`, `dossier._call`).
 - **The published calls stay as they are.** Decision 0028 and `results/README.md` no longer say a call holds no
   numbers.
-- **A slip in quoted text is noted beside it, never edited in it.** The record may hold `review-notes.toml`, the
-  maintainer's notes on the review, each naming the finding it sits beside, with its date and text:
+- **A slip in quoted text is noted beside it, never edited in it.** The record may hold `review-notes.toml`, notes
+  added to it under this decision, each naming the finding it sits beside, with its date and text. A note is not
+  part of the review or the call, and says so:
 
   ```toml
   [[note]]
@@ -38,16 +39,16 @@ or make the call loader refuse digits, which would need new calls for the 14 pub
   ```
 
   `calls.load_notes` refuses any other key, a finding the review lacks, a date that is not a TOML date and an empty
-  note, and the dossier renders each note under its finding as the maintainer's, dated. `vetting dossier` keeps the
-  file in a draft as it keeps the review and the call. 44926986-1's note says that the magnitudes give 0.358, and
-  that the call does not rest on the ratio: F2 uses it to check that the depths add up, and the target's share of the
-  pair's light is 0.736 at either value, while the kill rests on TRICERATOPS's NFPP and on novelty.
+  note, and the dossier renders each note under its finding as "Note added on <date> under decision 0037, not part
+  of the review or the call". `vetting dossier` keeps the file in a draft as it keeps the review and the call.
+  44926986-1's note, added on 2026-10-26, says that F2 gives a flux ratio of 0.359 where the TESS magnitudes F2
+  quotes give 0.358, and that F2's conclusion holds either way.
 
 ## Limitations
 
 - No code checks a number in quoted text against the record. A slip is found by reading, as the milestone review
   found this one.
-- A note is the maintainer's text too, so its numbers are quoted as well.
+- A note is typed text too: its numbers are checked by reading, not rendered from the runs.
 
 ## Evidence
 
@@ -55,7 +56,7 @@ or make the call loader refuse digits, which would need new calls for the 14 pub
   `test_a_notes_file_that_breaks_the_schema_is_refused` (a finding the review lacks, a date that is a string, an
   extra key, an empty note, an unknown table).
 - [tests/test_dossier.py](../../tests/test_dossier.py):
-  `test_the_review_and_the_call_are_quoted_with_the_maintainers_notes` (both sections open by saying what they
-  quote, the status line says so, the note sits under its finding after the refuters, and a draft made again keeps
-  the notes file).
+  `test_the_review_and_the_call_are_quoted_with_notes_beside_them` (both sections open by saying what they quote,
+  the status line says so, the note sits under its finding after the refuters and says it is not part of the review
+  or the call, and a draft made again keeps the notes file).
 - [results/vetting/44926986-1/review-notes.toml](../../results/vetting/44926986-1/review-notes.toml).

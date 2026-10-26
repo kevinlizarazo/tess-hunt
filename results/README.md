@@ -202,8 +202,9 @@ passed signal is a planet candidate, not a confirmed planet.
   ([decision 0037](../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 - `review.json`: the adversarial review: each finding's lens, rating (kill, hold or note), claim, evidence and each
   refuter's verdict, the literature hits it flagged, and a summary. The dossier quotes it as written (decision 0037).
-- `review-notes.toml`, where there is one: the maintainer's notes on the review, each with its date and the finding
-  it sits beside in the dossier. A slip in the review's text is noted there, never edited in `review.json`.
+- `review-notes.toml`, where there is one: notes added to the record under decision 0037, each with its date and the
+  finding it sits beside in the dossier. They are not part of the review or the call. A slip in the review's text is
+  noted there, never edited in `review.json`.
 - `review-scripts.tar.gz`: the review's scripts and their small outputs, from the scratch directory its evidence cites
   as `/tmp/t13/<name>/`, with a `MANIFEST.txt` listing every file left out and why (fetched from a service, 1 MB or
   over, a copy of a published file and the like). Home and data directories in it read `~` and `$TESS_HUNT_DATA`,
