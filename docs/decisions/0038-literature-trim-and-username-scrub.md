@@ -96,9 +96,10 @@ The review also found the maintainer's home directory, which names him, in machi
   quotes, and the tarballs and the brief were built with it. On 2026-10-26 it changed four `review.json`
   (146282666-1, 164767175-1, 241522065-1, 410399327-1), their dossiers, the brief and 11 files in the tarballs.
 - **The history.** The branch's history from the first literature publish is rewritten so that no copy of the
-  published record in it keeps the dropped fields, the home directory or the maintainer's name. The review brief and
-  the review tarballs are rewritten with it: each copy committed before the name was taken out holds the copy that
-  took it out.
+  published record in it keeps the dropped fields, the home directory or the maintainer's name. In the rewritten
+  commits before the re-trim, each `literature.json` holds the trim made with the first titles run, and until the
+  commit that applied the trim no `provenance-titles.json` stands beside it. The review brief and the review tarballs
+  are rewritten with it: each copy committed before the name was taken out holds the copy that took it out.
 - **Licences** (`results/README.md`, `ACKNOWLEDGEMENTS.md`, `README.md`, `CITATION.cff`). ExoFOP's rows stay under
   ExoFOP's terms, not CC BY 4.0. The titles come from arXiv's, OpenAlex's and Zenodo's metadata, which each source's
   page puts under CC0. Bibcodes, DOIs and arXiv ids are identifiers.
