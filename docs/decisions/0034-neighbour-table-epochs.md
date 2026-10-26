@@ -1,7 +1,9 @@
 # 0034: The neighbour table on one epoch: separations from the target's own Gaia DR3 position
 
 - Date: 2026-10-20
-- Status: Accepted (a defect fix; no criteria change)
+- Status: Accepted (a defect fix; no criteria change). Rulings N and S, which it cites, were accepted by the
+  maintainer on 2026-10-22 ([0025](0025-neighbours.md), [0026](0026-triceratops.md)); Ruling AX is the controller's,
+  put to the maintainer (item 3).
 
 ## Context
 

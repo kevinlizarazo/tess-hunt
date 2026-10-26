@@ -15,7 +15,9 @@
   second-list row's, needs a pixel pass); and the choices this record makes in building it: each run's provenance
   copied into the record, production runs only, unknown call keys refused, a signal a TRICERATOPS or literature run
   never judged allowed in, the README listing only published calls that stand, and the timing-suspect marks in the
-  centroid table.
+  centroid table. Rulings C (the TRICERATOPS, literature and second-list runs refuse vet criteria other than the
+  vetting run's: one run, one criteria file) and M ([0026](0026-triceratops.md)), which this record also cites, are
+  the controller's: no acceptance of them by the maintainer is recorded.
 
 ## Context
 

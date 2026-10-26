@@ -1,9 +1,9 @@
 # 0025: The neighbour table: Gaia DR3 stars within 1' and the eclipse depth each would need
 
 - Date: 2026-10-17
-- Status: Accepted (approved by the maintainer in the M3 design). Ruling N (a DR3 id joined for a star whose targets
-  row lacks one), which the M3 build's controller made after that approval, was accepted by the maintainer on
-  2026-10-22
+- Status: Accepted (approved by the maintainer in the M3 design). Rulings N (a DR3 id joined for a star whose targets
+  row lacks one) and S (possible hosts matched at the TIC's epoch, [decision 0026](0026-triceratops.md)), which the
+  M3 build's controller made after that approval, were accepted by the maintainer on 2026-10-22.
 
 ## Context
 

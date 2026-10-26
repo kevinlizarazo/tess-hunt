@@ -17,14 +17,14 @@ record and Kevin's call, before it can kill a candidate."
 
 Triage's pixel check fails 4 of the 20 known planets in the pixel completeness run,
 `20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33`
-([summary.md](../../results/benchmarks/20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33/summary.md), with
-its `pixels.csv`): TOI-144.01, TOI-2011.02, TOI-396.03 and TOI-4307.01. It fails six of the second list's rows. Ruling
-AS, the M3 build controller's, read section 4.3 as covering the pixel check where M3 uses it to kill, and had the fails
-diagnosed before the second-list calls.
-[`pixel-check-diagnosis-2026-10-20.md`](../../results/benchmarks/pixel-check-diagnosis-2026-10-20.md) ("the
-diagnosis") refits the check's own fits from the difference images the runs kept, reproducing all 149 recorded offsets,
-and adds null images and a fixed-position fit. It is a read-only analysis outside the pipeline and gates nothing. Its
-scripts and small outputs are published beside it, byte for byte, in
+([summary.md](../../results/benchmarks/20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33/summary.md), with its
+`pixels.csv`): TOI-144.01, TOI-2011.02, TOI-396.03 and TOI-4307.01. It fails six of the second list's rows. Ruling AS,
+the M3 build controller's (no acceptance of it by the maintainer is recorded), read section 4.3 as covering the pixel
+check where M3 uses it to kill, and had the fails diagnosed before the second-list calls.
+[`pixel-check-diagnosis-2026-10-20.md`](../../results/benchmarks/pixel-check-diagnosis-2026-10-20.md) ("the diagnosis")
+refits the check's own fits from the difference images the runs kept, reproducing all 149 recorded offsets, and adds
+null images and a fixed-position fit. It is a read-only analysis outside the pipeline and gates nothing. Its scripts and
+small outputs are published beside it, byte for byte, in
 [`pixel-check-diagnosis-2026-10-20-scripts.tar.gz`](../../results/benchmarks/pixel-check-diagnosis-2026-10-20-scripts.tar.gz).
 
 On 2026-10-20 the maintainer was asked:
@@ -35,8 +35,8 @@ On 2026-10-20 the maintainer was asked:
 > 3. **Go-ahead for the Task 13 reviews.** All at once, or one at a time.
 
 The reply, the same day: "please go with your recommendations. whats next now?" Item 2 is
-[decision 0026](0026-triceratops.md)'s. This record writes down the call on item 1. It is a call made on these results,
-not a rule set before them.
+[decision 0026](0026-triceratops.md)'s, which records Ruling G as accepted from this reply and the maintainer's of
+2026-10-19. This record writes down the call on item 1. It is a call made on these results, not a rule set before them.
 
 ## Decision
 
