@@ -567,6 +567,37 @@ def test_publish_refuses_without_a_call(tmp_path, monkeypatch):
     assert published(repo) == before
 
 
+def test_publish_refuses_a_review_naming_the_home_directory_or_the_maintainer(
+    tmp_path, monkeypatch
+):
+    home = tmp_path / "home" / "someone"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setattr(provenance, "maintainer", lambda: ("Ada", "Lovelace"))
+    runs = all_runs(tmp_path, monkeypatch)
+    production(*runs.values())
+    repo = tmp_path / "repo"
+    monkeypatch.setattr(vetting, "repo_root", lambda: repo)
+    signal = repo / "results" / "vetting" / NAME
+    signal.mkdir(parents=True)
+    (signal / "call.toml").write_text(HELD)
+    argv = publish_argv(runs, "run", "triceratops", "literature", "titles")
+    for summary in (
+        f"Read in {home}/code/tess-hunt.",
+        f"Read in {tmp_path / 'data'}/runs.",
+        "Notes for Ada.",
+    ):
+        (signal / "review.json").write_text(json.dumps({**REVIEW, "summary": summary}))
+        before = published(repo)
+        with pytest.raises(SystemExit, match="names the home or data directory or the maintainer"):
+            main(argv)
+        assert published(repo) == before
+    # Written as the scrub writes it, it publishes.
+    (signal / "review.json").write_text(
+        json.dumps({**REVIEW, "summary": "Notes for the maintainer."})
+    )
+    assert main(argv) == 0
+
+
 def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, monkeypatch):
     home = tmp_path / "home" / "someone"
     monkeypatch.setenv("HOME", str(home))

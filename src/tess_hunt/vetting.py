@@ -1302,6 +1302,13 @@ def cmd_publish(args) -> int:
             raise SystemExit(
                 f"no call.toml in {where}: the maintainer's call comes before publishing"
             )
+        # Text quoted from a machine is published as tess-hunt's scrub writes it (decision 0038).
+        review = dest / "review.json"
+        if review.is_file() and unname(scrub(review.read_text())) != review.read_text():
+            raise SystemExit(
+                f"{where}/review.json names the home or data directory or the maintainer; write it as "
+                "provenance.scrub and provenance.unname would (decision 0038)"
+            )
         staged = Path(tmp) / "staged" / args.name
         shutil.copytree(dest, staged)
         _copy(files, staged)

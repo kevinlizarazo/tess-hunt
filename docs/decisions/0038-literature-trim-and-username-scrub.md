@@ -44,7 +44,8 @@ The review also found the maintainer's home directory, which names him, in machi
   record with a `literature.json` without one. It checks that the titles run read this signal's record and that
   `titles.json` is the file the run wrote, refuses a lookup that failed or was never made, and publishes the trimmed
   record with the titles run's provenance as `provenance-titles.json`. The dossier names the titles run among the
-  record's runs. Publishing the same runs again changes nothing, as before.
+  record's runs. Publishing the same runs again changes nothing, as before. Since the review is placed in the record
+  by hand, `publish` also refuses a `review.json` that the scrub below would change.
 - **The 14 records published before this decision** are trimmed by `tess-hunt vetting trim --name NAME --literature
   RUN --titles RUN`, the narrowest path that changes a published record. It refuses unless the record was published
   from that literature run (`provenance-literature.json` is the run's provenance) and its `literature.json` is the
@@ -102,7 +103,9 @@ The review also found the maintainer's home directory, which names him, in machi
   `test_unname_writes_the_maintainers_name_as_the_maintainer` (the full name across a line break, the given name
   alone, possessive and opening a sentence, other people's names kept, nothing without `CITATION.cff`'s names).
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_publish_refuses_without_a_call` (a literature record
-  needs `--titles`; the published record is the trim of the run's), and
+  needs `--titles`; the published record is the trim of the run's),
+  `test_publish_refuses_a_review_naming_the_home_directory_or_the_maintainer` (the home directory, the data
+  directory, the maintainer's name: each refused with nothing written; the scrubbed text publishes), and
   `test_trim_applies_decision_0038_to_a_record_published_before_it` (only `literature.json`,
   `provenance-titles.json`, `review.json`, the dossier and the README change; `review.json` only where it names the
   home and data directories or the maintainer; the dossier's titles only from open sources, blank where none has
