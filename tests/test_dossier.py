@@ -14,7 +14,7 @@ import test_vetting as tv
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 
-from tess_hunt import dossier, literature, tricera, vetting
+from tess_hunt import dossier, literature, provenance, tricera, vetting
 from tess_hunt.cli import main
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
@@ -556,6 +556,8 @@ def test_publish_refuses_without_a_call(tmp_path, monkeypatch):
 def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, monkeypatch):
     home = tmp_path / "home" / "someone"
     monkeypatch.setenv("HOME", str(home))
+    # The maintainer as CITATION.cff would name them; the review names them too.
+    monkeypatch.setattr(provenance, "maintainer", lambda: ("Ada", "Lovelace"))
     runs = all_runs(tmp_path, monkeypatch)
     # The literature run's record holds ADS's hits and ExoFOP's comments, files and observers, as LIT3_RUN's did.
     record = {
@@ -575,7 +577,8 @@ def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, mo
     production(*runs.values(), titles)
     repo = tmp_path / "repo"
     monkeypatch.setattr(vetting, "repo_root", lambda: repo)
-    # Published as before decision 0038: the runs' files unchanged, and a review naming the home directory.
+    # Published as before decision 0038: the runs' files unchanged, and a review naming the home directory and the
+    # maintainer.
     signal = repo / "results" / "vetting" / NAME
     roles = {
         "checks": runs["run"],
@@ -586,7 +589,7 @@ def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, mo
     data = tmp_path / "data"
     review = {
         **REVIEW,
-        "summary": f"Read in {home}/code/tess-hunt and {data}/drafts/m3-r2/1-1/checks.json.",
+        "summary": f"Read in {home}/code/tess-hunt and {data}/drafts/m3-r2/1-1/checks.json. Notes for Ada.",
     }
     (signal / "review.json").write_text(json.dumps(review, indent=2) + "\n")
     (signal / "call.toml").write_text(HELD)
@@ -607,10 +610,10 @@ def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, mo
         record, sha256_file(source), lookups, titles.name
     )
     assert after[f"{NAME}/provenance-titles.json"] == sha256_file(titles / "provenance.json")
-    # review.json changes only where it names the home and data directories.
+    # review.json changes only where it names the home and data directories, and the maintainer.
     text = (signal / "review.json").read_text()
     assert str(home) not in text and str(data) not in text
-    summary = "Read in ~/code/tess-hunt and $TESS_HUNT_DATA/drafts/m3-r2/1-1/checks.json."
+    summary = "Read in ~/code/tess-hunt and $TESS_HUNT_DATA/drafts/m3-r2/1-1/checks.json. Notes for the maintainer."
     assert json.loads(text) == {**review, "summary": summary}
     # The dossier: titles only from open sources, a blank one where none has the paper, no ExoFOP comment text.
     page = (signal / "dossier.md").read_text()
@@ -762,6 +765,8 @@ def test_readme_lists_every_call(tmp_path):
     # The key to the reviews' paths and run variables follows the rows.
     assert "`/tmp/t13/<name>/` was the review's scratch directory" in text
     assert "`$TESS_HUNT_DATA` the data directory" in text and "| `VET2_RUN` |" in text
+    assert "are both that private design on the maintainer's machine" in text
+    assert '"The maintainer" in the reviews, the brief and the tarballs' in text
     rows = [line for line in text.splitlines() if line.startswith("| [")]
     assert rows == [
         f"| [{held.name}]({held.name}/dossier.md) | held | 2026-10-28 | The public data can't tell the two stars "

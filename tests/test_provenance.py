@@ -4,6 +4,7 @@ import subprocess
 
 import pytest
 
+from tess_hunt import provenance
 from tess_hunt.config import load_criteria
 from tess_hunt.provenance import DirtyTreeError, ResumeError, resume_run, start_run
 
@@ -149,3 +150,28 @@ def test_record_adds_a_field(repo, tmp_path):
     run = start(repo, tmp_path, production=False)
     run.record("scramble", 7)
     assert json.loads((run.path / "provenance.json").read_text())["scramble"] == 7
+
+
+def test_unname_writes_the_maintainers_name_as_the_maintainer(tmp_path, monkeypatch):
+    citation = tmp_path / "CITATION.cff"
+    citation.write_text("authors:\n  - family-names: Lovelace\n    given-names: Ada\n")
+    monkeypatch.setattr(provenance, "repo_root", lambda: tmp_path)
+    provenance.maintainer.cache_clear()
+    try:
+        assert provenance.maintainer() == ("Ada", "Lovelace")
+        text = (
+            "Findings go to the maintainer, Ada\nLovelace. A finding that shows a bug. Notes for Ada: one. "
+            "It is Ada's call. (twice.out). Ada should see it. When Ada answers. Ada Byron Lovelace and Ada "
+            "Smith are others."
+        )
+        assert provenance.unname(text) == (
+            "Findings go to the maintainer.\nA finding that shows a bug. Notes for the maintainer: one. "
+            "It is the maintainer's call. (twice.out). The maintainer should see it. When the maintainer answers. "
+            "Ada Byron Lovelace and Ada Smith are others."
+        )
+        # Without a CITATION.cff naming the author, nothing changes.
+        citation.unlink()
+        provenance.maintainer.cache_clear()
+        assert provenance.unname(text) == text
+    finally:
+        provenance.maintainer.cache_clear()

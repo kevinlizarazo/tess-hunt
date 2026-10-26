@@ -1,8 +1,10 @@
 """Run directories: every stage writes into one, stamped with what produced it."""
 
 import datetime as dt
+import functools
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -63,6 +65,31 @@ def _now() -> dt.datetime:
 def scrub(arg: str) -> str:
     # Provenance and run outputs may be published under results/; they must not carry this machine's paths.
     return arg.replace(str(data_dir()), "$TESS_HUNT_DATA").replace(str(Path.home()), "~")
+
+
+@functools.cache
+def maintainer() -> tuple[str, str] | None:
+    """The maintainer's given and family names, as CITATION.cff gives them; None without them."""
+    path = repo_root() / "CITATION.cff"
+    text = path.read_text() if path.is_file() else ""
+    given = re.search(r"given-names:\s*(.+)", text)
+    family = re.search(r"family-names:\s*(.+)", text)
+    return (given.group(1).strip(), family.group(1).strip()) if given and family else None
+
+
+def unname(text: str) -> str:
+    """Quoted text as it is published, with the maintainer's name written as "the maintainer" (decision 0038): the
+    name goes into a generated file only with the maintainer's say-so. A given name followed by another capitalised
+    word is someone else's full name and stays."""
+    names = maintainer()
+    if names is None:
+        return text
+    given, family = (re.escape(n) for n in names)
+    # "the maintainer, <full name>." keeps the line break the name may have spanned.
+    text = re.sub(rf"the maintainer, {given}(\s+){family}\. ?", r"the maintainer.\1", text)
+    text = re.sub(rf"\b{given}\s+{family}\b", "the maintainer", text)
+    text = re.sub(rf"(?<=[.!?] ){given}\b(?!\s+[A-Z])", "The maintainer", text)
+    return re.sub(rf"\b{given}\b(?!\s+[A-Z])", "the maintainer", text)
 
 
 def _relative(path: Path, root: Path) -> str:

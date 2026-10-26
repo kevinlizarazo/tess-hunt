@@ -41,7 +41,7 @@ from tess_hunt.ephemeris import (
 from tess_hunt.fit import FitResult
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.pool import run_jobs
-from tess_hunt.provenance import repo_root, scrub, sha256_file, start_run
+from tess_hunt.provenance import repo_root, scrub, sha256_file, start_run, unname
 from tess_hunt.serialize import jsonable
 from tess_hunt.threshold import check_leo_code, check_light_curves, load_v2_catalog
 from tess_hunt.transit import a_rs_from_density
@@ -1328,9 +1328,10 @@ def cmd_publish(args) -> int:
 
 def cmd_trim(args) -> int:
     """Decision 0038 on a record published before it: its literature record trimmed as `publish` now trims it, the
-    titles run's provenance beside it, and review.json with the home and data directories scrubbed; then the dossier
-    and the README rendered again. Nothing else in the record changes. The published literature.json must be the
-    literature run's file for the signal, or already its trim."""
+    titles run's provenance beside it, and review.json with the home and data directories scrubbed and the
+    maintainer's name written as "the maintainer"; then the dossier and the README rendered again. Nothing else in
+    the record changes. The published literature.json must be the literature run's file for the signal, or already
+    its trim."""
     root = repo_root() / "results" / "vetting"
     dest = root / args.name
     where = f"results/vetting/{args.name}"
@@ -1360,7 +1361,7 @@ def cmd_trim(args) -> int:
         _copy(files, staged)
         review = staged / "review.json"
         if review.is_file():
-            review.write_text(scrub(review.read_text()))
+            review.write_text(unname(scrub(review.read_text())))
         text = dossier.render(staged)
         readme = dossier.readme(root, staged)
         changed = [

@@ -23,7 +23,8 @@ The review also found the maintainer's home directory, which names him, in machi
   TOI and CTOI rows, the planet parameters, the confirmed planets and each imaging row's other fields.
 - **What it drops** (`literature.DROPPED`): every title ADS gave; ExoFOP's comments and the same text in its TOI and
   CTOI rows (`notes`, `cnotes`); ExoFOP's file names; each imaging row's `imuser` and `inotes`. The TOI and CTOI rows'
-  comment fields are the text the comments list was built from, so they go with it.
+  comment fields are the text the comments list was built from, so they go with it (Ruling BR); the rows' other
+  fields stay.
 - **Titles only from open sources** (`literature.trim`). A paper's title is the search's own arXiv hit's, else its
   OpenAlex hit's, else its Zenodo hit's; failing those, OpenAlex's record for the paper's DOI, or for a paper with only
   an arXiv id, arXiv's DataCite DOI `10.48550/arxiv.<id>`. Each kept title records its source in `title_source`
@@ -57,12 +58,21 @@ The review also found the maintainer's home directory, which names him, in machi
   the files first committed at or after the first literature record was published (the publish of 44926986-1 on
   2026-10-22): the 14 `review.json`, changed by `vetting trim` and otherwise left as written; the 14 dossiers, which
   render the review and the call through the same scrub and show a path elsewhere on the machine by its file name
-  alone; and the review tarballs (`review-scripts.tar.gz`), built with it. Five benchmark notes and three tarballs
+  alone; the review tarballs (`review-scripts.tar.gz`), built with it; and the published review brief
+  (`results/vetting/review-brief.md`). Five benchmark notes and three tarballs
   published on 2026-10-20 and 21 stay as published: they were committed no later than cd4e7a2, which with 61b5944 is
   a commit the published records' runs were made at and their provenance names, so a rewrite does not reach them.
   `results/vetting/README.md` says how to read their paths.
+- **The maintainer's name is written "the maintainer" (Ruling BT).** The name goes into a generated file only with
+  the maintainer's say-so, and the reviews, their scratch files and the review brief name the maintainer in
+  places. The same step that rewrites the home directory rewrites the name (`provenance.unname`, after
+  `provenance.scrub`): the full name, as `CITATION.cff` gives it, and the given name standing alone become "the
+  maintainer" ("The maintainer" opening a sentence); a given name followed by another capitalised word is someone
+  else's name and stays. `vetting trim` applies it to `review.json`, the dossier to the review and the call it
+  quotes, and the tarballs and the brief were built with it. On 2026-10-26 it changed four `review.json`
+  (146282666-1, 164767175-1, 241522065-1, 410399327-1), their dossiers, the brief and 11 files in the tarballs.
 - **The history.** The branch's history from the first literature publish is rewritten so that no copy of the
-  published record in it keeps the dropped fields or the home directory.
+  published record in it keeps the dropped fields, the home directory or the maintainer's name.
 - **Licences** (`results/README.md`, `ACKNOWLEDGEMENTS.md`, `README.md`, `CITATION.cff`). ExoFOP's rows stay under
   ExoFOP's terms, not CC BY 4.0. The titles come from arXiv's, OpenAlex's and Zenodo's metadata, which each source's
   page puts under CC0. Bibcodes, DOIs and arXiv ids are identifiers.
@@ -86,10 +96,14 @@ The review also found the maintainer's home directory, which names him, in machi
   answer, a work without a title, a 404 and a 429, the DOI quoted into the path) and
   `test_vetting_titles_looks_up_only_the_papers_no_open_source_titles` (one lookup for two signals on a star, the
   run's provenance and `titles.json`, a changed literature record refused).
+- [tests/test_provenance.py](../../tests/test_provenance.py):
+  `test_unname_writes_the_maintainers_name_as_the_maintainer` (the full name across a line break, the given name
+  alone, possessive and opening a sentence, other people's names kept, nothing without `CITATION.cff`'s names).
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_publish_refuses_without_a_call` (a literature record
   needs `--titles`; the published record is the trim of the run's), and
   `test_trim_applies_decision_0038_to_a_record_published_before_it` (only `literature.json`,
   `provenance-titles.json`, `review.json`, the dossier and the README change; `review.json` only where it names the
-  home and data directories; the dossier's titles only from open sources, blank where none has the paper, and no
-  ExoFOP comment text; a second run changes nothing; another titles run and a literature record that is neither the
-  run's nor its trim are refused), `test_the_dossier_shows_no_machine_path_from_the_review_or_the_call`.
+  home and data directories or the maintainer; the dossier's titles only from open sources, blank where none has
+  the paper, and no ExoFOP comment text; a second run changes nothing; another titles run and a literature record
+  that is neither the run's nor its trim are refused),
+  `test_the_dossier_shows_no_machine_path_from_the_review_or_the_call`.

@@ -38,11 +38,17 @@ ran on: scratch directories, draft records and shell variables holding run ids. 
   [pixel-check-diagnosis-2026-10-20-scripts.tar.gz](../benchmarks/pixel-check-diagnosis-2026-10-20-scripts.tar.gz).
 - "The brief" is the review brief every reviewer and refuter was given: [review-brief.md](review-brief.md). "M3
   design, section N" in it and in the reviews is the milestone's design, kept outside the repository, from which
-  [docs/design.md](../../docs/design.md) was amended; `tess-hunt-m3-design.md` is its file.
+  [docs/design.md](../../docs/design.md) was amended. The brief's `/mnt/c/code/docs/tess-hunt-m3-design.md` and the
+  reviews' `C:\code\docs\tess-hunt-m3-design.md` are both that private design on the maintainer's machine (the
+  dossiers show it as `tess-hunt-m3-design.md`); it is not published, and the public spec is
+  [docs/design.md](../../docs/design.md).
 - `~` is the maintainer's home directory and `$TESS_HUNT_DATA` the data directory (by default `~/.cache/tess-hunt`);
   `~/code/tess-hunt` is the maintainer's checkout of this repository. A run id names a directory under
   `$TESS_HUNT_DATA/runs/`. `review.json` keeps every other path as the review wrote it; `dossier.md` shows a path
   elsewhere on the maintainer's machine by its file name alone.
+- "The maintainer" in the reviews, the brief and the tarballs stands where they gave the maintainer's name, rewritten
+  by the same step that rewrites the home directory
+  ([decision 0038](../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 - `drafts/m3/<name>/` and `drafts/m3-r2/<name>/`, under `$TESS_HUNT_DATA`, are draft records `tess-hunt vetting
   dossier` laid out: `drafts/m3` from the first runs (`VET_RUN`, `VET_SUSPECT_RUN`, `TRIC_RUN`, `LIT_RUN`,
   `SECOND_RUN`), `drafts/m3-r2` from the reruns after decisions 0034 to 0036 (`VET2_RUN`, `VET2_SUSPECT_RUN`,
