@@ -623,7 +623,7 @@ def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, mo
     for gone in (
         tl.ADS_ARXIV["title"],
         tl.ADS_BARE["title"],
-        "HIP 8152 b/ TOI-266.01",
+        "a note on TOI 266.01",
         "observer1",
     ):
         assert gone not in page

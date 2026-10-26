@@ -1,6 +1,6 @@
 # 441010857-1: TIC 441010857
 
-Call: **killed** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **killed** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **killed** on 2026-10-22. Rendered from the files in this directory (decis
 | CROWDSAP | S11 0.959; S38 0.961; S64 0.959; none published for S102 (QLP) |
 | Sectors vetted | PDCSAP family: 11, 38 and 64; left out as timing-suspect: 102 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -83,7 +83,7 @@ ExoFOP, read live: TOIs none; CTOIs none; confirmed planets none.
 
 tess-point places the star in no upcoming sector.
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 200 s; TESS-SPOC at 1800, 600 and 200 s). With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 200 s; TESS-SPOC at 1800, 600 and 200 s). With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
 
 ## Plots
 
@@ -113,11 +113,11 @@ No catalogued row on this star.
 
 ## Literature hits
 
-0 paper(s) from the searches that answered, one row per paper.
+0 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: 102.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: 102.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -132,6 +132,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 7.0 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-20, updated 2026-10-21. vet-v3 kills this signal on density; the first runs also failed it on holdout. That holdout fail was an artefact: S11's only transit sits in its mid-sector gap, so season 1 was predicted from one transit in S64, the case decision 0004's training-season guard exists to stop, and at the fitted ephemeris season 1 holds an 11.8 sigma transit. Decision 0035 fixed the check, and on the rerun holdout is inconclusive. The density fail stands: no bug, no artefact and no plausible error in the star's parameters, and the only way out for a planet on this star is an orbit with e of 0.53 or more transiting near periastron, which only radial velocities could show. Updated 2026-10-21 for the 0034/0035 rerun.
 
@@ -154,6 +156,8 @@ No refuter has answered yet.
 Literature hits flagged for the maintainer to read: none.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **killed**, 2026-10-22.
 

@@ -1,6 +1,6 @@
 # 44926986-1: TIC 44926986
 
-Call: **killed** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **killed** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **killed** on 2026-10-22. Rendered from the files in this directory (decis
 | CROWDSAP | S9 0.730; S35 0.729; S36 0.731; S62 0.729; S63 0.735; none published for S89 (QLP), S99 (QLP) |
 | Sectors vetted | PDCSAP family: 9, 35, 36, 62 and 63; QLP family: 89; left out as timing-suspect: 99 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T194348Z-vetting-triceratops-cd4e7a2-7821 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T194348Z-vetting-triceratops-cd4e7a2-7821 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -59,7 +59,7 @@ Neighbours (pass): 6 of 28 neighbours could host the signal. Each Gaia DR3 star 
 | Gaia DR3 5431607507305797760 | 51.0 | 10.4% | TIC 44926962 (0.0") | 36.2% |
 | Gaia DR3 5431607335504795136 | 56.0 | 63.6% | TIC 44926968 (0.0") | 0% |
 
-TRICERATOPS (fail) took sectors 36, 62 and 63 at 600 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.167 (sd 0.018) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 5431607335504795136 (TIC 44926968): its apertures take too little of that star's light to make the dip. Evidence for the review, not a blocker (decision 0026).
+TRICERATOPS (fail) took sectors 36, 62 and 63 at 600 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.167 (sd 0.018) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 5431607335504795136 (TIC 44926968): its apertures take too little of that star's light to make the dip. Evidence for the review, not a blocker ([decision 0026](../../../docs/decisions/0026-triceratops.md)).
 
 RUWE 0.85 (Gaia DR3). A high RUWE points to an unresolved companion, which TRICERATOPS's priors don't condition on; above vet-v3's limit, or without a RUWE, TRICERATOPS is inconclusive.
 
@@ -89,16 +89,16 @@ ExoFOP, read live: TOIs none; CTOIs none; confirmed planets none.
 
 tess-point places the star in sectors 110, 111, 112 and 113.
 
-Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.1511 d from the density-prior fit:
+Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.1511 d from the density-prior fit. Mid (UTC) is when the transit is seen from Earth: the barycentric time less the light's travel time toward the star:
 
 | Sector | Epoch | Mid (BTJD) | Mid (UTC) | sd (min) | 1 sigma half-width (min) | 3 sigma half-width (min) |
 |---|---|---|---|---|---|---|
-| 110 | 116 | 4353.661 | 2026-11-09 03:50 | 26.4 | 26.4 | 79.3 |
+| 110 | 116 | 4353.661 | 2026-11-09 03:53 | 26.4 | 26.4 | 79.3 |
 | 111 | 117 | 4377.776 | 2026-12-03 06:36 | 26.8 | 26.8 | 80.5 |
-| 112 | 118 | 4401.891 | 2026-12-27 09:21 | 27.2 | 27.2 | 81.6 |
-| 113 | 119 | 4426.005 | 2027-01-20 12:06 | 27.6 | 27.6 | 82.7 |
+| 112 | 118 | 4401.891 | 2026-12-27 09:19 | 27.2 | 27.2 | 81.6 |
+| 113 | 119 | 4426.005 | 2027-01-20 12:03 | 27.6 | 27.6 | 82.7 |
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 600 and 200 s; TESS-SPOC at 1800, 600 and 200 s). Killed: no DDT ask.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 600 and 200 s; TESS-SPOC at 1800, 600 and 200 s). Killed: no DDT ask.
 
 ## Plots
 
@@ -124,7 +124,7 @@ Triage's centroid offset per sector, with the neighbours that could host the sig
 
 ## Catalogued rows on the star
 
-Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision 0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 5 transits of ours have data.
+Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks ([decision 0021](../../../docs/decisions/0021-vet-masks-search-kinds.md)); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 5 transits of ours have data.
 
 | Source | Kind | Name | Period (d) | Masked | Transits of ours it overlaps |
 |---|---|---|---|---|---|
@@ -132,7 +132,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## Literature hits
 
-6 paper(s) from the searches that answered, one row per paper.
+6 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 | Title | Id | Found by |
 |---|---|---|
@@ -145,7 +145,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: 99.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: 99.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -160,6 +160,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 3.4 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-20, updated 2026-10-21 and 2026-10-22. Short brief: novelty and TRICERATOPS killed this signal, and I tested whether either kill is wrong. Both stand: eumemic's public all-sky list (commit f1d17f0, 2026-10-16) holds this signal at the same period and epoch, and TRICERATOPS's NFPP stays above 0.1 in all ten runs, at every nearby ephemeris and in eumemic's own run, with no bug found. What TRICERATOPS can't exclude is a planet on the bound companion TIC 44926982 (9.86" away, same parallax, proper motion and RV), not an eclipsing binary, and the first runs' neighbour table put that companion at 12.5" because it measured from the target's J2000 position, which decision 0034 fixed. Updated 2026-10-21 for the 0034/0035 rerun. Updated 2026-10-22 for the 0036 TRICERATOPS rerun.
 
@@ -181,6 +183,8 @@ Evidence: triceratops.json (TRIC3B_RUN signals/44926986-1/, identical to ~/.cach
 
 No refuter has answered yet.
 
+**Note from the maintainer, 2026-10-26:** F2's flux ratio of 0.359 is off in its last digit: the TESS magnitudes it quotes, 9.4929 and 10.6073, give 0.358. The call does not rest on it. F2 uses the ratio to check that the depths add up, and the target's share of the pair's light is 0.736 at either value; the kill rests on TRICERATOPS's NFPP and on novelty.
+
 ### F3 (on the star, note)
 
 Claim: On the first runs (vetting 20261020T010149Z-vetting-run-62882b5-c3ee and its evidence-only twin 20261020T011247Z-vetting-run-62882b5-d92b) this finding reported that the neighbour table measured separations from the target's J2000 TIC position to Gaia DR3 positions at J2016, so the bound companion TIC 44926982 read 12.5" for a true 9.86"; decision 0034 fixed it, and the rerun's table measures from the target's own Gaia DR3 position at J2016.0.
@@ -196,6 +200,8 @@ Evidence: VizieR, scripts in /tmp/t13/44926986-1: vz2.py finds J/AJ/163/207/tabl
 Literature hits flagged for the maintainer to read: doi 10.3847/1538-3881/ac517f, arXiv 2202.00042, doi 10.1086/344822, arXiv astro-ph/0206318, 1995yCat.1098....0L.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **killed**, 2026-10-22.
 

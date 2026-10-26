@@ -1,6 +1,6 @@
 # 241522065-1: TIC 241522065
 
-Call: **held** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **held** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **held** on 2026-10-22. Rendered from the files in this directory (decisio
 | CROWDSAP | S38 0.948; S64 0.949; S65 0.946; none published for S99 (QLP), S101 (QLP), S102 (QLP) |
 | Sectors vetted | PDCSAP family: 38, 64 and 65; left out as timing-suspect: 99, 101 and 102 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -64,7 +64,7 @@ Neighbours (pass): 11 of 93 neighbours could host the signal. Each Gaia DR3 star
 | Gaia DR3 6065889553192742400 | 50.5 | 78% | TIC 241522075 (0.0") | 0% |
 | Gaia DR3 6065889514525164800 | 55.5 | 54.6% | TIC 241522106 (0.2") | 0% |
 
-TRICERATOPS (pass) took sectors 64 and 65 at 200 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.000148 (sd 1.1e-05) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 6065889518833002496 (TIC 241522104), Gaia DR3 6065889553192742400 (TIC 241522075), Gaia DR3 6065889514525164800 (TIC 241522106): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker (decision 0026).
+TRICERATOPS (pass) took sectors 64 and 65 at 200 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.000148 (sd 1.1e-05) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 6065889518833002496 (TIC 241522104), Gaia DR3 6065889553192742400 (TIC 241522075), Gaia DR3 6065889514525164800 (TIC 241522106): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker ([decision 0026](../../../docs/decisions/0026-triceratops.md)).
 
 RUWE 0.99 (Gaia DR3). A high RUWE points to an unresolved companion, which TRICERATOPS's priors don't condition on; above vet-v3's limit, or without a RUWE, TRICERATOPS is inconclusive.
 
@@ -94,17 +94,17 @@ ExoFOP, read live: TOIs none; CTOIs none; confirmed planets none.
 
 tess-point places the star in sectors 112, 113 and 114.
 
-Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.1679 d from the density-prior fit:
+Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.1679 d from the density-prior fit. Mid (UTC) is when the transit is seen from Earth: the barycentric time less the light's travel time toward the star:
 
 | Sector | Epoch | Mid (BTJD) | Mid (UTC) | sd (min) | 1 sigma half-width (min) | 3 sigma half-width (min) |
 |---|---|---|---|---|---|---|
-| 112 | 118 | 4397.965 | 2026-12-23 11:08 | 13.3 | 13.3 | 40.0 |
-| 112 | 119 | 4415.402 | 2027-01-09 21:37 | 13.5 | 13.5 | 40.5 |
-| 113 | 120 | 4432.838 | 2027-01-27 08:06 | 13.6 | 13.6 | 40.9 |
+| 112 | 118 | 4397.965 | 2026-12-23 11:12 | 13.3 | 13.3 | 40.0 |
+| 112 | 119 | 4415.402 | 2027-01-09 21:40 | 13.5 | 13.5 | 40.5 |
+| 113 | 120 | 4432.838 | 2027-01-27 08:07 | 13.6 | 13.6 | 40.9 |
 | 114 | 121 | 4450.275 | 2027-02-13 18:34 | 13.8 | 13.8 | 41.3 |
-| 114 | 122 | 4467.712 | 2027-03-03 05:03 | 13.9 | 13.9 | 41.7 |
+| 114 | 122 | 4467.712 | 2027-03-03 05:01 | 13.9 | 13.9 | 41.7 |
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 600 and 200 s; TESS-SPOC at 600 and 200 s). Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding evidence: A third TESS season: sectors 112 to 114 hold predicted transits and give the held-out check a second training season for each held-out one; or a QLP redelivery of sectors 99 to 102 with corrected timestamps, with which the evidence-only run already predicts two held-out seasons (F5).
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 600 and 200 s; TESS-SPOC at 600 and 200 s). Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding evidence: A third TESS season: sectors 112 to 114 hold predicted transits and give the held-out check a second training season for each held-out one; or a QLP redelivery of sectors 99 to 102 with corrected timestamps, with which the evidence-only run already predicts two held-out seasons (F5).
 
 ## Plots
 
@@ -130,7 +130,7 @@ The second list's pixel check: each sector's centroid offset, with the neighbour
 
 ## Catalogued rows on the star
 
-Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision 0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 5 transits of ours have data.
+Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks ([decision 0021](../../../docs/decisions/0021-vet-masks-search-kinds.md)); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 5 transits of ours have data.
 
 | Source | Kind | Name | Period (d) | Masked | Transits of ours it overlaps |
 |---|---|---|---|---|---|
@@ -139,7 +139,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## Literature hits
 
-15 paper(s) from the searches that answered, one row per paper.
+15 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 | Title | Id | Found by |
 |---|---|---|
@@ -161,7 +161,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: 99, 101 and 102.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: 99, 101 and 102.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -176,6 +176,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 3.0 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-21. Full brief on 241522065-1, a 505 ppm, 17.437 d dip on HIP 67102 (F7V, Tmag 8.3), promoted from the second list. I found no kill and no hold: the dip is real and periodic from 2021 to 2026 at the same depth in both product families, sits at the target in every sector's difference image, shows no secondary at any phase, and TRICERATOPS's pass rests on stars 33" to 37" out that the pixels exclude and on 0036's drop of an artifact that 2MASS and Gaia show is not a star. Notes for the maintainer: a 4 sigma Hipparcos-Gaia acceleration hints at an unseen companion that high-resolution imaging would test, and the star has a second candidate at 5.58 d (ours and eumemic's).
 
@@ -226,6 +228,8 @@ Evidence: $SNAP3/raw/ExoMiner-v2/vetting_catalog_FFI.csv row 241522065-1-S38: P 
 Literature hits flagged for the maintainer to read: doi 10.3847/1538-4365/abf93c, arXiv 2105.11662.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **held**, 2026-10-22.
 

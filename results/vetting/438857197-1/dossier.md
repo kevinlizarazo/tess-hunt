@@ -1,6 +1,6 @@
 # 438857197-1: TIC 438857197
 
-Call: **held** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **held** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **held** on 2026-10-22. Rendered from the files in this directory (decisio
 | CROWDSAP | S11 0.901; S38 0.905; S64 0.892; none published for S101 (QLP), S102 (QLP) |
 | Sectors vetted | PDCSAP family: 11, 38 and 64; left out as timing-suspect: 101 and 102 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -79,7 +79,7 @@ Neighbours (pass): 26 of 57 neighbours could host the signal. Each Gaia DR3 star
 | Gaia DR3 6083428511695357056 | 57.2 | 69.7% | TIC 438857208 (0.0") | 0% |
 | Gaia DR3 6083427309104519296 | 59.6 | 92.6% | TIC 1048011952 (0.0") | 0% |
 
-TRICERATOPS (inconclusive) took sectors 64 at 200 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.0168 (sd 0.0008) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 6083427102946084096 (TIC 1048011906), Gaia DR3 6083428580414836608 (TIC 438857212), Gaia DR3 6083428515990500736 (TIC 1048012249), Gaia DR3 6083428511695343616 (TIC 438857194), Gaia DR3 6083428580414839424 (TIC 438857215), Gaia DR3 6083427313414345856 (TIC 438808688), Gaia DR3 6083427309104521728 (TIC 438857218), Gaia DR3 6083427309104508288 (TIC 1048011949), Gaia DR3 6083427068586323328 (TIC 438857188), Gaia DR3 6083428584724669568 (TIC 438857223), Gaia DR3 6083428511695353216 (TIC 438857204), Gaia DR3 6083428516005184128 (TIC 438857196), Gaia DR3 6083428580414849024 (TIC 1048012261), Gaia DR3 6083428584710014976 (TIC 1048012263), Gaia DR3 6083424079289064448 (TIC 438857166), Gaia DR3 6083427068586315520 (TIC 438808711), Gaia DR3 6083428511695357056 (TIC 438857208), Gaia DR3 6083427309104519296 (TIC 1048011952): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker (decision 0026).
+TRICERATOPS (inconclusive) took sectors 64 at 200 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.0168 (sd 0.0008) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 6083427102946084096 (TIC 1048011906), Gaia DR3 6083428580414836608 (TIC 438857212), Gaia DR3 6083428515990500736 (TIC 1048012249), Gaia DR3 6083428511695343616 (TIC 438857194), Gaia DR3 6083428580414839424 (TIC 438857215), Gaia DR3 6083427313414345856 (TIC 438808688), Gaia DR3 6083427309104521728 (TIC 438857218), Gaia DR3 6083427309104508288 (TIC 1048011949), Gaia DR3 6083427068586323328 (TIC 438857188), Gaia DR3 6083428584724669568 (TIC 438857223), Gaia DR3 6083428511695353216 (TIC 438857204), Gaia DR3 6083428516005184128 (TIC 438857196), Gaia DR3 6083428580414849024 (TIC 1048012261), Gaia DR3 6083428584710014976 (TIC 1048012263), Gaia DR3 6083424079289064448 (TIC 438857166), Gaia DR3 6083427068586315520 (TIC 438808711), Gaia DR3 6083428511695357056 (TIC 438857208), Gaia DR3 6083427309104519296 (TIC 1048011952): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker ([decision 0026](../../../docs/decisions/0026-triceratops.md)).
 
 RUWE 0.93 (Gaia DR3). A high RUWE points to an unresolved companion, which TRICERATOPS's priors don't condition on; above vet-v3's limit, or without a RUWE, TRICERATOPS is inconclusive.
 
@@ -109,27 +109,27 @@ ExoFOP, read live: TOIs none; CTOIs none; confirmed planets none.
 
 tess-point places the star in sectors 112 and 114.
 
-Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.0570 d from the density-prior fit:
+Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.0570 d from the density-prior fit. Mid (UTC) is when the transit is seen from Earth: the barycentric time less the light's travel time toward the star:
 
 | Sector | Epoch | Mid (BTJD) | Mid (UTC) | sd (min) | 1 sigma half-width (min) | 3 sigma half-width (min) |
 |---|---|---|---|---|---|---|
-| 112 | 764 | 4399.135 | 2026-12-24 15:13 | 11.1 | 11.1 | 33.3 |
-| 112 | 765 | 4402.794 | 2026-12-28 07:02 | 11.1 | 11.1 | 33.4 |
-| 112 | 766 | 4406.453 | 2026-12-31 22:51 | 11.1 | 11.1 | 33.4 |
-| 112 | 767 | 4410.112 | 2027-01-04 14:40 | 11.2 | 11.2 | 33.5 |
-| 112 | 768 | 4413.772 | 2027-01-08 06:29 | 11.2 | 11.2 | 33.6 |
-| 112 | 769 | 4417.431 | 2027-01-11 22:19 | 11.2 | 11.2 | 33.6 |
-| 112 | 770 | 4421.090 | 2027-01-15 14:08 | 11.2 | 11.2 | 33.7 |
-| 114 | 778 | 4450.363 | 2027-02-13 20:41 | 11.4 | 11.4 | 34.1 |
-| 114 | 779 | 4454.022 | 2027-02-17 12:30 | 11.4 | 11.4 | 34.2 |
-| 114 | 780 | 4457.681 | 2027-02-21 04:20 | 11.4 | 11.4 | 34.2 |
-| 114 | 781 | 4461.341 | 2027-02-24 20:09 | 11.4 | 11.4 | 34.3 |
-| 114 | 782 | 4465.000 | 2027-02-28 11:58 | 11.4 | 11.4 | 34.3 |
-| 114 | 783 | 4468.659 | 2027-03-04 03:47 | 11.5 | 11.5 | 34.4 |
-| 114 | 784 | 4472.318 | 2027-03-07 19:36 | 11.5 | 11.5 | 34.4 |
-| 114 | 785 | 4475.977 | 2027-03-11 11:26 | 11.5 | 11.5 | 34.5 |
+| 112 | 764 | 4399.135 | 2026-12-24 15:17 | 11.1 | 11.1 | 33.3 |
+| 112 | 765 | 4402.794 | 2026-12-28 07:06 | 11.1 | 11.1 | 33.4 |
+| 112 | 766 | 4406.453 | 2026-12-31 22:54 | 11.1 | 11.1 | 33.4 |
+| 112 | 767 | 4410.112 | 2027-01-04 14:43 | 11.2 | 11.2 | 33.5 |
+| 112 | 768 | 4413.772 | 2027-01-08 06:32 | 11.2 | 11.2 | 33.6 |
+| 112 | 769 | 4417.431 | 2027-01-11 22:21 | 11.2 | 11.2 | 33.6 |
+| 112 | 770 | 4421.090 | 2027-01-15 14:10 | 11.2 | 11.2 | 33.7 |
+| 114 | 778 | 4450.363 | 2027-02-13 20:40 | 11.4 | 11.4 | 34.1 |
+| 114 | 779 | 4454.022 | 2027-02-17 12:28 | 11.4 | 11.4 | 34.2 |
+| 114 | 780 | 4457.681 | 2027-02-21 04:17 | 11.4 | 11.4 | 34.2 |
+| 114 | 781 | 4461.341 | 2027-02-24 20:06 | 11.4 | 11.4 | 34.3 |
+| 114 | 782 | 4465.000 | 2027-02-28 11:55 | 11.4 | 11.4 | 34.3 |
+| 114 | 783 | 4468.659 | 2027-03-04 03:44 | 11.5 | 11.5 | 34.4 |
+| 114 | 784 | 4472.318 | 2027-03-07 19:32 | 11.5 | 11.5 | 34.4 |
+| 114 | 785 | 4475.977 | 2027-03-11 11:21 | 11.5 | 11.5 | 34.5 |
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 200 s; TESS-SPOC at 1800, 600 and 200 s). Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding evidence: Precise radial velocities to weigh a grazing body (F1); high-resolution imaging and multi-band transit photometry for a bound companion (F2); seeing-limited ground-based photometry on a predicted transit that resolves the stars 11 to 14 arcseconds away (F3). Sectors 112 and 114 add transits that sharpen the shape but decide none of these.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 200 s; TESS-SPOC at 1800, 600 and 200 s). Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding evidence: Precise radial velocities to weigh a grazing body (F1); high-resolution imaging and multi-band transit photometry for a bound companion (F2); seeing-limited ground-based photometry on a predicted transit that resolves the stars 11 to 14 arcseconds away (F3). Sectors 112 and 114 add transits that sharpen the shape but decide none of these.
 
 ## Plots
 
@@ -155,7 +155,7 @@ The second list's pixel check: each sector's centroid offset, with the neighbour
 
 ## Catalogued rows on the star
 
-Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision 0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 21 transits of ours have data.
+Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks ([decision 0021](../../../docs/decisions/0021-vet-masks-search-kinds.md)); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 21 transits of ours have data.
 
 | Source | Kind | Name | Period (d) | Masked | Transits of ours it overlaps |
 |---|---|---|---|---|---|
@@ -164,11 +164,11 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## Literature hits
 
-0 paper(s) from the searches that answered, one row per paper.
+0 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: 101 and 102.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: 101 and 102.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -183,6 +183,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 5.5 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-21. I ran the full brief: the fits against the star, TRICERATOPS's scenarios, the pixel record beside SPOC's public FFI DV reports, ModShift, holdout, the ExoMiner score and novelty. The dip is real and not known, but on this F star it must be grazing (at least 7 to 9 Earth radii, no upper bound), and Gaia DR3's flat RVs leave a grazing giant planet or brown dwarf on the target. Otherwise it sits on another star: TRICERATOPS's FPP rests mostly on a bound companion, and the pixels, including SPOC's 3.7-sigma S64 centroid flag, can't separate the neighbours at 11 to 14 arcsec.
 
@@ -238,7 +240,7 @@ None of the numbers fails, and the evidence shows what the claim says.
 - Refuter 2: did not refute. Not refuted. The finding reads the rules correctly, and hold fits the brief. Two secondary numbers are a little generous, but neither changes the claim or the rating.
 
 Rules checked:
-- Section 4.8 is not in the repo's docs/design.md. It is in the M3 design, C:\code\docs\tess-hunt-m3-design.md (/mnt/c/code/docs/tess-hunt-m3-design.md).
+- Section 4.8 is not in the repo's docs/design.md. It is in the M3 design, tess-hunt-m3-design.md (tess-hunt-m3-design.md).
 - Shape, density and radius read the flat-prior fit, so they don't assume the dip is on the target (M3 design 4.2; decision 0024, Context and Decision). F1 says it is conditional ("On TIC 438857197") and leaves the off-star case to F2 and F3. That matches the brief's planet lens: "Density against the TIC star, and the radius against the star." F1 never claims a check failed or has a bug, so no decision record is owed.
 - Density error: 0016 (Decision) takes the side of the posterior that faces the TIC value. checks.json confirms it: fit_log_rho_sd 0.9576 equals fit_log_rho_minus, and the tension is 1.712. F1's "passes at 1.71 sigma only because it uses the fit's lower error" restates that rule accurately; it does not misread it.
 - Check values match F1: shape passes at grazing probability 0.119; radius passes at 5.5 Re (rp_rs 0.0303, rad_tic 1.667); fit_rho_gcc / tic_rho_gcc = 16.21 / 0.365 = 44.5.
@@ -401,6 +403,8 @@ Evidence: ~/.cache/tess-hunt/drafts/m3-r2/438857197-1/checks.json novelty: incon
 Literature hits flagged for the maintainer to read: none.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **held**, 2026-10-22.
 

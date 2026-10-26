@@ -1,6 +1,6 @@
 # 164767175-1: TIC 164767175
 
-Call: **held** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **held** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **held** on 2026-10-22. Rendered from the files in this directory (decisio
 | CROWDSAP | S3 0.999; S30 0.999; S97 1.000; S107 0.999 |
 | Sectors vetted | PDCSAP family: 3, 30, 97 and 107; left out as timing-suspect: none |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -91,7 +91,7 @@ Planet parameters on ExoFOP:
 
 tess-point places the star in no upcoming sector.
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 3, 30, 97 and 107. With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 3, 30, 97 and 107. With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
 
 ## Plots
 
@@ -117,7 +117,7 @@ Triage's centroid offset per sector, with the neighbours that could host the sig
 
 ## Catalogued rows on the star
 
-Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision 0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 20 transits of ours have data.
+Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks ([decision 0021](../../../docs/decisions/0021-vet-masks-search-kinds.md)); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 20 transits of ours have data.
 
 | Source | Kind | Name | Period (d) | Masked | Transits of ours it overlaps |
 |---|---|---|---|---|---|
@@ -150,7 +150,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## Literature hits
 
-40 paper(s) from the searches that answered, one row per paper.
+40 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 | Title | Id | Found by |
 |---|---|---|
@@ -197,7 +197,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: none.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: none.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -212,6 +212,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 1.3 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-21. I tested the 5.839 d, 180 ppm signal on TOI-266 (HIP 8152) against the two known planets (10.751 d, 19.606 d), every literature hit, ExoFOP, the blend space, the centroids, TRICERATOPS's contrast-curve clamp and star list, and the light curve's artefacts. It is no harmonic or beat alias of b or c. No paper, ExoFOP row or catalogue reports anything at this period. The old TOI-266.02 periods (6.19 d, 6.54 d) are superseded aliases of planet c and share no transit with it. On the star the blend space looks closed, the centroid offsets over 15 arcsec are noise, and TRICERATOPS's pass leans neither on the clamp nor on a duplicate. The dip shows in SAP and PDCSAP in all four sectors and not in the background. But no season can be held out, and the search found it just 3% above the null threshold, so the TESS data can't replicate it. I rate that a hold.
 
@@ -297,6 +299,8 @@ Evidence: Bonomo et al. 2025, 'Cold Jupiters and small planets' (doi 10.1051/000
 Literature hits flagged for the maintainer to read: doi 10.3847/1538-3881/ace2ca, arXiv 2306.16587, doi 10.1051/0004-6361/202659915/pdf, arXiv 2605.27002, doi 10.3847/1538-4365/ad4484, arXiv 2405.14786, doi 10.3847/1538-3881/acd557, arXiv 2306.00251, doi 10.3847/1538-3881/ac6266, arXiv 2106.06156, doi 10.3847/1538-3881/abc6af, arXiv 2002.00691, doi 10.3847/1538-3881/adcd71, arXiv 2409.03852, doi 10.3847/1538-3881/aba61d, doi 10.3847/1538-3881/ad8f9a, arXiv 2411.02521, doi 10.48550/arxiv.2510.12783, arXiv 2510.12783, doi 10.1093/mnras/stag1756, doi 10.3847/1538-3881/ad1189, arXiv 2310.03299, doi 10.3847/1538-3881/ab4e1c, arXiv 1907.03377, doi 10.3847/1538-3881/abdec6, arXiv 2101.08671, doi 10.3847/1538-3881/ac0d06, arXiv 2106.13354, doi 10.1093/mnras/stac652, arXiv 2203.15826, doi 10.1093/mnrasl/slac024, arXiv 2203.01954.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **held**, 2026-10-22.
 

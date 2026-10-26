@@ -1,6 +1,6 @@
 # 146282666-1: TIC 146282666
 
-Call: **held** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **held** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **held** on 2026-10-22. Rendered from the files in this directory (decisio
 | CROWDSAP | S3 0.974; S30 0.976; S104 0.983; S105 0.984; S106 0.977; S107 0.980 |
 | Sectors vetted | PDCSAP family: 3, 30, 104, 105, 106 and 107; left out as timing-suspect: none |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -91,7 +91,7 @@ Planet parameters on ExoFOP:
 
 tess-point places the star in no upcoming sector.
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 3, 30, 104, 105, 106 and 107. With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 3, 30, 104, 105, 106 and 107. With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
 
 ## Plots
 
@@ -117,7 +117,7 @@ Triage's centroid offset per sector, with the neighbours that could host the sig
 
 ## Catalogued rows on the star
 
-Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision 0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 13 transits of ours have data.
+Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks ([decision 0021](../../../docs/decisions/0021-vet-masks-search-kinds.md)); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 13 transits of ours have data.
 
 | Source | Kind | Name | Period (d) | Masked | Transits of ours it overlaps |
 |---|---|---|---|---|---|
@@ -139,7 +139,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## Literature hits
 
-13 paper(s) from the searches that answered, one row per paper.
+13 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 | Title | Id | Found by |
 |---|---|---|
@@ -159,7 +159,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: none.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: none.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -174,6 +174,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 2.0 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-21. Full brief. I refitted triage's difference images, read TRICERATOPS's scenarios and star list against the TIC and Gaia DR3, re-measured the transits on vet-v3's light curve and the SPOC files, and screened ExoFOP and the 13 hits. Nothing kills it: the 9.995-d dip is periodic, steady over 13 transits and eight years, U-shaped and new, but it holds on blending, since a background star 6" out can make it with a 7.4% eclipse that TESS can't separate, while two thirds of the NFPP over the bar comes from a 69" star the pixels exclude (no TIC duplicate is involved). TOI-4298.01 turns out to repeat every 28.896 d, not 722 d, and one of its transits sits unmasked on our epoch 290; masked properly, the depth checks still pass.
 
@@ -291,6 +293,8 @@ Evidence: exofop.json imaging: SOAR HRCam, I band, 2021-10-01, 'delta 7.5 mag @ 
 Literature hits flagged for the maintainer to read: doi 10.1093/mnrasl/slac024, arXiv 2203.01954.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **held**, 2026-10-22.
 

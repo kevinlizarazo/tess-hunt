@@ -1,6 +1,6 @@
 # 370977908-1: TIC 370977908
 
-Call: **held** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **held** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **held** on 2026-10-22. Rendered from the files in this directory (decisio
 | CROWDSAP | S11 0.930; S38 0.927; S65 0.937; none published for S102 (QLP), S103 (QLP) |
 | Sectors vetted | PDCSAP family: 11, 38 and 65; left out as timing-suspect: 102 and 103 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -99,7 +99,7 @@ Neighbours (inconclusive): 1 Gaia DR3 star(s) within the radius have no G magnit
 | Gaia DR3 5900598247895522688 | 58.4 | 96.2% | TIC 370977803 (0.0") | 0% |
 | Gaia DR3 5900597766859137536 | 58.7 | 44% | TIC 370977985 (0.0") | 0% |
 
-TRICERATOPS (inconclusive) took sectors 11, 38 and 65 at 120 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.126 (sd 0.004) over 10 run(s) of 1000000 draws. The neighbour table lists possible hosts, but it could not judge every star: 1 Gaia DR3 star(s) within the radius have no G magnitude. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 5900598179176024192 (TIC 370977878), Gaia DR3 5900597938662438656 (TIC 370977954), Gaia DR3 5900598183477215232 (TIC 370977859), Gaia DR3 5900597977318762752 (TIC 1150965460), Gaia DR3 5900598183502442624 (TIC 370977854), Gaia DR3 5900597973017578240 (TIC 370977941), Gaia DR3 5900598179174688768 (TIC 370977846), Gaia DR3 5900598247894162688 (TIC 370977855), Gaia DR3 5900598183502444160 (TIC 1150965695), Gaia DR3 5900598179176036224 (TIC 370977843), Gaia DR3 5900598183507721088 (TIC 370977837), Gaia DR3 5900597973016243712 (TIC 370977900), Gaia DR3 5900598080397982976 (TIC 1150965553), Gaia DR3 5900598076096806144 (TIC 370977889), Gaia DR3 5900598217836953472 (TIC 1150965700), Gaia DR3 5900598213534410624 (TIC 370977913), Gaia DR3 5900598080423224704 (TIC 370977872), Gaia DR3 5900598286581658624 (TIC 370977824), Gaia DR3 5900598183502445312 (TIC 370977807), Gaia DR3 5900598247895522688 (TIC 370977803), Gaia DR3 5900597766859137536 (TIC 370977985): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker (decision 0026).
+TRICERATOPS (inconclusive) took sectors 11, 38 and 65 at 120 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.126 (sd 0.004) over 10 run(s) of 1000000 draws. The neighbour table lists possible hosts, but it could not judge every star: 1 Gaia DR3 star(s) within the radius have no G magnitude. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 5900598179176024192 (TIC 370977878), Gaia DR3 5900597938662438656 (TIC 370977954), Gaia DR3 5900598183477215232 (TIC 370977859), Gaia DR3 5900597977318762752 (TIC 1150965460), Gaia DR3 5900598183502442624 (TIC 370977854), Gaia DR3 5900597973017578240 (TIC 370977941), Gaia DR3 5900598179174688768 (TIC 370977846), Gaia DR3 5900598247894162688 (TIC 370977855), Gaia DR3 5900598183502444160 (TIC 1150965695), Gaia DR3 5900598179176036224 (TIC 370977843), Gaia DR3 5900598183507721088 (TIC 370977837), Gaia DR3 5900597973016243712 (TIC 370977900), Gaia DR3 5900598080397982976 (TIC 1150965553), Gaia DR3 5900598076096806144 (TIC 370977889), Gaia DR3 5900598217836953472 (TIC 1150965700), Gaia DR3 5900598213534410624 (TIC 370977913), Gaia DR3 5900598080423224704 (TIC 370977872), Gaia DR3 5900598286581658624 (TIC 370977824), Gaia DR3 5900598183502445312 (TIC 370977807), Gaia DR3 5900598247895522688 (TIC 370977803), Gaia DR3 5900597766859137536 (TIC 370977985): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker ([decision 0026](../../../docs/decisions/0026-triceratops.md)).
 
 RUWE 0.89 (Gaia DR3). A high RUWE points to an unresolved companion, which TRICERATOPS's priors don't condition on; above vet-v3's limit, or without a RUWE, TRICERATOPS is inconclusive.
 
@@ -129,7 +129,7 @@ ExoFOP, read live: TOIs none; CTOIs none; confirmed planets none.
 
 tess-point places the star in no upcoming sector.
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 11, 38 and 65. With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 11, 38 and 65. With no upcoming TESS look there is no DDT ask; M4 decides this signal's route.
 
 ## Plots
 
@@ -155,7 +155,7 @@ The second list's pixel check: each sector's centroid offset, with the neighbour
 
 ## Catalogued rows on the star
 
-Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision 0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 6 transits of ours have data.
+Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks ([decision 0021](../../../docs/decisions/0021-vet-masks-search-kinds.md)); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 6 transits of ours have data.
 
 | Source | Kind | Name | Period (d) | Masked | Transits of ours it overlaps |
 |---|---|---|---|---|---|
@@ -168,7 +168,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## Literature hits
 
-12 paper(s) from the searches that answered, one row per paper.
+12 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 | Title | Id | Found by |
 |---|---|---|
@@ -187,7 +187,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: 102 and 103.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: 102 and 103.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -202,6 +202,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 2.6 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-21. Full brief on 370977908-1, a 279 ppm, 17.09 d SPOC TCE on a Tmag 9.0 F star, promoted from the second list. The main finding is a dip at phase 0.487, as deep as the transit, in all three orbits with data there and at the target's pixels: vet-v3's phase-0.5 check can't see it, LEO-Vetter misses flagging it only on red noise, and if real it makes this an eclipsing binary. TRICERATOPS's no-G blocker is immaterial (the star is TIC 1150965440, T 20.1), so NFPP 0.126 is a would-be fail, yet every star carrying it sits 4 or more sigma from SPOC's difference-image centroid; ground-based photometry at the transit and phase-0.487 times decides both.
 
@@ -250,7 +252,7 @@ Other evidence checked:
 One omission that does not cut against the claim: the S102 FFI pixels do have data at the 4140.944 phase-0.487 event, which the QLP light curve lacks. pix2 shows 248 ppm there, z 0.5, in a sector where the transit itself only reaches z 0.8. That is a positive dip of similar size, not a contradiction.
 - Refuter 2: did not refute. F1 reads the rules correctly, and a hold is the right rating under the brief and decision 0028. I checked each rule claim.
 
-(1) vet-v3's secondary looks only at phase 0.5. In src/tess_hunt/checks/photometry.py, secondary() shifts t0 by 0.5 P and calls box_depth with fraction 1.0, which gives a half-window of duration/2 = 0.1875/2 = 0.094 d (checks.json ephemeris). The M3 design (C:\code\docs\tess-hunt-m3-design.md, 4.2) says the same thing: "vet's secondary looks at phase 0.5 only". It hands any-phase secondaries to LEO-Vetter's ModShift in the dossier, and the brief's planet lens names ModShift as the test for "an eccentric secondary away from phase 0.5". The offset to phase 0.4867 is 0.227 d, so checks.json's secondary pass at -0.1 sigma tells us nothing about this dip.
+(1) vet-v3's secondary looks only at phase 0.5. In src/tess_hunt/checks/photometry.py, secondary() shifts t0 by 0.5 P and calls box_depth with fraction 1.0, which gives a half-window of duration/2 = 0.1875/2 = 0.094 d (checks.json ephemeris). The M3 design (tess-hunt-m3-design.md, 4.2) says the same thing: "vet's secondary looks at phase 0.5 only". It hands any-phase secondaries to LEO-Vetter's ModShift in the dossier, and the brief's planet lens names ModShift as the test for "an eccentric secondary away from phase 0.5". The offset to phase 0.4867 is 0.227 d, so checks.json's secondary pass at -0.1 sigma tells us nothing about this dip.
 
 (2) "Unflagged only on its red-noise test" matches the rule. leo_vetter/thresholds.py secondary() returns MS4 & (MS5 | MS6) & ~albedo, and criteria/triage-v1.toml [leo] sets MS4 = 0, MS5 = -1, MS6 = -1. I fed it $TRIAGE_RUN/evidence/370977908-1.json leo_flux.evidence.metrics (output in /tmp/t13/370977908-1/refute-F1-rules/rules.txt):
 - MS4 = 5.1186/1.6232 - 5.0085 = -1.855, so it fails.
@@ -317,7 +319,7 @@ r3.py gives s1-s65 sigmas of 9.03, 13.72, 4.00, 22.01, 16.82, 11.05, 12.35, and 
 - Decision 0032 says what F2 says it does.
 
 One minor inaccuracy, which the claim doesn't rest on: "Those small control planets sit on Tmag 5 to 7 stars". The control planets span Tmag 5.05 to 10.49, and TOI-451.03, the one the finding names, is on Tmag 10.27 (stars[0] in 20261017T162256Z-vetting-triceratops-62882b5-d0f8). The shallowest ones (TOI-144.01, TOI-396.01/.03, TOI-4307.01) are on Tmag 5.1 to 6.6. The point it supports still holds: no control planet has more than 9 possible hosts, against 46 here.
-- Refuter 2: did not refute. F2 reads the rules correctly and the hold rating fits. I checked it against M3 design 4.4, 4.5, 4.8 and 4.9 (C:\code\docs\tess-hunt-m3-design.md), decisions 0025, 0026, 0028, 0032, 0034 and 0036, and criteria/vet-v3.toml. Script: uv run python /tmp/t13/370977908-1/refute-F2-rules/check.py, run from ~/code/tess-hunt.
+- Refuter 2: did not refute. F2 reads the rules correctly and the hold rating fits. I checked it against M3 design 4.4, 4.5, 4.8 and 4.9 (tess-hunt-m3-design.md), decisions 0025, 0026, 0028, 0032, 0034 and 0036, and criteria/vet-v3.toml. Script: uv run python /tmp/t13/370977908-1/refute-F2-rules/check.py, run from ~/code/tess-hunt.
 
 (1) "Only blocker": triceratops.json evidence.blockers holds one item, "the neighbour table is inconclusive: 1 Gaia DR3 star(s) within the radius have no G magnitude". No other blocker 0026 lists applies: missing_hosts is [] (all 46 possible hosts matched, the farthest at 0.49" against match_arcsec 2.0), RUWE is 0.888 (max_ruwe 1.4), field_population is True, raised is null and no run is degenerate.
 
@@ -360,6 +362,8 @@ Evidence: checks.json: density 0.5 sigma from the TIC's; grazing in 2% of sample
 Literature hits flagged for the maintainer to read: none.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **held**, 2026-10-22.
 

@@ -47,7 +47,11 @@ The review also found the maintainer's home directory, which names him, in machi
   from that literature run (`provenance-literature.json` is the run's provenance) and its `literature.json` is the
   run's file for the signal, or already its trim, and refuses a record trimmed with another titles run. It writes the
   trimmed `literature.json` and `provenance-titles.json`, scrubs `review.json` (below), and renders `dossier.md` and
-  the vetting README again; nothing else in the record changes, and a second run changes nothing.
+  the vetting README again; nothing else in the record changes, and a second run changes nothing. Applied on
+  2026-10-26 with the literature run `20261021T001540Z-vetting-literature-61b5944-07de`, from which all 14 records were
+  published, and the titles run `20261026T155726Z-vetting-titles-0b1deac-1d19`, which looked up the 50 DOIs that run's
+  19 records needed and found a title for each. Of the 14 records' 127 papers, 9 take their title from the search's
+  own OpenAlex hits, 91 from the lookup, and 27, known only by their bibcodes, have none.
 - **The home directory is scrubbed (Ruling BM).** One mapping is used everywhere: tess-hunt's own scrub
   (`provenance.scrub`), which writes the data directory as `$TESS_HUNT_DATA` and the home directory as `~`. It covers
   the files first committed at or after the first literature record was published (the publish of 44926986-1 on

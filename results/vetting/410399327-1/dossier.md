@@ -1,6 +1,6 @@
 # 410399327-1: TIC 410399327
 
-Call: **killed** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **killed** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **killed** on 2026-10-22. Rendered from the files in this directory (decis
 | CROWDSAP | S13 0.991; S27 0.977; S66 0.974; S67 0.976; none published for S93 (QLP), S94 (QLP), S101 (QLP), S102 (QLP), S103 (QLP), S104 (QLP) |
 | Sectors vetted | PDCSAP family: 13, 27, 66 and 67; QLP family: 93 and 94; left out as timing-suspect: 101, 102, 103 and 104 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261020T181658Z-vetting-triceratops-61b5944-1bbf (commit 61b5944, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -99,13 +99,13 @@ Planet parameters on ExoFOP:
 
 tess-point places the star in sectors 114.
 
-Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.2347 d from the density-prior fit:
+Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.2347 d from the density-prior fit. Mid (UTC) is when the transit is seen from Earth: the barycentric time less the light's travel time toward the star:
 
 | Sector | Epoch | Mid (BTJD) | Mid (UTC) | sd (min) | 1 sigma half-width (min) | 3 sigma half-width (min) |
 |---|---|---|---|---|---|---|
-| 114 | 80 | 4461.847 | 2027-02-25 08:19 | 47.6 | 47.6 | 142.9 |
+| 114 | 80 | 4461.847 | 2027-02-25 08:22 | 47.6 | 47.6 | 142.9 |
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 13. Killed: no DDT ask.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star had SPOC 2-min data in sectors 13. Killed: no DDT ask.
 
 ## Plots
 
@@ -131,7 +131,7 @@ Triage's centroid offset per sector, with the neighbours that could host the sig
 
 ## Catalogued rows on the star
 
-Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision 0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 6 transits of ours have data.
+Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks ([decision 0021](../../../docs/decisions/0021-vet-masks-search-kinds.md)); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, when its mask window (2 of its durations, or of 0.25 d where the catalog gives none) meets it. 6 transits of ours have data.
 
 | Source | Kind | Name | Period (d) | Masked | Transits of ours it overlaps |
 |---|---|---|---|---|---|
@@ -140,7 +140,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## Literature hits
 
-5 paper(s) from the searches that answered, one row per paper.
+5 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 | Title | Id | Found by |
 |---|---|---|
@@ -152,7 +152,7 @@ Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds th
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: 101, 102, 103 and 104.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: 101, 102, 103 and 104.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -167,6 +167,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 2.1 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-20. I rebuilt the light curve vet-v3 saw and measured every epoch to test the three kills (odd_even, sector_depth, holdout) against partial coverage, TTVs, low SNR, dilution and one-sector artefacts. All three stand at 34.94 d, and all three rest on one fact: both odd epochs with data (11 in S27, 41 in S66) are flat at full coverage, while every even epoch with usable data (0, 42, 62, and 72 in the timing-suspect S104) shows a 6-hour dip within 0.3 h of a linear ephemeris. The dips look like a 69.878-day signal, twice the search's period and past its 40-day cap, at which vet-v3's five light-curve checks pass; that is the one hold.
 
@@ -263,6 +265,8 @@ Evidence: checks.json star: TIC radius 0.872 solar radii, Gaia DR3 FLAME radius 
 Literature hits flagged for the maintainer to read: none.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **killed**, 2026-10-22.
 

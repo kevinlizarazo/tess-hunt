@@ -46,7 +46,7 @@ EXOFOP = {
     "basic_info": {"tic_id": str(TIC), "confirmed_planets": "HIP 8152 b, HIP 8152 c"},
     "coordinates": {"ra": "26.2096"},
     "tois": [
-        {"toi": "TOI 266.01", "disp_tfop": "CP", "notes": "HIP 8152 b/ TOI-266.01"},
+        {"toi": "TOI 266.01", "disp_tfop": "CP", "notes": "a note on TOI 266.01"},
         {"toi": "TOI 266.02", "disp_tfop": "CP", "notes": ""},
     ],
     "ctois": [
@@ -609,7 +609,7 @@ def test_exofop_record_keeps_comments_and_imaging():
     exofop = search(Web())["exofop"]
     assert exofop["status"] == "ok" and exofop["error"] is None
     assert exofop["comments"] == [
-        {"object": "TOI 266.01", "comment": "HIP 8152 b/ TOI-266.01"},
+        {"object": "TOI 266.01", "comment": "a note on TOI 266.01"},
         {"object": "TIC 164767175.03", "comment": "single transit"},
     ]
     assert exofop["imaging"] == EXOFOP["imaging"]
@@ -685,7 +685,7 @@ def test_hits_are_deduplicated_by_doi_arxiv_id_or_title():
 
 ADS_DOI = paper("Validation of the new Hipparcos reduction", doi="10.1051/0004-6361:20078357")
 ADS_ARXIV = paper("A preprint only ADS titled here", arxiv="2410.00002")
-ADS_BARE = paper("The HIPPARCOS Catalogue")
+ADS_BARE = paper("A catalogue only ADS titles here")
 OBSERVED = {
     **EXOFOP["imaging"][0],
     "imuser": "observer1",
@@ -763,7 +763,7 @@ def test_trim_keeps_every_identifier_and_takes_titles_only_from_open_sources():
     assert exofop["imaging"] == EXOFOP["imaging"]
     assert exofop["planets"] == record["search"]["exofop"]["planets"]
     assert exofop["confirmed_planets"] == "HIP 8152 b, HIP 8152 c"
-    for gone in ("HIP 8152 b/ TOI-266.01", "single transit", "observer1", "contact", "PEST.zip"):
+    for gone in ("a note on TOI 266.01", "single transit", "observer1", "contact", "PEST.zip"):
         assert gone not in text
     assert out["trim"] == {
         "decision": "0038",

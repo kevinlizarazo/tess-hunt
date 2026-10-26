@@ -1,6 +1,6 @@
 # 103312990-1: TIC 103312990
 
-Call: **held** on 2026-10-22. Rendered from the files in this directory (decision 0028).
+Call: **held** on 2026-10-22. Rendered from the files in this directory ([decision 0028](../../../docs/decisions/0028-outcomes-and-calls.md)); the review and the call are quoted, not rendered ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 ## Signal and star
 
@@ -14,7 +14,7 @@ Call: **held** on 2026-10-22. Rendered from the files in this directory (decisio
 | CROWDSAP | S9 0.941; S10 0.944; S36 0.937; none published for S90 (QLP), S99 (QLP) |
 | Sectors vetted | PDCSAP family: 9, 10 and 36; QLP family: 90; left out as timing-suspect: 99 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T194348Z-vetting-triceratops-cd4e7a2-7821 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T194348Z-vetting-triceratops-cd4e7a2-7821 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
 
 ## Checks
 
@@ -74,7 +74,7 @@ Neighbours (pass): 21 of 55 neighbours could host the signal. Each Gaia DR3 star
 | Gaia DR3 5365550566693107584 | 57.6 | 44.6% | TIC 103312973 (0.0") | 0% |
 | Gaia DR3 5365550055598557056 | 59.8 | 21.5% | TIC 103313020 (0.0") | 0% |
 
-TRICERATOPS (inconclusive) took sectors 36 at 600 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.0198 (sd 0.00023) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 5365553109313739776 (TIC 864916051), Gaia DR3 5365550124318040960 (TIC 103312985), Gaia DR3 5365553006234492288 (TIC 103313007), Gaia DR3 5365553143673496576 (TIC 103312962), Gaia DR3 5365550497973622784 (TIC 103312981), Gaia DR3 5365550566693107584 (TIC 103312973), Gaia DR3 5365550055598557056 (TIC 103313020): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker (decision 0026).
+TRICERATOPS (inconclusive) took sectors 36 at 600 s and folded them on the density-prior fit's ephemeris. It gave a mean NFPP 0.0198 (sd 0.00023) over 10 run(s) of 1000000 draws. Possible hosts it did not weigh: none. It gave zero depth to Gaia DR3 5365553109313739776 (TIC 864916051), Gaia DR3 5365550124318040960 (TIC 103312985), Gaia DR3 5365553006234492288 (TIC 103313007), Gaia DR3 5365553143673496576 (TIC 103312962), Gaia DR3 5365550497973622784 (TIC 103312981), Gaia DR3 5365550566693107584 (TIC 103312973), Gaia DR3 5365550055598557056 (TIC 103313020): its apertures take too little of each one's light to make the dip. Evidence for the review, not a blocker ([decision 0026](../../../docs/decisions/0026-triceratops.md)).
 
 RUWE 6.21 (Gaia DR3). A high RUWE points to an unresolved companion, which TRICERATOPS's priors don't condition on; above vet-v3's limit, or without a RUWE, TRICERATOPS is inconclusive.
 
@@ -104,26 +104,26 @@ ExoFOP, read live: TOIs none; CTOIs none; confirmed planets none.
 
 tess-point places the star in sectors 110, 111, 112 and 113.
 
-Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.1466 d from the density-prior fit:
+Each transit predicted in those sectors, from the density-prior fit's posterior (epochs count periods from its t0); duration 0.1466 d from the density-prior fit. Mid (UTC) is when the transit is seen from Earth: the barycentric time less the light's travel time toward the star:
 
 | Sector | Epoch | Mid (BTJD) | Mid (UTC) | sd (min) | 1 sigma half-width (min) | 3 sigma half-width (min) |
 |---|---|---|---|---|---|---|
-| 110 | 372 | 4344.563 | 2026-10-31 01:29 | 62.3 | 62.3 | 186.8 |
-| 110 | 373 | 4352.086 | 2026-11-07 14:02 | 62.5 | 62.5 | 187.4 |
-| 110 | 374 | 4359.609 | 2026-11-15 02:36 | 62.7 | 62.7 | 188.0 |
-| 110 | 375 | 4367.132 | 2026-11-22 15:09 | 62.8 | 62.8 | 188.5 |
-| 111 | 376 | 4374.656 | 2026-11-30 03:42 | 63.0 | 63.0 | 189.1 |
-| 111 | 377 | 4382.179 | 2026-12-07 16:16 | 63.2 | 63.2 | 189.6 |
-| 111 | 378 | 4389.702 | 2026-12-15 04:49 | 63.4 | 63.4 | 190.2 |
-| 112 | 379 | 4397.225 | 2026-12-22 17:22 | 63.6 | 63.6 | 190.8 |
-| 112 | 380 | 4404.748 | 2026-12-30 05:56 | 63.8 | 63.8 | 191.3 |
-| 112 | 381 | 4412.271 | 2027-01-06 18:29 | 64.0 | 64.0 | 191.9 |
-| 112 | 382 | 4419.795 | 2027-01-14 07:02 | 64.2 | 64.2 | 192.5 |
-| 113 | 383 | 4427.318 | 2027-01-21 19:36 | 64.3 | 64.3 | 193.0 |
-| 113 | 384 | 4434.841 | 2027-01-29 08:09 | 64.5 | 64.5 | 193.6 |
-| 113 | 385 | 4442.364 | 2027-02-05 20:43 | 64.7 | 64.7 | 194.2 |
+| 110 | 372 | 4344.563 | 2026-10-31 01:33 | 62.3 | 62.3 | 186.8 |
+| 110 | 373 | 4352.086 | 2026-11-07 14:06 | 62.5 | 62.5 | 187.4 |
+| 110 | 374 | 4359.609 | 2026-11-15 02:39 | 62.7 | 62.7 | 188.0 |
+| 110 | 375 | 4367.132 | 2026-11-22 15:12 | 62.8 | 62.8 | 188.5 |
+| 111 | 376 | 4374.656 | 2026-11-30 03:45 | 63.0 | 63.0 | 189.1 |
+| 111 | 377 | 4382.179 | 2026-12-07 16:17 | 63.2 | 63.2 | 189.6 |
+| 111 | 378 | 4389.702 | 2026-12-15 04:50 | 63.4 | 63.4 | 190.2 |
+| 112 | 379 | 4397.225 | 2026-12-22 17:23 | 63.6 | 63.6 | 190.8 |
+| 112 | 380 | 4404.748 | 2026-12-30 05:55 | 63.8 | 63.8 | 191.3 |
+| 112 | 381 | 4412.271 | 2027-01-06 18:28 | 64.0 | 64.0 | 191.9 |
+| 112 | 382 | 4419.795 | 2027-01-14 07:01 | 64.2 | 64.2 | 192.5 |
+| 113 | 383 | 4427.318 | 2027-01-21 19:34 | 64.3 | 64.3 | 193.0 |
+| 113 | 384 | 4434.841 | 2027-01-29 08:06 | 64.5 | 64.5 | 193.6 |
+| 113 | 385 | 4442.364 | 2027-02-05 20:39 | 64.7 | 64.7 | 194.2 |
 
-2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 600 and 200 s; TESS-SPOC at 1800 and 600 s). Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding evidence: Seeing-limited ground-based photometry on a predicted transit that resolves the neighbours (F1); high-resolution imaging that finds or bounds the companion (F2); the sector 110 to 113 light curves or a QLP redelivery of sector 99 for a second held-out season (F3). Under vet-v3 TRICERATOPS stays inconclusive on the high RUWE whatever the imaging shows, so a pass also needs a recorded decision on how imaging clears that blocker.
+2-min data and the DDT ask ([decision 0026](../../../docs/decisions/0026-triceratops.md)): which stars get 2-min data in a sector is decided per cycle, so tess-point can't say whether these sectors will have it. In the sectors fetched, the star never had SPOC 2-min data (QLP at 600 and 200 s; TESS-SPOC at 1800 and 600 s). Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding evidence: Seeing-limited ground-based photometry on a predicted transit that resolves the neighbours (F1); high-resolution imaging that finds or bounds the companion (F2); the sector 110 to 113 light curves or a QLP redelivery of sector 99 for a second held-out season (F3). Under vet-v3 TRICERATOPS stays inconclusive on the high RUWE whatever the imaging shows, so a pass also needs a recorded decision on how imaging clears that blocker.
 
 ## Plots
 
@@ -153,7 +153,7 @@ No catalogued row on this star.
 
 ## Literature hits
 
-7 paper(s) from the searches that answered, one row per paper.
+7 paper(s) from the searches that answered, one row per paper. Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's record for the paper's DOI; a paper none of them titles has a blank title ([decision 0038](../../../docs/decisions/0038-literature-trim-and-username-scrub.md)).
 
 | Title | Id | Found by |
 |---|---|---|
@@ -167,7 +167,7 @@ No catalogued row on this star.
 
 ## With the timing-suspect sectors (evidence only)
 
-The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never used for the call. Sectors it adds: 99.
+The same vet with the timing-suspect sectors kept in ([decision 0022](../../../docs/decisions/0022-vet-without-timing-suspect-sectors.md)). It is shown for comparison and never used for the call. Sectors it adds: 99.
 
 | Check | Without them | With them | Reason with them |
 |---|---|---|---|
@@ -182,6 +182,8 @@ The same vet with the timing-suspect sectors kept in (decision 0022). It is show
 | radius | pass | pass | 2.3 Earth radii |
 
 ## Review
+
+Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are theirs, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)). [The vetting README](../README.md) says what its paths and run names stand for.
 
 Reviewer claude-opus-5-5, 2026-10-20, updated 2026-10-21 and 2026-10-22. Tested all three lenses on 103312990-1 (HD 297321; 2.2 Earth radii at 7.52 d, 7.1 sigma), refitting triage's difference images and reading Gaia, SIMBAD and ExoFOP. Nothing kills it: the dip is in every sector at a steady depth, shows no binary signature on the target, and is not known. It is held on three counts: a nearby binary within 1' that the pixels and TRICERATOPS can't exclude (ground-based photometry decides), Gaia's unresolved companion at RUWE 6.21 (high-resolution imaging decides), and a held-out check with one testable season (a QLP S99 redelivery or S110 to S113 decide). Updated 2026-10-21 for the 0034/0035 rerun. Updated 2026-10-22 for the 0036 TRICERATOPS rerun.
 
@@ -399,6 +401,8 @@ Evidence: /tmp/t13/heavy.sh $P -I per_transit.py (MSYS_NO_PATHCONV=1 wsl.exe -d 
 Literature hits flagged for the maintainer to read: doi 10.3847/1538-3881/aa6ffd, arXiv 1612.02440, doi 10.3847/1538-3881/aaaebe, arXiv 1801.00537.
 
 ## Call
+
+Quoted from `call.toml`, the maintainer's words, not rendered from the runs ([decision 0037](../../../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 
 Outcome: **held**, 2026-10-22.
 
