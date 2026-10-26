@@ -75,12 +75,13 @@ Lindegren et al. under "Processing papers":
   doi:10.1051/0004-6361/202039587)
 
 The vetting records' reviews (`review.json`) quote Gaia DR3 radial velocities and their scatter, and non-single-star
-flags. From Gaia's list of DR3 papers, the papers on those data:
+flags. From Gaia's list of DR3 papers, the papers on those data (the year, journal and article number from each
+DOI's record, read 2026-10-26):
 
-- Katz et al., Gaia Data Release 3: Properties and validation of the radial velocities
-  (doi:10.1051/0004-6361/202244220)
-- Gaia Collaboration, Arenou, F., et al., Gaia Data Release 3: Stellar multiplicity, a teaser for the hidden
-  treasure (doi:10.1051/0004-6361/202243782)
+- Katz et al. 2023, Gaia Data Release 3: Properties and validation of the radial velocities (A&A 674, A5;
+  doi:10.1051/0004-6361/202244220)
+- Gaia Collaboration, Arenou, F., et al. 2023, Gaia Data Release 3: Stellar multiplicity, a teaser for the hidden
+  treasure (A&A 674, A34; doi:10.1051/0004-6361/202243782)
 
 The TIC-duplicate measurement's tarball under `results/benchmarks/` holds Gaia DR2 source ids and parallaxes, which
 come through the TIC, and the reviews quote some Gaia DR2 values beside DR3's. For those, cite the Gaia DR2 release
