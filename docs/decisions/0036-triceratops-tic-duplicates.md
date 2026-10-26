@@ -97,7 +97,9 @@ measurement" below):
    - Rerun on 2026-10-22 and 23 (UTC) at the maintainer's call, at cd4e7a2, as
      `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`
      ([summary.md](../../results/benchmarks/20261023T031548Z-benchmark-controls-cd4e7a2-ca9f/summary.md)), with
-     TOI-118.01 rerun alone after a lost TESScut cutout, as TOI-4307.01 was. Every outcome matches. TOI-763.02's mean
+     TOI-118.01 rerun alone after a lost TESScut cutout, as TOI-4307.01 was. Every outcome matches (the control vets'
+     check outcomes compared with `cmp_control_vet.py`, published under `t13/` in
+     [review-scripts.tar.gz](../../results/vetting/review-scripts.tar.gz)). TOI-763.02's mean
      NFPP reads 3.96e-9. TOI-1058.01's two flagged rows (TIC 31553884, ARTIFACT, and 1827100470, DUPLICATE) were dropped
      and its means moved, FPP 0.0334 to 0.0288 and NFPP 0.0270 to 0.0219, where the renormalised estimate said
      unchanged: the estimate keeps the old draws, and the rerun drew again without the two rows and from its field stars

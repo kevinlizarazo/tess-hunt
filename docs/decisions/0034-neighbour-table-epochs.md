@@ -68,6 +68,8 @@ measurement" below):
      [decision 0035](0035-holdout-training-seasons.md) changed from fail to inconclusive. Outside the neighbour record
      and the holdout, every check matched to the bit. In the other 18 signals every holdout field the old runs had
      matched, and each season gained 0035's `training_seasons_with_transits`. The second list matched cell for cell.
+     The vets were compared with `compare_runs.py`, published under `t13/` in
+     [review-scripts.tar.gz](../../results/vetting/review-scripts.tar.gz).
      TRICERATOPS matched e092's every outcome and reason, and its means to within 3e-3 relative (0036, item 5).
 3. **The controls are not rerun.** The control vet, its TRICERATOPS runs
    (`20261017T162256Z-vetting-triceratops-62882b5-d0f8` and `20261018T012940Z-vetting-triceratops-62882b5-e3d7`) and

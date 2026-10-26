@@ -386,6 +386,34 @@ def test_the_review_and_the_call_are_quoted_with_the_maintainers_notes(tmp_path,
     assert REVIEW["findings"][1]["evidence"] in f2
 
 
+def test_the_dossier_shows_no_machine_path_from_the_review_or_the_call(tmp_path, monkeypatch):
+    home = tmp_path / "home" / "someone"
+    monkeypatch.setenv("HOME", str(home))
+    signal, _ = draft(tmp_path, monkeypatch, review=REVIEW, call=HELD)
+    data = tmp_path / "data"
+    evidence = (
+        f"{data}/drafts/m3-r2/1-1/checks.json, run as {home}/code/tess-hunt/.venv/bin/python; the M3 design, "
+        "C:\\code\\docs\\m3-design.md (/mnt/c/code/docs/m3-design.md), and C:/Users/someone/notes.md; "
+        "/tmp/t13/1-1/two_star.py, docs/design.md and https://exofop.ipac.caltech.edu/tess/target.php stay"
+    )
+    review = {**REVIEW, "findings": [{**REVIEW["findings"][1], "evidence": evidence}]}
+    (signal / "review.json").write_text(json.dumps(review))
+    (signal / "call.toml").write_text(
+        tc.edit(HELD, "can't tell the two stars apart.", f"can't tell, per {home}/notes.txt.")
+    )
+    text = dossier.render(signal)
+    assert str(home) not in text and str(data) not in text
+    assert "C:" not in text and "/mnt/c" not in text and "Users" not in text
+    assert (
+        "$TESS_HUNT_DATA/drafts/m3-r2/1-1/checks.json, run as ~/code/tess-hunt/.venv/bin/python; the M3 design, "
+        "m3-design.md (m3-design.md), and notes.md; /tmp/t13/1-1/two_star.py, docs/design.md and "
+        "https://exofop.ipac.caltech.edu/tess/target.php stay"
+    ) in text
+    assert "can't tell, per ~/notes.txt." in section(text, "Call")
+    # review.json itself stays as written.
+    assert json.loads((signal / "review.json").read_text())["findings"][0]["evidence"] == evidence
+
+
 def test_dossier_draft_says_what_it_lacks(tmp_path, monkeypatch):
     run, _ = vetting_runs(tmp_path, monkeypatch)
     out = tmp_path / "drafts"
@@ -595,6 +623,9 @@ def test_readme_lists_every_call(tmp_path):
     published_dir(tc.KILLED, "399023421-1")
     shutil.copy(held / "call.toml", root / "not-a-signal.toml")
     text = dossier.readme(root)
+    # The key to the reviews' paths and run variables follows the rows.
+    assert "`/tmp/t13/<name>/` was the review's scratch directory" in text
+    assert "`$TESS_HUNT_DATA` the data directory" in text and "| `VET2_RUN` |" in text
     rows = [line for line in text.splitlines() if line.startswith("| [")]
     assert rows == [
         f"| [{held.name}]({held.name}/dossier.md) | held | 2026-10-28 | The public data can't tell the two stars "
