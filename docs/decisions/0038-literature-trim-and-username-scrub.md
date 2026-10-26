@@ -66,9 +66,9 @@ The review also found the maintainer's home directory, which names him, in machi
   that literature run (`provenance-literature.json` is the run's provenance) and its `literature.json` is the run's file
   for the signal, or already its trim, and refuses a record trimmed with another titles run unless given
   `--replace-titles-run`; then the record's `trim` block names the run it replaced (`replaced_titles_run`), and a later
-  trim with the new run keeps that name. It writes the trimmed `literature.json` and `provenance-titles.json`, scrubs
-  `review.json` (below), and renders `dossier.md` and the vetting README again; nothing else in the record changes, and
-  a second run changes nothing. Applied on 2026-10-26 with the literature run
+  trim or `publish` with the new run keeps that name. It writes the trimmed `literature.json` and
+  `provenance-titles.json`, scrubs `review.json` (below), and renders `dossier.md` and the vetting README again;
+  nothing else in the record changes, and a second run changes nothing. Applied on 2026-10-26 with the literature run
   `20261021T001540Z-vetting-literature-61b5944-07de`, from which all 14 records were published. The first titles run,
   `20261026T155726Z-vetting-titles-0b1deac-1d19`, was made at a commit that the rewrite of the history (below)
   replaced; the backup bundle made before the rewrite keeps that commit. The records were trimmed again the same day
@@ -134,6 +134,7 @@ The review also found the maintainer's home directory, which names him, in machi
   `provenance-titles.json`, `review.json`, the dossier and the README change; `review.json` only where it names the
   home and data directories or the maintainer; the dossier's titles only from open sources, blank where none has
   the paper, and no ExoFOP comment text; a second run changes nothing; another titles run refused, and with
-  `--replace-titles-run` taken and the replaced run named, a later trim changing nothing; a literature record that is
-  neither the run's nor its trim refused),
+  `--replace-titles-run` taken and the replaced run named, a later trim changing nothing; publishing the same runs
+  with the new titles run rendering the dossier again and changing nothing else, and with the replaced run refused; a
+  literature record that is neither the run's nor its trim refused),
   `test_the_dossier_shows_no_machine_path_from_the_review_or_the_call`.

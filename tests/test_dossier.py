@@ -697,6 +697,15 @@ def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, mo
     for again in (replace, replace[:-1]):
         assert main(again) == 0
         assert published(repo) == replaced
+    # Publishing the record's own runs again with the new titles run renders the dossier again and changes nothing
+    # else; with the run it replaced, it is refused.
+    republish = [*publish_argv(runs, "run", "triceratops", "literature"), "--titles", str(other)]
+    (signal / "dossier.md").write_text("stale\n")
+    assert main(republish) == 0
+    assert published(repo) == replaced
+    with pytest.raises(SystemExit, match="another literature.json"):
+        main([*republish[:-1], str(titles)])
+    assert published(repo) == replaced
     # A literature.json that is neither the run's file nor its trim is refused, and nothing is touched.
     edit_json(signal / "literature.json", lambda r: r["trim"].update(source_sha256="0" * 64))
     edited = published(repo)

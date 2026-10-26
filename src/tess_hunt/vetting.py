@@ -1293,8 +1293,21 @@ def cmd_publish(args) -> int:
     # that raises at any point leaves results/ as it was.
     with tempfile.TemporaryDirectory() as tmp:
         if "literature.json" in files:
+            # A record trimmed again with another titles run names the run it replaced; publishing it with the new
+            # run keeps that name, so the same runs again change nothing.
+            trim = {}
+            if (dest / "literature.json").is_file():
+                trim = json.loads((dest / "literature.json").read_text()).get("trim", {})
+            replaced = None
+            if args.titles is not None and trim.get("titles_run") == args.titles.resolve().name:
+                replaced = trim.get("replaced_titles_run")
             files |= _trimmed(
-                files["literature.json"], args.titles, runs["literature"], args.name, Path(tmp)
+                files["literature.json"],
+                args.titles,
+                runs["literature"],
+                args.name,
+                Path(tmp),
+                replaced=replaced,
             )
         # The same run's file again changes nothing; any other would overwrite the record.
         changed = sorted(
