@@ -2,7 +2,7 @@
 
 - Date: 2026-10-26
 - Status: Accepted. Decided by the maintainer on 2026-10-26, on findings P2, R1 and P1 of the M3 milestone review.
-  Rulings BM, BR and BT, stated in full where they are cited below, are the M3 build controller's of 2026-10-26,
+  Rulings BM, BR, BT and BW, stated in full where they are cited below, are the M3 build controller's of 2026-10-26,
   made in carrying the decision out, and are put to the maintainer with the fix wave.
 
 ## Context
@@ -22,11 +22,26 @@ The review also found the maintainer's home directory, which names him, in machi
 
 - **What a published `literature.json` keeps.** Every identifier (bibcode, DOI, arXiv id), each paper's `found_by`,
   each search's query, total, status, error and note, SIMBAD's names, the outcome and its reason, and from ExoFOP the
-  TOI and CTOI rows, the planet parameters, the confirmed planets and each imaging row's other fields.
+  planet parameters, the confirmed planets, and the TOI, CTOI and imaging rows, each with only the fields an
+  allowlist names (`literature.EXOFOP_FIELDS`, Ruling BW):
+  - TOI rows: `ctoi`, `date`, `discovery`, `disp_tess`, `disp_tfop`, `editdisp`, `editpri`, `esm`, `predicted_mass`,
+    `predicted_rv`, `pri_1a`, `pri_1b`, `pri_2`, `pri_3`, `pri_4`, `pri_5`, `pri_m`, `sector`, `signal`, `source`,
+    `toi`, `toidate1`, `toidate2`, `tsm`;
+  - CTOI rows: `ctoi`, `discovery`, `cdisp`, `tdisp`, `cdate`, `ctoi_created`, `editctoipri`, `editctoidisp`,
+    `cobid`, `ctag`, `cpri_m`, `cpri_1a`, `cpri_1b`, `cpri_2`, `cpri_3`, `cpri_4`, `cpri_5`: the row's ids,
+    dispositions, dates and priorities;
+  - imaging rows: `icont`, `idate`, `ifilt`, `igroup`, `iinst`, `imid`, `imobid`, `ipix`, `iplname`, `ipsf`, `itag`,
+    `itel`, `itoi`, `itype`.
+
+  The TOI and imaging lists are the fields the 14 published records held less those dropped below, so the
+  allowlist changed none of them (the trim, run again, wrote byte-identical files). No published record holds a
+  CTOI row; ExoFOP's target pages, read on 2026-10-26 for two stars with CTOIs, give each CTOI row a submitter
+  (`cuser`), a group, a candidate name, a paper link and notes beside the fields kept, and those stay out. A field
+  not on the list, one ExoFOP adds later among them, is dropped, never published unread, and the record's `trim`
+  block names it.
 - **What it drops** (`literature.DROPPED`): every title ADS gave; ExoFOP's comments and the same text in its TOI and
   CTOI rows (`notes`, `cnotes`); ExoFOP's file names; each imaging row's `imuser` and `inotes`. The TOI and CTOI rows'
-  comment fields are the text the comments list was built from, so they go with it (Ruling BR); the rows' other
-  fields stay.
+  comment fields are the text the comments list was built from, so they go with it (Ruling BR).
 - **Titles only from open sources** (`literature.trim`). A paper's title is the search's own arXiv hit's, else its
   OpenAlex hit's, else its Zenodo hit's; failing those, OpenAlex's record for the paper's DOI, or for a paper with only
   an arXiv id, arXiv's DataCite DOI `10.48550/arxiv.<id>`. Each kept title records its source in `title_source`
@@ -93,12 +108,13 @@ The review also found the maintainer's home directory, which names him, in machi
 
 - [tests/test_literature.py](../../tests/test_literature.py):
   `test_trim_keeps_every_identifier_and_takes_titles_only_from_open_sources` (ADS's titles, ExoFOP's comments, files,
-  observers and notes out; identifiers, `found_by`, every search's query, total and status, the ExoFOP rows and the
-  outcome kept; a title from arXiv, one from OpenAlex's lookup, none for a paper no open source titles; the sha256 and
-  the titles run recorded; a failed or missing lookup refused), `test_openalex_title_is_looked_up_by_doi` (a recorded
-  answer, a work without a title, a 404 and a 429, the DOI quoted into the path) and
-  `test_vetting_titles_looks_up_only_the_papers_no_open_source_titles` (one lookup for two signals on a star, the
-  run's provenance and `titles.json`, a changed literature record refused).
+  observers and notes out, and a CTOI row's submitter and an unknown user field, and an imaging row's unknown field,
+  dropped and named in `trim`; identifiers, `found_by`, every search's query, total and status, the ExoFOP rows'
+  allowlisted fields and the outcome kept; a title from arXiv, one from OpenAlex's lookup, none for a paper no open
+  source titles; the sha256 and the titles run recorded; a failed or missing lookup refused),
+  `test_openalex_title_is_looked_up_by_doi` (a recorded answer, a work without a title, a 404 and a 429, the DOI quoted
+  into the path) and `test_vetting_titles_looks_up_only_the_papers_no_open_source_titles` (one lookup for two signals on
+  a star, the run's provenance and `titles.json`, a changed literature record refused).
 - [tests/test_provenance.py](../../tests/test_provenance.py):
   `test_unname_writes_the_maintainers_name_as_the_maintainer` (the full name across a line break, the given name
   alone, possessive and opening a sentence, other people's names kept, nothing without `CITATION.cff`'s names).

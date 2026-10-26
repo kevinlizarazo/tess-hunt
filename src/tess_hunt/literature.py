@@ -48,6 +48,75 @@ DROPPED = [
     "search.exofop.files: the names of the files on ExoFOP's target page",
     "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row",
 ]
+# The fields of ExoFOP's rows a published record keeps (decision 0038). Any other field is dropped, so a field ExoFOP
+# adds later, or one no record has shown yet, is never published unread. The TOI and imaging lists are the fields
+# the records held, less those DROPPED names; a CTOI row keeps only its ids, dispositions, dates and priorities, not
+# its submitter (cuser), group, candidate name, paper link or notes.
+EXOFOP_FIELDS = {
+    "tois": (
+        "ctoi",
+        "date",
+        "discovery",
+        "disp_tess",
+        "disp_tfop",
+        "editdisp",
+        "editpri",
+        "esm",
+        "predicted_mass",
+        "predicted_rv",
+        "pri_1a",
+        "pri_1b",
+        "pri_2",
+        "pri_3",
+        "pri_4",
+        "pri_5",
+        "pri_m",
+        "sector",
+        "signal",
+        "source",
+        "toi",
+        "toidate1",
+        "toidate2",
+        "tsm",
+    ),
+    "ctois": (
+        "ctoi",
+        "discovery",
+        "cdisp",
+        "tdisp",
+        "cdate",
+        "ctoi_created",
+        "editctoipri",
+        "editctoidisp",
+        "cobid",
+        "ctag",
+        "cpri_m",
+        "cpri_1a",
+        "cpri_1b",
+        "cpri_2",
+        "cpri_3",
+        "cpri_4",
+        "cpri_5",
+    ),
+    "imaging": (
+        "icont",
+        "idate",
+        "ifilt",
+        "igroup",
+        "iinst",
+        "imid",
+        "imobid",
+        "ipix",
+        "iplname",
+        "ipsf",
+        "itag",
+        "itel",
+        "itoi",
+        "itype",
+    ),
+}
+# The row fields DROPPED already names; any other field a row loses is listed in the record's trim block.
+DROPPED_FIELDS = {"tois": ("notes",), "ctois": ("cnotes",), "imaging": ("imuser", "inotes")}
 
 
 class LiteratureError(RuntimeError):
@@ -584,7 +653,8 @@ def openalex_title(session, doi: str) -> dict:
 
 def trim(record: Mapping, source_sha256: str, titles: Mapping, titles_run: str) -> dict:
     """The literature record as it is published (decision 0038): every identifier, search, ExoFOP row and the
-    outcome kept, without ADS's titles, ExoFOP's comments and file names, or the imaging rows' observers and notes.
+    outcome kept, without ADS's titles or ExoFOP's comments and file names, and each ExoFOP row with only the fields
+    EXOFOP_FIELDS lists for it (no comment text, submitter, observer or notes).
     Each paper's title comes from an open source, the search's own arXiv, OpenAlex or Zenodo hit first and else the
     titles run's OpenAlex lookup by DOI (`titles`, by DOI), and names that source; with none, the title is null.
     Raises TrimError where the lookup failed or never asked for a DOI the record needs."""
@@ -596,14 +666,18 @@ def trim(record: Mapping, source_sha256: str, titles: Mapping, titles_run: str) 
     exofop = search["exofop"]
     for key in ("comments", "files"):
         exofop.pop(key, None)
-    for rows, fields in (
-        ("tois", ("notes",)),
-        ("ctois", ("cnotes",)),
-        ("imaging", ("imuser", "inotes")),
-    ):
+    unlisted = set()
+    for rows, keep in EXOFOP_FIELDS.items():
         for row in exofop.get(rows, []):
-            for field in fields:
-                row.pop(field, None)
+            for field in set(row) - set(keep):
+                row.pop(field)
+                if field not in DROPPED_FIELDS[rows]:
+                    unlisted.add(f"search.exofop.{rows}[].{field}")
+    dropped = DROPPED + (
+        [f"fields outside literature.EXOFOP_FIELDS: {', '.join(sorted(unlisted))}"]
+        if unlisted
+        else []
+    )
     for paper in out["evidence"]["hits"]:
         found = _open_title(paper, record["search"]["sources"])
         doi = lookup_doi(paper)
@@ -621,6 +695,6 @@ def trim(record: Mapping, source_sha256: str, titles: Mapping, titles_run: str) 
         "decision": "0038",
         "source_sha256": source_sha256,
         "titles_run": titles_run,
-        "dropped": DROPPED,
+        "dropped": dropped,
     }
     return out

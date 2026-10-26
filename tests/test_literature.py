@@ -690,7 +690,11 @@ OBSERVED = {
     **EXOFOP["imaging"][0],
     "imuser": "observer1",
     "inotes": " PI: Someone; contact: Someone",
+    # A field no record has shown: dropped by the allowlist, never published unread.
+    "ireducer": "observer3",
 }
+# A CTOI row as ExoFOP serves it, with its submitter (cuser) and a user field no record has shown.
+SUBMITTED = {**EXOFOP["ctois"][0], "cuser": "submitter1", "cemail": "someone@example.org"}
 # OpenAlex's titles by DOI: one work titled, one without a title.
 TITLES = {
     "10.1051/0004-6361:20078357": "Validation of the new Hipparcos reduction",
@@ -707,7 +711,7 @@ def full_record(web: Web | None = None) -> dict:
         },
         titles=TITLES,
     )
-    page = {**EXOFOP, "imaging": [OBSERVED]}
+    page = {**EXOFOP, "imaging": [OBSERVED], "ctois": [SUBMITTED]}
     web.exofop = lambda name, params: json.dumps(page).encode()
     found = complete(search(web))
     check = literature.literature_check(found).to_dict()
@@ -753,23 +757,35 @@ def test_trim_keeps_every_identifier_and_takes_titles_only_from_open_sources():
     for key in ("outcome", "reason", "signal", "vetting_run"):
         assert out[key] == record[key]
 
-    # ExoFOP: the rows stay, without comment text, file names, observers or their notes.
+    # ExoFOP: the rows stay with only their allowlisted fields: no comment text, file names, submitters, observers,
+    # notes, or a field no record has shown.
     exofop = out["search"]["exofop"]
     assert "comments" not in exofop and "files" not in exofop
     assert exofop["tois"] == [{k: v for k, v in t.items() if k != "notes"} for t in EXOFOP["tois"]]
-    assert exofop["ctois"] == [
-        {k: v for k, v in c.items() if k != "cnotes"} for c in EXOFOP["ctois"]
-    ]
+    assert exofop["ctois"] == [{"ctoi": "TIC 164767175.03", "cdisp": "PC"}]
     assert exofop["imaging"] == EXOFOP["imaging"]
     assert exofop["planets"] == record["search"]["exofop"]["planets"]
     assert exofop["confirmed_planets"] == "HIP 8152 b, HIP 8152 c"
-    for gone in ("a note on TOI 266.01", "single transit", "observer1", "contact", "PEST.zip"):
-        assert gone not in text
+    gone = (
+        "a note on TOI 266.01",
+        "single transit",
+        "observer1",
+        "observer3",
+        "submitter1",
+        "someone@",
+        "PEST.zip",
+    )
+    for word in (*gone, "contact"):
+        assert word not in text
     assert out["trim"] == {
         "decision": "0038",
         "source_sha256": "f" * 64,
         "titles_run": "titles-run",
-        "dropped": literature.DROPPED,
+        "dropped": [
+            *literature.DROPPED,
+            "fields outside literature.EXOFOP_FIELDS: search.exofop.ctois[].cemail, search.exofop.ctois[].cuser, "
+            "search.exofop.ctois[].paper, search.exofop.imaging[].ireducer",
+        ],
     }
 
     # A lookup that failed, or one never made, leaves the title unknown: refused, not left blank.
