@@ -29,7 +29,9 @@ delta mag does not increase, as measured curves don't everywhere.
 The plan's input (every cadence within two durations of mid-transit, the paper's N) was timed on the machine (pin P2):
 calc_probs grows with the number of points, and on that input the controls' ten runs alone would not finish before the
 first follow-up deadline. Averaged into phase bins one exposure wide, one run took about a tenth of the time, with FPP
-and NFPP within about one run-to-run spread of the unbinned run on the same draws.
+and NFPP within about one run-to-run spread of the unbinned run on the same draws. That comparison covers one star
+(TIC 146282666) and one seed for the unbinned run, and binning moved NFPP upward, from 0.0131 to 0.0152
+([the probe](../../results/benchmarks/triceratops-phase-binning-2026-10-17.md)).
 
 ## Decision
 
@@ -272,6 +274,9 @@ evidence is the transit's shape may go to the DDT ask on the maintainer's call; 
   seed; each stop), `test_the_possible_hosts_sentence_says_what_the_record_shows` (a host in the star list of a run
   that stopped before `calc_probs` is not called weighed) and `test_a_missing_ruwe_says_why` (a failed join reads
   apart from a star DR3 gives no RUWE).
+- [The phase-binning probe](../../results/benchmarks/triceratops-phase-binning-2026-10-17.md) (pin P2), with its
+  script in `triceratops-phase-binning-2026-10-17-scripts.tar.gz` beside it: binned and unbinned runs on one star,
+  one seed unbinned and five binned.
 - The network controls `test_nearby_eb_controls_fail_triceratops` (TOI-1058.01, TOI-1175.01; expected to fail,
   strict, since decision 0032), `test_nearby_eb_controls_do_not_pass_triceratops` and
   `test_toi_1399_does_not_pass_triceratops`, one run each, and the controls' production runs at ten runs (M3 plan,

@@ -118,6 +118,12 @@ paper. The RUWE values in the tarball's `signals.csv` and the Gaia DR3 source id
 data, and the Gaia DR2 values the TIC carries are Gaia DR2 data: the `GAIA` source ids in `tic.csv`, `flagged.csv` and
 `reach.txt`, and `tic.csv`'s `plx`. Both stay under ESA's terms (above).
 
+`triceratops-phase-binning-2026-10-17.md` is the timing probe behind TRICERATOPS's phase binning (pin P2): binned and
+unbinned runs on one star, TIC 146282666, with one seed unbinned. It is read-only, made outside the pipeline before
+the M3 build, and gates nothing; [decision 0026](../docs/decisions/0026-triceratops.md) cites it. Its script is in
+`triceratops-phase-binning-2026-10-17-scripts.tar.gz` beside it. The probe's command lines and output logs were not
+kept; its numbers come from the build's notes written at the time.
+
 `neighbour-controls-2026-10-23.txt` is the output of the network test `test_nearby_eb_controls_show_a_possible_host` in
 `tests/test_neighbours.py`, run by hand with `-rP`: each of the neighbour check's two real nearby-binary controls lists
 the nearby eclipsing binary its dip comes from among its possible hosts. Decision

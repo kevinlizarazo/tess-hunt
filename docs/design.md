@@ -261,7 +261,8 @@ from a run directory and writes its own.
     ephemeris; one cadence group at one exposure time, faster sectors averaged to it; apertures from SPOC and from the
     TESS-SPOC light-curve files; ExoFOP's machine-readable contrast curves where they exist, never a curve read off a
     PDF. The fold is averaged into phase bins one exposure wide, about ten times faster than unbinned, with FPP and
-    NFPP within about one run-to-run spread of the unbinned run (Ruling G);
+    NFPP within about one run-to-run spread of the unbinned run (Ruling G), measured on one star and one seed, where
+    NFPP moved upward ([the probe](../results/benchmarks/triceratops-phase-binning-2026-10-17.md));
   - runs: 10, seeded and averaged [L4], each with the paper's N of 10^6;
   - outcomes, from the TRICERATOPS paper [T48]: pass ("likely planet") when mean FPP < 0.5 and mean NFPP < 10^-3,
     fail ("likely nearby false positive") when mean NFPP > 10^-1, otherwise inconclusive. "Validated" (FPP < 0.015 and
