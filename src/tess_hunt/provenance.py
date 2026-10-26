@@ -164,6 +164,9 @@ def start_run(
 
 def publish_run(run_id: str, root: Path, kind: str, files: Callable[[Path], list[Path]]) -> Path:
     """Copy a finished run's `files(run directory)` into results/<kind>/<run id> under `root`."""
+    # A path would replace the runs directory and the results directory it is joined to.
+    if not run_id or Path(run_id).name != run_id or run_id in (".", ".."):
+        raise SystemExit(f"{run_id!r} is not a run id; give the run directory's name, not a path")
     source = runs_dir() / run_id
     provenance = source / "provenance.json"
     if not provenance.exists():

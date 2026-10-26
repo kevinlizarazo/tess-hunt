@@ -354,6 +354,17 @@ def test_publish_refuses_a_missing_or_unfinished_run(tmp_path, monkeypatch):
         publish("r1", tmp_path, monkeypatch)
 
 
+def test_publish_refuses_a_path_for_a_run_id(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    run = tmp_path / "data" / "runs" / "r4"
+    run.mkdir(parents=True)
+    (run / "provenance.json").write_text(json.dumps({"ended_at": "2026-10-13T00:00:00+00:00"}))
+    for given in (str(run), "runs/r4", "..", "."):
+        with pytest.raises(SystemExit, match="not a run id"):
+            publish(given, tmp_path, monkeypatch)
+    assert not (tmp_path / "repo").exists()
+
+
 def test_publish_never_overwrites(tmp_path, monkeypatch):
     monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
     run = tmp_path / "data" / "runs" / "r2"
