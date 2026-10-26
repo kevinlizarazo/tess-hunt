@@ -386,3 +386,30 @@ def test_a_review_file_that_breaks_the_schema_is_refused(tmp_path):
 
 def test_no_call_is_a_problem(tmp_path):
     assert calls.problems(signal_dir(tmp_path, call=None)) == [f"no call.toml in {NAME}"]
+
+
+NOTE = '[[note]]\nfinding = "F2"\ndate = 2026-10-26\ntext = "The magnitudes give 0.358."\n'
+
+
+def test_notes_on_the_review_sit_beside_their_finding(tmp_path):
+    path = tmp_path / "review-notes.toml"
+    path.write_text(NOTE)
+    [note] = calls.load_notes(path, REVIEW)["F2"]
+    assert note["text"] == "The magnitudes give 0.358." and str(note["date"]) == "2026-10-26"
+
+
+@pytest.mark.parametrize(
+    "text, message",
+    [
+        (NOTE.replace('"F2"', '"F9"'), "'F9', which is not a finding"),
+        (NOTE.replace("2026-10-26", '"soon"'), "TOML date"),
+        (NOTE + 'author = "me"\n', "exactly date, finding, text"),
+        (NOTE.replace('"The magnitudes give 0.358."', '" "'), "no text"),
+        ("[notes]\n", "unknown key(s) notes"),
+    ],
+)
+def test_a_notes_file_that_breaks_the_schema_is_refused(tmp_path, text, message):
+    path = tmp_path / "review-notes.toml"
+    path.write_text(text)
+    with pytest.raises(calls.CallError, match=re.escape(message)):
+        calls.load_notes(path, REVIEW)

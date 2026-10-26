@@ -1,6 +1,6 @@
 """The maintainer's call on a vetted signal, and the "passed" bar `vetting publish` holds it to (M3 design, section
-4.9; decision 0028). A call is passed, killed or held; it rests on named checks and review findings and holds no
-numbers of its own."""
+4.9; decision 0028). A call is passed, killed or held; it rests on named checks and review findings. Its words are
+the maintainer's, quoted in the dossier, not rendered from the runs (decision 0037)."""
 
 import datetime as dt
 import json
@@ -15,6 +15,7 @@ OUTCOMES = ("passed", "killed", "held")
 SENTENCES = ("not_a_binary", "not_another_star", "not_an_artefact_or_known")
 LENSES = ("on_star", "planet", "real_new")
 RATINGS = ("kill", "hold", "note")
+NOTE_KEYS = {"finding", "date", "text"}
 KEYS = {
     "signal",
     "outcome",
@@ -96,6 +97,33 @@ def load_review(path: Path) -> dict:
     if errors:
         raise CallError("; ".join(errors))
     return review
+
+
+def load_notes(path: Path, review: dict) -> dict[str, list[dict]]:
+    """review-notes.toml: the maintainer's notes on the review's quoted text, by the finding each sits beside
+    (decision 0037). The review stays as written; a slip found later is noted here. Raises CallError."""
+    try:
+        notes = tomllib.loads(path.read_text())
+    except tomllib.TOMLDecodeError as exc:
+        raise CallError(f"review-notes.toml: {exc}") from None
+    unknown = sorted(set(notes) - {"note"})
+    errors = [f"review-notes.toml has unknown key(s) {', '.join(unknown)}"] if unknown else []
+    ids = {f["id"] for f in review["findings"]}
+    out: dict[str, list[dict]] = {}
+    for note in notes.get("note", []):
+        if not isinstance(note, dict) or set(note) != NOTE_KEYS:
+            errors.append(f"each [[note]] has exactly {', '.join(sorted(NOTE_KEYS))}")
+            continue
+        if note["finding"] not in ids:
+            errors.append(f"a note names {note['finding']!r}, which is not a finding of the review")
+        if not isinstance(note["date"], dt.date) or isinstance(note["date"], dt.datetime):
+            errors.append("a note's date must be a TOML date (2026-10-26)")
+        if not _text(note["text"]):
+            errors.append(f"the note on {note['finding']} has no text")
+        out.setdefault(note["finding"], []).append(note)
+    if errors:
+        raise CallError("; ".join(errors))
+    return out
 
 
 def confirmed(review: dict) -> list[str]:

@@ -36,15 +36,15 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
     result is a lack of evidence, not evidence against (0017's reasoning), so calling it killed would misstate it. A
     held signal does not advance.
   - **passed:** clears the bar below.
-- **The call** is `results/vetting/<name>/call.toml`, the maintainer's file: `signal`, `outcome`, `date` (a TOML
-  date), `reasons` (his words), `rests_on` (check names and review finding ids), `criteria` (the versions it was
-  judged under), and by outcome `deciding_evidence` (required when held), `promotion` (second-list rows only: the TCE
-  matched and the reason), `[answers]` (one per confirmed finding), `[sentences]` (`not_a_binary`,
-  `not_another_star`, `not_an_artefact_or_known`, required when passed) and `hits_read` (required when passed, an
-  empty list when the review flagged none). It holds no numbers; the dossier renders it. `calls.load` refuses a key
-  outside this list, since a misspelt key would otherwise be dropped without a word, and a `rests_on` name that is
-  neither a check in the record (vet-v3's checks, `neighbours`, `pixels`, `triceratops`, `literature`) nor a review
-  finding.
+- **The call** is `results/vetting/<name>/call.toml`, the maintainer's file: `signal`, `outcome`, `date` (a TOML date),
+  `reasons` (his words), `rests_on` (check names and review finding ids), `criteria` (the versions it was judged under),
+  and by outcome `deciding_evidence` (required when held), `promotion` (second-list rows only: the TCE matched and the
+  reason), `[answers]` (one per confirmed finding), `[sentences]` (`not_a_binary`, `not_another_star`,
+  `not_an_artefact_or_known`, required when passed) and `hits_read` (required when passed, an empty list when the review
+  flagged none). Its words, numbers included, are the maintainer's; the dossier quotes it
+  ([0037](0037-quoted-text-in-the-dossier.md)). `calls.load` refuses a key outside this list, since a misspelt key would
+  otherwise be dropped without a word, and a `rests_on` name that is neither a check in the record (vet-v3's checks,
+  `neighbours`, `pixels`, `triceratops`, `literature`) nor a review finding.
 - **The review** is `review.json`, written by the review workflow (M3 design, section 4.8): `signal`, `model`, `date`,
   `findings` (each with `id`, `lens` of `on_star`, `planet` or `real_new`, `rating` of `kill`, `hold` or `note`,
   `claim`, `evidence` and `refuters`, each `{refuted, reason}`), `hits_flagged` and `summary`. A finding is

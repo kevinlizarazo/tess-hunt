@@ -366,6 +366,26 @@ def test_review_renders_findings_ratings_and_both_refuters(tmp_path):
     assert "2306.16587" in text
 
 
+def test_the_review_and_the_call_are_quoted_with_the_maintainers_notes(tmp_path, monkeypatch):
+    signal, runs = draft(tmp_path, monkeypatch, review=REVIEW, call=HELD)
+    (signal / "review-notes.toml").write_text(tc.NOTE)
+    # A draft made again keeps the notes beside the review and the call.
+    roles = ("run", "suspect", "triceratops", "literature")
+    assert main(["vetting", "dossier", *flags(runs, *roles), "--out", str(signal.parent)]) == 0
+    text = (signal / "dossier.md").read_text()
+    review, call = section(text, "Review"), section(text, "Call")
+    # Each section says it quotes its file rather than rendering the runs (decision 0037).
+    assert review.strip().startswith("Quoted from `review.json`")
+    assert call.strip().startswith("Quoted from `call.toml`, the maintainer's words")
+    assert "the review and the call are quoted" in text.split("\n## ")[0]
+    # The note sits under F2, after its refuters and before F3; the review's own text is unchanged.
+    f2 = review.split("### F2")[1].split("### F3")[0]
+    assert f2.rstrip().endswith(
+        "**Note from the maintainer, 2026-10-26:** The magnitudes give 0.358."
+    )
+    assert REVIEW["findings"][1]["evidence"] in f2
+
+
 def test_dossier_draft_says_what_it_lacks(tmp_path, monkeypatch):
     run, _ = vetting_runs(tmp_path, monkeypatch)
     out = tmp_path / "drafts"

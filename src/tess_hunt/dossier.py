@@ -109,6 +109,7 @@ DECISIONS = {
     "0022": "0022-vet-without-timing-suspect-sectors.md",
     "0026": "0026-triceratops.md",
     "0028": "0028-outcomes-and-calls.md",
+    "0037": "0037-quoted-text-in-the-dossier.md",
 }
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
@@ -182,6 +183,8 @@ class Record:
         has_review = (path / "review.json").is_file()
         self.review = calls.load_review(path / "review.json") if has_review else None
         self.call = calls.load(path / "call.toml") if (path / "call.toml").is_file() else None
+        notes = path / "review-notes.toml"
+        self.notes = calls.load_notes(notes, self.review) if self.review and notes.is_file() else {}
 
     def check(self, name: str) -> dict:
         return next(c for c in self.checks["checks"] if c["check"] == name)
@@ -216,14 +219,13 @@ def _title(r: Record) -> str:
 
 
 def _status(r: Record) -> str:
-    if r.call is None:
-        return (
-            f"Draft: no call yet. Rendered from the files in this directory ({_decision('0028')})."
-        )
-    return (
-        f"Call: **{r.call['outcome']}** on {r.call['date']}. Rendered from the files in this directory "
-        f"({_decision('0028')})."
+    source = (
+        f"Rendered from the files in this directory ({_decision('0028')}); the review and the call are quoted, not "
+        f"rendered ({_decision('0037')})."
     )
+    if r.call is None:
+        return f"Draft: no call yet. {source}"
+    return f"Call: **{r.call['outcome']}** on {r.call['date']}. {source}"
 
 
 def _names(r: Record) -> list[str]:
@@ -893,10 +895,15 @@ def _suspect(r: Record) -> str:
     )
 
 
-def render_review(review: dict) -> str:
-    """The review's findings, each with its lens, rating and both refuters' verdicts (M3 design, section 4.8)."""
+def render_review(review: dict, notes: dict[str, list[dict]] | None = None) -> str:
+    """The review's findings, each with its lens, rating and both refuters' verdicts (M3 design, section 4.8), and
+    beside a finding any note the maintainer made on it (review-notes.toml)."""
     confirmed = set(calls.confirmed(review))
+    notes = notes or {}
     parts = [
+        f"Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are "
+        f"theirs, not rendered from the runs ({_decision('0037')}). [The vetting README](../README.md) says what its "
+        "paths and run names stand for.",
         f"Reviewer {review['model']}, {review['date']}. {review['summary']}",
         "A finding rated kill or hold is confirmed when no refuter refuted it; a note gets no refuters.",
     ]
@@ -913,6 +920,8 @@ def render_review(review: dict) -> str:
             body += "\n\n" + _list(verdicts)
         elif f["rating"] != "note":
             body += "\n\nNo refuter has answered yet."
+        for note in notes.get(f["id"], []):
+            body += f"\n\n**Note from the maintainer, {note['date']}:** {note['text']}"
         parts.append(f"{head}\n\n{body}")
     flagged = ", ".join(review["hits_flagged"]) or "none"
     parts.append(f"Literature hits flagged for the maintainer to read: {flagged}.")
@@ -926,6 +935,7 @@ def _call(r: Record) -> str:
     findings = {f["id"] for f in r.review["findings"]} if r.review else set()
     rests = ", ".join(f"{n} (finding)" if n in findings else n for n in call["rests_on"])
     lines = [
+        f"Quoted from `call.toml`, the maintainer's words, not rendered from the runs ({_decision('0037')}).",
         f"Outcome: **{call['outcome']}**, {call['date']}.",
         f"Reasons: {call['reasons']}",
         f"Rests on: {rests or 'nothing named'}.",
@@ -974,7 +984,7 @@ def render(signal_dir: Path) -> str:
         catalogued=_catalogued(r),
         hits=_hits(r),
         suspect=_suspect(r),
-        review="No review yet." if r.review is None else render_review(r.review),
+        review="No review yet." if r.review is None else render_review(r.review, r.notes),
         call=_call(r),
     )
 

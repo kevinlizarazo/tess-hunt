@@ -186,10 +186,14 @@ planet.
   (the checks and review findings it rests on), `criteria`, and as the outcome needs, `deciding_evidence` (what would
   decide a held signal), `promotion` (a second-list row's TCE and the reason), `[answers]` (one per confirmed review
   finding), `[sentences]` (why it is not a binary, not another star's light, not an artefact or a known object) and
-  `hits_read`. It holds no numbers.
+  `hits_read`. Its words, numbers included, are the maintainer's, quoted in the dossier, not rendered from the runs
+  ([decision 0037](../docs/decisions/0037-quoted-text-in-the-dossier.md)).
 - `review.json`: the adversarial review: each finding's lens, rating (kill, hold or note), claim, evidence and each
-  refuter's verdict, the literature hits it flagged, and a summary.
-- `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them.
+  refuter's verdict, the literature hits it flagged, and a summary. The dossier quotes it as written (decision 0037).
+- `review-notes.toml`, where there is one: the maintainer's notes on the review, each with its date and the finding
+  it sits beside in the dossier. A slip in the review's text is noted there, never edited in `review.json`.
+- `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them, but in the
+  review and the call, which it quotes (decision 0037).
 - `checks.json`: the vet under vet-v3 (`tess-hunt vetting run`): each check's outcome, reason and evidence; the
   flat-prior fit's summary (`fit`) and the density-prior fit's (`fit_prior`); the star's targets row, its Gaia DR3 id
   and RUWE joined where the row lacks them, with where they came from (`star`: `dr3_from`, `dr3_reason`); each

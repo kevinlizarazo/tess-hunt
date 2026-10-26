@@ -1,0 +1,9 @@
+# The maintainer's notes on review.json, each shown in dossier.md beside the finding it names (decision 0037).
+
+[[note]]
+finding = "F2"
+date = 2026-10-26
+text = """\
+F2's flux ratio of 0.359 is off in its last digit: the TESS magnitudes it quotes, 9.4929 and 10.6073, give 0.358. \
+The call does not rest on it. F2 uses the ratio to check that the depths add up, and the target's share of the \
+pair's light is 0.736 at either value; the kill rests on TRICERATOPS's NFPP and on novelty."""

@@ -1155,14 +1155,14 @@ def _copy(files: dict[str, Path], dest: Path) -> None:
 
 
 def _clear(draft: Path) -> None:
-    """A draft's earlier record, so files from other runs never sit beside the new ones; the review and the call
-    stay."""
+    """A draft's earlier record, so files from other runs never sit beside the new ones; the review, the
+    maintainer's notes on it and the call stay."""
     if not draft.is_dir():
         return
     for path in draft.iterdir():
         if path.name == "plots":
             shutil.rmtree(path)
-        elif path.name not in ("review.json", "call.toml"):
+        elif path.name not in ("review.json", "review-notes.toml", "call.toml"):
             path.unlink()
 
 
