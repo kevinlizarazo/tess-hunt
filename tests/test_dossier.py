@@ -680,11 +680,23 @@ def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, mo
     # Again: nothing changes.
     assert main(argv) == 0
     assert published(repo) == after
-    # Another titles run would overwrite the record.
+    # Another titles run would overwrite the record: refused, unless asked for by name.
     other = titles_run(tmp_path, runs["literature"], lookups, tag="c")
     production(other)
     with pytest.raises(SystemExit, match="another titles run"):
         main([*argv[:-1], str(other)])
+    assert published(repo) == after
+    replace = [*argv[:-1], str(other), "--replace-titles-run"]
+    assert main(replace) == 0
+    trim = json.loads((signal / "literature.json").read_text())["trim"]
+    assert trim["titles_run"] == other.name and trim["replaced_titles_run"] == titles.name
+    assert sha256_file(signal / "provenance-titles.json") == sha256_file(other / "provenance.json")
+    assert f"titles {other.name}" in (signal / "dossier.md").read_text()
+    # Again, with or without the flag: the record still names the run it replaced, and nothing changes.
+    replaced = published(repo)
+    for again in (replace, replace[:-1]):
+        assert main(again) == 0
+        assert published(repo) == replaced
     # A literature.json that is neither the run's file nor its trim is refused, and nothing is touched.
     edit_json(signal / "literature.json", lambda r: r["trim"].update(source_sha256="0" * 64))
     edited = published(repo)

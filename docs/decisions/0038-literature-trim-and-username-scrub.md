@@ -61,16 +61,18 @@ The review also found the maintainer's home directory, which names him, in machi
   record with the titles run's provenance as `provenance-titles.json`. The dossier names the titles run among the
   record's runs. Publishing the same runs again changes nothing, as before. Since the review is placed in the record
   by hand, `publish` also refuses a `review.json` that the scrub below would change.
-- **The 14 records published before this decision** are trimmed by `tess-hunt vetting trim --name NAME --literature
-  RUN --titles RUN`, the narrowest path that changes a published record. It refuses unless the record was published
-  from that literature run (`provenance-literature.json` is the run's provenance) and its `literature.json` is the
-  run's file for the signal, or already its trim, and refuses a record trimmed with another titles run. It writes the
-  trimmed `literature.json` and `provenance-titles.json`, scrubs `review.json` (below), and renders `dossier.md` and
-  the vetting README again; nothing else in the record changes, and a second run changes nothing. Applied on
-  2026-10-26 with the literature run `20261021T001540Z-vetting-literature-61b5944-07de`, from which all 14 records were
-  published, and the titles run `20261026T155726Z-vetting-titles-0b1deac-1d19`, which looked up the 50 DOIs that run's
-  19 records needed and found a title for each. Of the 14 records' 127 papers, 9 take their title from the search's
-  own OpenAlex hits, 91 from the lookup, and 27, known only by their bibcodes, have none.
+- **The 14 records published before this decision** are trimmed by `tess-hunt vetting trim --name NAME --literature RUN
+  --titles RUN`, the narrowest path that changes a published record. It refuses unless the record was published from
+  that literature run (`provenance-literature.json` is the run's provenance) and its `literature.json` is the run's file
+  for the signal, or already its trim, and refuses a record trimmed with another titles run unless given
+  `--replace-titles-run`; then the record's `trim` block names the run it replaced (`replaced_titles_run`), and a later
+  trim with the new run keeps that name. It writes the trimmed `literature.json` and `provenance-titles.json`, scrubs
+  `review.json` (below), and renders `dossier.md` and the vetting README again; nothing else in the record changes, and
+  a second run changes nothing. Applied on 2026-10-26 with the literature run
+  `20261021T001540Z-vetting-literature-61b5944-07de`, from which all 14 records were published, and the titles run
+  `20261026T155726Z-vetting-titles-0b1deac-1d19`, which looked up the 50 DOIs that run's 19 records needed and found a
+  title for each. Of the 14 records' 127 papers, 9 take their title from the search's own OpenAlex hits, 91 from the
+  lookup, and 27, known only by their bibcodes, have none.
 - **The home directory is scrubbed (Ruling BM).** One mapping is used everywhere: tess-hunt's own scrub
   (`provenance.scrub`), which writes the data directory as `$TESS_HUNT_DATA` and the home directory as `~`. It covers
   the files first committed at or after the first literature record was published (the publish of 44926986-1 on

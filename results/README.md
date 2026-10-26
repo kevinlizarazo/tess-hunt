@@ -243,7 +243,8 @@ passed signal is a planet candidate, not a confirmed planet.
   decision 0038 lists, but no title ADS gave, no ExoFOP comment or file name, and no submitter's or observer's user name
   or notes. Each paper's title comes from an open source, which `title_source` names (`arxiv`, `openalex` or `zenodo`
   for the search's own hits, `openalex_doi` for OpenAlex's record of the paper's DOI), or is null where none has it.
-  `trim` gives the sha256 of the run's record it was cut from, the titles run and the fields dropped.
+  `trim` gives the sha256 of the run's record it was cut from, the titles run (and `replaced_titles_run`, a titles
+  run it replaced) and the fields dropped.
 - `pixels.json`, `pixels.png`: a second-list row's pixel check, which triage runs only on novelty passes, run on it as
   triage runs it by `tess-hunt vetting second-list`: the outcome and reason, each measured sector's centroid offset
   and quality, and the offset limit (decision 0028); `pixels.png` plots those offsets with the neighbours that could

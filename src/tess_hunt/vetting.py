@@ -1241,10 +1241,16 @@ def cmd_dossier(args) -> int:
 
 
 def _trimmed(
-    source: Path, titles: Path | None, literature_run: Path, name: str, tmp: Path
+    source: Path,
+    titles: Path | None,
+    literature_run: Path,
+    name: str,
+    tmp: Path,
+    replaced: str | None = None,
 ) -> dict[str, Path]:
     """The literature record as `source` is published (decision 0038): cut by `literature.trim` with the titles
-    run's lookups and written into `tmp`, with that run's provenance beside it."""
+    run's lookups and written into `tmp`, with that run's provenance beside it. `replaced` names the titles run an
+    earlier trim of the record used, which this one replaces."""
     if titles is None:
         raise SystemExit(
             "a literature record is published trimmed: give --titles, a titles run made from --literature "
@@ -1270,6 +1276,8 @@ def _trimmed(
         )
     except literature.TrimError as exc:
         raise SystemExit(str(exc)) from None
+    if replaced is not None:
+        record["trim"]["replaced_titles_run"] = replaced
     out = tmp / "literature.json"
     out.write_text(json.dumps(jsonable(record), indent=2, sort_keys=True) + "\n")
     return {"literature.json": out, "provenance-titles.json": titles / "provenance.json"}
@@ -1353,16 +1361,24 @@ def cmd_trim(args) -> int:
     ):
         raise SystemExit(f"{where} was not published from literature run {run_id}")
     source = args.literature / "signals" / args.name / "literature.json"
-    origin = json.loads(published.read_text()).get("trim", {}).get("source_sha256")
+    trimmed = json.loads(published.read_text()).get("trim", {})
+    origin = trimmed.get("source_sha256")
     if not source.is_file() or sha256_file(source) != (origin or sha256_file(published)):
         raise SystemExit(f"{where}/literature.json is neither {run_id}'s file nor its trim")
+    # A record keeps naming the titles run it replaced, so trimming it again with the new run changes nothing.
+    replaced = trimmed.get("replaced_titles_run")
     kept = dest / "provenance-titles.json"
     if kept.is_file() and sha256_file(kept) != sha256_file(args.titles / "provenance.json"):
-        raise SystemExit(
-            f"{where} was trimmed with another titles run; published files are never overwritten"
-        )
+        if not args.replace_titles_run:
+            raise SystemExit(
+                f"{where} was trimmed with another titles run; published files are never overwritten "
+                "(--replace-titles-run replaces it, and the record names the run it replaced)"
+            )
+        replaced = trimmed["titles_run"]
     with tempfile.TemporaryDirectory() as tmp:
-        files = _trimmed(source, args.titles, args.literature, args.name, Path(tmp))
+        files = _trimmed(
+            source, args.titles, args.literature, args.name, Path(tmp), replaced=replaced
+        )
         staged = Path(tmp) / "staged" / args.name
         shutil.copytree(dest, staged)
         _copy(files, staged)
@@ -1517,6 +1533,11 @@ def add_parser(sub) -> None:
     )
     tr.add_argument(
         "--titles", type=Path, required=True, help="a titles run made from --literature"
+    )
+    tr.add_argument(
+        "--replace-titles-run",
+        action="store_true",
+        help="replace the titles run the record was trimmed with; the record names the run it replaced",
     )
     tr.set_defaults(func=cmd_trim)
 
