@@ -90,16 +90,18 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   **A hold** needs `deciding_evidence`. For every outcome the call names the signal its directory holds and lists the
   vet criteria version the checks ran under.
 - **The record** under `results/vetting/<name>/`, written by `tess-hunt vetting publish --name NAME --run VETTING_RUN
-  --triceratops RUN --literature RUN [--evidence-only RUN] [--second-list RUN]`:
+  --triceratops RUN --literature RUN [--evidence-only RUN] [--second-list RUN] [--titles RUN]`:
   - from the vetting run: `checks.json`, `neighbours.csv`, `plots/*.png`; from the TRICERATOPS run: `triceratops.json`,
-    `probs.csv`; from the literature run: `literature.json`; from the evidence-only run: its `checks.json` as
-    `checks-with-suspect.json`; from the second-list run, for a second-list row: `pixels.json` and `pixels.png`
-    (outside `plots/`, so every file there stays the vetting run's, behind `provenance-checks.json`). Beside each run's
-    files goes that run's `provenance.json`, unchanged, as `provenance-<file>.json` (`provenance-checks.json`,
-    `provenance-triceratops.json`, `provenance-literature.json`, `provenance-checks-with-suspect.json`,
-    `provenance-second-list.json`), so the record names its runs, commits and criteria. A signal a check killed has no
-    TRICERATOPS result unless the stage was given it by name (44926986-1, [0026](0026-triceratops.md)); without one,
-    the run's provenance still goes, and the dossier says the run did not judge it.
+    `probs.csv`; from the literature run: `literature.json`, trimmed with the titles run's lookups since decision
+    [0038](0038-literature-trim-and-username-scrub.md), with that run's provenance as `provenance-titles.json`; from the
+    evidence-only run: its `checks.json` as `checks-with-suspect.json`; from the second-list run, for a second-list row:
+    `pixels.json` and `pixels.png` (outside `plots/`, so every file there stays the vetting run's, behind
+    `provenance-checks.json`). Beside each run's files goes that run's `provenance.json`, unchanged, as
+    `provenance-<file>.json` (`provenance-checks.json`, `provenance-triceratops.json`, `provenance-literature.json`,
+    `provenance-checks-with-suspect.json`, `provenance-second-list.json`), so the record names its runs, commits and
+    criteria. A signal a check killed has no TRICERATOPS result unless the stage was given it by name (44926986-1,
+    [0026](0026-triceratops.md)); without one, the run's provenance still goes, and the dossier says the run did not
+    judge it.
   - The runs must belong together (Ruling C's rule, one run, one criteria file): each is a finished production run;
     `--run` is not evidence-only and `--evidence-only` is; the TRICERATOPS, literature and second-list runs were made
     from `--run` and recorded the sha256 of this signal's `checks.json` as `--run` holds it; every run's criteria shas
