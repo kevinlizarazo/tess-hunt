@@ -2,6 +2,8 @@
 
 - Date: 2026-10-26
 - Status: Accepted. Decided by the maintainer on 2026-10-26, on findings P2, R1 and P1 of the M3 milestone review.
+  Rulings BM, BR and BT, stated in full where they are cited below, are the M3 build controller's of 2026-10-26,
+  made in carrying the decision out, and are put to the maintainer with the fix wave.
 
 ## Context
 
