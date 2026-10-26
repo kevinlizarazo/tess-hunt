@@ -212,7 +212,7 @@ passed signal is a planet candidate, not a confirmed planet.
   ([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)). Beside the records,
   `vetting/review-scripts.tar.gz` holds the scripts every review shared (`/tmp/t13/`), and `vetting/review-brief.md` the
   brief every reviewer and refuter was given; `vetting/README.md` says what the reviews' paths and run names stand for.
-- `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them, but in the
+- `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them, except in the
   review and the call, which it quotes (decision 0037).
 - `checks.json`: the vet under vet-v3 (`tess-hunt vetting run`): each check's outcome, reason and evidence; the
   flat-prior fit's summary (`fit`) and the density-prior fit's (`fit_prior`); the star's targets row, its Gaia DR3 id
