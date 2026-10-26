@@ -206,13 +206,12 @@ passed signal is a planet candidate, not a confirmed planet.
   finding it sits beside in the dossier. They are not part of the review or the call. A slip in the review's text is
   noted there, never edited in `review.json`.
 - `review-scripts.tar.gz`: the review's scripts and their small outputs, from the scratch directory its evidence cites
-  as `/tmp/t13/<name>/`, with a `MANIFEST.txt` listing every file left out and why (fetched from a service, 1 MB or
-  over, a copy of a published file and the like). Home and data directories in it read `~` and `$TESS_HUNT_DATA`,
-  and the maintainer's name reads "the maintainer"
+  as `/tmp/t13/<name>/`, each file under 1 MB (1,000,000 bytes), with a `MANIFEST.txt` listing every file left out and
+  why (fetched from a service, 1 MB or over, a copy of a published file and the like). Home and data directories in it
+  read `~` and `$TESS_HUNT_DATA`, and the maintainer's name reads "the maintainer"
   ([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)). Beside the records,
-  `vetting/review-scripts.tar.gz` holds the scripts every review shared (`/tmp/t13/`), and `vetting/review-brief.md`
-  the brief every reviewer and refuter was given; `vetting/README.md` says what the reviews' paths and run names
-  stand for.
+  `vetting/review-scripts.tar.gz` holds the scripts every review shared (`/tmp/t13/`), and `vetting/review-brief.md` the
+  brief every reviewer and refuter was given; `vetting/README.md` says what the reviews' paths and run names stand for.
 - `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them, but in the
   review and the call, which it quotes (decision 0037).
 - `checks.json`: the vet under vet-v3 (`tess-hunt vetting run`): each check's outcome, reason and evidence; the

@@ -29,12 +29,12 @@ Each review (`review.json`, quoted in `dossier.md`) cites its evidence by the na
 ran on: scratch directories, draft records and shell variables holding run ids. This key says what each stands for.
 
 - `/tmp/t13/<name>/` was the review's scratch directory. Its scripts and their small outputs are in
-  `<name>/review-scripts.tar.gz`, under `t13/<name>/`, with a `MANIFEST.txt` listing each file left out and why
-  (fetched from a service, 1 MB or over, a copy of a published file, and so on). `/tmp/t13/` itself, the scripts
-  every review shared, is in [review-scripts.tar.gz](review-scripts.tar.gz), under `t13/`: among them `heavy.sh`,
-  which ran each memory-heavy command one at a time once 6 GB were free and under a 6 GB cap, `assemble.py`, which
-  made `review.json` from a review workflow's output, and `compare_runs.py` and `cmp_control_vet.py`, which compared
-  runs for decisions 0034 and 0036. `/tmp/pixel-diag/` was the pixel check's diagnosis, published as
+  `<name>/review-scripts.tar.gz`, under `t13/<name>/`, with a `MANIFEST.txt` listing each file left out and why (fetched
+  from a service, 1 MB (1,000,000 bytes) or over, a copy of a published file, and so on). `/tmp/t13/` itself, the
+  scripts every review shared, is in [review-scripts.tar.gz](review-scripts.tar.gz), under `t13/`: among them
+  `heavy.sh`, which ran each memory-heavy command one at a time once 6 GB were free and under a 6 GB cap, `assemble.py`,
+  which made `review.json` from a review workflow's output, and `compare_runs.py` and `cmp_control_vet.py`, which
+  compared runs for decisions 0034 and 0036. `/tmp/pixel-diag/` was the pixel check's diagnosis, published as
   [pixel-check-diagnosis-2026-10-20-scripts.tar.gz](../benchmarks/pixel-check-diagnosis-2026-10-20-scripts.tar.gz).
 - "The brief" is the review brief every reviewer and refuter was given: [review-brief.md](review-brief.md). "M3
   design, section N" in it and in the reviews is the milestone's design, kept outside the repository, from which
