@@ -8,8 +8,11 @@ import re
 from pathlib import Path
 from string import Template
 
-from astropy.coordinates import EarthLocation, SkyCoord
-from astropy.time import Time
+import astropy.units as u
+import numpy as np
+from astropy.constants import c
+from astropy.coordinates import get_body_barycentric
+from astropy.time import Time, TimeDelta
 
 from tess_hunt import calls
 from tess_hunt.provenance import scrub, unname
@@ -164,7 +167,6 @@ SECOND_LIST_CENTROIDS = (
     "pixels.png",
     "The second list's pixel check: each sector's centroid offset, with the neighbours that could host the signal",
 )
-GEOCENTRE = EarthLocation.from_geocentric(0, 0, 0, unit="m")
 # The directories of a path on a Windows drive, or on one WSL mounts, as the reviews ran from Windows.
 MACHINE_DIRS = re.compile(r"(?:\b[A-Za-z]:[\\/]|/mnt/[a-z]/)(?:[^\\/\s\"'`()]+[\\/])*")
 # The decision records the dossier cites, linked from results/vetting/<name>/dossier.md.
@@ -766,11 +768,17 @@ def _real_new(r: Record) -> str:
 def _utc(btjd: float, star: dict) -> str:
     """The mid-time as seen from Earth, in UTC: BJD_TDB less the light's travel time between the geocentre and the
     barycentre toward the star, which runs to about 8 minutes either way. The travel time is taken at the geocentric
-    time, found by one iteration from the barycentric one."""
+    time, found by one iteration from the barycentric one. Earth's position comes from ERFA's built-in ephemeris, so
+    nothing here needs IERS tables or the network."""
+    ra, dec = np.radians(star["ra"]), np.radians(star["dec"])
+    toward = np.array([np.cos(dec) * np.cos(ra), np.cos(dec) * np.sin(ra), np.sin(dec)])
+
+    def delay(t: Time) -> TimeDelta:
+        earth = get_body_barycentric("earth", t, ephemeris="builtin").xyz.to_value(u.m)
+        return TimeDelta(earth @ toward / c.value, format="sec")
+
     bjd = Time(btjd + 2457000.0, format="jd", scale="tdb")
-    target = SkyCoord(star["ra"], star["dec"], unit="deg")
-    seen = bjd - bjd.light_travel_time(target, kind="barycentric", location=GEOCENTRE)
-    seen = bjd - seen.light_travel_time(target, kind="barycentric", location=GEOCENTRE)
+    seen = bjd - delay(bjd - delay(bjd))
     return seen.utc.strftime("%Y-%m-%d %H:%M")
 
 

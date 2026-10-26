@@ -1,6 +1,7 @@
 import json
 import re
 import shutil
+import socket
 import stat
 from dataclasses import replace
 from pathlib import Path
@@ -11,8 +12,7 @@ import test_calls as tc
 import test_literature as tl
 import test_tricera as tt
 import test_vetting as tv
-from astropy.coordinates import SkyCoord
-from astropy.time import Time
+from astropy.utils import iers
 
 from tess_hunt import dossier, literature, provenance, tricera, vetting
 from tess_hunt.cli import main
@@ -327,21 +327,34 @@ def test_decisions_are_linked_from_where_the_dossier_is_published(tmp_path, monk
     assert "M3 design" not in text and not re.search(r"(?<!\[)decision \d{4}", text)
 
 
-def test_mid_utc_is_when_the_transit_is_seen_from_earth():
-    # 423100454-1's S113 transit at epoch 197, as the milestone review timed it from Earth; read as TDB without the
-    # light's travel time it was 15:27.
-    star = {"ra": 240.065424623734, "dec": -55.5634985842455}
-    assert dossier._utc(4426.14466314464, star) == "2027-01-20 15:31"
-    # Back to the barycentre: the travel time at the minute shown restores BJD_TDB within the minute cut off.
-    for ra, dec, btjd in (
-        (240.07, -55.56, 4426.1447),
-        (60.0, 20.0, 4500.5),
-        (240.07, 55.0, 4350.25),
+def test_mid_utc_is_when_the_transit_is_seen_from_earth(monkeypatch):
+    # Offline: no socket opens, and an IERS lookup would read only astropy's bundled table, which ends before these
+    # dates and raises. A table another test loaded is dropped first, so none hides a lookup.
+    def refuse(*args, **kwargs):
+        raise OSError("no network in this test")
+
+    monkeypatch.setattr(socket.socket, "connect", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+    monkeypatch.setattr(iers.conf, "auto_download", False)
+    monkeypatch.setattr(iers.IERS_Auto, "iers_table", None)
+    # The milestone review's times from Earth, from Earth's barycentric position. Read as TDB without the light's
+    # travel time, 423100454-1's epoch 197 was 15:27.
+    stars = {
+        "423100454-1": {"ra": 240.065424623734, "dec": -55.5634985842455},
+        "241522065-1": {"ra": 206.303246517049, "dec": -53.3085956790006},
+        "103312990-1": {"ra": 156.829227880851, "dec": -47.5203964706134},
+    }
+    for name, btjd, seen in (
+        ("423100454-1", 4426.14466314464, "2027-01-20 15:31"),
+        ("423100454-1", 4440.330851772605, "2027-02-03 19:58"),
+        ("241522065-1", 4397.964907870579, "2026-12-23 11:12"),
+        ("241522065-1", 4415.401623187308, "2027-01-09 21:40"),
+        ("241522065-1", 4432.83834174134, "2027-01-27 08:07"),
+        ("103312990-1", 4344.562970275405, "2026-10-31 01:33"),
+        ("103312990-1", 4352.086115150675, "2026-11-07 14:06"),
+        ("103312990-1", 4359.609270087955, "2026-11-15 02:39"),
     ):
-        target = SkyCoord(ra, dec, unit="deg")
-        seen = Time(dossier._utc(btjd, {"ra": ra, "dec": dec}), scale="utc")
-        back = seen.tdb + seen.light_travel_time(target, location=dossier.GEOCENTRE)
-        assert 0 <= (back.jd - 2457000.0 - btjd) * 86400 + 60 <= 61
+        assert dossier._utc(btjd, stars[name]) == seen, (name, btjd)
 
 
 def section(text: str, heading: str) -> str:
