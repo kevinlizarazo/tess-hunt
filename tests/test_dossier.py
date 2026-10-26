@@ -184,7 +184,40 @@ def all_runs(tmp_path, monkeypatch) -> dict[str, Path]:
         run,
         {NAME: {"literature.json": literature_record(run, monkeypatch)}},
     )
-    return {"run": run, "suspect": suspect, "triceratops": tric, "literature": lit}
+    return {
+        "run": run,
+        "suspect": suspect,
+        "triceratops": tric,
+        "literature": lit,
+        "titles": titles_run(tmp_path, lit),
+    }
+
+
+def titles_run(tmp_path: Path, lit: Path, titles: dict | None = None, tag: str = "a") -> Path:
+    """A finished titles run made from the literature run `lit`, holding OpenAlex's `titles` by DOI."""
+    run_id = f"20261026T000000Z-vetting-titles-abc1234-{tag}"
+    path = tmp_path / "data" / "runs" / run_id
+    path.mkdir(parents=True)
+    lookups = path / "titles.json"
+    lookups.write_text(json.dumps({"literature_run": lit.name, "titles": titles or {}}))
+    records = sorted((lit / "signals").glob("*/literature.json"))
+    provenance = {
+        "run_id": run_id,
+        "stage": "vetting-titles",
+        "production": False,
+        "started_at": "2026-10-26T00:00:00+00:00",
+        "ended_at": "2026-10-26T00:01:00+00:00",
+        "git": {"commit": "abc1234" + "0" * 33, "dirty_paths": []},
+        "criteria": [],
+        "literature_run": lit.name,
+        "inputs": {
+            f"literature_{p.parent.name}": {"file": p.name, "sha256": sha256_file(p)}
+            for p in records
+        },
+        "summary": {"titles_sha256": sha256_file(lookups)},
+    }
+    (path / "provenance.json").write_text(json.dumps(provenance, indent=2))
+    return path
 
 
 def flags(runs: dict[str, Path], *roles: str) -> list[str]:
@@ -193,6 +226,7 @@ def flags(runs: dict[str, Path], *roles: str) -> list[str]:
         "suspect": "--evidence-only",
         "triceratops": "--triceratops",
         "literature": "--literature",
+        "titles": "--titles",
     }
     return [a for role in roles for a in (flag[role], str(runs[role]))]
 
@@ -455,7 +489,10 @@ def test_publish_refuses_without_a_call(tmp_path, monkeypatch):
     production(*runs.values())
     repo = tmp_path / "repo"
     monkeypatch.setattr(vetting, "repo_root", lambda: repo)
-    argv = publish_argv(runs, "run", "triceratops", "literature", "suspect")
+    argv = publish_argv(runs, "run", "triceratops", "literature", "suspect", "titles")
+    # A literature record is published trimmed, which takes the titles run (decision 0038).
+    with pytest.raises(SystemExit, match="give --titles"):
+        main(publish_argv(runs, "run", "triceratops", "literature", "suspect"))
     # The maintainer has written another signal's call, not yet published.
     other = repo / "results" / "vetting" / "2-1"
     other.mkdir(parents=True)
@@ -480,7 +517,14 @@ def test_publish_refuses_without_a_call(tmp_path, monkeypatch):
     assert files[f"{NAME}/triceratops.json"] == sha256_file(tric / "triceratops.json")
     assert files[f"{NAME}/probs.csv"] == sha256_file(tric / "probs.csv")
     lit = runs["literature"] / "signals" / NAME / "literature.json"
-    assert files[f"{NAME}/literature.json"] == sha256_file(lit)
+    trimmed = literature.trim(
+        json.loads(lit.read_text()), sha256_file(lit), {}, runs["titles"].name
+    )
+    assert json.loads((signal / "literature.json").read_text()) == trimmed
+    assert trimmed["trim"]["source_sha256"] == sha256_file(lit)
+    assert files[f"{NAME}/provenance-titles.json"] == sha256_file(
+        runs["titles"] / "provenance.json"
+    )
     suspect = runs["suspect"] / "signals" / NAME / "checks.json"
     assert files[f"{NAME}/checks-with-suspect.json"] == sha256_file(suspect)
     assert (signal / "dossier.md").read_text() == dossier.render(signal)
@@ -505,8 +549,100 @@ def test_publish_refuses_without_a_call(tmp_path, monkeypatch):
     production(other)
     before = published(repo)
     with pytest.raises(SystemExit, match="never overwritten"):
-        main([*publish_argv(runs, "run", "literature"), "--triceratops", str(other)])
+        main([*publish_argv(runs, "run", "literature", "titles"), "--triceratops", str(other)])
     assert published(repo) == before
+
+
+def test_trim_applies_decision_0038_to_a_record_published_before_it(tmp_path, monkeypatch):
+    home = tmp_path / "home" / "someone"
+    monkeypatch.setenv("HOME", str(home))
+    runs = all_runs(tmp_path, monkeypatch)
+    # The literature run's record holds ADS's hits and ExoFOP's comments, files and observers, as LIT3_RUN's did.
+    record = {
+        **tl.full_record(),
+        "signal": {"name": NAME, "tic": 1},
+        "vetting_run": runs["run"].name,
+    }
+    source = runs["literature"] / "signals" / NAME / "literature.json"
+    source.write_text(json.dumps(record, indent=2))
+    edit_json(
+        runs["literature"] / "provenance.json",
+        lambda p: p.update(summary={"signals": {NAME: {"sha256": sha256_file(source)}}}),
+    )
+    web = tl.Web(titles=tl.TITLES)
+    lookups = {d: literature.openalex_title(web, d) for d in literature.to_look_up(record)}
+    titles = titles_run(tmp_path, runs["literature"], lookups, tag="b")
+    production(*runs.values(), titles)
+    repo = tmp_path / "repo"
+    monkeypatch.setattr(vetting, "repo_root", lambda: repo)
+    # Published as before decision 0038: the runs' files unchanged, and a review naming the home directory.
+    signal = repo / "results" / "vetting" / NAME
+    roles = {
+        "checks": runs["run"],
+        "triceratops": runs["triceratops"],
+        "literature": runs["literature"],
+    }
+    vetting._copy(vetting._signal_files(roles, NAME), signal)
+    data = tmp_path / "data"
+    review = {
+        **REVIEW,
+        "summary": f"Read in {home}/code/tess-hunt and {data}/drafts/m3-r2/1-1/checks.json.",
+    }
+    (signal / "review.json").write_text(json.dumps(review, indent=2) + "\n")
+    (signal / "call.toml").write_text(HELD)
+    (signal / "dossier.md").write_text(dossier.render(signal))
+    before = published(repo)
+
+    argv = ["vetting", "trim", "--name", NAME, *flags(runs, "literature"), "--titles", str(titles)]
+    assert main(argv) == 0
+    after = published(repo)
+    assert {k for k in after if before.get(k) != after[k]} == {
+        f"{NAME}/literature.json",
+        f"{NAME}/provenance-titles.json",
+        f"{NAME}/review.json",
+        f"{NAME}/dossier.md",
+        "README.md",
+    }
+    assert json.loads((signal / "literature.json").read_text()) == literature.trim(
+        record, sha256_file(source), lookups, titles.name
+    )
+    assert after[f"{NAME}/provenance-titles.json"] == sha256_file(titles / "provenance.json")
+    # review.json changes only where it names the home and data directories.
+    text = (signal / "review.json").read_text()
+    assert str(home) not in text and str(data) not in text
+    summary = "Read in ~/code/tess-hunt and $TESS_HUNT_DATA/drafts/m3-r2/1-1/checks.json."
+    assert json.loads(text) == {**review, "summary": summary}
+    # The dossier: titles only from open sources, a blank one where none has the paper, no ExoFOP comment text.
+    page = (signal / "dossier.md").read_text()
+    assert page == dossier.render(signal)
+    hits = section(page, "Literature hits")
+    assert "Titles come only from open sources" in hits
+    assert f"| {tl.AKANA['title']} | arXiv 2306.16587 |" in hits
+    assert f"| {tl.TITLES[tl.ADS_DOI['doi']]} | doi {tl.ADS_DOI['doi']} |" in hits
+    assert "|  | arXiv 2410.00002 |" in hits and "|  | 2023AJ....166..153A |" in hits
+    for gone in (
+        tl.ADS_ARXIV["title"],
+        tl.ADS_BARE["title"],
+        "HIP 8152 b/ TOI-266.01",
+        "observer1",
+    ):
+        assert gone not in page
+    assert "Comments on ExoFOP" not in page and f"titles {titles.name}" in page
+
+    # Again: nothing changes.
+    assert main(argv) == 0
+    assert published(repo) == after
+    # Another titles run would overwrite the record.
+    other = titles_run(tmp_path, runs["literature"], lookups, tag="c")
+    production(other)
+    with pytest.raises(SystemExit, match="another titles run"):
+        main([*argv[:-1], str(other)])
+    # A literature.json that is neither the run's file nor its trim is refused, and nothing is touched.
+    edit_json(signal / "literature.json", lambda r: r["trim"].update(source_sha256="0" * 64))
+    edited = published(repo)
+    with pytest.raises(SystemExit, match="neither"):
+        main(argv)
+    assert published(repo) == edited
 
 
 def test_publish_refuses_a_pass_the_evidence_does_not_support(tmp_path, monkeypatch):
@@ -523,7 +659,7 @@ def test_publish_refuses_a_pass_the_evidence_does_not_support(tmp_path, monkeypa
     before = published(repo)
     # The literature search went without ADS, so it is inconclusive and can't carry a pass.
     with pytest.raises(SystemExit, match="the literature search is inconclusive"):
-        main(publish_argv(runs, "run", "triceratops", "literature"))
+        main(publish_argv(runs, "run", "triceratops", "literature", "titles"))
     assert published(repo) == before
 
 
@@ -596,7 +732,7 @@ def test_publish_refuses_runs_that_do_not_belong_together(tmp_path, monkeypatch,
     (signal / "call.toml").write_text(HELD)
     before = published(repo)
     with pytest.raises(SystemExit, match=message):
-        main(["vetting", "publish", "--name", NAME, *argv(tmp_path, runs)])
+        main(["vetting", "publish", "--name", NAME, *argv(tmp_path, runs), *flags(runs, "titles")])
     assert published(repo) == before
 
 

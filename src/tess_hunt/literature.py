@@ -2,11 +2,13 @@
 name papers use, NASA ADS's object search and ExoFOP's target page (M3 design, section 4.6; decision 0027). Hits are
 evidence for the maintainer to read, not an outcome."""
 
+import copy
 import re
 import time
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Mapping
 from functools import partial
+from urllib.parse import quote
 
 import numpy as np
 import requests
@@ -34,13 +36,33 @@ PAGE = {"arxiv": 2000, "openalex": 200, "zenodo": 25, "ads": 2000}
 RETRY_ATTEMPTS = 3
 RETRY_BACKOFF_S = 10.0
 NO_TOKEN = "no ADS_API_TOKEN at run time"
+# The searches whose metadata may be republished: arXiv's, OpenAlex's and Zenodo's are CC0 (ACKNOWLEDGEMENTS.md).
+OPEN_SOURCES = ("arxiv", "openalex", "zenodo")
+# Between OpenAlex lookups: the titles run makes one request per paper, so it never bursts.
+LOOKUP_PAUSE_S = 0.5
+# What a published literature record leaves out of the run's (decision 0038).
+DROPPED = [
+    "search.sources.ads.*.hits[].title: every title ADS gave",
+    "evidence.hits[].title where no open source gave the paper's title",
+    "search.exofop.comments, and the comment text of ExoFOP's TOI and CTOI rows (tois[].notes, ctois[].cnotes)",
+    "search.exofop.files: the names of the files on ExoFOP's target page",
+    "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row",
+]
 
 
 class LiteratureError(RuntimeError):
     """A failed request. Its message names the service and at most a status code, never a request header."""
 
 
+class NotFoundError(LiteratureError):
+    """HTTP 404: the service holds no such record."""
+
+
 class TransientError(RuntimeError):
+    pass
+
+
+class TrimError(ValueError):
     pass
 
 
@@ -108,6 +130,8 @@ def _fetch(
             raise TransientError(type(exc).__name__) from None
         if response.status_code >= 500:
             raise TransientError(f"HTTP {response.status_code}")
+        if response.status_code == 404:
+            raise NotFoundError(f"{what}: HTTP 404")
         if response.status_code != 200:
             # A 429 is a rate limit or OpenAlex's daily cap, which no retry's wait outlasts.
             raise LiteratureError(f"{what}: HTTP {response.status_code}")
@@ -517,3 +541,86 @@ def literature_check(record: Mapping) -> CheckResult:
         )
         return inconclusive("literature", reason, **evidence)
     return passed("literature", f"complete: {len(hits)} hits to screen", **evidence)
+
+
+def _open_title(paper: Mapping, sources: Mapping) -> tuple[str, str] | None:
+    """A paper's title from the search's own open-source hits, arXiv's first, then OpenAlex's and Zenodo's, and the
+    source it came from."""
+    ids = set(paper["ids"])
+    for source in OPEN_SOURCES:
+        for result in (sources.get(source) or {}).values():
+            for hit in result["hits"]:
+                if hit["id"] in ids and hit["title"].strip():
+                    return hit["title"], source
+    return None
+
+
+def lookup_doi(paper: Mapping) -> str | None:
+    """The DOI OpenAlex is asked for a paper's title by: its own, or for an arXiv-only paper arXiv's DataCite DOI."""
+    if paper["doi"]:
+        return paper["doi"]
+    return f"{ARXIV_DOI}{paper['arxiv']}" if paper["arxiv"] else None
+
+
+def to_look_up(record: Mapping) -> list[str]:
+    """The DOIs of a literature record's papers that no open-source hit gives a title."""
+    sources = record["search"]["sources"]
+    dois = (lookup_doi(p) for p in record["evidence"]["hits"] if _open_title(p, sources) is None)
+    return sorted({d for d in dois if d})
+
+
+def openalex_title(session, doi: str) -> dict:
+    """OpenAlex's title for the work with DOI `doi`: {status, title, id, error}. A work OpenAlex lacks is not_found;
+    a failed request is an error, which leaves the title unknown rather than absent."""
+    try:
+        work = _fetch(session, f"{OPENALEX}/doi:{quote(doi, safe='/')}", None, "OpenAlex").json()
+    except NotFoundError:
+        return {"status": "not_found", "title": None, "id": None, "error": None}
+    except Exception as exc:
+        return {"status": "error", "title": None, "id": None, "error": _message(exc)}
+    title = " ".join((work.get("title") or "").split()) or None
+    return {"status": "ok", "title": title, "id": work.get("id"), "error": None}
+
+
+def trim(record: Mapping, source_sha256: str, titles: Mapping, titles_run: str) -> dict:
+    """The literature record as it is published (decision 0038): every identifier, search, ExoFOP row and the
+    outcome kept, without ADS's titles, ExoFOP's comments and file names, or the imaging rows' observers and notes.
+    Each paper's title comes from an open source, the search's own arXiv, OpenAlex or Zenodo hit first and else the
+    titles run's OpenAlex lookup by DOI (`titles`, by DOI), and names that source; with none, the title is null.
+    Raises TrimError where the lookup failed or never asked for a DOI the record needs."""
+    out = copy.deepcopy(dict(record))
+    search = out["search"]
+    for result in (search["sources"].get("ads") or {}).values():
+        for hit in result["hits"]:
+            hit.pop("title", None)
+    exofop = search["exofop"]
+    for key in ("comments", "files"):
+        exofop.pop(key, None)
+    for rows, fields in (
+        ("tois", ("notes",)),
+        ("ctois", ("cnotes",)),
+        ("imaging", ("imuser", "inotes")),
+    ):
+        for row in exofop.get(rows, []):
+            for field in fields:
+                row.pop(field, None)
+    for paper in out["evidence"]["hits"]:
+        found = _open_title(paper, record["search"]["sources"])
+        doi = lookup_doi(paper)
+        if found is None and doi:
+            if doi not in titles:
+                raise TrimError(f"titles run {titles_run} did not look up {doi}")
+            looked = titles[doi]
+            if looked["status"] == "error":
+                raise TrimError(
+                    f"titles run {titles_run} failed to look up {doi}: {looked['error']}"
+                )
+            found = (looked["title"], "openalex_doi") if looked["title"] else None
+        paper["title"], paper["title_source"] = found or (None, None)
+    out["trim"] = {
+        "decision": "0038",
+        "source_sha256": source_sha256,
+        "titles_run": titles_run,
+        "dropped": DROPPED,
+    }
+    return out

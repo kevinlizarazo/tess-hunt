@@ -1,0 +1,91 @@
+# 0038: The published literature record keeps identifiers and open sources' titles; the home directory is scrubbed
+
+- Date: 2026-10-26
+- Status: Accepted. Decided by the maintainer on 2026-10-26, on findings P2, R1 and P1 of the M3 milestone review.
+
+## Context
+
+Each vetting record's `literature.json` held what the literature search (decision 0027) read: every NASA ADS hit with
+its bibcode, title and DOI, and ExoFOP's target page reduced to its TOIs, CTOIs, comments, planet parameters, imaging
+rows and file names. The imaging rows name the observer who uploaded each (`imuser`) and carry their notes (`inotes`),
+and the dossiers showed every title. `results/README.md` put all of it under CC BY 4.0. ADS's API terms say "You also
+shouldn't redistribute any data you obtain from our services to third-parties" (https://adsabs.github.io/help/terms/,
+read by the milestone review), and ExoFOP's data-use guidelines treat data as its provider's property. The repository
+was private, so nothing had been redistributed.
+
+The review also found the maintainer's home directory, which names him, in machine paths quoted in the reviews
+(`review.json`) and in the dossiers that render them.
+
+## Decision
+
+- **What a published `literature.json` keeps.** Every identifier (bibcode, DOI, arXiv id), each paper's `found_by`,
+  each search's query, total, status, error and note, SIMBAD's names, the outcome and its reason, and from ExoFOP the
+  TOI and CTOI rows, the planet parameters, the confirmed planets and each imaging row's other fields.
+- **What it drops** (`literature.DROPPED`): every title ADS gave; ExoFOP's comments and the same text in its TOI and
+  CTOI rows (`notes`, `cnotes`); ExoFOP's file names; each imaging row's `imuser` and `inotes`. The TOI and CTOI rows'
+  comment fields are the text the comments list was built from, so they go with it.
+- **Titles only from open sources** (`literature.trim`). A paper's title is the search's own arXiv hit's, else its
+  OpenAlex hit's, else its Zenodo hit's; failing those, OpenAlex's record for the paper's DOI, or for a paper with only
+  an arXiv id, arXiv's DataCite DOI `10.48550/arxiv.<id>`. Each kept title records its source in `title_source`
+  (`arxiv`, `openalex`, `zenodo` or `openalex_doi`). Where none of them has the paper, the title is null and the
+  dossier's table shows it blank. Bibcodes stay: 27 of the 123 papers ADS found have neither a DOI nor an arXiv id.
+- **The `trim` block.** Each published `literature.json` says what it was cut from: the sha256 of the literature run's
+  record (`source_sha256`), this decision (`decision`), the titles run (`titles_run`) and the fields dropped
+  (`dropped`).
+- **The lookup is a run.** `tess-hunt vetting titles --literature RUN [--production]` asks OpenAlex for the work at
+  each DOI a finished literature run's records need, one request at a time through the literature search's HTTP
+  client, and writes `titles.json` (by DOI: `ok` with the title, or none when the work has none; `not_found`; `error`)
+  into a run directory with its provenance: the literature run, each record it read with its sha256, and the sha256 of
+  `titles.json` in its summary. A failed lookup is recorded, never taken for a missing title.
+- **Publishing trims.** `vetting publish` takes `--titles RUN`, a titles run made from `--literature`, and refuses a
+  record with a `literature.json` without one. It checks that the titles run read this signal's record and that
+  `titles.json` is the file the run wrote, refuses a lookup that failed or was never made, and publishes the trimmed
+  record with the titles run's provenance as `provenance-titles.json`. The dossier names the titles run among the
+  record's runs. Publishing the same runs again changes nothing, as before.
+- **The 14 records published before this decision** are trimmed by `tess-hunt vetting trim --name NAME --literature
+  RUN --titles RUN`, the narrowest path that changes a published record. It refuses unless the record was published
+  from that literature run (`provenance-literature.json` is the run's provenance) and its `literature.json` is the
+  run's file for the signal, or already its trim, and refuses a record trimmed with another titles run. It writes the
+  trimmed `literature.json` and `provenance-titles.json`, scrubs `review.json` (below), and renders `dossier.md` and
+  the vetting README again; nothing else in the record changes, and a second run changes nothing.
+- **The home directory is scrubbed (Ruling BM).** One mapping is used everywhere: tess-hunt's own scrub
+  (`provenance.scrub`), which writes the data directory as `$TESS_HUNT_DATA` and the home directory as `~`. It covers
+  the files first committed at or after the first literature record was published (the publish of 44926986-1 on
+  2026-10-22): the 14 `review.json`, changed by `vetting trim` and otherwise left as written; the 14 dossiers, which
+  render the review and the call through the same scrub and show a path elsewhere on the machine by its file name
+  alone; and the review tarballs (`review-scripts.tar.gz`), built with it. Five benchmark notes and three tarballs
+  published on 2026-10-20 and 21 stay as published: they were committed no later than cd4e7a2, which with 61b5944 is
+  a commit the published records' runs were made at and their provenance names, so a rewrite does not reach them.
+  `results/vetting/README.md` says how to read their paths.
+- **The history.** The branch's history from the first literature publish is rewritten so that no copy of the
+  published record in it keeps the dropped fields or the home directory.
+- **Licences** (`results/README.md`, `ACKNOWLEDGEMENTS.md`, `README.md`, `CITATION.cff`). ExoFOP's rows stay under
+  ExoFOP's terms, not CC BY 4.0. The titles come from arXiv's, OpenAlex's and Zenodo's metadata, which each source's
+  page puts under CC0. Bibcodes, DOIs and arXiv ids are identifiers.
+
+## Limitations
+
+- A paper none of the open sources titles shows only its identifier; the reader looks it up by its bibcode or DOI.
+- OpenAlex's title for a DOI can differ in wording or case from the journal's.
+- The records name no ExoFOP observer; the contrast curves TRICERATOPS read and the imaging rows are credited to their
+  contributors through ExoFOP's target page, as ExoFOP's guidelines ask.
+- A draft dossier (`vetting dossier`) renders the run's untrimmed record, ADS's titles included, and says so; drafts
+  are never committed.
+
+## Evidence
+
+- [tests/test_literature.py](../../tests/test_literature.py):
+  `test_trim_keeps_every_identifier_and_takes_titles_only_from_open_sources` (ADS's titles, ExoFOP's comments, files,
+  observers and notes out; identifiers, `found_by`, every search's query, total and status, the ExoFOP rows and the
+  outcome kept; a title from arXiv, one from OpenAlex's lookup, none for a paper no open source titles; the sha256 and
+  the titles run recorded; a failed or missing lookup refused), `test_openalex_title_is_looked_up_by_doi` (a recorded
+  answer, a work without a title, a 404 and a 429, the DOI quoted into the path) and
+  `test_vetting_titles_looks_up_only_the_papers_no_open_source_titles` (one lookup for two signals on a star, the
+  run's provenance and `titles.json`, a changed literature record refused).
+- [tests/test_dossier.py](../../tests/test_dossier.py): `test_publish_refuses_without_a_call` (a literature record
+  needs `--titles`; the published record is the trim of the run's), and
+  `test_trim_applies_decision_0038_to_a_record_published_before_it` (only `literature.json`,
+  `provenance-titles.json`, `review.json`, the dossier and the README change; `review.json` only where it names the
+  home and data directories; the dossier's titles only from open sources, blank where none has the paper, and no
+  ExoFOP comment text; a second run changes nothing; another titles run and a literature record that is neither the
+  run's nor its trim are refused), `test_the_dossier_shows_no_machine_path_from_the_review_or_the_call`.

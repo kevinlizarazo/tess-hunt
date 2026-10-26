@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
@@ -875,6 +876,58 @@ def cmd_literature(args) -> int:
     return 0
 
 
+def _literature_records(path: Path, production: bool) -> dict[str, Path]:
+    """A finished literature run's record for each signal, each checked against the sha256 the run recorded."""
+    made = _finished(path, "vetting-literature", "literature", production)
+    run_id = path.resolve().name
+    out = {}
+    for name, item in sorted(made["summary"]["signals"].items()):
+        file = path / "signals" / name / "literature.json"
+        if not file.is_file() or sha256_file(file) != item["sha256"]:
+            raise SystemExit(f"{run_id}'s {name}/literature.json is not the file it wrote")
+        out[name] = file
+    return out
+
+
+def cmd_titles(args) -> int:
+    """OpenAlex's title, by DOI, for each paper of a literature run that no open-source hit gives one (decision
+    0038), so a published record's titles all come from open sources."""
+    records = _literature_records(args.literature, args.production)
+    dois = sorted(
+        {d for f in records.values() for d in literature.to_look_up(json.loads(f.read_text()))}
+    )
+    run = start_run("vetting-titles", [], args.production, sys.argv)
+    run.record("literature_run", args.literature.resolve().name)
+    run.record_input("literature_provenance", args.literature / "provenance.json")
+    for name, file in records.items():
+        run.record_input(f"literature_{name}", file)
+    session = requests.Session()
+    titles = {}
+    for doi in dois:
+        titles[doi] = literature.openalex_title(session, doi)
+        time.sleep(literature.LOOKUP_PAUSE_S)
+    written = run.write_json(
+        "titles.json", {"literature_run": run.provenance["literature_run"], "titles": titles}
+    )
+    counts = {
+        s: sum(t["status"] == s for t in titles.values()) for s in ("ok", "not_found", "error")
+    }
+    with_title = sum(t["title"] is not None for t in titles.values())
+    run.finish(
+        literature_run=run.provenance["literature_run"],
+        dois=len(titles),
+        titled=with_title,
+        # `vetting publish` checks the file it trims with against this.
+        titles_sha256=sha256_file(written),
+        **counts,
+    )
+    print(
+        f"vetting titles: {with_title} of {len(titles)} DOIs titled, {counts['not_found']} not in OpenAlex, "
+        f"{counts['error']} failed -> {run.path}"
+    )
+    return 1 if counts["error"] else 0
+
+
 def _second_triage(
     path: Path, provenance: dict, run_id: str, names: list[str], production: bool
 ) -> dict:
@@ -1187,28 +1240,69 @@ def cmd_dossier(args) -> int:
     return 0
 
 
+def _trimmed(
+    source: Path, titles: Path | None, literature_run: Path, name: str, tmp: Path
+) -> dict[str, Path]:
+    """The literature record as `source` is published (decision 0038): cut by `literature.trim` with the titles
+    run's lookups and written into `tmp`, with that run's provenance beside it."""
+    if titles is None:
+        raise SystemExit(
+            "a literature record is published trimmed: give --titles, a titles run made from --literature "
+            "(decision 0038)"
+        )
+    made = _finished(titles, "vetting-titles", "titles", production=True)
+    run_id = titles.resolve().name
+    if made["literature_run"] != literature_run.resolve().name:
+        raise SystemExit(
+            f"titles run {run_id} was made from {made['literature_run']}, not {literature_run.resolve().name}"
+        )
+    if made["inputs"].get(f"literature_{name}", {}).get("sha256") != sha256_file(source):
+        raise SystemExit(f"titles run {run_id} read another literature.json for {name}")
+    lookups = titles / "titles.json"
+    if not lookups.is_file() or sha256_file(lookups) != made["summary"]["titles_sha256"]:
+        raise SystemExit(f"{run_id}/titles.json is not the file it wrote")
+    try:
+        record = literature.trim(
+            json.loads(source.read_text()),
+            sha256_file(source),
+            json.loads(lookups.read_text())["titles"],
+            run_id,
+        )
+    except literature.TrimError as exc:
+        raise SystemExit(str(exc)) from None
+    out = tmp / "literature.json"
+    out.write_text(json.dumps(jsonable(record), indent=2, sort_keys=True) + "\n")
+    return {"literature.json": out, "provenance-titles.json": titles / "provenance.json"}
+
+
 def cmd_publish(args) -> int:
     runs = _record_runs(args, production=True)
     files = _signal_files(runs, args.name)
     root = repo_root() / "results" / "vetting"
     dest = root / args.name
     where = f"results/vetting/{args.name}"
-    # The same run's file again changes nothing; any other would overwrite the record.
-    changed = sorted(
-        name
-        for name, source in files.items()
-        if (dest / name).exists() and sha256_file(dest / name) != sha256_file(source)
-    )
-    if changed:
-        raise SystemExit(
-            f"{where} already holds another {', '.join(changed)}; published files are never overwritten"
-        )
-    if not (dest / "call.toml").is_file():
-        raise SystemExit(f"no call.toml in {where}: the maintainer's call comes before publishing")
     # Judged and rendered, the README included, from a staged copy before anything is copied: a refusal or a render
     # that raises at any point leaves results/ as it was.
     with tempfile.TemporaryDirectory() as tmp:
-        staged = Path(tmp) / args.name
+        if "literature.json" in files:
+            files |= _trimmed(
+                files["literature.json"], args.titles, runs["literature"], args.name, Path(tmp)
+            )
+        # The same run's file again changes nothing; any other would overwrite the record.
+        changed = sorted(
+            name
+            for name, source in files.items()
+            if (dest / name).exists() and sha256_file(dest / name) != sha256_file(source)
+        )
+        if changed:
+            raise SystemExit(
+                f"{where} already holds another {', '.join(changed)}; published files are never overwritten"
+            )
+        if not (dest / "call.toml").is_file():
+            raise SystemExit(
+                f"no call.toml in {where}: the maintainer's call comes before publishing"
+            )
+        staged = Path(tmp) / "staged" / args.name
         shutil.copytree(dest, staged)
         _copy(files, staged)
         found = calls.problems(staged)
@@ -1221,14 +1315,68 @@ def cmd_publish(args) -> int:
         (staged / "dossier.md").write_text(text)
         readme = dossier.readme(root, staged)
         left = dossier.listed(root, staged)[1]
-    new = {name: source for name, source in files.items() if not (dest / name).exists()}
-    _copy(new, dest)
+        new = {name: source for name, source in files.items() if not (dest / name).exists()}
+        _copy(new, dest)
     # Last of the record: the README lists only a directory that holds it.
     (dest / "dossier.md").write_text(text)
     (root / "README.md").write_text(readme)
     print(f"published {args.name} -> {where} ({len(new)} new file(s), dossier.md, README.md)")
     for name, why in left.items():
         print(f"README leaves out {name}: {'; '.join(why)}")
+    return 0
+
+
+def cmd_trim(args) -> int:
+    """Decision 0038 on a record published before it: its literature record trimmed as `publish` now trims it, the
+    titles run's provenance beside it, and review.json with the home and data directories scrubbed; then the dossier
+    and the README rendered again. Nothing else in the record changes. The published literature.json must be the
+    literature run's file for the signal, or already its trim."""
+    root = repo_root() / "results" / "vetting"
+    dest = root / args.name
+    where = f"results/vetting/{args.name}"
+    run_id = args.literature.resolve().name
+    _finished(args.literature, "vetting-literature", "literature", production=True)
+    published = dest / "literature.json"
+    if not published.is_file():
+        raise SystemExit(f"no literature.json in {where}")
+    provenance = dest / "provenance-literature.json"
+    if not provenance.is_file() or sha256_file(provenance) != sha256_file(
+        args.literature / "provenance.json"
+    ):
+        raise SystemExit(f"{where} was not published from literature run {run_id}")
+    source = args.literature / "signals" / args.name / "literature.json"
+    origin = json.loads(published.read_text()).get("trim", {}).get("source_sha256")
+    if not source.is_file() or sha256_file(source) != (origin or sha256_file(published)):
+        raise SystemExit(f"{where}/literature.json is neither {run_id}'s file nor its trim")
+    kept = dest / "provenance-titles.json"
+    if kept.is_file() and sha256_file(kept) != sha256_file(args.titles / "provenance.json"):
+        raise SystemExit(
+            f"{where} was trimmed with another titles run; published files are never overwritten"
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        files = _trimmed(source, args.titles, args.literature, args.name, Path(tmp))
+        staged = Path(tmp) / "staged" / args.name
+        shutil.copytree(dest, staged)
+        _copy(files, staged)
+        review = staged / "review.json"
+        if review.is_file():
+            review.write_text(scrub(review.read_text()))
+        text = dossier.render(staged)
+        readme = dossier.readme(root, staged)
+        changed = [
+            name
+            for name in (*files, "review.json")
+            if (staged / name).is_file()
+            and not (
+                (dest / name).is_file() and sha256_file(dest / name) == sha256_file(staged / name)
+            )
+        ]
+        _copy({name: staged / name for name in changed}, dest)
+    (dest / "dossier.md").write_text(text)
+    (root / "README.md").write_text(readme)
+    print(
+        f"trimmed {args.name} -> {where} ({', '.join(changed) or 'no file changed'}; dossier.md, README.md)"
+    )
     return 0
 
 
@@ -1337,7 +1485,32 @@ def add_parser(sub) -> None:
     )
     pub.add_argument("--name", required=True, help="the signal's name in --run")
     _record_arguments(pub, required=True)
+    pub.add_argument(
+        "--titles",
+        type=Path,
+        help="a titles run made from --literature; needed when the record has a literature.json",
+    )
     pub.set_defaults(func=cmd_publish)
+    ti = modes.add_parser(
+        "titles",
+        help="OpenAlex's title, by DOI, for each paper a literature run found no open-source title for",
+    )
+    ti.add_argument("--literature", type=Path, required=True, help="a finished literature run")
+    ti.add_argument("--production", action="store_true")
+    ti.set_defaults(func=cmd_titles)
+    tr = modes.add_parser(
+        "trim",
+        help="apply decision 0038 to a record published before it: trim its literature.json, scrub "
+        "review.json, render its dossier again",
+    )
+    tr.add_argument("--name", required=True, help="the published signal's name")
+    tr.add_argument(
+        "--literature", type=Path, required=True, help="the literature run the record came from"
+    )
+    tr.add_argument(
+        "--titles", type=Path, required=True, help="a titles run made from --literature"
+    )
+    tr.set_defaults(func=cmd_trim)
 
 
 def _record_arguments(p, required: bool) -> None:

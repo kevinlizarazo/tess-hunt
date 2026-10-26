@@ -281,6 +281,9 @@ from a run directory and writes its own.
   SIMBAD and NED; and ExoFOP's target page, read live. The search is inconclusive when a source failed or was not
   searched, when ADS's search was too broad (over 200 hits), or when a by-name search was too broad for a star ADS
   could search only by its TIC phrase. Otherwise it passes with the hits to read. It never fails.
+  The published record keeps every identifier but takes paper titles only from open sources (arXiv, OpenAlex,
+  Zenodo), and leaves out ExoFOP's comments, file names and observers
+  ([0038](decisions/0038-literature-trim-and-username-scrub.md)).
 - **Output:** each signal's record under `results/vetting/<tic>-<rank>/`: the published runs, a dossier rendered from
   them (section 5.5), the adversarial review (section 5.8) and the maintainer's call, passed, killed or held
   ([0028](decisions/0028-outcomes-and-calls.md)).
@@ -509,7 +512,9 @@ TRICERATOPS runs for its transit models, is GPL-2.0; tess-hunt's code is MIT and
   as ADS's bearer header, and never written to code, criteria, a run directory, provenance, a log or CI. Without it,
   ADS is recorded as not searched and the literature search can't pass
   ([0027](decisions/0027-literature-by-name.md)).
-- **No machine paths.** The cache comes from `TESS_HUNT_DATA`; nothing assumes a username or drive.
+- **No machine paths.** The cache comes from `TESS_HUNT_DATA`; nothing assumes a username or drive. Text quoted
+  from a machine, a review's paths among it, reads the home directory as `~` and the data directory as
+  `$TESS_HUNT_DATA` ([0038](decisions/0038-literature-trim-and-username-scrub.md)).
 - **Commits** use a repo-local GitHub noreply email.
 - **README** states that every candidate is a candidate, not a confirmed planet.
 - **`ACKNOWLEDGEMENTS.md`** carries:

@@ -168,6 +168,7 @@ DECISIONS = {
     "0026": "0026-triceratops.md",
     "0028": "0028-outcomes-and-calls.md",
     "0037": "0037-quoted-text-in-the-dossier.md",
+    "0038": "0038-literature-trim-and-username-scrub.md",
 }
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
@@ -238,6 +239,7 @@ class Record:
                 "literature",
                 "checks-with-suspect",
                 "second-list",
+                "titles",
             )
         }
         self.pixels = calls.pixels(path, self.checks)
@@ -311,6 +313,7 @@ def _runs(r: Record) -> str:
         ("literature", "literature"),
         ("checks-with-suspect", "evidence-only vetting"),
         ("second-list", "second list"),
+        ("titles", "titles"),
     ):
         p = r.provenance[role]
         if p is not None:
@@ -714,15 +717,13 @@ def _exofop(r: Record) -> str:
         )
         for p in x["planets"]
     ]
-    comments = [f"{c['object']}: {c['comment']}" for c in x["comments"]]
+    # ExoFOP's comments stay ExoFOP's contributors' words and are not shown (decision 0038).
     lines = [
         f"ExoFOP, read live: TOIs {tois}; CTOIs {ctois}; confirmed planets "
         f"{x['confirmed_planets'] or 'none'}."
     ]
     if planets:
         lines.append("Planet parameters on ExoFOP:\n\n" + _list(planets))
-    if comments:
-        lines.append("Comments on ExoFOP:\n\n" + _list(comments))
     return "\n\n".join(lines)
 
 
@@ -929,8 +930,15 @@ def _hits(r: Record) -> str:
     if r.literature is None:
         return r.absent("literature", "literature")
     hits = r.literature["evidence"]["hits"]
-    rows = [[h["title"], _paper_id(h), ", ".join(h["found_by"])] for h in hits]
-    text = f"{len(hits)} paper(s) from the searches that answered, one row per paper."
+    rows = [[h["title"] or "", _paper_id(h), ", ".join(h["found_by"])] for h in hits]
+    text = f"{len(hits)} paper(s) from the searches that answered, one row per paper. " + (
+        "Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's "
+        "record for the paper's DOI; a paper none of them titles has a blank title "
+        f"({_decision('0038')})."
+        if "trim" in r.literature
+        else "Titles as the searches gave them, ADS's among them; a published record keeps only open sources' "
+        f"titles ({_decision('0038')})."
+    )
     broad = r.literature["evidence"]["too_broad"]
     if broad:
         text += f" Too broad to list: {'; '.join(broad)}."

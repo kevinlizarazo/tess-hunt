@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from urllib.parse import unquote
 
 import pytest
 import requests
@@ -104,6 +105,7 @@ ATOM = (
     'xmlns:arxiv="http://arxiv.org/schemas/atom">'
 )
 TOKEN = "ads-token-k3v1n-7f2a"
+LOOKUP = f"{literature.OPENALEX}/doi:"
 
 
 def paper(title: str, doi: str | None = None, arxiv: str | None = None) -> dict:
@@ -131,16 +133,20 @@ def atom(entries: list[dict], total: int) -> bytes:
 class Web:
     """The services the literature search reads. `hits` maps (service, name) to papers; `status` maps a service, or
     (service, name), to the HTTP status it answers instead. ADS's object service resolves a star SIMBAD holds in
-    `names`. ADS answers only the bearer `token`."""
+    `names`. ADS answers only the bearer `token`. OpenAlex's work by DOI ("lookup") answers with `titles` (DOI to
+    title, None for a work without one), and 404 for any other DOI."""
 
-    def __init__(self, hits=None, status=None, names=None, token=TOKEN):
+    def __init__(self, hits=None, status=None, names=None, token=TOKEN, titles=None):
         self.hits = hits or {}
         self.status = status or {}
         self.names = {TIC: SIMBAD_IDS} if names is None else names
         self.token = token
+        self.titles = titles or {}
         self.calls = []
 
     def get(self, url, timeout, params=None, headers=None):
+        if url.startswith(LOOKUP):
+            return self.answer("lookup", "doi", {"doi": unquote(url.removeprefix(LOOKUP))}, headers)
         return self.answer(SERVICES[url], "params", dict(params or {}), headers)
 
     def post(self, url, timeout, json=None, headers=None):
@@ -157,10 +163,14 @@ class Web:
         bearer = (headers or {}).get("Authorization") == f"Bearer {self.token}"
         if service in ("ads", "objects") and not bearer:
             return FakeResponse(401)
+        if service == "lookup" and name not in self.titles:
+            return FakeResponse(404)
         return FakeResponse(200, getattr(self, service)(name, sent))
 
     @staticmethod
     def name(service: str, sent: dict) -> str:
+        if service == "lookup":
+            return sent["doi"]
         if service == "simbad":
             return re.search(r"'(TIC \d+)'", sent["QUERY"]).group(1)
         if service == "exofop":
@@ -226,6 +236,11 @@ class Web:
 
     def exofop(self, name, params):
         return json.dumps(EXOFOP).encode()
+
+    def lookup(self, doi, sent):
+        return json.dumps(
+            {"id": f"https://openalex.org/W{len(doi)}", "title": self.titles[doi]}
+        ).encode()
 
 
 @pytest.fixture(autouse=True)
@@ -666,6 +681,132 @@ def test_hits_are_deduplicated_by_doi_arxiv_id_or_title():
     assert second["title"] == "A different planet" and second["found_by"] == ["arxiv HIP 8152"]
 
 
+# The published record (decision 0038): ADS's titles and ExoFOP's comments, file names, observers and notes out.
+
+ADS_DOI = paper("Validation of the new Hipparcos reduction", doi="10.1051/0004-6361:20078357")
+ADS_ARXIV = paper("A preprint only ADS titled here", arxiv="2410.00002")
+ADS_BARE = paper("The HIPPARCOS Catalogue")
+OBSERVED = {
+    **EXOFOP["imaging"][0],
+    "imuser": "observer1",
+    "inotes": " PI: Someone; contact: Someone",
+}
+# OpenAlex's titles by DOI: one work titled, one without a title.
+TITLES = {
+    "10.1051/0004-6361:20078357": "Validation of the new Hipparcos reduction",
+    "10.48550/arxiv.2410.00002": None,
+}
+
+
+def full_record(web: Web | None = None) -> dict:
+    """A literature record as `vetting literature` writes it, with ADS's hits beside arXiv's."""
+    web = web or Web(
+        hits={
+            ("arxiv", "HIP 8152"): [AKANA],
+            ("ads", "TIC 164767175"): [AKANA, ADS_DOI, ADS_ARXIV, ADS_BARE],
+        },
+        titles=TITLES,
+    )
+    page = {**EXOFOP, "imaging": [OBSERVED]}
+    web.exofop = lambda name, params: json.dumps(page).encode()
+    found = complete(search(web))
+    check = literature.literature_check(found).to_dict()
+    return {"signal": {"name": "1-1", "tic": TIC}, "vetting_run": "v", "search": found, **check}
+
+
+def test_trim_keeps_every_identifier_and_takes_titles_only_from_open_sources():
+    record = full_record()
+    web = Web(titles=TITLES)
+    # Akana's arXiv hit gives its title; the bare bibcode has nothing to look up by.
+    dois = literature.to_look_up(record)
+    assert dois == ["10.1051/0004-6361:20078357", "10.48550/arxiv.2410.00002"]
+    lookups = {doi: literature.openalex_title(web, doi) for doi in dois}
+    before = json.dumps(record, sort_keys=True)
+    out = literature.trim(record, "f" * 64, lookups, "titles-run")
+    assert json.dumps(record, sort_keys=True) == before
+
+    papers = {p["arxiv"] or p["doi"] or p["ids"][0]: p for p in out["evidence"]["hits"]}
+    akana = papers[AKANA["arxiv"]]
+    assert (akana["title"], akana["title_source"]) == (AKANA["title"], "arxiv")
+    found = papers[ADS_DOI["doi"]]
+    assert (found["title"], found["title_source"]) == (TITLES[ADS_DOI["doi"]], "openalex_doi")
+    for p in (papers[ADS_ARXIV["arxiv"]], papers["2023AJ....166..153A"]):
+        assert p["title"] is None and p["title_source"] is None
+    # Identifiers and who found each paper stay.
+    for paper_in, paper_out in zip(
+        record["evidence"]["hits"], out["evidence"]["hits"], strict=True
+    ):
+        for key in ("doi", "arxiv", "ids", "found_by"):
+            assert paper_out[key] == paper_in[key]
+    text = json.dumps(out)
+    assert ADS_ARXIV["title"] not in text and ADS_BARE["title"] not in text
+
+    # Every search keeps its query, total and status; ADS's hits keep their bibcodes, DOIs and arXiv ids only.
+    [ads_in] = record["search"]["sources"]["ads"].values()
+    [ads_out] = out["search"]["sources"]["ads"].values()
+    assert ads_out["hits"] == [{k: v for k, v in h.items() if k != "title"} for h in ads_in["hits"]]
+    assert {k: v for k, v in ads_out.items() if k != "hits"} == {
+        k: v for k, v in ads_in.items() if k != "hits"
+    }
+    for source in literature.OPEN_SOURCES:
+        assert out["search"]["sources"][source] == record["search"]["sources"][source]
+    for key in ("outcome", "reason", "signal", "vetting_run"):
+        assert out[key] == record[key]
+
+    # ExoFOP: the rows stay, without comment text, file names, observers or their notes.
+    exofop = out["search"]["exofop"]
+    assert "comments" not in exofop and "files" not in exofop
+    assert exofop["tois"] == [{k: v for k, v in t.items() if k != "notes"} for t in EXOFOP["tois"]]
+    assert exofop["ctois"] == [
+        {k: v for k, v in c.items() if k != "cnotes"} for c in EXOFOP["ctois"]
+    ]
+    assert exofop["imaging"] == EXOFOP["imaging"]
+    assert exofop["planets"] == record["search"]["exofop"]["planets"]
+    assert exofop["confirmed_planets"] == "HIP 8152 b, HIP 8152 c"
+    for gone in ("HIP 8152 b/ TOI-266.01", "single transit", "observer1", "contact", "PEST.zip"):
+        assert gone not in text
+    assert out["trim"] == {
+        "decision": "0038",
+        "source_sha256": "f" * 64,
+        "titles_run": "titles-run",
+        "dropped": literature.DROPPED,
+    }
+
+    # A lookup that failed, or one never made, leaves the title unknown: refused, not left blank.
+    failed = {**lookups, ADS_DOI["doi"]: {**lookups[ADS_DOI["doi"]], "status": "error"}}
+    with pytest.raises(literature.TrimError, match="failed to look up"):
+        literature.trim(record, "f" * 64, failed, "titles-run")
+    with pytest.raises(literature.TrimError, match="did not look up"):
+        literature.trim(record, "f" * 64, {}, "titles-run")
+
+
+def test_openalex_title_is_looked_up_by_doi():
+    web = Web(
+        titles={"10.1/a(b)": "A  paper\n title", "10.1/none": None},
+        status={("lookup", "10.1/down"): 429},
+    )
+    assert literature.openalex_title(web, "10.1/a(b)") == {
+        "status": "ok",
+        "title": "A paper title",
+        "id": "https://openalex.org/W9",
+        "error": None,
+    }
+    assert literature.openalex_title(web, "10.1/none")["title"] is None
+    assert literature.openalex_title(web, "10.1/gone") == {
+        "status": "not_found",
+        "title": None,
+        "id": None,
+        "error": None,
+    }
+    assert literature.openalex_title(web, "10.1/down") == {
+        "status": "error",
+        "title": None,
+        "id": None,
+        "error": "OpenAlex: HTTP 429",
+    }
+    assert [c["name"] for c in web.calls] == ["10.1/a(b)", "10.1/none", "10.1/gone", "10.1/down"]
+
+
 # `vetting literature`
 
 
@@ -890,6 +1031,44 @@ def test_literature_refuses_an_evidence_only_run(tmp_path, monkeypatch):
     with pytest.raises(SystemExit, match="evidence-only"):
         main(argv)
     assert literature_runs(tmp_path) == []
+
+
+def test_vetting_titles_looks_up_only_the_papers_no_open_source_titles(tmp_path, monkeypatch):
+    _, argv = vetting_run(tmp_path, monkeypatch)
+    monkeypatch.setenv("ADS_API_TOKEN", TOKEN)
+    hits = {("arxiv", "HD 1"): [AKANA], ("ads", "TIC 1"): [AKANA, ADS_DOI, ADS_BARE]}
+    web = online(monkeypatch, Web(names=NAMES, hits=hits, titles=TITLES))
+    assert main(argv) == 0
+    [lit] = literature_runs(tmp_path)
+    assert main(["vetting", "titles", "--literature", str(lit)]) == 0
+    [run] = (tmp_path / "data" / "runs").glob("*-vetting-titles-*")
+    # Akana has arXiv's title and the bare bibcode no DOI: one lookup, for both signals on the star.
+    assert [c["name"] for c in web.calls if c["service"] == "lookup"] == [ADS_DOI["doi"]]
+    titles = json.loads((run / "titles.json").read_text())
+    assert titles == {
+        "literature_run": lit.name,
+        "titles": {
+            ADS_DOI["doi"]: {
+                "status": "ok",
+                "title": TITLES[ADS_DOI["doi"]],
+                "id": f"https://openalex.org/W{len(ADS_DOI['doi'])}",
+                "error": None,
+            }
+        },
+    }
+    provenance = json.loads((run / "provenance.json").read_text())
+    assert provenance["stage"] == "vetting-titles" and provenance["literature_run"] == lit.name
+    for name in ("1-1", "1-2"):
+        record = lit / "signals" / name / "literature.json"
+        assert provenance["inputs"][f"literature_{name}"]["sha256"] == sha256_file(record)
+    assert provenance["summary"]["titles_sha256"] == sha256_file(run / "titles.json")
+    assert provenance["summary"]["error"] == 0 and provenance["summary"]["titled"] == 1
+    # A literature record changed since its run wrote it is refused before any lookup.
+    record = lit / "signals" / "1-1" / "literature.json"
+    record.chmod(0o644)
+    record.write_text(record.read_text().replace("TIC 1", "TIC 7"))
+    with pytest.raises(SystemExit, match="is not the file it wrote"):
+        main(["vetting", "titles", "--literature", str(lit)])
 
 
 @pytest.mark.network
