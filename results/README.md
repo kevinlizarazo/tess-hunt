@@ -8,16 +8,16 @@ TIC-duplicate measurement holds (all under [Runs](#runs)), and the Gaia DR3 part
 Gaia DR2 and DR3 values their reviews quote, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO
 terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
-ExoFOP's rows in the vetting records' `literature.json` (TOIs, CTOIs, planet parameters, confirmed planets and
-imaging rows) stay under ExoFOP's terms, not CC BY 4.0: its data-use guidelines
-(https://exofop.ipac.caltech.edu/tess/pcp.php) treat data as its provider's property. The paper titles in
+ExoFOP's rows in the vetting records' `literature.json` (TOIs, CTOIs, planet parameters, confirmed planets and imaging
+rows), and the same rows where `dossier.md` shows them, stay under ExoFOP's terms, not CC BY 4.0: its data-use
+guidelines (https://exofop.ipac.caltech.edu/tess/pcp.php) treat data as its provider's property. The paper titles in
 `literature.json` come only from arXiv's, OpenAlex's and Zenodo's metadata
-([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read 2026-10-26: arXiv's API
-terms of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive metadata about arXiv
-e-prints under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration"; OpenAlex's about
-page (https://openalex.org/about) says "Our data is CC0"; Zenodo's policies (https://about.zenodo.org/policies/)
-say "Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs and arXiv ids are identifiers.
-From NASA ADS the records keep those identifiers and each search's query, total and status, never a title.
+([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read 2026-10-26: arXiv's API terms
+of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive metadata about arXiv e-prints
+under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration"; OpenAlex's about page
+(https://openalex.org/about) says "Our data is CC0"; Zenodo's policies (https://about.zenodo.org/policies/) say
+"Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs and arXiv ids are identifiers. From NASA
+ADS the records keep those identifiers and each search's query, total and status, never a title.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 

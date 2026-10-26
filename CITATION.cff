@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: >-
   If you use this software, please cite it as below. Results under results/ are CC BY 4.0 (see results/LICENSE),
   except Gaia data (such as the triage tables' ruwe column and the vetting records' neighbour tables), which stay
-  under ESA's CC BY-NC 3.0 IGO terms, and ExoFOP's rows in the vetting records' literature.json, which stay under
-  ExoFOP's terms; results/README.md lists them.
+  under ESA's CC BY-NC 3.0 IGO terms, and ExoFOP's rows in the vetting records' literature.json and dossiers, which
+  stay under ExoFOP's terms; results/README.md lists them.
 type: software
 title: "tess-hunt"
 version: "0.1.0"

@@ -58,7 +58,7 @@ images (pickle files) and records their sha256; transit-diffImage deletes the TE
 Code: MIT ([LICENSE](LICENSE)). Results in `results/`: CC BY 4.0 ([results/LICENSE](results/LICENSE)), except Gaia
 data, such as the `ruwe` column of the triage tables and the vetting records' neighbour tables, which stay under
 ESA's CC BY-NC 3.0 IGO terms ([licence](https://www.cosmos.esa.int/web/gaia-users/license)), and ExoFOP's rows in
-the vetting records' `literature.json`, which stay under ExoFOP's terms; [results/README.md](results/README.md)
-lists every one. The FITS files under `tests/fixtures/` are TESS data products
+the vetting records' `literature.json` and dossiers, which stay under ExoFOP's terms;
+[results/README.md](results/README.md) lists every one. The FITS files under `tests/fixtures/` are TESS data products
 under CC BY 4.0 ([tests/fixtures/README.md](tests/fixtures/README.md)).
 Data credits and required acknowledgements: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
