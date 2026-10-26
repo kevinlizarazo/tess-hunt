@@ -98,7 +98,8 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
     files goes that run's `provenance.json`, unchanged, as `provenance-<file>.json` (`provenance-checks.json`,
     `provenance-triceratops.json`, `provenance-literature.json`, `provenance-checks-with-suspect.json`,
     `provenance-second-list.json`), so the record names its runs, commits and criteria. A signal a check killed has no
-    TRICERATOPS result; the run's provenance still goes, and the dossier says the run did not judge it.
+    TRICERATOPS result unless the stage was given it by name (44926986-1, [0026](0026-triceratops.md)); without one,
+    the run's provenance still goes, and the dossier says the run did not judge it.
   - The runs must belong together (Ruling C's rule, one run, one criteria file): each is a finished production run;
     `--run` is not evidence-only and `--evidence-only` is; the TRICERATOPS, literature and second-list runs were made
     from `--run` and recorded the sha256 of this signal's `checks.json` as `--run` holds it; every run's criteria shas

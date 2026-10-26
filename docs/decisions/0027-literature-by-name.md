@@ -156,9 +156,12 @@ as "nothing published".
     body or a 200 body, or raises naming them: no token text in the record or the check).
   - `test_exofop_record_keeps_comments_and_imaging` (also the planet parameters with their periods; a page without
     them is a failed read), `test_hits_are_deduplicated_by_doi_arxiv_id_or_title`.
-  - `test_vetting_literature_writes_one_record_per_signal`, `test_resume_fills_only_what_the_earlier_run_left_incomplete`
-    (only the incomplete searches are made again; no file of the run holds the token; a changed earlier record is
-    refused), `test_literature_refuses_what_it_cannot_stand_behind`, `test_literature_refuses_an_evidence_only_run`.
+  - `test_vetting_literature_writes_one_record_per_signal`,
+    `test_resume_fills_only_what_the_earlier_run_left_incomplete` (only the incomplete searches are made again; no file
+    of the run holds the token; a changed earlier record is refused),
+    `test_literature_refuses_what_it_cannot_stand_behind`, `test_literature_refuses_an_evidence_only_run`.
 - The network test `test_hip_8152_finds_akana_murphy_2023` (skipped without `ADS_API_TOKEN`): SIMBAD names TIC
   164767175 HIP 8152, and ADS's object search itself, resolved through SIMBAD, returns Akana Murphy et al. 2023. Until
-  2026-10-19 arXiv's hit by HIP 8152 also passed it, which hid an ADS search that failed for every star.
+  2026-10-19 the test also took a hit from arXiv, but arXiv's search by HIP 8152 has never found the paper
+  (Limitations). ADS's search failed for every star, which came to light on 2026-10-19, when the search endpoint
+  answered the `object:` query with HTTP 400.

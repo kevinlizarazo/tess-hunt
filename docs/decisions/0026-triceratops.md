@@ -163,7 +163,10 @@ dossier says only that (decision 0028).
 the vetting run, or the named ones. Before its run starts it refuses an unfinished or evidence-only vetting run, a
 non-production one under `--production`, search or vet criteria whose sha256 differs from the vetting run's (one run,
 one criteria file), a signal the run did not vet, a light curve changed since the vetting run, and any contrast file it
-can't read. Each signal gets `signals/<name>/triceratops.json`, `probs.csv` and TRICERATOPS's Gaia field-star file
+can't read. A signal a check failed runs only when named: 44926986-1, whose novelty failed, was named in its
+TRICERATOPS runs so the binary question would have an answer beside eumemic's listing, and its kill rests on the
+novelty fail and on TRICERATOPS's.
+Each signal gets `signals/<name>/triceratops.json`, `probs.csv` and TRICERATOPS's Gaia field-star file
 `<tic>_gaia_background.csv`; the provenance records the vetting run, each signal's `checks.json`, the light curves,
 the contrast CSV and each original curve.
 

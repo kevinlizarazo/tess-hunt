@@ -5,14 +5,14 @@
 
 ## Context
 
-Before it checks a signal, `vet` masks the star's other known transits, so they neither bend the detrending nor add
-to the depths it measures. Under vet-v1 and vet-v2, `other_known_transits` masks every row of the catalog snapshot on
-the star except the signal under test, found by period (decision 0003): TOIs, CTOIs and archive planets, and also SPOC
-TCEs, ExoMiner and eumemic rows, community candidates and eclipsing binaries. The search and triage mask only the sources in
+Before it checks a signal, `vet` masks the star's other known transits, so they neither bend the detrending nor add to
+the depths it measures. Under vet-v1 and vet-v2, `other_known_transits` masks every row of the catalog snapshot on the
+star except the signal under test, found by period (decision 0003): TOIs, CTOIs and archive planets, and also SPOC TCEs,
+ExoMiner and eumemic rows, community candidates and eclipsing binaries. The search and triage mask only the sources in
 `[detrend] mask_sources` of `criteria/search-v2.toml`, TOI, CTOI and archive; every other row is evidence for novelty
 only (decision 0013). The M2 final review (PF21) found the mismatch. It matters for the shortlist: the M3 design
-(section 4.2) found SPOC and eumemic TCE rows at other periods on TIC 146282666 whose masks fall on some of the
-transits under test, so vet-v2 would cut out part of the signal it is vetting, data the search used to find it.
+(section 4.2) found SPOC and eumemic TCE rows at other periods on TIC 146282666 whose masks fall on some of the transits
+under test, so vet-v2 would cut out part of the signal it is vetting, data the search used to find it.
 
 ## Decision
 

@@ -903,8 +903,9 @@ def test_hip_8152_finds_akana_murphy_2023():
         TIC, names, session, os.environ["ADS_API_TOKEN"], CFG, simbad=simbad
     )
     ads = record["sources"]["ads"]["TIC 164767175"]
-    # ADS itself must find Akana Murphy et al. 2023, AJ 166, 153 (TOI-266's planets as HIP 8152 b and c): arXiv's hit
-    # for "HIP 8152" once hid an ADS search that failed for every star.
+    # ADS itself must find Akana Murphy et al. 2023, AJ 166, 153 (TOI-266's planets as HIP 8152 b and c): arXiv's search
+    # by "HIP 8152" never finds it, and ADS's search failed for every star until its HTTP 400 came to light on
+    # 2026-10-19.
     assert ads["status"] == "ok", ads["error"]
     assert ads["resolved"]["simbad"]
     assert any(h["id"] == "2023AJ....166..153A" for h in ads["hits"])

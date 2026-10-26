@@ -203,7 +203,9 @@ planet.
   each run's FPP and NFPP, the stars it weighed and the possible hosts matched to them, and the TIC's DUPLICATE and
   ARTIFACT rows it left out (`dropped_stars`, [decision 0036](../docs/decisions/0036-triceratops-tic-duplicates.md));
   `probs.csv` is the last run's scenario table. A record from a run made before decision 0036 has no `dropped_stars`
-  and no `disposition` in its `stars`. A signal a check killed has none.
+  and no `disposition` in its `stars`. A signal a check killed has none, but for 44926986-1: its novelty failed, and
+  TRICERATOPS was run on it by name so the binary question would have an answer beside eumemic's listing
+  ([decision 0026](../docs/decisions/0026-triceratops.md)); its kill rests on the novelty fail and on TRICERATOPS's.
 - `literature.json`: the literature search by name, NASA ADS and ExoFOP
   ([decision 0027](../docs/decisions/0027-literature-by-name.md)).
 - `pixels.json`, `pixels.png`: a second-list row's pixel check, which triage runs only on novelty passes, run on it as

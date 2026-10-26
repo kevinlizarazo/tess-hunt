@@ -135,7 +135,9 @@ answers it from the check's own saved images:
   inconclusive.
 - The cone's centre goes into the query to 10 decimal places of a degree (3.6e-7"), so the target's own separation
   reads about 1e-7" rather than 0. It is left out of the table by its id.
-- The published controls keep their mixed-epoch tables (item 3).
+- The first published controls run, `20261020T082333Z-benchmark-controls-16418d2-f45a`, keeps its mixed-epoch tables
+  (item 3). Its rerun, `20261023T031548Z-benchmark-controls-cd4e7a2-ca9f`, measures each table from the target's
+  own Gaia DR3 row.
 - The measurement did not check whether a TRICERATOPS rerun gets the same field-star population (its section 5); the
   runs are seeded.
 

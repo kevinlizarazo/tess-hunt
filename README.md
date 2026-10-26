@@ -32,8 +32,9 @@ noise is inconclusive and does not advance ([decision 0017](docs/decisions/0017-
 neighbour table and the literature search are evidence: a star that could host the signal, or a paper that names the
 star, does not show the signal is not a planet, so each passes or is inconclusive
 ([decision 0025](docs/decisions/0025-neighbours.md), [decision 0027](docs/decisions/0027-literature-by-name.md)).
-Pass/fail criteria are committed before the data is searched. The design is in [docs/design.md](docs/design.md);
-decisions are in [docs/decisions/](docs/decisions/).
+Pass/fail criteria are committed before the stage that applies them runs on the data
+([design, section 5.3](docs/design.md#53-criteria-frozen-before-the-data)). The design is in
+[docs/design.md](docs/design.md); decisions are in [docs/decisions/](docs/decisions/).
 
 ## Setup
 
