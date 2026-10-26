@@ -1,7 +1,8 @@
 # 0037: The dossier quotes the review and the call; numbers in quoted text are their authors'
 
 - Date: 2026-10-26
-- Status: Accepted. Decided by the maintainer on 2026-10-26, on finding R2 of the M3 milestone review.
+- Status: Accepted. Decided by the maintainer on 2026-10-23 (UTC), on finding R2 of the M3 milestone review; the fix
+  wave carried it out on 2026-10-26.
 
 ## Context
 
