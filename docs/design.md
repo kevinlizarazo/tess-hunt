@@ -494,8 +494,8 @@ transit-diffImage's undeclared imports (spiceypy, lightkurve, pandas, matplotlib
 requirements, and its PRF URL is plain http, which redirects to https.
 
 Without the triceratops pin, uv silently falls back to triceratops 1.0.21. Supported platforms are Linux and macOS;
-Windows is supported through WSL only. LEO-Vetter and transit-diffImage are GPL-3.0; tess-hunt's code is MIT and
-imports them.
+Windows is supported through WSL only. LEO-Vetter and transit-diffImage are GPL-3.0, and PyTransit 2.2.0, which
+TRICERATOPS runs for its transit models, is GPL-2.0; tess-hunt's code is MIT and imports them.
 
 ### 6.2 Public-readiness from day one
 - **No secrets.** All data is public and S3 is read unsigned. No credentials appear in code, config or CI. The

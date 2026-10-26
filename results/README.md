@@ -4,9 +4,9 @@ Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under
 this directory). The exceptions are Gaia data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
 tables, the RUWE values the published controls quote, the Gaia DR3 values the pixel check's diagnosis, the
 neighbour-epoch measurements and the TIC-duplicate measurement quote or hold, the TIC-carried Gaia DR2 values the
-TIC-duplicate measurement holds (all under [Runs](#runs)), and the Gaia DR3 parts of the vetting records, listed under
-[Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license),
-not CC BY 4.0.
+TIC-duplicate measurement holds (all under [Runs](#runs)), and the Gaia DR3 parts of the vetting records and the
+Gaia DR2 and DR3 values their reviews quote, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO
+terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -224,6 +224,9 @@ neighbour table in `checks.json` and `checks-with-suspect.json` (`neighbours`), 
 `triceratops.json` (`hosts`, `ruwe`), and the Gaia DR3 columns of the star's row in both checks files
 (`dr3_source_id`, `angular_distance`, `ruwe`, `logg_gspphot`, `mass_flame`, `radius_flame`, `logg_flame`), the
 possible hosts drawn in `plots/centroids.png` and `pixels.png`, and the same values where `dossier.md` shows them.
+The Gaia DR2 and DR3 values the review (`review.json`) quotes, such as radial velocities and their scatter
+(`rv_amplitude_robust`, `rv_chisq_pvalue`), astrometric noise (`astrometric_excess_noise`, `ipd_frac_multi_peak`)
+and non-single-star flags, are Gaia data too, and so is the same text in `dossier.md`.
 
 ## Catalog snapshots
 

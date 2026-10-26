@@ -74,8 +74,17 @@ Lindegren et al. under "Processing papers":
 - Riello, M., et al. 2021, Gaia Early Data Release 3: Photometric content and validation (A&A 649, A3;
   doi:10.1051/0004-6361/202039587)
 
+The vetting records' reviews (`review.json`) quote Gaia DR3 radial velocities and their scatter, and non-single-star
+flags. From Gaia's list of DR3 papers, the papers on those data:
+
+- Katz et al., Gaia Data Release 3: Properties and validation of the radial velocities
+  (doi:10.1051/0004-6361/202244220)
+- Gaia Collaboration, Arenou, F., et al., Gaia Data Release 3: Stellar multiplicity, a teaser for the hidden
+  treasure (doi:10.1051/0004-6361/202243782)
+
 The TIC-duplicate measurement's tarball under `results/benchmarks/` holds Gaia DR2 source ids and parallaxes, which
-come through the TIC. For those, cite the Gaia DR2 release paper with the mission paper above:
+come through the TIC, and the reviews quote some Gaia DR2 values beside DR3's. For those, cite the Gaia DR2 release
+paper with the mission paper above:
 
 - Gaia Collaboration, Brown, A. G. A., et al. 2018, Gaia Data Release 2. Summary of the contents and survey
   properties (A&A 616, A1)
@@ -223,8 +232,8 @@ name SIMBAD gives a vetted star, and searches NASA ADS by its object search.
 lightkurve (Lightkurve Collaboration 2018), astropy (Astropy Collaboration 2013, 2018, 2022), astroquery
 (Ginsburg et al. 2019), numpy, scipy, pandas, wotan (Hippke et al. 2019), transitleastsquares (Hippke & Heller
 2019), batman (Kreidberg 2015), emcee (Foreman-Mackey et al. 2013), TRICERATOPS (Giacalone et al. 2021),
-LEO-Vetter (Kunimoto et al. 2025), transit-diffImage, tess-point (Burke et al. 2020), SpiceyPy (Annex et al. 2020)
-and the SPICE toolkit (Acton 1996; Acton et al. 2017).
+PyTransit (Parviainen 2015), LEO-Vetter (Kunimoto et al. 2025), transit-diffImage, tess-point (Burke et al. 2020),
+SpiceyPy (Annex et al. 2020), the SPICE toolkit (Acton 1996; Acton et al. 2017) and matplotlib (Hunter 2007).
 
 - TRICERATOPS 1.1.0 (MIT), which the vetting stage runs for the false-positive probabilities. Its README
   (https://github.com/stevengiacalone/triceratops, as shipped with 1.1.0) asks users to "cite both the paper and the
@@ -233,6 +242,9 @@ and the SPICE toolkit (Acton 1996; Acton et al. 2017).
     TRICERATOPS and Statistical Validation of 12 Planet Candidates, AJ 161, 24 (doi:10.3847/1538-3881/abc6af)
   - Giacalone, S., & Dressing, C. D. 2020, triceratops: Candidate exoplanet rating tool, Astrophysics Source Code
     Library, ascl:2002.004
+- PyTransit 2.2.0 (GPL-2.0), which TRICERATOPS runs for its transit models. Its README
+  (https://github.com/hpparvi/PyTransit, read 2026-10-26) says "If you use PyTransit in your reserach, please
+  cite" (its spelling): Parviainen, H. MNRAS 450, 3233-3238 (2015) (DOI:10.1093/mnras/stv894).
 - LEO-Vetter (GPL-3.0). Its README (https://github.com/mkunimoto/LEO-Vetter) asks users to cite its paper:
   Kunimoto, M., Bryson, S., Jaffee, D., et al. (2025) The Astronomical Journal, 170, 280
 - transit-diffImage (https://github.com/stevepur/transit-diffImage, by Steve Bryson, GPL-3.0), pinned at commit
@@ -254,3 +266,8 @@ and the SPICE toolkit (Acton 1996; Acton et al. 2017).
     Space Science, Vol. 44, No. 1, pp. 65-70, 1996. DOI 10.1016/0032-0633(95)00107-7
   - Charles Acton, Nathaniel Bachman, Boris Semenov, Edward Wright; A look toward the future in the handling of space
     science mission geometry; Planetary and Space Science (2017); DOI 10.1016/j.pss.2017.02.013
+- matplotlib, which draws every dossier plot. Its README (as shipped with 3.11.2) asks: "If Matplotlib contributes
+  to a project that leads to publication, please acknowledge this by citing Matplotlib." The citation page it links
+  (https://matplotlib.org/stable/users/project/citing.html, read 2026-10-26 from its source in the matplotlib
+  repository, `doc/project/citing.rst`) gives: J. D. Hunter, "Matplotlib: A 2D Graphics Environment", Computing in
+  Science & Engineering, vol. 9, no. 3, pp. 90-95, 2007 (doi:10.1109/MCSE.2007.55).
