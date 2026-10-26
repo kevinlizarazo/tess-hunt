@@ -14,7 +14,7 @@ Call: **held** on 2026-10-22. Rendered from the files in this directory ([decisi
 | CROWDSAP | S1 0.966; S27 0.987; S28 0.990; S67 0.990; S68 0.990; none published for S94 (QLP), S95 (QLP), S102 (QLP), S103 (QLP), S104 (QLP) |
 | Sectors vetted | PDCSAP family: 1, 27, 28, 67 and 68; QLP family: 94 and 95; left out as timing-suspect: 102, 103 and 104 |
 | Criteria | search-v2, vet-v3 |
-| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production); titles 20261026T155726Z-vetting-titles-0b1deac-1d19 (commit 0b1deac, production) |
+| Runs | vetting 20261020T174317Z-vetting-run-61b5944-2d70 (commit 61b5944, production); TRICERATOPS 20261021T044850Z-vetting-triceratops-cd4e7a2-07c3 (commit cd4e7a2, production); literature 20261021T001540Z-vetting-literature-61b5944-07de (commit 61b5944, production); evidence-only vetting 20261020T175536Z-vetting-run-61b5944-7f4e (commit 61b5944, production); second list 20261020T180844Z-vetting-second-list-61b5944-7096 (commit 61b5944, production); titles 20261026T184940Z-vetting-titles-af322af-9b15 (commit af322af, production) |
 
 ## Checks
 

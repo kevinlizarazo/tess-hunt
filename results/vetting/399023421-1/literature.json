@@ -165,8 +165,9 @@
       "search.exofop.files: the names of the files on ExoFOP's target page",
       "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row"
     ],
+    "replaced_titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19",
     "source_sha256": "d0b4e6f0bda4d2edf95b7e03ebf37e83bbe86cbc477599ff2e55b5b3c1c1a54e",
-    "titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19"
+    "titles_run": "20261026T184940Z-vetting-titles-af322af-9b15"
   },
   "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
 }

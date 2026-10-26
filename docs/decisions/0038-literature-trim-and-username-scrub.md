@@ -69,10 +69,14 @@ The review also found the maintainer's home directory, which names him, in machi
   trim with the new run keeps that name. It writes the trimmed `literature.json` and `provenance-titles.json`, scrubs
   `review.json` (below), and renders `dossier.md` and the vetting README again; nothing else in the record changes, and
   a second run changes nothing. Applied on 2026-10-26 with the literature run
-  `20261021T001540Z-vetting-literature-61b5944-07de`, from which all 14 records were published, and the titles run
-  `20261026T155726Z-vetting-titles-0b1deac-1d19`, which looked up the 50 DOIs that run's 19 records needed and found a
-  title for each. Of the 14 records' 127 papers, 9 take their title from the search's own OpenAlex hits, 91 from the
-  lookup, and 27, known only by their bibcodes, have none.
+  `20261021T001540Z-vetting-literature-61b5944-07de`, from which all 14 records were published. The first titles run,
+  `20261026T155726Z-vetting-titles-0b1deac-1d19`, was made at a commit that the rewrite of the history (below)
+  replaced; the backup bundle made before the rewrite keeps that commit. The records were trimmed again the same day
+  with `--replace-titles-run` and the titles run `20261026T184940Z-vetting-titles-af322af-9b15`, made at a commit in
+  the history, and each names the first run as `replaced_titles_run`. Both runs looked up the same 50 DOIs that the
+  literature run's 19 records needed and found a title for each, and no title changed. Of the 14 records' 127 papers,
+  9 take their title from the search's own OpenAlex hits, 91 from the lookup, and 27, known only by their bibcodes,
+  have none.
 - **The home directory is scrubbed (Ruling BM).** One mapping is used everywhere: tess-hunt's own scrub
   (`provenance.scrub`), which writes the data directory as `$TESS_HUNT_DATA` and the home directory as `~`. It covers
   the files first committed at or after the first literature record was published (the publish of 44926986-1 on
@@ -92,7 +96,9 @@ The review also found the maintainer's home directory, which names him, in machi
   quotes, and the tarballs and the brief were built with it. On 2026-10-26 it changed four `review.json`
   (146282666-1, 164767175-1, 241522065-1, 410399327-1), their dossiers, the brief and 11 files in the tarballs.
 - **The history.** The branch's history from the first literature publish is rewritten so that no copy of the
-  published record in it keeps the dropped fields, the home directory or the maintainer's name.
+  published record in it keeps the dropped fields, the home directory or the maintainer's name. The review brief and
+  the review tarballs are rewritten with it: each copy committed before the name was taken out holds the copy that
+  took it out.
 - **Licences** (`results/README.md`, `ACKNOWLEDGEMENTS.md`, `README.md`, `CITATION.cff`). ExoFOP's rows stay under
   ExoFOP's terms, not CC BY 4.0. The titles come from arXiv's, OpenAlex's and Zenodo's metadata, which each source's
   page puts under CC0. Bibcodes, DOIs and arXiv ids are identifiers.
@@ -127,6 +133,7 @@ The review also found the maintainer's home directory, which names him, in machi
   `test_trim_applies_decision_0038_to_a_record_published_before_it` (only `literature.json`,
   `provenance-titles.json`, `review.json`, the dossier and the README change; `review.json` only where it names the
   home and data directories or the maintainer; the dossier's titles only from open sources, blank where none has
-  the paper, and no ExoFOP comment text; a second run changes nothing; another titles run and a literature record
-  that is neither the run's nor its trim are refused),
+  the paper, and no ExoFOP comment text; a second run changes nothing; another titles run refused, and with
+  `--replace-titles-run` taken and the replaced run named, a later trim changing nothing; a literature record that is
+  neither the run's nor its trim refused),
   `test_the_dossier_shows_no_machine_path_from_the_review_or_the_call`.

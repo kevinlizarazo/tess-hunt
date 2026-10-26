@@ -290,8 +290,9 @@
       "search.exofop.files: the names of the files on ExoFOP's target page",
       "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row"
     ],
+    "replaced_titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19",
     "source_sha256": "9cfe519fc93fd0e0d9f42ae1819a123928eb368a1e9c457b29013ef168e52ae0",
-    "titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19"
+    "titles_run": "20261026T184940Z-vetting-titles-af322af-9b15"
   },
   "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
 }
