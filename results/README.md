@@ -8,11 +8,22 @@ TIC-duplicate measurement holds (all under [Runs](#runs)), and the Gaia DR3 part
 Gaia DR2 and DR3 values their reviews quote, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO
 terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
+ExoFOP's rows in the vetting records' `literature.json` (TOIs, CTOIs, planet parameters, confirmed planets and
+imaging rows) stay under ExoFOP's terms, not CC BY 4.0: its data-use guidelines
+(https://exofop.ipac.caltech.edu/tess/pcp.php) treat data as its provider's property. The paper titles in
+`literature.json` come only from arXiv's, OpenAlex's and Zenodo's metadata
+([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read 2026-10-26: arXiv's API
+terms of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive metadata about arXiv
+e-prints under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration"; OpenAlex's about
+page (https://openalex.org/about) says "Our data is CC0"; Zenodo's policies (https://about.zenodo.org/policies/)
+say "Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs and arXiv ids are identifiers.
+From NASA ADS the records keep those identifiers and each search's query, total and status, never a title.
+
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
-These files are derived from TESS light curves, from the TESS Input Catalog, from Gaia DR3, and from the ExoFOP and
-NASA Exoplanet Archive catalogs. Reuse must also carry the acknowledgements in
-[../ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md).
+These files are derived from TESS light curves, from the TESS Input Catalog, from Gaia DR3, from the ExoFOP and
+NASA Exoplanet Archive catalogs, and from SIMBAD, NASA ADS, arXiv, OpenAlex and Zenodo, which the literature
+search reads. Reuse must also carry the acknowledgements in [../ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md).
 
 ## Runs
 
@@ -179,8 +190,9 @@ Each directory under `vetting/` is one signal's record, named `<tic>-<rank>` as 
 `tess-hunt vetting publish` wrote it once the maintainer's call was in it
 ([decision 0028](../docs/decisions/0028-outcomes-and-calls.md)); `vetting/README.md` lists every published call that
 stands on its record. Published files are never edited: only `dossier.md` and `vetting/README.md` are rendered again
-from the files beside them, and a correction is a new run. A passed signal is a planet candidate, not a confirmed
-planet.
+from the files beside them, and a correction is a new run. The one exception is decision 0038's: `tess-hunt vetting
+trim` trimmed the literature records published before it and scrubbed the home directory from their reviews. A
+passed signal is a planet candidate, not a confirmed planet.
 
 - `call.toml`: the maintainer's call: `outcome` (passed, killed or held), `date`, `reasons` in his words, `rests_on`
   (the checks and review findings it rests on), `criteria`, and as the outcome needs, `deciding_evidence` (what would
@@ -224,17 +236,26 @@ planet.
   TRICERATOPS was run on it by name so the binary question would have an answer beside eumemic's listing
   ([decision 0026](../docs/decisions/0026-triceratops.md)); its kill rests on the novelty fail and on TRICERATOPS's.
 - `literature.json`: the literature search by name, NASA ADS and ExoFOP
-  ([decision 0027](../docs/decisions/0027-literature-by-name.md)).
+  ([decision 0027](../docs/decisions/0027-literature-by-name.md)), trimmed for publication
+  ([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)). It keeps every identifier
+  (bibcode, DOI, arXiv id), who found each paper, each search's query, total and status, and ExoFOP's rows, but no
+  title ADS gave, no ExoFOP comment or file name, and no observer's user name or notes on an imaging row. Each
+  paper's title comes from an open source, which `title_source` names (`arxiv`, `openalex` or `zenodo` for the
+  search's own hits, `openalex_doi` for OpenAlex's record of the paper's DOI), or is null where none has it.
+  `trim` gives the sha256 of the run's record it was cut from, the titles run and the fields dropped.
 - `pixels.json`, `pixels.png`: a second-list row's pixel check, which triage runs only on novelty passes, run on it as
   triage runs it by `tess-hunt vetting second-list`: the outcome and reason, each measured sector's centroid offset
   and quality, and the offset limit (decision 0028); `pixels.png` plots those offsets with the neighbours that could
   host the signal. Other signals' pixel check is triage's, in `checks.json`, and their centroid plot is
   `plots/centroids.png`.
 - `provenance-checks.json`, `provenance-checks-with-suspect.json`, `provenance-triceratops.json`,
-  `provenance-literature.json`, `provenance-second-list.json`: each run's `provenance.json`, copied unchanged: the
+  `provenance-literature.json`, `provenance-second-list.json`, `provenance-titles.json`: each run's
+  `provenance.json`, copied unchanged: the
   commit, the criteria files and their hashes, the inputs and their hashes, and the command line of the run the files
   beside it came from.
-  `provenance-checks.json` stands behind `checks.json`, `neighbours.csv` and `plots/`.
+  `provenance-checks.json` stands behind `checks.json`, `neighbours.csv` and `plots/`; `provenance-titles.json` is
+  the run of `tess-hunt vetting titles` that looked up, in OpenAlex by DOI, the titles no search's own open-source
+  hit gave.
 
 Gaia DR3 data in these records stay under ESA's CC BY-NC 3.0 IGO terms (above), not CC BY 4.0: `neighbours.csv`, the
 neighbour table in `checks.json` and `checks-with-suspect.json` (`neighbours`), the possible hosts and the RUWE in

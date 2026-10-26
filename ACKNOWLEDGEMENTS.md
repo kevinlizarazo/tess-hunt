@@ -106,12 +106,14 @@ contributor name and the ExoFOP URL, e.g. (Author, from exofop.ipac.caltech.edu)
 dossier is credited to its ExoFOP contributor and the ExoFOP page, or to the published paper when one exists.
 
 M3's vetting reads more from the ExoFOP website (DOI: 10.26134/ExoFOP5). The literature search reads each vetted
-star's target page: its TOIs, CTOIs, comments, planet parameters and imaging rows, kept in each record's
-`literature.json`. TRICERATOPS reads the machine-readable contrast curves ExoFOP holds for TIC 164767175: Gemini
+star's target page. Each published record's `literature.json` keeps its TOIs, CTOIs, planet parameters and imaging
+rows, without its comments, its file names, or the observers' user names and notes on the imaging rows
+([decision 0038](docs/decisions/0038-literature-trim-and-username-scrub.md)). Those rows stay under ExoFOP's terms,
+not CC BY 4.0. TRICERATOPS reads the machine-readable contrast curves ExoFOP holds for TIC 164767175: Gemini
 'Alopeke speckle (2019-10-15), WIYN NESSI speckle (2019-01-21) and Palomar PHARO adaptive optics (2018-12-22), each
-named with its ExoFOP contributor in the imaging rows of `results/vetting/164767175-1/literature.json`, with its file
-and sha256 in `provenance-triceratops.json` beside it. Each curve is credited to its contributor and the ExoFOP page,
-or to the published paper when one exists.
+with its file and sha256 in `results/vetting/164767175-1/provenance-triceratops.json` and its contributor named on
+ExoFOP's target page for the star. Each curve is credited to its contributor and the ExoFOP page, or to the
+published paper when one exists.
 
 ## NASA Exoplanet Archive
 
@@ -212,6 +214,14 @@ Each citation is the one the record's Zenodo or Dataverse page gives. Every Zeno
 
 Triage searches Zenodo, arXiv and OpenAlex by TIC for shortlisted signals. M3's vetting searches them again by every
 name SIMBAD gives a vetted star, and searches NASA ADS by its object search.
+
+The published records keep every paper's identifiers (bibcode, DOI, arXiv id) and take titles only from arXiv's,
+OpenAlex's and Zenodo's metadata (decision 0038). Each source's page, read 2026-10-26, puts that metadata under
+CC0: arXiv's API terms of use (https://info.arxiv.org/help/api/tou.html): "You are free to use descriptive metadata
+about arXiv e-prints under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration.";
+OpenAlex's about page (https://openalex.org/about): "Our data is CC0"; Zenodo's policies
+(https://about.zenodo.org/policies/): "Metadata is licensed under CC0, except for email addresses." From NASA ADS the
+records keep identifiers (bibcodes, DOIs, arXiv ids) and each search's query, total and status, never a title.
 
 - arXiv's API page (https://info.arxiv.org/help/api/index.html) asks all API users: "Acknowledge arXiv data usage with
   this statement on your product":
