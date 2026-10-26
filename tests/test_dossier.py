@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 import stat
 from dataclasses import replace
@@ -19,6 +20,7 @@ from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
 
 NAME = "1-1"
+REPO = Path(__file__).resolve().parents[1]
 FPP = [0.011, 0.013, 0.012]
 NFPP = [0.0004, 0.0005, 0.0003]
 REVIEW = {**tc.REVIEW, "signal": NAME}
@@ -279,6 +281,16 @@ def test_page_one_answers_the_three_questions(tmp_path, monkeypatch):
     assert [rest.index(h) for h in order] == sorted(rest.index(h) for h in order)
     assert "plots/transits.png" in rest and "evidence only" in rest
     assert "High-resolution imaging" in rest
+
+
+def test_decisions_are_linked_from_where_the_dossier_is_published(tmp_path, monkeypatch):
+    signal, _ = draft(tmp_path, monkeypatch, review=REVIEW, call=HELD)
+    text = (signal / "dossier.md").read_text()
+    # A dossier sits in results/vetting/<name>/, three levels below the repo's root.
+    linked = re.findall(r"\]\(\.\./\.\./\.\./(docs/decisions/[^)]+)\)", text)
+    assert len(set(linked)) >= 3
+    assert all((REPO / path).is_file() for path in linked)
+    assert "M3 design" not in text and not re.search(r"(?<!\[)decision \d{4}", text)
 
 
 def test_mid_utc_is_when_the_transit_is_seen_from_earth():

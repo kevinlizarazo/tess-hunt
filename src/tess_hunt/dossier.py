@@ -103,6 +103,13 @@ SECOND_LIST_CENTROIDS = (
     "The second list's pixel check: each sector's centroid offset, with the neighbours that could host the signal",
 )
 GEOCENTRE = EarthLocation.from_geocentric(0, 0, 0, unit="m")
+# The decision records the dossier cites, linked from results/vetting/<name>/dossier.md.
+DECISIONS = {
+    "0021": "0021-vet-masks-search-kinds.md",
+    "0022": "0022-vet-without-timing-suspect-sectors.md",
+    "0026": "0026-triceratops.md",
+    "0028": "0028-outcomes-and-calls.md",
+}
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
 # Whose pixel check the centroid table shows, keyed by whether the signal is a second-list row: its name, its owner
@@ -134,6 +141,10 @@ def _cell(text) -> str:
 def _table(header: list[str], rows: list[list]) -> str:
     lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     return "\n".join(lines + ["| " + " | ".join(_cell(c) for c in row) + " |" for row in rows])
+
+
+def _decision(number: str) -> str:
+    return f"[decision {number}](../../../docs/decisions/{DECISIONS[number]})"
 
 
 def _list(items: list[str]) -> str:
@@ -206,10 +217,12 @@ def _title(r: Record) -> str:
 
 def _status(r: Record) -> str:
     if r.call is None:
-        return "Draft: no call yet. Rendered from the files in this directory (decision 0028)."
+        return (
+            f"Draft: no call yet. Rendered from the files in this directory ({_decision('0028')})."
+        )
     return (
         f"Call: **{r.call['outcome']}** on {r.call['date']}. Rendered from the files in this directory "
-        "(decision 0028)."
+        f"({_decision('0028')})."
     )
 
 
@@ -493,7 +506,7 @@ def _triceratops_on_star(r: Record) -> str:
             lines.append(
                 f"It gave zero depth to {listed}: its apertures take too little of "
                 f"{'that star' if len(zero) == 1 else 'each one'}'s light to make the dip. "
-                "Evidence for the review, not a blocker (decision 0026)."
+                f"Evidence for the review, not a blocker ({_decision('0026')})."
             )
     return " ".join(lines)
 
@@ -709,7 +722,7 @@ def _two_minute(r: Record) -> str:
 def _ddt(r: Record) -> str:
     upcoming = r.checks["upcoming_sectors"]
     rule = (
-        "2-min data and the DDT ask (M3 design, section 4.5): which stars get 2-min data in a sector is decided per "
+        f"2-min data and the DDT ask ({_decision('0026')}): which stars get 2-min data in a sector is decided per "
         "cycle, so tess-point can't say whether these sectors will have it. " + _two_minute(r)
     )
     if not upcoming:
@@ -822,8 +835,9 @@ def _catalogued(r: Record) -> str:
             [row["source"], row["kind"], row["name"], _f(row["period"], ".5f"), masked, overlap]
         )
     note = (
-        f"Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks (decision "
-        "0021); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from the signal's t0, "
+        "Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks "
+        f"({_decision('0021')}); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from "
+        "the signal's t0, "
         f"when its mask window ({cat['mask_width_durations']:g} of its durations, or of "
         f"{cat['fallback_duration_days']:g} d where the catalog gives none) meets it. {len(ours)} transits of "
         "ours have data."
@@ -872,7 +886,8 @@ def _suspect(r: Record) -> str:
     ]
     added = _words(r.checks["dropped_suspect"]) or "none"
     return (
-        "The same vet with the timing-suspect sectors kept in (decision 0022). It is shown for comparison and never "
+        f"The same vet with the timing-suspect sectors kept in ({_decision('0022')}). It is shown for comparison and "
+        "never "
         f"used for the call. Sectors it adds: {added}.\n\n"
         + _table(["Check", "Without them", "With them", "Reason with them"], rows)
     )
