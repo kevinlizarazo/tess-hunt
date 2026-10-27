@@ -1,8 +1,8 @@
 """The DDT ask for a held signal (decision 0039): the proposal, rendered from the signal's published record and from
 `facts.toml`, which names the source and read date of each fact about archives and dates; and the target list the
 TESS office asks for. Numbers are formatted as the dossier formats them, and the template is filled with `substitute`:
-a value the record lacks, or holds as null or NaN, is left out, so its placeholder raises instead of rendering
-(docs/design.md, section 5.5)."""
+a value the record lacks, or holds as null, NaN or an empty list, is left out, so its placeholder raises instead of
+rendering (docs/design.md, section 5.5)."""
 
 import json
 import math
@@ -14,8 +14,10 @@ from string import Template
 from astropy.time import Time
 
 from tess_hunt import calls
-from tess_hunt.dossier import _table, _words
+from tess_hunt.config import load_criteria
+from tess_hunt.dossier import _scrub, _table, _words
 from tess_hunt.predict import seen_utc
+from tess_hunt.provenance import repo_root
 
 # The DDT template's Feasibility section asks how many targets are brighter than this TESS magnitude, since they may
 # need extra-large pixel stamps.
@@ -44,12 +46,29 @@ def _products(sources: dict) -> str | None:
     )
 
 
+def _vet_criteria(record: Path, checks: dict) -> dict:
+    """The vet criteria the checks ran under, from the file the vetting run's provenance names, checked against the
+    sha256 it recorded (as `calls` reads the run's match rule)."""
+    made = json.loads((record / "provenance-checks.json").read_text())
+    [used] = [c for c in made["criteria"] if Path(c["file"]).stem == checks["criteria_version"]]
+    path = repo_root() / used["file"]
+    criteria = load_criteria(path) if path.is_file() else None
+    if criteria is None or criteria.sha256 != used["sha256"]:
+        raise ValueError(f"{used['file']} is not the file the vetting run read")
+    return {
+        "min_training_seasons": str(criteria["holdout"]["min_training_seasons"]),
+        "fpp_pass": f"{criteria['triceratops']['fpp_pass']:g}",
+        "nfpp_pass": f"{criteria['triceratops']['nfpp_pass']:g}",
+    }
+
+
 def _from_checks(checks: dict, sectors: list[int]) -> dict:
     star, eph = checks["star"], checks["ephemeris"]
     check = {c["check"]: c for c in checks["checks"]}
     holdout = check["holdout"]
     seasons = holdout["evidence"]["seasons"]
-    reasons = {s["reason"] for s in seasons}
+    training = {s["training_seasons"] for s in seasons}
+    others = [c for c in checks["checks"] if c["outcome"] != "pass"]
     vetted = sorted(s for family in checks["families"].values() for s in family)
     cadences = sorted({checks["sources"][str(s)]["cadence_s"] for s in vetted}, reverse=True)
     tmag = _number(star["tmag"], ".2f")
@@ -57,6 +76,7 @@ def _from_checks(checks: dict, sectors: list[int]) -> dict:
     found = {
         "signal": checks["signal"]["name"],
         "tic": str(star["tic"]),
+        "criteria": checks["criteria_version"],
         "teff": _number(star["teff"], ".0f"),
         "tmag": tmag,
         "radius_sun": _number(star["rad"], ".2f"),
@@ -73,24 +93,21 @@ def _from_checks(checks: dict, sectors: list[int]) -> dict:
         "n_transits": str(len(checks["catalogued"]["transits"])),
         "products": _products(checks["sources"]),
         "n_checks": str(len(check)),
-        "not_passed": _words(
-            [
-                f"{c['check']} ({c['outcome']}: {c['reason']})"
-                for c in checks["checks"]
-                if c["outcome"] != "pass"
-            ]
-        )
-        or None,
-        "tce": _words([t["name"] for t in check["novelty"]["evidence"].get("tce_matches") or []])
-        or None,
-        "signal_present": check["signal_present"]["reason"],
+        "n_passed": str(len(check) - len(others)),
+        # The checks that did not pass are named as inconclusive only when none of them failed.
+        "inconclusive": _words([c["check"] for c in others])
+        if all(c["outcome"] == "inconclusive" for c in others)
+        else None,
+        "tce": _words([t["name"] for t in check["novelty"]["evidence"].get("tce_matches") or []]),
         "snr": _number(check["signal_present"]["evidence"]["snr"], ".1f"),
-        "holdout": f"{holdout['outcome']}, {holdout['reason']}",
+        "holdout_outcome": holdout["outcome"],
+        "n_seasons": str(len(seasons)),
+        "n_tested": str(sum(s["status"] in ("predicted", "missed") for s in seasons)),
+        # One count stands for every season only when they all have the same number of training seasons.
+        "season_training": str(training.pop()) if len(training) == 1 else None,
         "season_years": _words(
             [Time(s["start"] + 2457000.0, format="jd", scale="tdb").datetime.year for s in seasons]
         ),
-        # One sentence stands for every season only when they all give the same reason.
-        "season_reason": reasons.pop() if len(reasons) == 1 else None,
     }
     prior = checks["fit_prior"]
     if prior is not None:
@@ -135,7 +152,9 @@ def _from_triceratops(path: Path) -> dict:
     return {
         "fpp": _number(evidence["fpp_mean"], ".3g"),
         "nfpp": _number(evidence["nfpp_mean"], ".3g"),
-        "triceratops": f"{record['outcome']}, {record['reason']}",
+        "tric_outcome": record["outcome"],
+        # The runs that finished, as the dossier counts them.
+        "tric_runs": str(len(evidence["fpp"])),
     }
 
 
@@ -151,18 +170,20 @@ def _from_literature(path: Path) -> dict:
 def _from_review(path: Path) -> dict:
     review = calls.load_review(path)
     confirmed = len(calls.confirmed(review))
-    # Each finding's claim, quoted word for word under decision 0037.
-    return {f"review_{f['id']}": f["claim"] for f in review["findings"]} | {
+    # Each finding's claim, quoted word for word under decision 0037, as the dossier quotes it.
+    return {f"review_{f['id']}": _scrub(f["claim"]) for f in review["findings"]} | {
         "review_date": str(review["date"]),
         "review_findings": str(len(review["findings"])),
         "review_confirmed": str(confirmed) if confirmed else "no",
     }
 
 
-def _from_facts(path: Path) -> dict:
-    facts = tomllib.loads(path.read_text())
+def _from_facts(facts: dict, sectors: list[int]) -> dict:
     read = {str(fact["read"]) for fact in facts.values()}
     return {f"fact_{key}": str(fact["value"]) for key, fact in facts.items()} | {
+        # The dates of the sectors asked for: a sector facts.toml gives no date for raises, naming the fact.
+        "first_start": str(facts[f"s{sectors[0]}_start"]["value"]),
+        "last_end": str(facts[f"s{sectors[-1]}_end"]["value"]),
         "fact_sources": "; ".join(dict.fromkeys(fact["source"] for fact in facts.values())),
         # One date stands for every fact, and the sources go without theirs, only when all were read that day.
         "facts_read": read.pop() if len(read) == 1 else None,
@@ -183,13 +204,14 @@ def values(record: Path, facts: Path, sectors: list[int]) -> dict[str, str]:
     search_run = json.loads((record / "provenance-checks.json").read_text())["search_run"]
     found = (
         _from_checks(checks, sectors)
+        | _vet_criteria(record, checks)
         | _from_triceratops(record / "triceratops.json")
         | _from_literature(record / "literature.json")
         | _from_review(record / "review.json")
-        | _from_facts(facts)
+        | _from_facts(tomllib.loads(facts.read_text()), sectors)
         | {
             "call_date": str(call["date"]),
-            "deciding_evidence": call["deciding_evidence"],
+            "deciding_evidence": call["deciding_evidence"] and _scrub(call["deciding_evidence"]),
             "search_run": search_run,
             # A run id opens with the UTC time the run started.
             "search_date": datetime.strptime(search_run.split("-")[0], "%Y%m%dT%H%M%SZ")
@@ -197,7 +219,8 @@ def values(record: Path, facts: Path, sectors: list[int]) -> dict[str, str]:
             .isoformat(),
         }
     )
-    return {key: value for key, value in found.items() if value is not None}
+    # A null, a NaN or an empty list gives no text, so its placeholder stays unfilled rather than rendering blank.
+    return {key: value for key, value in found.items() if value}
 
 
 def render(template: Path, record: Path, facts: Path, sectors: list[int]) -> str:

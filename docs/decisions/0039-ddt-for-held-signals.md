@@ -15,12 +15,13 @@ only when the deciding evidence is the transit's shape. A hold on blending does 
 the same 21" pixels. That reason still holds.
 
 The rule leaves out a case M4 found: a hold that needs a season the public products won't deliver. Every held star
-with a sector ahead is FFI-only in those sectors, and those are its last sectors through S134 (tess-point). QLP on
-MAST stops at a partial S105, with nothing for S106 or later, and has not redelivered S99 to S104, whose timestamps
-are suspect ([0022](0022-vet-without-timing-suspect-sectors.md)); TESS-SPOC's FFI light curves stop at S85
-([facts.toml](../../results/ddt/241522065-1/facts.toml), each fact with its source and the date it was read). So for
-these stars the sectors ahead become light curves only through QLP, which has stalled, through 2-min data, which
-need a DDT ask, or through the project's own FFI photometry, which the spec leaves out of scope.
+with a sector ahead had only FFI data in the sectors fetched, except 423100454 in S12, and the sectors ahead are its
+last through S134 (tess-point). QLP on MAST stops at a partial S105, with nothing for S106 or later, and has not
+redelivered S99 to S104, whose timestamps are suspect ([0022](0022-vet-without-timing-suspect-sectors.md));
+TESS-SPOC's FFI light curves stop at S85 ([facts.toml](../../results/ddt/241522065-1/facts.toml), each fact with its
+source and the date it was read). So for these stars the sectors ahead become light curves only through QLP, which
+has stalled, through 2-min data, which need a DDT ask, or through the project's own FFI photometry, which the spec
+leaves out of scope.
 
 241522065-1 is held only for a third season ([its call](../../results/vetting/241522065-1/call.toml)): its two
 seasons with trustworthy timestamps can't test each other, so the held-out check is inconclusive. S112 to S114 would
@@ -41,7 +42,8 @@ season could not test the prediction either; with TESS-SPOC stopped, only SPOC 2
 - **Which signals qualify now:** only 241522065-1. Of the other five held signals with a sector ahead:
   - 103312990-1 (S110 to S113): its season would give the held-out check a second testable season, but the hold also
     rests on a nearby eclipsing binary that is not excluded and on an unresolved companion, which 2-min data from the
-    same pixels don't decide. Its QLP family also has training data, so a QLP season could test it.
+    same pixels don't decide. And it has QLP training data, so a QLP season could test its prediction if QLP
+    resumed; 241522065-1 has none.
   - 296819076-1 (S114): held on blending: the transit's loss may sit on stars west of the target, which takes
     seeing-limited photometry.
   - 399023421-1 (S112 to S114): held on blending: three faint background stars TRICERATOPS can't separate from the
