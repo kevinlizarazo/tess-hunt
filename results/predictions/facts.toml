@@ -1,0 +1,25 @@
+# Facts about archives that the predictions packages state. Each names the page it was read from and the date it was
+# read; the packages' templates read only `value`.
+
+[zenodo_edit_days]
+value = 30
+note = "Within 30 days after publication the owner can edit the uploaded files of a record; after that only in duly justified cases, such as copyright infringement or exposure of personal data (pin Z1)."
+source = "https://help.zenodo.org/docs/deposit/manage-files/"
+read = "2026-10-27"
+
+[tess_spoc_last_sector]
+value = 85
+source = "https://archive.stsci.edu/hlsp/tess-spoc"
+read = "2026-10-27"
+
+[qlp_last_sector]
+value = 105
+note = "S105 is partial; MAST holds nothing for S106 or later."
+source = "https://archive.stsci.edu/hlsps/qlp/"
+read = "2026-10-27"
+
+[raven]
+value = "Lafarga et al. 2026, MNRAS, https://doi.org/10.1093/mnras/stag512, arXiv:2603.22597"
+note = "The page of the article's online material, Zenodo record 19661443, from which the catalog snapshot read RAVEN's table (nsfp09_table.csv); it gives the article's DOI and arXiv id and the journal."
+source = "https://zenodo.org/records/19661443"
+read = "2026-10-27"

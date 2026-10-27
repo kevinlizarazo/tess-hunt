@@ -1,0 +1,126 @@
+# 0040: Held signals get a public prediction of their next season, judged by the held-out check's own test
+
+- Date: 2026-10-27
+- Status: Accepted. Made in the M4 design and approved by the maintainer with it on 2026-10-27. Four choices the M4
+  build's controller made on 2026-10-27, stated in full under Decision, are the controller's, with no acceptance by the
+  maintainer recorded: the package records what the held-out check's two training gates read (PF5); the index of
+  packages reads an optional `dois.toml` (PF6); the archive facts the package states come from a committed
+  `results/predictions/facts.toml`, the sector dates from `benchmarks/tess_sectors.csv`, and the judging date is this
+  record's rule, one constant in `prereg.py`; and RAVEN's citation is a fact in that file, read from its Zenodo record,
+  because the record's literature search holds no RAVEN paper.
+
+## Context
+
+The spec preregisters only a passed candidate's transit windows ([0024](0024-density-prior-fit-and-windows.md)). Six
+held signals have TESS sectors ahead: 103312990-1 (S110 to S113), 241522065-1 (S112 to S114), 296819076-1 (S114),
+399023421-1 (S112 to S114), 423100454-1 (S113) and 438857197-1 (S112 and S114). For each, those sectors are the last
+TESS gives through S134 (tess-point, M4 design section 3), so a prediction public before them is the only one any of
+them will get from TESS.
+
+The record's windows come from the density-prior fit (0024), but the held-out season check never reads them. With a
+season held out it refits the period on the other seasons near the search's ephemeris (`checks.holdout`) and measures
+depth only in each predicted transit's core. With the new season held out, the other seasons are exactly the M3 light
+curve, so the prediction the check will judge is fixed now. A deposit on Zenodo can have its files edited for 30 days
+after publishing ([facts.toml](../../results/predictions/facts.toml)), so a prediction is locked only for sectors that
+start after that.
+
+## Decision
+
+- **Which signals and sectors.** Each held signal with a window sector that starts on or after the lock start, the
+  date the deposit's files lock (`--lock-start`). Deposited by 2026-11-20, the files lock by 2026-12-20, so
+  103312990-1's S110 and S111 are left out and named with the reason; every other sector above is predicted. Only a
+  published record whose call is `held` is predicted.
+- **What is judged.** The prediction the test will judge, computed now: `holdout.refit_ephemeris` on the M3 light
+  curve (the vetting run's sectors, timing-suspect sectors left out, its masks, its red-noise depth errors, as
+  `vet.prepare` makes it), the core half-width, and each predicted transit's mid-time in the predicted sectors; and the
+  reference, `holdout.reference` over every M3 cadence: the training depth, error and cadence count in those cores,
+  pooled and per product family. Beside them the package records what the check's two training gates read: the M3
+  seasons, which of them hold a transit in their data, and `min_training_seasons` (the controller's ruling PF5, so a
+  re-vet can apply the gates from the package alone).
+- **What is not judged.** The density-prior fit's windows from each record's `checks.json`, copied unchanged with
+  their standard deviations, for anyone checking by eye. The package says they are not what is judged.
+- **The test.** vet-v3's `[holdout]` measurement and thresholds as `criteria/vet-v3.toml` holds them, applied to the
+  new season with the published prediction and reference in place of a fresh refit (`holdout.judge`): seasons split at
+  gaps over `season_gap_days`, the two training gates, depths in the cores, the expected SNR and the depth tension
+  compared within a family. The result per signal is the new season's status: replicated (`predicted`), missed
+  (`missed`) or untested (`underpowered`, `untestable`, `no_predicted_transit_in_data`, or no light curve). On an
+  unchanged M3 light curve this is exactly what `checks.holdout` computes for that season, and a test proves it. Judging
+  with the published numbers keeps the result fixed if a re-vet's training data later change (a QLP redelivery, a new
+  mask). No rule is new: vet-v3 was frozen before M3's first control ran.
+- **The data that can test it.** A held-out season is testable only in a product family that has training data
+  ([0023](0023-product-families.md)), so the package names, per signal, the products of each family with at least
+  `[holdout] min_points` training cadences in the cores: SPOC 2-min and TESS-SPOC for the PDCSAP family, QLP for the
+  QLP family. fetch takes one product per sector, so a season that mixes in a sector of a family with no training data
+  is untestable as a whole. Any other product, the project's own FFI photometry included, needs a decision record,
+  made before it is run on these stars, saying how the test applies to it.
+- **When it is judged.** Once per signal, on the complete season: at the first re-vet whose light curve covers every
+  predicted sector for that star with data the test can use, or, failing that, on 2027-12-31, when whatever is
+  untested stays untested. Re-vets before then may run, but report the result as pending. A season runs from gap to
+  gap, so 103312990-1's season holds S110 and S111 as well as the predicted S112 and S113; their cadences stay in it,
+  as vet-v3 counts them, and the package says so.
+- **What a result means.** A replicated season shows the dip is real, periodic and where it was predicted. It does not
+  show the dip is on the target: the blending holds stay until their own evidence comes. The held-out check as a whole
+  fails when two or more seasons are tested and one is missed, which is a failed vet-v3 check and a ground for a kill
+  under [0028](0028-outcomes-and-calls.md). With fewer than two tested it stays inconclusive, and a missed new season
+  is then evidence against the signal that the maintainer weighs in the call, not a failed check. The package states
+  both cases.
+- **The package.** `tess-hunt predictions run --vetting-run DIR --records NAME ... --catalogs SNAP --lock-start DATE
+  --production` writes it into one run directory: `predictions.csv` (one row per predicted transit), `references.json`
+  (per signal, the refit, the reference, the gates' inputs, the families, the products that can test it and the sectors
+  left out; and the test's criteria values), `windows.csv` (the observers' windows), `README.md`, `zenodo.md` (the
+  deposit's title, description, keywords and licence, naming no person) and a copy of `facts.toml`. It refuses a
+  record whose call is not `held`, a record whose `checks.json` is not the vetting run's file for that signal, a light
+  curve whose sha256 is not the one the vetting run recorded, a catalog snapshot, criteria or sectors file other than
+  the run's. `tess-hunt predictions publish --run RUN_ID` copies a production run's package into
+  `results/predictions/<run id>/` and renders `results/predictions/README.md`, the index of packages, which reads an
+  optional `results/predictions/dois.toml` (package run id to DOI and publication date) and shows "DOI pending"
+  without it (the controller's ruling PF6); `tess-hunt predictions index` renders the index again. The maintainer
+  deposits each package as one Zenodo record and records its DOI there.
+- **Where the words and numbers come from** (`docs/design.md`, section 5.5). The README and the Zenodo text are filled
+  with `substitute`: the numbers from the run, the records and the criteria file the run read; the archive facts (the
+  Zenodo window, the last TESS-SPOC and QLP sectors, RAVEN's citation) from `results/predictions/facts.toml`, each
+  with its source and read date; the sector dates from `benchmarks/tess_sectors.csv` as vet-v3's `[predict]` reads it;
+  the judging date from this record (`prereg.JUDGED_BY`). A value missing, null or NaN raises. 399023421-1's section
+  quotes its review's F9 (the timing-suspect QLP transits arrive 30 to 50 minutes after the windows) and F4 (the RAVEN
+  row is most likely a 5:2 alias of this signal) word for word ([0037](0037-quoted-text-in-the-dossier.md)), gives
+  RAVEN's period from the record's catalogued row and cites RAVEN from `facts.toml`, read from Zenodo record 19661443,
+  the record the catalog snapshot took RAVEN's table from. The package holds no Gaia data, so it is CC BY 4.0 whole.
+
+## Limitations
+
+- Four of the six signals have training data only in the PDCSAP family, and TESS-SPOC's FFI light curves stop at S85
+  (`facts.toml`), so only SPOC 2-min data can test their predictions. They are predicted anyway: a public prediction
+  costs a row, and anyone can check it by eye. For 241522065-1 a QLP season could still make its two old seasons
+  testable and lift its hold while the predicted season itself stays untested; vet-v3 allows that, and the re-vet's
+  dossier must say which happened.
+- A miss on drift counts as a miss. 399023421-1's review found its timing-suspect QLP transits running late against
+  the windows by about the half-width of a core (F9); if the refit drifts the same way, the test can call a real
+  transit missed. The test is the prediction, so the package quotes the finding and does not move the refit.
+- The windows are not judged. They come from another fit and can sit far from the refit: 296819076-1's come from a
+  PDCSAP-only fit whose 3-sigma half-width is wider than its period, while the refit also uses QLP S65. A transit
+  found inside a window but outside the refit's cores is a miss.
+- Which sectors fall in the new season is judged from the sectors' dates; the test itself splits seasons on the
+  cadences the re-vet's light curve holds.
+- The lock rests on Zenodo's file window as read on the date `facts.toml` gives, and Zenodo can still change a
+  record's files "in duly justified cases". The package is made for a deposit by 2026-11-20; deposited later, its
+  files lock later than the lock start it states.
+
+## Evidence
+
+- [tests/test_prereg.py](../../tests/test_prereg.py): `test_prediction_equals_holdout_refit` (with each season of a
+  three-season light curve removed, the prediction and reference equal holdout's row for that season, the gates'
+  counts included), `test_sectors_before_the_lock_are_left_out`, `test_testable_routes`,
+  `test_observer_windows_equal_the_records`, `test_package_fails_on_a_missing_value`,
+  `test_399023421_section_quotes_the_review_and_cites_raven`, `test_predictions_run_and_publish` (a production run,
+  its publication, the index with and without `dois.toml`), `test_refuses_a_light_curve_the_vetting_run_did_not_read`,
+  `test_refuses_a_record_not_held`, `test_refuses_inputs_other_than_the_vetting_runs`,
+  `test_publish_refuses_a_run_that_was_not_production`, `test_the_committed_index_is_its_render`.
+- The M4 build's check of the prediction on the M3 light curves of 423100454-1, 399023421-1 and 438857197-1, each
+  season with a refit removed in turn, against the season rows of their published `checks.json`.
+- [results/predictions/](../../results/predictions/): `facts.toml`, the index and, once published, the package.
+- The six calls: [103312990-1](../../results/vetting/103312990-1/call.toml),
+  [241522065-1](../../results/vetting/241522065-1/call.toml),
+  [296819076-1](../../results/vetting/296819076-1/call.toml),
+  [399023421-1](../../results/vetting/399023421-1/call.toml),
+  [423100454-1](../../results/vetting/423100454-1/call.toml),
+  [438857197-1](../../results/vetting/438857197-1/call.toml).
