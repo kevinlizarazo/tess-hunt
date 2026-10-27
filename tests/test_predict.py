@@ -1,9 +1,11 @@
+import socket
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 from astropy.time import Time
+from astropy.utils import iers
 
 from tess_hunt import predict
 from tess_hunt.config import load_criteria
@@ -88,6 +90,36 @@ def test_upcoming_sectors_leave_out_observed_sectors_and_a_star_off_the_cameras(
     found.update({1: [35, 62, 110, 111, 111, 113], 2: [-1]})
     assert predict.upcoming_sectors(1, 0.0, 0.0, 110) == [110, 111, 113]
     assert predict.upcoming_sectors(2, 0.0, 0.0, 110) == []
+
+
+def test_mid_utc_is_when_the_transit_is_seen_from_earth(monkeypatch):
+    # Offline: no socket opens, and an IERS lookup would read only astropy's bundled table, which ends before these
+    # dates and raises. A table another test loaded is dropped first, so none hides a lookup.
+    def refuse(*args, **kwargs):
+        raise OSError("no network in this test")
+
+    monkeypatch.setattr(socket.socket, "connect", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+    monkeypatch.setattr(iers.conf, "auto_download", False)
+    monkeypatch.setattr(iers.IERS_Auto, "iers_table", None)
+    # The milestone review's times from Earth, from Earth's barycentric position. Read as TDB without the light's
+    # travel time, 423100454-1's epoch 197 was 15:27.
+    stars = {
+        "423100454-1": (240.065424623734, -55.5634985842455),
+        "241522065-1": (206.303246517049, -53.3085956790006),
+        "103312990-1": (156.829227880851, -47.5203964706134),
+    }
+    for name, btjd, seen in (
+        ("423100454-1", 4426.14466314464, "2027-01-20 15:31"),
+        ("423100454-1", 4440.330851772605, "2027-02-03 19:58"),
+        ("241522065-1", 4397.964907870579, "2026-12-23 11:12"),
+        ("241522065-1", 4415.401623187308, "2027-01-09 21:40"),
+        ("241522065-1", 4432.83834174134, "2027-01-27 08:07"),
+        ("103312990-1", 4344.562970275405, "2026-10-31 01:33"),
+        ("103312990-1", 4352.086115150675, "2026-11-07 14:06"),
+        ("103312990-1", 4359.609270087955, "2026-11-15 02:39"),
+    ):
+        assert predict.seen_utc(btjd, *stars[name]) == seen, (name, btjd)
 
 
 @pytest.mark.network

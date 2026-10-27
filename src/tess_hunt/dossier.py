@@ -8,13 +8,8 @@ import re
 from pathlib import Path
 from string import Template
 
-import astropy.units as u
-import numpy as np
-from astropy.constants import c
-from astropy.coordinates import get_body_barycentric
-from astropy.time import Time, TimeDelta
-
 from tess_hunt import calls
+from tess_hunt.predict import seen_utc
 from tess_hunt.provenance import scrub, unname
 
 PAGE = Template("""\
@@ -177,6 +172,7 @@ DECISIONS = {
     "0028": "0028-outcomes-and-calls.md",
     "0037": "0037-quoted-text-in-the-dossier.md",
     "0038": "0038-literature-trim-and-username-scrub.md",
+    "0039": "0039-ddt-for-held-signals.md",
 }
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
@@ -765,23 +761,6 @@ def _real_new(r: Record) -> str:
     return _list(items) + "\n\n" + _exofop(r)
 
 
-def _utc(btjd: float, star: dict) -> str:
-    """The mid-time as seen from Earth, in UTC: BJD_TDB less the light's travel time between the geocentre and the
-    barycentre toward the star, which runs to about 8 minutes either way. The travel time is taken at the geocentric
-    time, found by one iteration from the barycentric one. Earth's position comes from ERFA's built-in ephemeris, so
-    nothing here needs IERS tables or the network."""
-    ra, dec = np.radians(star["ra"]), np.radians(star["dec"])
-    toward = np.array([np.cos(dec) * np.cos(ra), np.cos(dec) * np.sin(ra), np.sin(dec)])
-
-    def delay(t: Time) -> TimeDelta:
-        earth = get_body_barycentric("earth", t, ephemeris="builtin").xyz.to_value(u.m)
-        return TimeDelta(earth @ toward / c.value, format="sec")
-
-    bjd = Time(btjd + 2457000.0, format="jd", scale="tdb")
-    seen = bjd - delay(bjd - delay(bjd))
-    return seen.utc.strftime("%Y-%m-%d %H:%M")
-
-
 def _two_minute(r: Record) -> str:
     sources = r.checks["sources"]
     spoc = sorted(
@@ -826,9 +805,10 @@ def _ddt(r: Record) -> str:
         )
     if outcome == "held":
         return rule + (
-            " Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the "
-            "transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding "
-            f"evidence: {r.call['deciding_evidence']}"
+            " Held: the DDT ask applies only on the maintainer's call and only when 2-min data would supply its "
+            "deciding evidence: the transit's shape, or a season no public light curve will otherwise cover; a hold "
+            "on blending does not go, since 2-min data come from the same pixels "
+            f"({_decision('0039')}). Deciding evidence: {r.call['deciding_evidence']}"
         )
     return rule + " Killed: no DDT ask."
 
@@ -854,7 +834,7 @@ def _looks(r: Record) -> str:
                 w["sector"],
                 w["epoch"],
                 f"{w['mid_btjd']:.3f}",
-                _utc(w["mid_btjd"], c["star"]),
+                seen_utc(w["mid_btjd"], c["star"]["ra"], c["star"]["dec"]),
                 f"{w['sd_minutes']:.1f}",
                 *(f"{w['half_width_minutes'][s]:.1f}" for s in sigmas),
             ]
