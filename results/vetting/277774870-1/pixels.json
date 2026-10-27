@@ -1,0 +1,66 @@
+{
+  "check": "pixels",
+  "evidence": {
+    "asked": [
+      104,
+      103,
+      102,
+      95,
+      94,
+      68,
+      67,
+      28,
+      27,
+      1
+    ],
+    "files": {
+      "tic277774870/imageData_277774870.1_sector102.pickle": "004bf4765f7c077661aec192ee6ab852d990211d64697a8c858a016e51e8254c",
+      "tic277774870/imageData_277774870.1_sector103.pickle": "7c81cd7b7ba3225125a6c71dc591827152597c73f0b387a0f9db892a76c6679c",
+      "tic277774870/imageData_277774870.1_sector104.pickle": "8883edab45e722258cf3566d0365f29d1d0f0850ef177502d708f0fc612d225f",
+      "tic277774870/imageData_277774870.1_sector68.pickle": "c759f5abca635f36a3dd7442422bd02c7fa56285d9341a38396a2a42459a70b3",
+      "tic277774870/imageData_277774870.1_sector94.pickle": "37d5fe01485db4a6fb7d074caebceb4e856304e7563097eb484b471f78847e74",
+      "tic277774870/imageData_277774870.1_sector95.pickle": "23c67aa0ec47d6a4f98cf54a38d1062878cf21d0c22ae844c79ff11821d2e8f3",
+      "tic277774870/ticKey_tic277774870.txt": "02a00cba370782d23a2f03ce71a0ebbd9d15e9f8610b051a869d20ceef9ddfbb"
+    },
+    "no_image": [],
+    "offset_mean_arcsec": 5.636199325507386,
+    "offset_qual_arcsec": 2.987733286118335,
+    "sectors": [
+      {
+        "offset_arcsec": 6.345152910000801,
+        "quality": 0.7287829907304111,
+        "sector": 104
+      },
+      {
+        "offset_arcsec": 9.527576406958193,
+        "quality": 0.6704433885976501,
+        "sector": 102
+      },
+      {
+        "offset_arcsec": 2.2965385389110478,
+        "quality": 0.7807668576111537,
+        "sector": 95
+      },
+      {
+        "offset_arcsec": 2.987733286118335,
+        "quality": 0.8176630817961262,
+        "sector": 94
+      },
+      {
+        "offset_arcsec": 8.482276129469339,
+        "quality": 0.5788417266001513,
+        "sector": 68
+      }
+    ],
+    "stale_removed": []
+  },
+  "max_offset_arcsec": 15.0,
+  "outcome": "pass",
+  "reason": "centroid offset 3.0\" within 15\"",
+  "signal": {
+    "name": "277774870-1",
+    "tic": 277774870
+  },
+  "triage_run": "20261015T155441Z-triage-7b12e25-3f57",
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

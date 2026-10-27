@@ -1,0 +1,55 @@
+============================= test session starts ==============================
+collecting ... collected 16 items / 14 deselected / 2 selected
+
+tests/test_neighbours.py::test_nearby_eb_controls_show_a_possible_host[1058.01-6757952644494426624-6757952648798471040] PASSED [ 50%]
+tests/test_neighbours.py::test_nearby_eb_controls_show_a_possible_host[1175.01-2039904204830244096-2039904204830247296] PASSED [100%]
+
+==================================== PASSES ====================================
+_ test_nearby_eb_controls_show_a_possible_host[1058.01-6757952644494426624-6757952648798471040] _
+----------------------------- Captured stdout call -----------------------------
+The current archive release 3.15 contains two breaking changes. Please see https://www.cosmos.esa.int/web/gaia/news#GACSrelease315 for details. In case of questions or feedback, please consult the Gaia helpdesk at https://www.cosmos.esa.int/web/gaia/gaia-helpdesk.
+INFO: Query finished. [astroquery.utils.tap.core]
+INFO: Removed jobs: '['1efe660e-ce7c-11f1-9d98-bc97e148b76b-O']'. [astroquery.utils.tap.core]
+INFO: Query finished. [astroquery.utils.tap.core]
+INFO: Removed jobs: '['203b04ce-ce7c-11f1-9d98-bc97e148b76b-O']'. [astroquery.utils.tap.core]
+TOI-1058.01 (TIC 31553893): depth 974 ppm, Tmag 9.3781
+pass: 7 of 91 neighbours could host the signal
+  6757952648798471040: 20.95", required depth 0.0367
+  6757952610134815872: 24.07", required depth 0.7358
+  6757952717517952256: 35.13", required depth 0.1042
+  6757952717517951616: 38.57", required depth 0.5982
+  6757952717517955072: 38.96", required depth 0.0780
+  6757952816293249024: 57.59", required depth 0.3021
+  6757952747573780608: 59.49", required depth 0.5099
+------------------------------ Captured log call -------------------------------
+INFO     astroquery:core.py:481 Query finished.
+INFO     astroquery:core.py:1331 Removed jobs: '['1efe660e-ce7c-11f1-9d98-bc97e148b76b-O']'.
+INFO     astroquery:core.py:481 Query finished.
+INFO     astroquery:core.py:1331 Removed jobs: '['203b04ce-ce7c-11f1-9d98-bc97e148b76b-O']'.
+_ test_nearby_eb_controls_show_a_possible_host[1175.01-2039904204830244096-2039904204830247296] _
+----------------------------- Captured stdout call -----------------------------
+INFO: Query finished. [astroquery.utils.tap.core]
+INFO: Removed jobs: '['218f4a3a-ce7c-11f1-9d98-bc97e148b76b-O']'. [astroquery.utils.tap.core]
+INFO: Query finished. [astroquery.utils.tap.core]
+INFO: Removed jobs: '['22c9c613-ce7c-11f1-9d98-bc97e148b76b-O']'. [astroquery.utils.tap.core]
+TOI-1175.01 (TIC 30329585): depth 1760 ppm, Tmag 10.2026
+pass: 13 of 82 neighbours could host the signal
+  2039904204830242304: 6.70", required depth 0.0496
+  2039904204830240000: 20.24", required depth 0.5859
+  2039904204830247296: 23.54", required depth 0.0489
+  2039904234883618048: 36.04", required depth 0.0921
+  2039904131803542528: 39.49", required depth 0.0163
+  2039904136102407424: 40.46", required depth 0.5234
+  2039904170470493056: 41.15", required depth 0.1980
+  2039904410980387584: 43.42", required depth 0.7794
+  2039904410991095552: 44.13", required depth 0.5479
+  2039904239189973632: 44.17", required depth 0.4546
+  2039902933519937664: 49.02", required depth 0.7019
+  2039904239189972224: 54.67", required depth 0.8121
+  2039904239189977984: 58.73", required depth 0.6063
+------------------------------ Captured log call -------------------------------
+INFO     astroquery:core.py:481 Query finished.
+INFO     astroquery:core.py:1331 Removed jobs: '['218f4a3a-ce7c-11f1-9d98-bc97e148b76b-O']'.
+INFO     astroquery:core.py:481 Query finished.
+INFO     astroquery:core.py:1331 Removed jobs: '['22c9c613-ce7c-11f1-9d98-bc97e148b76b-O']'.
+====================== 2 passed, 14 deselected in 31.12s =======================

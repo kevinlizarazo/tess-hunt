@@ -3,6 +3,7 @@ false-alarm tests, and the guards that tie a production search to it."""
 
 import json
 import math
+import subprocess
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import replace
@@ -31,6 +32,10 @@ from tess_hunt.search import (
 # trace-back to call it made of them. The trace-back is evidence for the maintainer's review and decides
 # nothing, so this is not a criterion.
 OWN_TRANSITS_SHARE = 0.5
+
+# LEO-Vetter's code is the leo-vetter that uv.lock pins and this wrapper; its settings are criteria, and the
+# detrend and light-curve code it calls is in the search code hash, both checked apart.
+LEO_WRAPPER = "src/tess_hunt/leo.py"
 
 # The trace-back's fields when it cannot say either way.
 UNTRACED = {
@@ -249,6 +254,8 @@ def check_reproducible(provenance: dict, targets: Path, ran: str) -> Criteria:
     """Refuse a --targets, search criteria file or search code other than the ones the run behind
     `provenance` used, and return its search criteria. Search code runs again on that run's light curves
     (the null's scramble, the detrend LEO-Vetter sees), so it must be the code the run ran."""
+    if not targets.is_file():
+        raise SystemExit(f"--targets {targets.name} does not exist")
     if provenance["inputs"].get("targets", {}).get("sha256") != sha256_file(targets):
         raise SystemExit(f"--targets differs from the targets the {ran} searched")
     crit_search = load_criteria(Path(provenance["criteria"][0]["file"]))
@@ -259,20 +266,55 @@ def check_reproducible(provenance: dict, targets: Path, ran: str) -> Criteria:
     return crit_search
 
 
+def check_leo_code(provenance: dict, root: Path, wrapper: str = LEO_WRAPPER) -> list[str]:
+    """Why LEO-Vetter in the checkout at `root` may not judge as it did in the run behind `provenance`;
+    empty when it judges the same. A threshold counts the null signals LEO-Vetter passed, so a stage that
+    judges signals against it must run the same LEO-Vetter. `wrapper` is our code around the part of
+    LEO-Vetter in question: the flux tests' by default, `pixels.py` for the pixel check."""
+    problems = []
+    if sha256_file(root / "uv.lock") != provenance["uv_lock_sha256"]:
+        problems.append("uv.lock differs from the one the run used")
+    commit = provenance["git"]["commit"]
+    # The commit's wrapper is the run's only when the run's tree had not changed it.
+    if wrapper in provenance["git"]["dirty_paths"]:
+        problems.append(f"{wrapper} had uncommitted changes when the run ran")
+    ran = subprocess.run(["git", "show", f"{commit}:{wrapper}"], cwd=root, capture_output=True)
+    if ran.returncode != 0:
+        problems.append(f"{wrapper} at {commit[:7]} cannot be read from this checkout")
+    elif ran.stdout != (root / wrapper).read_bytes():
+        problems.append(f"{wrapper} differs from the one at {commit[:7]}")
+    return problems
+
+
+def _searched(stars: pd.DataFrame) -> dict[int, str]:
+    """Each sample star's light-curve sha256 in a search's stars table."""
+    sample = stars[~stars["control"].astype(bool)]
+    return dict(zip(sample["tic"].astype(int), sample["lc_sha256"], strict=True))
+
+
 def check_light_curves(
     stars: pd.DataFrame, tics: list[int], workers: int, searched_by: str
 ) -> None:
     """Refuse when the light curve of any of `tics` is gone or differs from the one the run whose stars
     table is `stars` searched: a refetch changes the times and fluxes LEO-Vetter would judge."""
-    sample = stars[~stars["control"].astype(bool)]
-    searched = dict(zip(sample["tic"].astype(int), sample["lc_sha256"], strict=True))
+    searched = _searched(stars)
     now = run_jobs(_lc_sha256, tics, workers)
     changed = [t for t, sha in zip(tics, now, strict=True) if sha is None or sha != searched.get(t)]
     if changed:
+        noun = "star" if len(changed) == 1 else "stars"
         raise SystemExit(
-            f"the light curves of {len(changed)} {searched_by} stars differ from the ones the "
+            f"the light curves of {len(changed)} {searched_by} {noun} differ from the ones the "
             f"{searched_by} searched: {changed[:10]}"
         )
+
+
+def check_null_light_curves(
+    null_stars: pd.DataFrame, search_stars: pd.DataFrame, tics: list[int]
+) -> list[int]:
+    """The `tics` whose light curve differs between a null's stars table and a search's, or that the null
+    did not search: the threshold measured false alarms on the null's light curves."""
+    null, search = _searched(null_stars), _searched(search_stars)
+    return [t for t in tics if not isinstance(null.get(t), str) or null[t] != search.get(t)]
 
 
 def load_v2_catalog(snapshot: Path) -> pd.DataFrame:

@@ -1,0 +1,6 @@
+sector,start_utc,end_utc,source,read_on
+110,2026-10-31T00:00:00,2026-11-26T00:00:00,https://tess.mit.edu/observations/sector-110/,2026-10-16
+111,2026-11-26T00:00:00,2026-12-22T00:00:00,https://tess.mit.edu/observations/sector-111/,2026-10-16
+112,2026-12-22T00:00:00,2027-01-17T00:00:00,https://tess.mit.edu/observations/sector-112/,2026-10-16
+113,2027-01-17T00:00:00,2027-02-13T00:00:00,https://tess.mit.edu/observations/sector-113/,2026-10-16
+114,2027-02-13T00:00:00,2027-03-14T00:00:00,https://tess.mit.edu/observations/sector-114/,2026-10-16

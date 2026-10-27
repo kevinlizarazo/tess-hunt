@@ -1,4 +1,6 @@
 import json
+import shutil
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -37,11 +39,6 @@ PLANET = {
     "planet_snr": 40.0,
     "required": True,
 }
-# Grouping completeness_map's two interval columns, pandas fails to hash the intervals and falls
-# back through a cast that warns.
-INTERVAL_CAST = pytest.mark.filterwarnings(
-    "ignore:invalid value encountered in cast:RuntimeWarning"
-)
 
 
 def sig(period, t0=100.0, sde=20.0, rank=1):
@@ -106,6 +103,41 @@ def test_injection_job_marks_a_star_not_covered_after_fetch(tmp_path):
     assert all(r["lc_sha256"] == sha256_file(path) and "engine" not in r for r in rows)
 
 
+REPLAY_ROW = {
+    "injection": 4,
+    "inj_period": 4.3008701448475755,
+    "inj_t0": 1325.9997328314087,
+    "inj_rp_rearth": 9.0,
+    "inj_b": 0.2,
+    "inj_rp_rs": 0.0824,
+    "inj_a_rs": 12.6,
+    "inj_duration": 0.12,
+}
+
+
+def test_injection_job_records_a_malformed_replay_row(tmp_path):
+    path = tmp_path / "1.npz"
+    make_lc(sectors=(1, 2, 3), seed=3).save(path)
+    replay = [{**REPLAY_ROW, "inj_period": "not a number"}]
+    rows = injection_job((SUN, path, [], CRIT, ["bls30"], 1, 11, replay, LEVEL))
+    assert [r["status"] for r in rows] == ["error"] and rows[0]["injection"] == 4
+    assert rows[0]["error"].startswith("ValueError: ")
+
+
+def test_injection_job_names_the_engine_that_raised(tmp_path, monkeypatch):
+    path = tmp_path / "1.npz"
+    make_lc(sectors=(1, 2, 3), noise_ppm=300.0, seed=3).save(path)
+    covered = load_criteria(relaxed_criteria(tmp_path)).values
+
+    def search(flat, rstar, mstar, cfg, rho):
+        raise RuntimeError("no spectrum")
+
+    monkeypatch.setattr("tess_hunt.benchmark.search_star", search)
+    rows = injection_job((SUN, path, [], covered, ["bls30"], 1, 11, [REPLAY_ROW], LEVEL))
+    assert [r["status"] for r in rows] == ["error"]
+    assert rows[0]["error"] == "bls30: RuntimeError: no spectrum"
+
+
 def test_known_job_flags_a_host_missing_from_targets(tmp_path):
     path = tmp_path / "1.npz"
     make_lc(noise_ppm=300.0, signals=[(4.3, 1326.0, 0.12, 0.003)], seed=3).save(path)
@@ -143,7 +175,7 @@ def test_known_job_records_a_bad_star_row_as_a_required_miss(tmp_path, monkeypat
     "mode",
     [
         "known",
-        pytest.param("inject", marks=INTERVAL_CAST),
+        "inject",
     ],
 )
 def test_benchmark_records_the_fetch_manifest(mode, tmp_path, monkeypatch):
@@ -238,7 +270,41 @@ def test_completeness_fractions():
     assert list(table["fraction"]) == [0.5, 1.0] and list(table["count"]) == [2, 2]
 
 
-@INTERVAL_CAST
+def test_completeness_bins_up_to_an_infinite_edge_without_a_cast_warning():
+    rows = pd.DataFrame(
+        {
+            "status": "ok",
+            "engine": "bls30",
+            "expected_snr": np.linspace(1.0, 99.0, 100),
+            "recovered": np.arange(100) % 2 == 0,
+        }
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        table = completeness(rows, "expected_snr", SNR_EDGES)
+    assert list(table["bin"]) == [str(i) for i in pd.IntervalIndex.from_breaks(SNR_EDGES, "left")]
+    assert table["count"].sum() == 100 and table["bin"].iloc[-1] == "[50.0, inf)"
+
+
+def test_completeness_map_labels_every_cell_without_a_cast_warning():
+    rows = pd.DataFrame(
+        {
+            "status": "ok",
+            "engine": "bls30",
+            "inj_period": [1.5, 3.0, 30.0],
+            "inj_rp_rearth": [0.7, 3.0, 9.0],
+            "recovered": [True, False, True],
+        }
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        table = completeness_map(rows, "bls30")
+    cells = table.set_index(["radius_bin", "period_bin"])
+    assert len(table) == 25 and cells.loc[("[0.5, 1.0)", "[1, 2)"), "fraction"] == 1.0
+    assert cells.loc[("[2.0, 4.0)", "[2, 4)"), "count"] == 1
+    assert cells.loc[("[8.0, 16.0)", "[16, 40)"), "recovered"] == 1
+
+
 def test_completeness_of_a_run_with_no_searched_rows_is_empty():
     # Only searched rows carry an engine column, so these rows have none.
     rows = pd.DataFrame({"tic": [1, 2], "status": ["error", "not_covered_after_fetch"]})
@@ -288,6 +354,17 @@ def test_publish_refuses_a_missing_or_unfinished_run(tmp_path, monkeypatch):
         publish("r1", tmp_path, monkeypatch)
 
 
+def test_publish_refuses_a_path_for_a_run_id(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    run = tmp_path / "data" / "runs" / "r4"
+    run.mkdir(parents=True)
+    (run / "provenance.json").write_text(json.dumps({"ended_at": "2026-10-13T00:00:00+00:00"}))
+    for given in (str(run), "runs/r4", "..", "."):
+        with pytest.raises(SystemExit, match="not a run id"):
+            publish(given, tmp_path, monkeypatch)
+    assert not (tmp_path / "repo").exists()
+
+
 def test_publish_never_overwrites(tmp_path, monkeypatch):
     monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
     run = tmp_path / "data" / "runs" / "r2"
@@ -300,13 +377,39 @@ def test_publish_never_overwrites(tmp_path, monkeypatch):
         publish("r2", tmp_path, monkeypatch)
 
 
-@INTERVAL_CAST
+def test_publish_leaves_nothing_behind_when_a_copy_fails(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    run = tmp_path / "data" / "runs" / "r3"
+    run.mkdir(parents=True)
+    (run / "provenance.json").write_text(json.dumps({"ended_at": "2026-10-13T00:00:00+00:00"}))
+    (run / "summary.md").write_text("# s\n")
+    copy = shutil.copy
+
+    def flaky(source, dest):
+        if Path(source).name == "summary.md":
+            raise OSError("disk full")
+        return copy(source, dest)
+
+    monkeypatch.setattr("tess_hunt.provenance.shutil.copy", flaky)
+    with pytest.raises(OSError, match="disk full"):
+        publish("r3", tmp_path, monkeypatch)
+    dest = tmp_path / "repo" / "results" / "benchmarks" / "r3"
+    assert not dest.exists()
+    monkeypatch.setattr("tess_hunt.provenance.shutil.copy", copy)
+    assert publish("r3", tmp_path, monkeypatch) == 0
+    assert sorted(p.name for p in dest.iterdir()) == ["provenance.json", "summary.md"]
+
+
 def test_replay_injects_the_listed_planets(tmp_path, monkeypatch):
     data = tmp_path / "data"
     monkeypatch.setenv("TESS_HUNT_DATA", str(data))
-    make_lc(sectors=(1, 2, 3), noise_ppm=300.0, seed=3).save(data / "lc" / "1.npz")
+    for tic in (1, 2):
+        make_lc(sectors=(1, 2, 3), noise_ppm=300.0, seed=3, tic=tic).save(
+            data / "lc" / f"{tic}.npz"
+        )
     targets = tmp_path / "targets.parquet"
-    pd.DataFrame([{**SUN, "ra": 30.0, "dec": -40.0}]).to_parquet(targets)
+    # Star 2 has no injection to replay, so it is not searched.
+    pd.DataFrame([{**SUN, "tic": t, "ra": 30.0, "dec": -40.0} for t in (1, 2)]).to_parquet(targets)
     published = tmp_path / "injections.csv"
     # pandas' default float parser reads these 17-digit values one ULP off; a replay must not.
     period, t0 = 4.3008701448475755, 1325.9997328314087
@@ -323,7 +426,9 @@ def test_replay_injects_the_listed_planets(tmp_path, monkeypatch):
         "inj_a_rs": 12.6,
         "inj_duration": 0.12,
     }
-    pd.DataFrame([row, {**row, "engine": "bls10"}]).to_csv(published, index=False)
+    # Another engine's row and a row that never reached the search are not replayed.
+    others = [{**row, "engine": "bls10"}, {**row, "injection": 5, "status": "error"}]
+    pd.DataFrame([row, *others]).to_csv(published, index=False)
     snap = write_catalog_snapshot(tmp_path / "snap")
     monkeypatch.chdir(ROOT)
     argv = [
@@ -345,11 +450,12 @@ def test_replay_injects_the_listed_planets(tmp_path, monkeypatch):
     assert main(argv) == 0
     run = sorted((data / "runs").iterdir())[-1]
     out = pd.read_csv(run / "injections.csv", float_precision="round_trip")
-    assert list(out["injection"]) == [4]
+    assert list(out["injection"]) == [4] and list(out["tic"]) == [1]
     assert out.iloc[0]["inj_period"] == period and out.iloc[0]["inj_t0"] == t0
     assert out.iloc[0]["recovered"] and "few_transits" in out.columns
     inputs = json.loads((run / "provenance.json").read_text())["inputs"]
     assert inputs["replay"]["sha256"] == sha256_file(published)
+    assert "1 of its 1 `bls30` injections with status ok" in (run / "summary.md").read_text()
 
 
 def inject_cli(tmp_path, monkeypatch, *extra, tics=(1, 2)):
@@ -388,7 +494,6 @@ def inject_cli(tmp_path, monkeypatch, *extra, tics=(1, 2)):
     )
 
 
-@INTERVAL_CAST
 def test_inject_threshold_sets_the_classification_level(tmp_path, monkeypatch):
     # Planets of 8 to 10 Earth radii, which the provisional level recovers, as in
     # test_injection_job_recovers_a_large_planet.
@@ -454,7 +559,6 @@ def test_inject_refuses_a_threshold_from_other_criteria_or_code(other, tmp_path,
     assert not (tmp_path / "data" / "runs").exists()
 
 
-@INTERVAL_CAST
 def test_inject_sample_draws_stars_by_seed(tmp_path, monkeypatch):
     def drawn(name, seed):
         rows, _, _ = inject_cli(
@@ -468,7 +572,6 @@ def test_inject_sample_draws_stars_by_seed(tmp_path, monkeypatch):
     assert drawn("c", 1) != first
 
 
-@INTERVAL_CAST
 def test_injections_pair_by_star_whatever_the_order(tmp_path, monkeypatch):
     first, _, _ = inject_cli(tmp_path / "a", monkeypatch, tics=(1, 2))
     second, _, _ = inject_cli(tmp_path / "b", monkeypatch, tics=(2, 1))
@@ -479,7 +582,6 @@ def test_injections_pair_by_star_whatever_the_order(tmp_path, monkeypatch):
     )
 
 
-@INTERVAL_CAST
 def test_inject_with_no_star_covered_reports_empty_maps(tmp_path, monkeypatch):
     # search-v2's own coverage rule, given after inject_cli's relaxed file so it wins, covers no
     # synthetic star.
@@ -493,7 +595,6 @@ def test_inject_with_no_star_covered_reports_empty_maps(tmp_path, monkeypatch):
     assert (pd.read_csv(run / "completeness_bls30.csv")["count"] == 0).all()
 
 
-@INTERVAL_CAST
 @pytest.mark.parametrize(
     ("source", "kind", "status"),
     [("TOI", "candidate", "too_few_points"), ("SPOC-TCE", "tce", "ok")],

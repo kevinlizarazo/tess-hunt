@@ -1,0 +1,60 @@
+{
+  "check": "pixels",
+  "evidence": {
+    "asked": [
+      102,
+      101,
+      64,
+      38,
+      11
+    ],
+    "files": {
+      "tic438857197/imageData_438857197.1_sector101.pickle": "8ebaf9397ba11f36b3d7ddbbcd672f80bd0671a8ae0386c34d4685292fce79ab",
+      "tic438857197/imageData_438857197.1_sector102.pickle": "c6027101ba99151099e5804d9b09e4ef4141769a3b9113f6c57c43a6f7de995e",
+      "tic438857197/imageData_438857197.1_sector11.pickle": "772390909b0464c7c8192d57b5c355087a02312d715fab0147ac6e74474b844b",
+      "tic438857197/imageData_438857197.1_sector38.pickle": "05db2cdec4eaf8ec7dd9e26c9bd527e4859461338d7f9e38e9b44690f9ec21dd",
+      "tic438857197/imageData_438857197.1_sector64.pickle": "272763bd0f24b68e3d5ad9c444e425972ac5a9d432b53e1a05869e3069b7e157",
+      "tic438857197/ticKey_tic438857197.txt": "fa0cbfc31206ebfa98cf1a44ced850c9da9f30214228179032bb047f5d1e5a2f"
+    },
+    "no_image": [],
+    "offset_mean_arcsec": 6.846782517830505,
+    "offset_qual_arcsec": 3.553961030294902,
+    "sectors": [
+      {
+        "offset_arcsec": 2.2902197494292915,
+        "quality": 0.6866773249022944,
+        "sector": 102
+      },
+      {
+        "offset_arcsec": 3.553961030294902,
+        "quality": 0.7959287727668215,
+        "sector": 101
+      },
+      {
+        "offset_arcsec": 8.308529406979746,
+        "quality": 0.5863797335193937,
+        "sector": 64
+      },
+      {
+        "offset_arcsec": 5.352347311647408,
+        "quality": 0.7201682793847061,
+        "sector": 38
+      },
+      {
+        "offset_arcsec": 19.900179123687728,
+        "quality": 0.45726380328840627,
+        "sector": 11
+      }
+    ],
+    "stale_removed": []
+  },
+  "max_offset_arcsec": 15.0,
+  "outcome": "pass",
+  "reason": "centroid offset 3.6\" within 15\"",
+  "signal": {
+    "name": "438857197-1",
+    "tic": 438857197
+  },
+  "triage_run": "20261015T155441Z-triage-7b12e25-3f57",
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

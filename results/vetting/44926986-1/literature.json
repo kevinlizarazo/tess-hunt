@@ -1,0 +1,307 @@
+{
+  "check": "literature",
+  "evidence": {
+    "hits": [
+      {
+        "arxiv": "2011.02505",
+        "doi": "10.1093/mnras/stab1242",
+        "found_by": [
+          "ads TIC 44926986"
+        ],
+        "ids": [
+          "2021MNRAS.506..150B"
+        ],
+        "title": "The GALAH+ survey: Third data release",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1804.06041",
+        "doi": "10.1093/mnras/sty1281",
+        "found_by": [
+          "ads TIC 44926986"
+        ],
+        "ids": [
+          "2018MNRAS.478.4513B"
+        ],
+        "title": "The GALAH Survey: second data release",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "astro-ph/0206318",
+        "doi": "10.1086/344822",
+        "found_by": [
+          "ads TIC 44926986"
+        ],
+        "ids": [
+          "2003ApJ...582.1011S"
+        ],
+        "title": "Improved Astrometry and Photometry for the Luyten Catalog. II. Faint Stars and the Revised Catalog",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1710.05803",
+        "doi": "10.1051/0004-6361/201731572",
+        "found_by": [
+          "ads TIC 44926986"
+        ],
+        "ids": [
+          "2018A&A...609A.116R"
+        ],
+        "title": "Empirical photometric calibration of the Gaia red clump: Colours, effective temperature, and absolute magnitude",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2202.00042",
+        "doi": "10.3847/1538-3881/ac517f",
+        "found_by": [
+          "ads TIC 44926986"
+        ],
+        "ids": [
+          "2022AJ....163..207C"
+        ],
+        "title": "A Possible Alignment Between the Orbits of Planetary Systems and their Visual Binary Companions",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 44926986"
+        ],
+        "ids": [
+          "1995yCat.1098....0L"
+        ],
+        "title": null,
+        "title_source": null
+      }
+    ],
+    "incomplete": [],
+    "names": [
+      "TIC 44926986",
+      "Gaia DR3 5431607545961330560",
+      "TYC 7697-2351-1",
+      "2MASS J09472454-3952469",
+      "WDS J09474-3953A"
+    ],
+    "notes": [],
+    "too_broad": []
+  },
+  "outcome": "pass",
+  "reason": "complete: 6 hits to screen",
+  "search": {
+    "exofop": {
+      "confirmed_planets": "",
+      "ctois": [],
+      "error": null,
+      "imaging": [],
+      "planets": [],
+      "status": "ok",
+      "tois": []
+    },
+    "names": [
+      "TIC 44926986",
+      "Gaia DR3 5431607545961330560",
+      "TYC 7697-2351-1",
+      "2MASS J09472454-3952469",
+      "WDS J09474-3953A"
+    ],
+    "simbad": {
+      "error": null,
+      "names": [
+        "TIC 44926986",
+        "GALAH 170418001601146",
+        "Gaia DR3 5431607545961330560",
+        "CCDM J09474-3953A",
+        "IDS 09433-3925 A",
+        "NLTT 22614",
+        "TYC 7697-2351-1",
+        "2MASS J09472454-3952469",
+        "WDS J09474-3953A",
+        "Gaia DR1 5431607541661699840",
+        "CD-39  5834A",
+        "Gaia DR2 5431607545961330560",
+        "** WG  128A",
+        "L  462-146"
+      ],
+      "status": "ok"
+    },
+    "sources": {
+      "ads": {
+        "TIC 44926986": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [
+            {
+              "arxiv": "2011.02505",
+              "doi": "10.1093/mnras/stab1242",
+              "id": "2021MNRAS.506..150B"
+            },
+            {
+              "arxiv": "1804.06041",
+              "doi": "10.1093/mnras/sty1281",
+              "id": "2018MNRAS.478.4513B"
+            },
+            {
+              "arxiv": "astro-ph/0206318",
+              "doi": "10.1086/344822",
+              "id": "2003ApJ...582.1011S"
+            },
+            {
+              "arxiv": "1710.05803",
+              "doi": "10.1051/0004-6361/201731572",
+              "id": "2018A&A...609A.116R"
+            },
+            {
+              "arxiv": "2202.00042",
+              "doi": "10.3847/1538-3881/ac517f",
+              "id": "2022AJ....163..207C"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "1995yCat.1098....0L"
+            }
+          ],
+          "note": null,
+          "query": "((=abs:\"TIC 44926986\" OR simbid:\"1665634\" OR nedid:\"0\") database:astronomy)",
+          "resolved": {
+            "ned": false,
+            "simbad": true
+          },
+          "status": "ok",
+          "total": 6
+        }
+      },
+      "arxiv": {
+        "2MASS J09472454-3952469": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5431607545961330560": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 44926986": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 7697-2351-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "WDS J09474-3953A": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "openalex": {
+        "2MASS J09472454-3952469": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5431607545961330560": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 44926986": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 7697-2351-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "WDS J09474-3953A": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "zenodo": {
+        "2MASS J09472454-3952469": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5431607545961330560": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 44926986": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 7697-2351-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "WDS J09474-3953A": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      }
+    },
+    "tic": 44926986
+  },
+  "signal": {
+    "name": "44926986-1",
+    "tic": 44926986
+  },
+  "trim": {
+    "decision": "0038",
+    "dropped": [
+      "search.sources.ads.*.hits[].title: every title ADS gave",
+      "evidence.hits[].title where no open source gave the paper's title",
+      "search.exofop.comments, and the comment text of ExoFOP's TOI and CTOI rows (tois[].notes, ctois[].cnotes)",
+      "search.exofop.files: the names of the files on ExoFOP's target page",
+      "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row"
+    ],
+    "replaced_titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19",
+    "source_sha256": "b415b2d42228dc81a1e4af2c30d8f2f1cad797c49fd35705989e76dc8891793a",
+    "titles_run": "20261026T184940Z-vetting-titles-af322af-9b15"
+  },
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

@@ -1,15 +1,29 @@
 # Results
 
 Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under CC BY 4.0 ([LICENSE](LICENSE) in
-this directory). The one exception is the `ruwe` column of the published triage tables: it is Gaia DR3 data (credit:
-ESA/Gaia/DPAC) and stays under ESA's CC BY-NC 3.0 IGO terms (https://www.cosmos.esa.int/web/gaia-users/license), not
-CC BY 4.0.
+this directory). The exceptions are Gaia data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
+tables, the RUWE values the published controls quote, the Gaia DR3 values the pixel check's diagnosis, the
+neighbour-epoch measurements and the TIC-duplicate measurement quote or hold, the TIC-carried Gaia DR2 values the
+TIC-duplicate measurement holds (all under [Runs](#runs)), and the Gaia DR3 parts of the vetting records and the
+Gaia DR2 and DR3 values their reviews quote, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO
+terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
+
+ExoFOP's rows in the vetting records' `literature.json` (TOIs, CTOIs, planet parameters, confirmed planets and imaging
+rows), and the same rows where `dossier.md` shows them, stay under ExoFOP's terms, not CC BY 4.0: its data-use
+guidelines (https://exofop.ipac.caltech.edu/tess/pcp.php) treat data as its provider's property. The paper titles in
+`literature.json` come only from arXiv's, OpenAlex's and Zenodo's metadata
+([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read 2026-10-26: arXiv's API terms
+of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive metadata about arXiv e-prints
+under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration"; OpenAlex's about page
+(https://openalex.org/about) says "Our data is CC0"; Zenodo's policies (https://about.zenodo.org/policies/) say
+"Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs and arXiv ids are identifiers. From NASA
+ADS the records keep those identifiers and each search's query, total and status, never a title.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
-These files are derived from TESS light curves, from the TESS Input Catalog, from Gaia DR3, and from the ExoFOP and
-NASA Exoplanet Archive catalogs. Reuse must also carry the acknowledgements in
-[../ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md).
+These files are derived from TESS light curves, from the TESS Input Catalog, from Gaia DR3, from the ExoFOP and
+NASA Exoplanet Archive catalogs, and from SIMBAD, NASA ADS, arXiv, OpenAlex and Zenodo, which the literature
+search reads. Reuse must also carry the acknowledgements in [../ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md).
 
 ## Runs
 
@@ -22,6 +36,23 @@ Published runs are never edited; a correction is a new run.
   planet; `summary.md` is the table.
 - `benchmark-inject`: injection-recovery. `injections.csv` has one row per injected planet and search engine; the
   `completeness_*.csv` tables and `completeness_*.png` maps bin the recovered fraction; `summary.md` collects them.
+- `benchmark-controls`: vet-v3's controls, the known planets and the negative controls, from a vetting run, the
+  TRICERATOPS runs on it and triage's pixel check on the known planets. `controls.csv` has one row per control: each
+  check's outcome, the neighbour table's count of possible hosts, the pixel check's outcome and offset (known planets
+  only), and TRICERATOPS's outcome, mean and sd of FPP and NFPP, blockers, the run it came from and any earlier run's
+  outcome it replaced. `pass_rates.csv` counts each check's outcomes over the known planets, all of them and without
+  the ones left out; `summary.md` collects them with each fail's reason. The RUWE values quoted in `blockers` and in
+  the TRICERATOPS reasons are Gaia DR3 data (above).
+- `benchmark-triage-completeness`: triage's novelty and LEO-Vetter flux tests on the injections an inject run
+  recovered, each planted and searched again as the inject run did it and judged as a triage run judged its signals
+  ([decision 0029](../docs/decisions/0029-triage-completeness.md)). `rows.csv` has one row per injection: the inject
+  run's row, the replay's outcome and the signal it judged, and each step's outcome. `by_snr.csv`, `by_period.csv` and
+  `by_radius.csv` give per bin the search completeness, the shares each step passed and their product;
+  `failed_tests.csv` counts the injections that failed, or left unjudged, each LEO-Vetter test; `outcomes.csv` counts
+  each step's outcomes; `summary.md` collects them.
+- `benchmark-pixel-completeness`: triage's pixel check on the known-planet set at their catalog ephemerides.
+  `pixels.csv` has one row per planet: the outcome, its reason, the best-quality sector's offset and the number of
+  sectors measured (`good_sectors`); `summary.md` is the table.
 - `search`: a production search. `controls.csv` has one row per positive control, the known-planet set searched
   alongside the sample ([decision 0011](../docs/decisions/0011-positive-controls-in-production.md)); the signals
   themselves stay in the run directory. The null search (`--scramble`,
@@ -40,6 +71,13 @@ Published runs are never edited; a correction is a new run.
   and the rule that dropped it.
 - `vet`: every vetting check on one signal. `checks.json` holds each check's outcome and evidence, the per-sector
   red-noise factors and the transit-fit summary.
+- `vetting-second-list`: the second list, the light checks on the ten triage signals that matched only a SPOC TCE or
+  ExoMiner row and passed LEO-Vetter's flux tests with a normal RUWE
+  ([decision 0033](../docs/decisions/0033-second-list-decisions.md)). `second-list.csv` has one row per signal: each
+  vet-v3 check's outcome, the pixel check's outcome, reason and offsets, SPOC's DV statistics and ExoMiner's score for
+  the rows matched at its period, on its star or a star novelty matched it to (`dv_tic`, `exominer_tic`), and its
+  upcoming sectors; `second-list.md` is the table. Each row's pixel files and the vetting
+  run's records stay in the run directories; a promoted row's are in its `vetting/` record.
 
 The loose files beside the run directories in `benchmarks/` were written by the scripts listed in
 [benchmarks/README.md](../benchmarks/README.md):
@@ -55,6 +93,53 @@ The loose files beside the run directories in `benchmarks/` were written by the 
   (`scramble_leo_probe.py`, [decision 0019](../docs/decisions/0019-null-threshold.md)).
 - `sector-structure-2026-10-13.txt`: each sector's span and gaps on 500 random fetched stars (`sector_structure.py`,
   decision 0019).
+- `short-period-variables-2026-10-17.txt`: the sample stars whose signals all sit at simple ratios of one period
+  under 5 days and that LEO-Vetter rejected as non-unique or sinusoidal, and the injection recovery on them against
+  the rest (`short_period_variables.py`, [decision 0030](../docs/decisions/0030-short-period-variables.md)).
+
+One loose file has no script: `vet-v3-control-diagnosis-2026-10-17.md`, a read-only diagnosis of the known planets
+vet-v3's controls fail, made outside the pipeline. It gates nothing; its causes are cited by
+[decision 0031](../docs/decisions/0031-known-set-control-fails.md).
+
+`pixel-check-diagnosis-2026-10-20.md` is a read-only diagnosis of the pixel check's fails on the known planets and the
+second list, made outside the pipeline. Its scripts and their small outputs are in
+`pixel-check-diagnosis-2026-10-20-scripts.tar.gz` beside it, byte for byte. It gates nothing; its causes are cited by
+[decision 0033](../docs/decisions/0033-second-list-decisions.md). The Gaia DR3 source ids and the neighbour table's
+values in its section 2 are Gaia DR3 data (above).
+
+`neighbour-epoch-reach-2026-10-20.md` measures how far the neighbour table's mixed epochs (the TIC position at J2000
+against Gaia DR3 at J2016.0) reach across M3's 62 tables, and `pixel-check-reference-position-2026-10-20.md` which
+position the pixel check measures its offsets from. Both are read-only, made outside the pipeline, and gate nothing;
+[decision 0034](../docs/decisions/0034-neighbour-table-epochs.md) cites them. Their scripts and small outputs are in
+`neighbour-epoch-reach-2026-10-20-scripts.tar.gz` beside them, byte for byte, one folder each (`t13-epoch/`,
+`pixel-diag/`), with the pixel follow-up's memory-cap wrapper in `t13/`. The Gaia DR3 source ids, positions, proper
+motions, magnitudes and separations in both files and in the tarball are Gaia DR3 data (above).
+
+`holdout-training-seasons-2026-10-20.md` measures which held-out seasons in M3's vetting runs trained on a single
+season whose data hold a transit, and what [decision 0035](../docs/decisions/0035-holdout-training-seasons.md)'s fix
+changes there. It is read-only, made outside the pipeline, and gates nothing; its scripts and their outputs are quoted
+in it in full.
+
+`triceratops-tic-duplicates-2026-10-21.md` measures how far TRICERATOPS's weighing of the TIC's DUPLICATE and ARTIFACT
+rows reaches across M3's TRICERATOPS runs, and what dropping them changes. It is read-only, made outside the pipeline,
+and gates nothing; [decision 0036](../docs/decisions/0036-triceratops-tic-duplicates.md) cites it. Its scripts and
+their outputs are in `triceratops-tic-duplicates-2026-10-21-scripts.tar.gz` beside it, byte for byte (`t13-dup/`,
+with the single-seed rerun's memory-cap wrapper in `t13/`), without the TESScut cutouts, the field-star file or the TIC
+paper. The RUWE values in the tarball's `signals.csv` and the Gaia DR3 source ids in its `hosts_check.txt` are Gaia DR3
+data, and the Gaia DR2 values the TIC carries are Gaia DR2 data: the `GAIA` source ids in `tic.csv`, `flagged.csv` and
+`reach.txt`, and `tic.csv`'s `plx`. Both stay under ESA's terms (above).
+
+`triceratops-phase-binning-2026-10-17.md` is the timing probe behind TRICERATOPS's phase binning (pin P2): binned and
+unbinned runs on one star, TIC 146282666, with one seed unbinned. It is read-only, made outside the pipeline before
+the M3 build, and gates nothing; [decision 0026](../docs/decisions/0026-triceratops.md) cites it. Its script is in
+`triceratops-phase-binning-2026-10-17-scripts.tar.gz` beside it. The probe's command lines and output logs were not
+kept; its numbers come from the build's notes written at the time.
+
+`neighbour-controls-2026-10-23.txt` is the output of the network test `test_nearby_eb_controls_show_a_possible_host` in
+`tests/test_neighbours.py`, run by hand with `-rP`: each of the neighbour check's two real nearby-binary controls lists
+the nearby eclipsing binary its dip comes from among its possible hosts. Decision
+[0034](../docs/decisions/0034-neighbour-table-epochs.md) cites it. Its Gaia DR3 source ids and separations are Gaia DR3
+data (above).
 
 ## Triage
 
@@ -98,6 +183,91 @@ The loose files in `triage/` ([decision 0012](../docs/decisions/0012-leo-vetter-
   offset (`test_real_nearby_eb_controls` in `tests/test_pixels.py`).
 - `pixel-timing-2026-10-14.txt`: transit-diffImage's pixel times against TESScut's on the controls' difference
   images (`benchmarks/pixel_timing.py`).
+
+## Vetting
+
+Each directory under `vetting/` is one signal's record, named `<tic>-<rank>` as triage names the signal.
+`tess-hunt vetting publish` wrote it once the maintainer's call was in it
+([decision 0028](../docs/decisions/0028-outcomes-and-calls.md)); `vetting/README.md` lists every published call that
+stands on its record. Published files are never edited: only `dossier.md` and `vetting/README.md` are rendered again
+from the files beside them, and a correction is a new run. The one exception is decision 0038's: `tess-hunt vetting
+trim` trimmed the literature records published before it and scrubbed the home directory from their reviews. A
+passed signal is a planet candidate, not a confirmed planet.
+
+- `call.toml`: the maintainer's call: `outcome` (passed, killed or held), `date`, `reasons` in his words, `rests_on`
+  (the checks and review findings it rests on), `criteria`, and as the outcome needs, `deciding_evidence` (what would
+  decide a held signal), `promotion` (a second-list row's TCE and the reason), `[answers]` (one per confirmed review
+  finding), `[sentences]` (why it is not a binary, not another star's light, not an artefact or a known object) and
+  `hits_read`. Its words, numbers included, are the maintainer's, quoted in the dossier, not rendered from the runs
+  ([decision 0037](../docs/decisions/0037-quoted-text-in-the-dossier.md)).
+- `review.json`: the adversarial review: each finding's lens, rating (kill, hold or note), claim, evidence and each
+  refuter's verdict, the literature hits it flagged, and a summary. The dossier quotes it as written (decision 0037).
+- `review-notes.toml`, where there is one: notes added to the record under decision 0037, each with its date and the
+  finding it sits beside in the dossier. They are not part of the review or the call. A slip in the review's text is
+  noted there, never edited in `review.json`.
+- `review-scripts.tar.gz`: the review's scripts and their small outputs, from the scratch directory its evidence cites
+  as `/tmp/t13/<name>/`, each file under 1 MB (1,000,000 bytes), with a `MANIFEST.txt` listing every file left out and
+  why (fetched from a service, 1 MB or over, a copy of a published file and the like). Home and data directories in it
+  read `~` and `$TESS_HUNT_DATA`, and the maintainer's name reads "the maintainer"
+  ([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)). Beside the records,
+  `vetting/review-scripts.tar.gz` holds the scripts every review shared (`/tmp/t13/`), and `vetting/review-brief.md` the
+  brief every reviewer and refuter was given; `vetting/README.md` says what the reviews' paths and run names stand for.
+- `dossier.md`: the dossier, rendered from the files beside it; every number in it comes from them, except in the
+  review and the call, which it quotes (decision 0037).
+- `checks.json`: the vet under vet-v3 (`tess-hunt vetting run`): each check's outcome, reason and evidence; the
+  flat-prior fit's summary (`fit`) and the density-prior fit's (`fit_prior`); the star's targets row, its Gaia DR3 id
+  and RUWE joined where the row lacks them, with where they came from (`star`: `dr3_from`, `dr3_reason`); each
+  sector's light-curve source (`sources`); the neighbour table (`neighbours`,
+  [decision 0025](../docs/decisions/0025-neighbours.md); its `centre` names the position the separations run from,
+  [decision 0034](../docs/decisions/0034-neighbour-table-epochs.md)); every catalogued row on the star with the
+  transits of ours it overlaps (`catalogued`); the upcoming sectors and predicted transit windows; triage's ModShift and
+  pixel evidence and the search's other signals on the star.
+- `checks-with-suspect.json`: the same vet with the timing-suspect sectors kept in, as evidence only, never used for
+  the call ([decision 0022](../docs/decisions/0022-vet-without-timing-suspect-sectors.md)).
+- `neighbours.csv`: the Gaia DR3 stars in the neighbour cone, each with its TESS magnitude and the eclipse depth it
+  would need to make the dip.
+- `plots/`: each transit, the fold per season and product family, odd and even transits, the whole orbit with phase
+  0.5 and the ModShift secondary, and the centroid offsets per sector with the neighbours that could host the signal
+  (for a second-list row, `centroids.png` draws triage's record, which holds no offsets; its own are in `pixels.png`).
+- `triceratops.json`, `probs.csv`: TRICERATOPS ([decision 0026](../docs/decisions/0026-triceratops.md)): the outcome,
+  each run's FPP and NFPP, the stars it weighed and the possible hosts matched to them, and the TIC's DUPLICATE and
+  ARTIFACT rows it left out (`dropped_stars`, [decision 0036](../docs/decisions/0036-triceratops-tic-duplicates.md));
+  `probs.csv` is the last run's scenario table. A record from a run made before decision 0036 has no `dropped_stars`
+  and no `disposition` in its `stars`. A signal a check killed has none, but for 44926986-1: its novelty failed, and
+  TRICERATOPS was run on it by name so the binary question would have an answer beside eumemic's listing
+  ([decision 0026](../docs/decisions/0026-triceratops.md)); its kill rests on the novelty fail and on TRICERATOPS's.
+- `literature.json`: the literature search by name, NASA ADS and ExoFOP
+  ([decision 0027](../docs/decisions/0027-literature-by-name.md)), trimmed for publication
+  ([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)). It keeps every identifier (bibcode,
+  DOI, arXiv id), who found each paper, each search's query, total and status, and ExoFOP's rows with only the fields
+  decision 0038 lists, but no title ADS gave, no ExoFOP comment or file name, and no submitter's or observer's user name
+  or notes. Each paper's title comes from an open source, which `title_source` names (`arxiv`, `openalex` or `zenodo`
+  for the search's own hits, `openalex_doi` for OpenAlex's record of the paper's DOI), or is null where none has it.
+  `trim` gives the sha256 of the run's record it was cut from, the titles run (and `replaced_titles_run`, a titles
+  run it replaced) and the fields dropped.
+- `pixels.json`, `pixels.png`: a second-list row's pixel check, which triage runs only on novelty passes, run on it as
+  triage runs it by `tess-hunt vetting second-list`: the outcome and reason, each measured sector's centroid offset
+  and quality, and the offset limit (decision 0028); `pixels.png` plots those offsets with the neighbours that could
+  host the signal. Other signals' pixel check is triage's, in `checks.json`, and their centroid plot is
+  `plots/centroids.png`.
+- `provenance-checks.json`, `provenance-checks-with-suspect.json`, `provenance-triceratops.json`,
+  `provenance-literature.json`, `provenance-second-list.json`, `provenance-titles.json`: each run's
+  `provenance.json`, copied unchanged: the
+  commit, the criteria files and their hashes, the inputs and their hashes, and the command line of the run the files
+  beside it came from.
+  `provenance-checks.json` stands behind `checks.json`, `neighbours.csv` and `plots/`; `provenance-titles.json` is
+  the run of `tess-hunt vetting titles` that looked up, in OpenAlex by DOI, the titles no search's own open-source
+  hit gave.
+
+Gaia DR3 data in these records stay under ESA's CC BY-NC 3.0 IGO terms (above), not CC BY 4.0: `neighbours.csv`, the
+neighbour table in `checks.json` and `checks-with-suspect.json` (`neighbours`), the possible hosts and the RUWE in
+`triceratops.json` (`hosts`, `ruwe`), and the Gaia DR3 columns of the star's row in both checks files
+(`dr3_source_id`, `angular_distance`, `ruwe`, `logg_gspphot`, `mass_flame`, `radius_flame`, `logg_flame`), the
+possible hosts drawn in `plots/centroids.png` and `pixels.png`, and the same values where `dossier.md` shows them.
+The Gaia DR2 and DR3 values the review (`review.json`) quotes, such as radial velocities and their scatter
+(`rv_amplitude_robust`, `rv_chisq_pvalue`), astrometric noise (`astrometric_excess_noise`, `ipd_frac_multi_peak`)
+and non-single-star flags, are Gaia data too, and so are the same text in `dossier.md` and the Gaia
+values in the outputs in `review-scripts.tar.gz`.
 
 ## Catalog snapshots
 

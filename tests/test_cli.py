@@ -16,3 +16,5 @@ def test_cli_quiets_lightkurve_info():
     with pytest.raises(SystemExit):
         main(["--version"])
     assert logging.getLogger("lightkurve").level == logging.WARNING
+    # lightkurve's own handler prints its warnings; the root handler would print each again.
+    assert logging.getLogger("lightkurve").propagate is False

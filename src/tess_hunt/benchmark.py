@@ -1,4 +1,5 @@
-"""Benchmarks: recover known planets and injected transits, and compare search engines."""
+"""Benchmarks: recover known planets and injected transits, compare search engines, measure what
+triage passes (completeness.py), and gather vet-v3's controls (controls.py)."""
 
 import sys
 import time
@@ -63,6 +64,16 @@ def _replayed(row: dict) -> Injection:
     )
 
 
+def plant(
+    lc: LightCurve, inj: Injection, crit: dict, known_ephs: list[Ephemeris]
+) -> tuple[LightCurve, LightCurve]:
+    """`inj` planted in `lc`, and the planted light curve detrended with the known planets masked, as
+    the injection benchmark searches it."""
+    bench = crit["benchmark"]
+    planted = inject(lc, inj, (bench["inject_u1"], bench["inject_u2"]))
+    return planted, detrend(planted, crit["detrend"], known_ephs)
+
+
 def injection_job(job: tuple) -> list[dict]:
     star, lc_path, known_ephs, crit, engines, per_star, seed, replay, level = job
     # Seeded per star, so two runs inject the same planets into a star whatever its place in the list.
@@ -71,11 +82,11 @@ def injection_job(job: tuple) -> list[dict]:
     u = (bench["inject_u1"], bench["inject_u2"])
     if replay:
         bases = [{"tic": int(star["tic"]), "injection": int(r["injection"])} for r in replay]
-        draws = [_replayed(r) for r in replay]
     else:
         bases = [{"tic": int(star["tic"]), "injection": k} for k in range(per_star)]
-        draws = None
     try:
+        # Read inside the try, so a malformed replay row is recorded, not raised into the pool.
+        draws = [_replayed(r) for r in replay] if replay else None
         rstar, mstar, assumed = star_params(star)
         rho = stellar_density(star, rstar, mstar)
         bases = [{**base, "assumed_solar": assumed} for base in bases]
@@ -108,8 +119,9 @@ def injection_job(job: tuple) -> list[dict]:
         if inj is None:
             rows.append({**base, "status": "no_draw"})
             continue
+        name = None
         try:
-            flat = detrend(inject(lc, inj, u), crit["detrend"], known_ephs)
+            _, flat = plant(lc, inj, crit, known_ephs)
             # The search stage skips these stars; scoring them would measure a different sample.
             if len(flat.time) < search["min_points"]:
                 rows.append({**base, "status": "too_few_points", "n_points": len(flat.time)})
@@ -140,7 +152,9 @@ def injection_job(job: tuple) -> list[dict]:
                 )
             rows += scored
         except Exception as exc:  # one bad injection must not stop the run; it is recorded
-            rows.append({**base, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
+            error = f"{type(exc).__name__}: {exc}"
+            # Engines search one after another, so `name` is the one that raised, if one had started.
+            rows.append({**base, "status": "error", "error": f"{name}: {error}" if name else error})
     return rows
 
 
@@ -181,13 +195,14 @@ def completeness(rows: pd.DataFrame, column: str, edges) -> pd.DataFrame:
     ok = searched(rows)
     out = []
     for engine, g in ok.groupby("engine"):
-        bins = pd.cut(g[column], edges, right=False)
+        # Grouped on the bins' labels: pandas hashes intervals through a cast that warns.
+        bins = pd.cut(g[column], edges, right=False).cat.rename_categories(str)
         stats = g.groupby(bins, observed=False)["recovered"].agg(["sum", "count"])
-        for interval, row in stats.iterrows():
+        for label, row in stats.iterrows():
             out.append(
                 {
                     "engine": engine,
-                    "bin": str(interval),
+                    "bin": label,
                     "count": int(row["count"]),
                     "fraction": float(row["sum"] / row["count"]) if row["count"] else np.nan,
                 }
@@ -198,8 +213,10 @@ def completeness(rows: pd.DataFrame, column: str, edges) -> pd.DataFrame:
 def completeness_map(rows: pd.DataFrame, engine: str) -> pd.DataFrame:
     ok = searched(rows)
     g = ok[ok["engine"] == engine]
-    p = pd.cut(g["inj_period"], PERIOD_EDGES, right=False)
-    r = pd.cut(g["inj_rp_rearth"], RADIUS_EDGES, right=False)
+    # Grouped on the bins' labels, as in completeness(); the categories keep every cell, the empty ones
+    # too.
+    p = pd.cut(g["inj_period"], PERIOD_EDGES, right=False).cat.rename_categories(str)
+    r = pd.cut(g["inj_rp_rearth"], RADIUS_EDGES, right=False).cat.rename_categories(str)
     stats = g.groupby([r, p], observed=False)["recovered"].agg(["sum", "count"]).reset_index()
     stats.columns = ["radius_bin", "period_bin", "recovered", "count"]
     stats["fraction"] = stats["recovered"] / stats["count"].where(stats["count"] > 0)
@@ -297,6 +314,63 @@ def add_parser(sub) -> None:
         )
         mode.add_argument("--workers", type=int, default=8)
         mode.add_argument("--production", action="store_true")
+    # completeness builds on this module's injection pieces, and controls on completeness, so they are imported
+    # once this one has loaded.
+    from tess_hunt import completeness, controls
+
+    t = modes.add_parser(
+        "triage-completeness",
+        help="replay an inject run's recovered injections through triage's novelty and flux tests",
+    )
+    t.add_argument("--inject-run", type=Path, required=True, help="the inject run's directory")
+    t.add_argument("--triage-run", type=Path, required=True, help="the triage run's directory")
+    t.add_argument(
+        "--catalogs", type=Path, required=True, help="the v2 snapshot triage judged novelty with"
+    )
+    t.add_argument(
+        "--mask-catalogs",
+        type=Path,
+        required=True,
+        help="the snapshot the inject run and triage masked with",
+    )
+    t.add_argument("--targets", type=Path, required=True)
+    t.set_defaults(func=completeness.cmd_triage_completeness)
+    x = modes.add_parser(
+        "pixel-completeness",
+        help="the pixel check on the known planets at their catalog ephemerides",
+    )
+    x.add_argument("--known", type=Path, default=Path("benchmarks/known_planets.csv"))
+    x.add_argument("--targets", type=Path, required=True, help="a targets table with every host")
+    x.set_defaults(func=completeness.cmd_pixel_completeness)
+    for mode in (t, x):
+        mode.add_argument("--criteria-triage", type=Path, default=Path("criteria/triage-v1.toml"))
+        mode.add_argument("--workers", type=int, default=8)
+        mode.add_argument("--production", action="store_true")
+    c = modes.add_parser(
+        "controls",
+        help="vet-v3's controls: each check's outcome on the known planets and the negative controls",
+    )
+    c.add_argument("--vet-run", type=Path, required=True, help="the controls' vetting run")
+    c.add_argument(
+        "--triceratops",
+        type=Path,
+        action="append",
+        required=True,
+        help="a TRICERATOPS run on that vetting run; repeatable, and a later run's outcome replaces an "
+        "earlier one's",
+    )
+    c.add_argument(
+        "--pixels", type=Path, required=True, help="the pixel-completeness run on the known planets"
+    )
+    c.add_argument(
+        "--leave-out",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="a control left out of the second pass-rate table; repeatable",
+    )
+    c.add_argument("--production", action="store_true")
+    c.set_defaults(func=controls.cmd_controls)
     pub = modes.add_parser("publish", help="copy a benchmark run's summary into results/")
     pub.add_argument("--run", required=True)
     pub.set_defaults(func=cmd_publish)

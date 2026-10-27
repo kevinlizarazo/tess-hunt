@@ -37,7 +37,7 @@ class GaiaError(RuntimeError):
     pass
 
 
-def launch_gaia(query: str, ids: Table, gaia=None) -> pd.DataFrame:
+def launch_gaia(query: str, ids: Table | None, gaia=None) -> pd.DataFrame:
     if gaia is None:
         # Importing astroquery.gaia contacts the archive, so only a real query pays for it.
         from astroquery.gaia import Gaia

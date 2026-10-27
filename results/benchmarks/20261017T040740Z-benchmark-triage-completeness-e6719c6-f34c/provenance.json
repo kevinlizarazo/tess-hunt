@@ -1,0 +1,95 @@
+{
+  "argv": [
+    "tess-hunt",
+    "benchmark",
+    "triage-completeness",
+    "--inject-run",
+    "$TESS_HUNT_DATA/runs/20261015T131443Z-benchmark-inject-fe29585-8496",
+    "--triage-run",
+    "$TESS_HUNT_DATA/runs/20261015T155441Z-triage-7b12e25-3f57",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-13T163454Z",
+    "--mask-catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-13",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-b0d4/targets.parquet",
+    "--workers",
+    "7",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    },
+    {
+      "file": "criteria/triage-v1.toml",
+      "sha256": "a4b1afbaccc08556151b976582bcac80c0dbbc4f69c124437cd06c924a9b9473"
+    }
+  ],
+  "ended_at": "2026-10-17T05:48:50.981624+00:00",
+  "git": {
+    "commit": "e6719c6ab74bdc001fc2448205aad3c104a5acce",
+    "dirty_paths": []
+  },
+  "inject_run": "20261015T131443Z-benchmark-inject-fe29585-8496",
+  "inputs": {
+    "catalog_manifest": {
+      "file": "manifest.json",
+      "sha256": "5fecac30d23d7afc143bae3c0c3d5ca56a055e0be73c7b4fe3c051bd4e497a75"
+    },
+    "injections": {
+      "file": "injections.csv",
+      "sha256": "0362a1fc7fafc6027bda42e8194fbeba5d38baa175cbed91d3a7e7d579a4ef83"
+    },
+    "known": {
+      "file": "known.parquet",
+      "sha256": "8b21e82ba0fd6a5f0b4be271b0eb77a34c112d0fd91cd334a2d8412a431db867"
+    },
+    "mask_ctoi.csv": {
+      "file": "ctoi.csv",
+      "sha256": "1059ac9235aa11d4bf914153ddc0278431709f090607497325a9b7c208911bb4"
+    },
+    "mask_pscomppars.csv": {
+      "file": "pscomppars.csv",
+      "sha256": "c7281981ad065f2b91fcc5871c449167051a80b187ffd63f4930090b1c74778a"
+    },
+    "mask_toi.csv": {
+      "file": "toi.csv",
+      "sha256": "f8c8085178780e343a7e84dc8938023fada22a5bfbf895265ba1916624f1cd0b"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "04029fd9f9172976d43bf9669938072560a92c900bb1d2f29d06fed27f333dbb"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261017T040740Z-benchmark-triage-completeness-e6719c6-f34c",
+  "stage": "benchmark-triage-completeness",
+  "started_at": "2026-10-17T04:07:40.698597+00:00",
+  "summary": {
+    "error": 0,
+    "judged": 769,
+    "leo_flux": {
+      "fail": 123,
+      "inconclusive": 9,
+      "pass": 637
+    },
+    "not_reproduced": 0,
+    "novelty": {
+      "fail": 0,
+      "inconclusive": 3,
+      "pass": 766
+    },
+    "recovered": 769,
+    "searched": 2000
+  },
+  "threshold": {
+    "file": "threshold.json",
+    "run_id": "20261014T175116Z-threshold-0d6748e-40ac",
+    "value": 20.24494315641701
+  },
+  "triage_run": "20261015T155441Z-triage-7b12e25-3f57",
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a"
+}

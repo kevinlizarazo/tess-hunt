@@ -75,6 +75,16 @@ written by
 
 No `tess-hunt` stage reads the file; only the pixel tests do.
 
+## TESS sector dates
+
+`tess_sectors.csv` gives the start and end of the sectors TESS has yet to observe, S110 to S114. `predict.windows` places a signal's next transits in them (`[predict]` in `criteria/vet-v3.toml`, decision
+0024). It is an input, not a criterion.
+
+Each row's dates are from the sector's page at tess.mit.edu (`source`), read on 2026-10-16 (`read_on`). The pages
+give days only ("Observations extend from October 31 through November 26, 2026"), so each start and end is 00:00 UTC
+on its day, and each sector ends where the next begins. The five pages, read again on 2026-10-17, gave the same days
+and no times. Future pointings are provisional: when a page changes, the row changes with a new `read_on`.
+
 ## Replay comparisons
 
 `compare_replay.py` regenerates a replay comparison, `results/benchmarks/<replay run id>-comparison.md`, from the
@@ -83,7 +93,7 @@ replayed run's published `injections.csv` and the replay's, run from the reposit
 
 ## Evidence scripts
 
-The scripts behind M2's loose evidence files under `results/`. Each runs from the repository root with
+The scripts behind the loose evidence files under `results/`. Each runs from the repository root with
 `uv run python benchmarks/<script>`; its docstring gives the arguments and the cached files it reads.
 
 - `compare_replay.py`: a replay comparison, `results/benchmarks/<replay run id>-comparison.md` (above).
@@ -94,6 +104,9 @@ The scripts behind M2's loose evidence files under `results/`. Each runs from th
 - `sector_structure.py`: each sector's span and gaps on 500 random fetched stars, `sector-structure-2026-10-13.txt`.
 - `pixel_timing.py`: transit-diffImage's pixel times against TESScut's, `results/triage/pixel-timing-2026-10-14.txt`.
 - `leo_strictness.py`: LEO-Vetter's outcomes by catalogued match, `results/triage/leo-strictness-2026-10-16.txt`.
+- `short_period_variables.py`: the stars whose signals sit at simple ratios of one period under 5 days and that
+  LEO-Vetter rejected as non-unique or sinusoidal, and the injection recovery on them against the rest,
+  `results/benchmarks/short-period-variables-2026-10-17.txt`.
 
 `sector-structure-2026-10-13.txt` and `pixel-timing-2026-10-14.txt` were written before the scripts printed their
 one-line header (sample, seed and gap threshold; the in-transit rule); apart from that header, the committed scripts

@@ -1,5 +1,6 @@
 import json
 import math
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +22,8 @@ from tess_hunt.threshold import (
     _leo_job,
     _own_transits_job,
     all_thresholds,
+    check_leo_code,
+    check_null_light_curves,
     check_search,
     compute_threshold,
     exclude_known,
@@ -193,6 +196,83 @@ def test_all_thresholds_reads_finished_threshold_runs_only(tmp_path):
     write_run(tmp_path, "20261013T010000Z-threshold-abc1234-0002", None, 99.0)
     write_run(tmp_path, "20261013T020000Z-search-abc1234-0003", "2026-10-13T03:00:00", 50.0)
     assert [t["threshold"] for t in all_thresholds(tmp_path)] == [12.0]
+
+
+def git(root, *args) -> str:
+    out = subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
+    return out.stdout.strip()
+
+
+@pytest.fixture
+def leo_repo(tmp_path):
+    """A checkout with a LEO-Vetter wrapper and a lock committed, and the provenance of a run made there."""
+    root = tmp_path / "repo"
+    (root / "src" / "tess_hunt").mkdir(parents=True)
+    (root / "src" / "tess_hunt" / "leo.py").write_text("MAX_SES_TO_MES = 0.88\n")
+    (root / "uv.lock").write_text("lock\n")
+    git(root, "init", "-b", "main")
+    git(root, "config", "user.email", "t@example.com")
+    git(root, "config", "user.name", "t")
+    git(root, "add", ".")
+    git(root, "commit", "-m", "init")
+    provenance = {
+        "uv_lock_sha256": sha256_file(root / "uv.lock"),
+        "git": {"commit": git(root, "rev-parse", "HEAD"), "dirty_paths": []},
+    }
+    return root, provenance
+
+
+def test_check_leo_code_passes_the_same_lock_and_wrapper(leo_repo):
+    root, provenance = leo_repo
+    assert check_leo_code(provenance, root) == []
+
+
+def test_check_leo_code_refuses_another_lock(leo_repo):
+    root, provenance = leo_repo
+    problems = check_leo_code({**provenance, "uv_lock_sha256": "0" * 64}, root)
+    assert len(problems) == 1 and "uv.lock" in problems[0], problems
+
+
+def test_check_leo_code_refuses_a_changed_wrapper(leo_repo):
+    root, provenance = leo_repo
+    (root / "src" / "tess_hunt" / "leo.py").write_text("MAX_SES_TO_MES = 0.8\n")
+    problems = check_leo_code(provenance, root)
+    assert len(problems) == 1 and "src/tess_hunt/leo.py differs" in problems[0], problems
+
+
+@pytest.mark.parametrize(
+    ("state", "message"),
+    [
+        # The commit's wrapper is not the one that ran when the run's tree had changed it.
+        ({"dirty_paths": ["src/tess_hunt/leo.py"]}, "uncommitted"),
+        ({"commit": "0" * 40}, "cannot be read"),
+    ],
+)
+def test_check_leo_code_refuses_a_wrapper_it_cannot_trace(leo_repo, state, message):
+    root, provenance = leo_repo
+    problems = check_leo_code({**provenance, "git": {**provenance["git"], **state}}, root)
+    assert len(problems) == 1 and message in problems[0], problems
+
+
+def stars_table(lc_sha256: dict, status=None) -> pd.DataFrame:
+    rows = [
+        {"tic": t, "control": False, "status": (status or {}).get(t, "ok"), "lc_sha256": s}
+        for t, s in lc_sha256.items()
+    ]
+    return pd.DataFrame(rows)
+
+
+def test_null_and_search_light_curves_must_match():
+    null = stars_table({1: "a", 2: "b", 3: "c", 4: "d"})
+    search = stars_table({1: "a", 2: "x", 3: "c", 4: "y"})
+    # Star 4 changed as well, but none of its signals is triaged.
+    assert check_null_light_curves(null, search, [1, 2, 3]) == [2]
+
+
+def test_a_light_curve_the_null_did_not_search_does_not_match():
+    null = stars_table({1: "a", 3: None}, status={3: "no_light_curve"})
+    search = stars_table({1: "a", 2: "b", 3: "c"})
+    assert check_null_light_curves(null, search, [1, 2, 3]) == [2, 3]
 
 
 ROW = {

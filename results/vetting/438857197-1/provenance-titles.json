@@ -1,0 +1,114 @@
+{
+  "argv": [
+    "tess-hunt",
+    "vetting",
+    "titles",
+    "--literature",
+    "$TESS_HUNT_DATA/runs/20261021T001540Z-vetting-literature-61b5944-07de",
+    "--production"
+  ],
+  "criteria": [],
+  "ended_at": "2026-10-26T18:50:11.767620+00:00",
+  "git": {
+    "commit": "af322af1fa1e11e518879dff65bd37301f7effcb",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "literature_103312990-1": {
+      "file": "literature.json",
+      "sha256": "df842da95f4413ffb0ca3c1e462fc7f28b7b601ed895c792c938e01ce9388356"
+    },
+    "literature_146282666-1": {
+      "file": "literature.json",
+      "sha256": "8db7eb5b9569e0541b747184a2c1ce1fec8d41b7147df346b56e03e7c9a08ff3"
+    },
+    "literature_164767175-1": {
+      "file": "literature.json",
+      "sha256": "45fbc5b8c764369a4188d237693c46b3cd86bc6d2a1031dddc63f49f0642c476"
+    },
+    "literature_173369850-1": {
+      "file": "literature.json",
+      "sha256": "cdcfeb468375904cbcd44971634380fbabd9dab98085f046bb636098ee1ba2e0"
+    },
+    "literature_241522065-1": {
+      "file": "literature.json",
+      "sha256": "fba4c6a001fc29b0e8c002ca13b7031f8c5bbccb8f2e991dd406647fe9b7e314"
+    },
+    "literature_277774870-1": {
+      "file": "literature.json",
+      "sha256": "09ae9b226333df6a7f65877ac7b8d324720199ada1410bc826acf37edba751c4"
+    },
+    "literature_295140687-1": {
+      "file": "literature.json",
+      "sha256": "af67d2e9e00deaec85ea172fb83b11688c936fbc22b99f29250e4fd95320bd58"
+    },
+    "literature_296819076-1": {
+      "file": "literature.json",
+      "sha256": "19e934a6e9c022d1f326c29cf40934965a734eb4bbca96f25d32c0dd211551a0"
+    },
+    "literature_322826591-1": {
+      "file": "literature.json",
+      "sha256": "2f13672c9e35b9b2fbae9241f5958818d5c847d7ba542e5b11f08df543eeb707"
+    },
+    "literature_337885456-1": {
+      "file": "literature.json",
+      "sha256": "87322b3fd42a6967354276e1b08393909cbdb6782916277aa1153fbba81bdb71"
+    },
+    "literature_370977908-1": {
+      "file": "literature.json",
+      "sha256": "d811c859dd59cf8c36e7d5df93a52c295422520c1bab3a83a27f2de06441af05"
+    },
+    "literature_399023421-1": {
+      "file": "literature.json",
+      "sha256": "d0b4e6f0bda4d2edf95b7e03ebf37e83bbe86cbc477599ff2e55b5b3c1c1a54e"
+    },
+    "literature_410399327-1": {
+      "file": "literature.json",
+      "sha256": "9cfe519fc93fd0e0d9f42ae1819a123928eb368a1e9c457b29013ef168e52ae0"
+    },
+    "literature_423100454-1": {
+      "file": "literature.json",
+      "sha256": "27eced0574eae2296549e4f0a5a56aef0fcabc4a13f142ca8cb17db148858b3c"
+    },
+    "literature_438857197-1": {
+      "file": "literature.json",
+      "sha256": "97c5da463827196df261e0dd949202248218a4884c30847a50c7317a7f35b5c6"
+    },
+    "literature_441010857-1": {
+      "file": "literature.json",
+      "sha256": "e13c45535fb0c8c938be38e42b8f6571083b33672d22863810c1b6c71aab87bd"
+    },
+    "literature_44926986-1": {
+      "file": "literature.json",
+      "sha256": "b415b2d42228dc81a1e4af2c30d8f2f1cad797c49fd35705989e76dc8891793a"
+    },
+    "literature_458290782-1": {
+      "file": "literature.json",
+      "sha256": "39c78a31f24f5121942c4c24c8f98b8afb429b4090b82c637757d3f1471c358f"
+    },
+    "literature_48010903-1": {
+      "file": "literature.json",
+      "sha256": "30316aec3f6bf2021cf1a69d4db70cb130fb947e2343fa87a275d840df4d666b"
+    },
+    "literature_provenance": {
+      "file": "provenance.json",
+      "sha256": "6b7591ba0a10a63458e3c50982c28a65cbb4e411b7be7b0b4f911b77cadc49a9"
+    }
+  },
+  "literature_run": "20261021T001540Z-vetting-literature-61b5944-07de",
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261026T184940Z-vetting-titles-af322af-9b15",
+  "stage": "vetting-titles",
+  "started_at": "2026-10-26T18:49:40.983508+00:00",
+  "summary": {
+    "dois": 50,
+    "error": 0,
+    "literature_run": "20261021T001540Z-vetting-literature-61b5944-07de",
+    "not_found": 0,
+    "ok": 50,
+    "titled": 50,
+    "titles_sha256": "a46597959e3c94eddd6089fe4ad65c21dbc1bfc6a81ee1ebc24b8ec996b179c1"
+  },
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a"
+}

@@ -1,0 +1,962 @@
+{
+  "advances": false,
+  "catalogued": {
+    "fallback_duration_days": 0.25,
+    "mask_width_durations": 2.0,
+    "rows": [
+      {
+        "duration": 0.3213595741358792,
+        "kind": "candidate",
+        "masked": true,
+        "matches_signal": false,
+        "name": "TOI-4298.01",
+        "overlaps": [],
+        "period": 722.2619756368,
+        "source": "TOI",
+        "t0": 1398.3955890000798
+      },
+      {
+        "duration": 0.3213595833333333,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0001-s0036 00146282666-01",
+        "overlaps": [],
+        "period": 722.2619999999998,
+        "source": "SPOC-TCE",
+        "t0": 1398.4
+      },
+      {
+        "duration": 0.257315,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0003-s0003 00146282666-01",
+        "overlaps": [
+          0,
+          287
+        ],
+        "period": 9.0772,
+        "source": "SPOC-TCE",
+        "t0": 1389.33
+      },
+      {
+        "duration": 0.3191220833333333,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0030-s0030 00146282666-01",
+        "overlaps": [
+          75
+        ],
+        "period": 18.3425,
+        "source": "SPOC-TCE",
+        "t0": 2120.66
+      },
+      {
+        "duration": 0.20881708333333335,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0104-s0104 00146282666-01",
+        "overlaps": [
+          280,
+          284,
+          288
+        ],
+        "period": 13.3718,
+        "source": "SPOC-TCE",
+        "t0": 4187.93
+      },
+      {
+        "duration": 0.3638591666666667,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "TCE s0106-s0106 00146282666-01",
+        "overlaps": [],
+        "period": 22.1285,
+        "source": "SPOC-TCE",
+        "t0": 4236.91
+      },
+      {
+        "duration": 0.321,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner 146282666-1-S1-36",
+        "overlaps": [],
+        "period": 722.262,
+        "source": "ExoMiner-v1",
+        "t0": 1398.396
+      },
+      {
+        "duration": 0.319,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner 146282666-1-S30",
+        "overlaps": [
+          75
+        ],
+        "period": 18.343,
+        "source": "ExoMiner-v1",
+        "t0": 2120.657
+      },
+      {
+        "duration": 0.27179246916064803,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner vetting_catalog_2-min 146282666-1-S3",
+        "overlaps": [
+          0,
+          288
+        ],
+        "period": 9.080866709738128,
+        "source": "ExoMiner-v2",
+        "t0": 1389.319918731493
+      },
+      {
+        "duration": 0.3191219003998876,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner vetting_catalog_2-min 146282666-1-S30",
+        "overlaps": [
+          75
+        ],
+        "period": 18.3425416195865,
+        "source": "ExoMiner-v2",
+        "t0": 2120.657569935622
+      },
+      {
+        "duration": 0.3213595741358792,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "ExoMiner vetting_catalog_2-min 146282666-1-S1-36",
+        "overlaps": [],
+        "period": 722.2619756367995,
+        "source": "ExoMiner-v2",
+        "t0": 1398.3956121956908
+      },
+      {
+        "duration": 0.25313637351440027,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "eumemic-tce f1d17f0 146282666",
+        "overlaps": [],
+        "period": 22.15689457145204,
+        "source": "eumemic-tce",
+        "t0": 1400.823226237345
+      },
+      {
+        "duration": 0.06641438070346362,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "eumemic-tce f1d17f0 146282666",
+        "overlaps": [],
+        "period": 9.121080273677306,
+        "source": "eumemic-tce",
+        "t0": 1393.5319608190218
+      },
+      {
+        "duration": 0.19516536020290673,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "eumemic-tce f1d17f0 146282666",
+        "overlaps": [
+          280,
+          284,
+          288
+        ],
+        "period": 13.313130740491143,
+        "source": "eumemic-tce",
+        "t0": 1392.2162175555466
+      },
+      {
+        "duration": 0.16786028463725552,
+        "kind": "tce",
+        "masked": false,
+        "matches_signal": false,
+        "name": "eumemic-tce f1d17f0 146282666",
+        "overlaps": [
+          290
+        ],
+        "period": 18.25386475534105,
+        "source": "eumemic-tce",
+        "t0": 1403.79034212981
+      }
+    ],
+    "transits": [
+      0,
+      1,
+      73,
+      75,
+      280,
+      281,
+      282,
+      283,
+      284,
+      285,
+      287,
+      288,
+      290
+    ]
+  },
+  "checks": [
+    {
+      "check": "novelty",
+      "evidence": {
+        "catalog_rows": 951362,
+        "nearby_rows": 15,
+        "neighbour_arcmin": 2.5,
+        "tce_matches": [],
+        "tce_period_matches": []
+      },
+      "outcome": "pass",
+      "reason": "no known object matches"
+    },
+    {
+      "check": "odd_even",
+      "evidence": {
+        "families": {
+          "pdcsap": {
+            "check": "odd_even",
+            "evidence": {
+              "depth_even": 0.00031238479235362604,
+              "depth_odd": 0.0001874208405356903,
+              "err_even": 3.7600753134904876e-05,
+              "err_odd": 3.490948655674224e-05,
+              "n_even": 360,
+              "n_odd": 469,
+              "sigma": 2.435574830762183
+            },
+            "outcome": "pass",
+            "reason": "odd and even depths agree within 2.4 sigma"
+          }
+        }
+      },
+      "outcome": "pass",
+      "reason": "pdcsap: odd and even depths agree within 2.4 sigma"
+    },
+    {
+      "check": "secondary",
+      "evidence": {
+        "depth": 3.1466573527372255e-05,
+        "err": 2.0314317916014436e-05,
+        "n": 1304,
+        "sigma": 1.5489849896740138
+      },
+      "outcome": "pass",
+      "reason": "no dip at phase 0.5 (1.5 sigma)"
+    },
+    {
+      "check": "sector_depth",
+      "evidence": {
+        "families": {
+          "pdcsap": {
+            "check": "sector_depth",
+            "evidence": {
+              "chi2": 4.139606199423815,
+              "dof": 5,
+              "mean_depth": 0.0002452710754346034,
+              "p_value": 0.5294963222844591,
+              "sectors": [
+                {
+                  "depth": 0.0001904299774988516,
+                  "err": 6.005218308878199e-05,
+                  "n": 134,
+                  "provenance": "SPOC",
+                  "sector": 3
+                },
+                {
+                  "depth": 0.00022884417525825818,
+                  "err": 6.583573479047129e-05,
+                  "n": 136,
+                  "provenance": "SPOC",
+                  "sector": 30
+                },
+                {
+                  "depth": 0.0002627643744418373,
+                  "err": 6.584696133215095e-05,
+                  "n": 132,
+                  "provenance": "SPOC",
+                  "sector": 104
+                },
+                {
+                  "depth": 0.00028424534097926113,
+                  "err": 5.187541443608329e-05,
+                  "n": 201,
+                  "provenance": "SPOC",
+                  "sector": 105
+                },
+                {
+                  "depth": 0.0001692509828621347,
+                  "err": 6.8396315594722e-05,
+                  "n": 134,
+                  "provenance": "SPOC",
+                  "sector": 106
+                },
+                {
+                  "depth": 0.0003273379790607045,
+                  "err": 7.003837142683345e-05,
+                  "n": 92,
+                  "provenance": "SPOC",
+                  "sector": 107
+                }
+              ]
+            },
+            "outcome": "pass",
+            "reason": "depths agree across 6 sectors (p = 0.53)"
+          }
+        }
+      },
+      "outcome": "pass",
+      "reason": "pdcsap: depths agree across 6 sectors (p = 0.53)"
+    },
+    {
+      "check": "holdout",
+      "evidence": {
+        "seasons": [
+          {
+            "depth": 0.00021186919519544656,
+            "end": 1405.7164454641659,
+            "err": 6.0735911190075934e-05,
+            "expected_depth": 0.0002349154094114514,
+            "expected_snr": 3.8678173227083463,
+            "family_depths": [
+              {
+                "depth": 0.00021186919519544656,
+                "err": 6.0735911190075934e-05,
+                "family": "pdcsap",
+                "n": 131,
+                "ref": 0.0002349154094114514,
+                "ref_err": 2.855034524514388e-05,
+                "ref_n": 682,
+                "tension": 0.3434011136962273,
+                "training_cadences": 65469
+              }
+            ],
+            "n": 131,
+            "predicted_period": 9.995048127128019,
+            "predicted_t0": 2118.955974714054,
+            "ref": 0.0002349154094114514,
+            "ref_err": 2.855034524514388e-05,
+            "ref_n": 682,
+            "season": 0,
+            "start": 1386.4399177584642,
+            "status": "underpowered",
+            "training_seasons": 2,
+            "training_seasons_with_transits": 2
+          },
+          {
+            "depth": 0.00022882002309509986,
+            "end": 2140.986901771476,
+            "err": 6.682580139610457e-05,
+            "expected_depth": 0.0002325993068800214,
+            "expected_snr": 3.480681144417673,
+            "family_depths": [
+              {
+                "depth": 0.00022882002309509986,
+                "err": 6.682580139610457e-05,
+                "family": "pdcsap",
+                "n": 132,
+                "ref": 0.0002325993068800214,
+                "ref_err": 2.8039732127579214e-05,
+                "ref_n": 680,
+                "tension": 0.05214956478523531,
+                "training_cadences": 62403
+              }
+            ],
+            "n": 132,
+            "predicted_period": 9.994994424358707,
+            "predicted_t0": 1389.3297615084641,
+            "ref": 0.0002325993068800214,
+            "ref_err": 2.8039732127579214e-05,
+            "ref_n": 680,
+            "season": 1,
+            "start": 2116.389568464054,
+            "status": "underpowered",
+            "training_seasons": 2,
+            "training_seasons_with_transits": 2
+          },
+          {
+            "depth": 0.00025189168838657405,
+            "end": 4290.273701800483,
+            "err": 3.133029110900469e-05,
+            "expected_depth": 0.0001938101688688798,
+            "expected_snr": 6.186031537165529,
+            "family_depths": [
+              {
+                "depth": 0.00025189168838657405,
+                "err": 3.133029110900469e-05,
+                "family": "pdcsap",
+                "n": 557,
+                "ref": 0.0001938101688688798,
+                "ref_err": 4.5040136102997364e-05,
+                "ref_n": 262,
+                "tension": 1.0586203100445277,
+                "training_cadences": 25050
+              }
+            ],
+            "n": 557,
+            "predicted_period": 9.994935999349364,
+            "predicted_t0": 1389.3297615084641,
+            "ref": 0.0001938101688688798,
+            "ref_err": 4.5040136102997364e-05,
+            "ref_n": 262,
+            "season": 2,
+            "sigma": 8.039877047748766,
+            "start": 4180.392197138352,
+            "status": "predicted",
+            "tension": 1.0586203100445277,
+            "training_seasons": 2,
+            "training_seasons_with_transits": 2
+          }
+        ]
+      },
+      "outcome": "inconclusive",
+      "reason": "1 season(s) could be tested; need 2"
+    },
+    {
+      "check": "signal_present",
+      "evidence": {
+        "depth": 0.00024527107543448334,
+        "err": 2.558330991204254e-05,
+        "n": 829,
+        "snr": 9.587151790669184
+      },
+      "outcome": "pass",
+      "reason": "combined depth is 9.6 sigma"
+    },
+    {
+      "check": "shape",
+      "evidence": {
+        "acceptance": 0.269625,
+        "b_median": 0.44615856254359876,
+        "grazing_probability": 0.0,
+        "rp_rs_median": 0.014939032327042185
+      },
+      "outcome": "pass",
+      "reason": "U-shaped: grazing in 0% of samples"
+    },
+    {
+      "check": "density",
+      "evidence": {
+        "acceptance": 0.269625,
+        "fit_log_rho": -0.2890218794956083,
+        "fit_log_rho_minus": 0.42532092512815556,
+        "fit_log_rho_plus": 0.14654460886692733,
+        "fit_log_rho_sd": 0.14654460886692733,
+        "fit_rho_gcc": 0.5140177550237965,
+        "tension_sigma": 1.3267039858560201,
+        "tic_log_rho": -0.05420115365541535,
+        "tic_log_rho_sd": 0.09925778953105883,
+        "tic_rho_gcc": 0.882670976
+      },
+      "outcome": "pass",
+      "reason": "transit and TIC densities agree (1.3 sigma)"
+    },
+    {
+      "check": "radius",
+      "evidence": {
+        "rad_tic": 1.22059,
+        "rp_rearth": 1.9889390649625946,
+        "rp_rs_median": 0.014939032327042185
+      },
+      "outcome": "pass",
+      "reason": "2.0 Earth radii"
+    }
+  ],
+  "criteria_version": "vet-v3",
+  "dropped_suspect": [],
+  "ephemeris": {
+    "depth": 0.0002334112905181,
+    "duration": 0.1875,
+    "period": 9.995091231532186,
+    "t0": 1389.3225568289126
+  },
+  "evidence_only": true,
+  "families": {
+    "pdcsap": [
+      3,
+      30,
+      104,
+      105,
+      106,
+      107
+    ]
+  },
+  "fit": {
+    "acceptance": 0.269625,
+    "b": {
+      "median": 0.44615856254359876,
+      "minus": 0.3293343247465219,
+      "plus": 0.3248089452580186
+    },
+    "log_rho": {
+      "median": -0.2890218794956083,
+      "minus": 0.42532092512815556,
+      "plus": 0.14654460886692733
+    },
+    "period": {
+      "median": 9.995021461986946,
+      "minus": 2.6267210316177625e-05,
+      "plus": 2.156582741541513e-05
+    },
+    "q1": {
+      "median": 0.28577002917971606,
+      "minus": 0.20730910616067735,
+      "plus": 0.36707794358155255
+    },
+    "q2": {
+      "median": 0.39641732586354717,
+      "minus": 0.2855388347422577,
+      "plus": 0.38282588873208423
+    },
+    "rho_prior": null,
+    "rp_rs": {
+      "median": 0.014939032327042185,
+      "minus": 0.0008174290784517431,
+      "plus": 0.0009853347579372503
+    },
+    "t0": {
+      "median": 1389.3309935651027,
+      "minus": 0.006730192159238868,
+      "plus": 0.006391583935737799
+    }
+  },
+  "fit_prior": {
+    "a_rs": {
+      "median": 15.685373684479202,
+      "minus": 0.7642762662788147,
+      "plus": 0.7203998622329593
+    },
+    "acceptance": 0.344325,
+    "b": {
+      "median": 0.18140754314435076,
+      "minus": 0.1257213801935383,
+      "plus": 0.15466232172933825
+    },
+    "ephemeris": {
+      "period": {
+        "median": 9.99502612253583,
+        "sd": 2.468400418596176e-05
+      },
+      "t0": {
+        "median": 1389.328579535102,
+        "sd": 0.006133461784524708
+      }
+    },
+    "log_rho": {
+      "median": -0.1362235511402752,
+      "minus": 0.0650845313436891,
+      "plus": 0.058507275406901094
+    },
+    "period": {
+      "median": 9.99502612253583,
+      "minus": 2.6645759936272384e-05,
+      "plus": 1.787678603193399e-05
+    },
+    "q1": {
+      "median": 0.18273303972907912,
+      "minus": 0.1368715391895453,
+      "plus": 0.31153404260214485
+    },
+    "q2": {
+      "median": 0.3358735448414063,
+      "minus": 0.2442572074613143,
+      "plus": 0.3795580101479301
+    },
+    "rho_prior": [
+      -0.05420115365541535,
+      0.09925778953105883
+    ],
+    "rp_rearth": {
+      "median": 1.9595365132543185,
+      "p16": 1.8746315253020018,
+      "p84": 2.0414222261674952
+    },
+    "rp_rs": {
+      "median": 0.014718188120095238,
+      "minus": 0.0006377261033739309,
+      "plus": 0.0006150481600379464
+    },
+    "t0": {
+      "median": 1389.328579535102,
+      "minus": 0.005289024694775435,
+      "plus": 0.006426101194847433
+    }
+  },
+  "fit_prior_reason": null,
+  "masked": [
+    {
+      "depth": null,
+      "duration": 0.3213595741358792,
+      "period": 722.2619756368,
+      "t0": 1398.3955890000798
+    }
+  ],
+  "modshift": {
+    "Fred": 1.2575088882796412,
+    "dep_sec": 6.169232000707847e-05,
+    "err_sec": 1.8840032368371962e-05,
+    "phs_pos": 0.6632897538921041,
+    "phs_pri": 0.9999599260266379,
+    "phs_sec": 0.338764219625993,
+    "phs_ter": 0.8951600250502906,
+    "sig_pos": 2.520783805884426,
+    "sig_pri": 15.865083342263652,
+    "sig_sec": 3.274533652640934,
+    "sig_ter": 2.9981806679261385
+  },
+  "neighbours": {
+    "check": "neighbours",
+    "evidence": {
+      "centre": "Gaia DR3 4967249906845494144, J2016.0",
+      "depth": 0.0002334112905181,
+      "depth_from": "the signals file",
+      "possible_hosts": [
+        {
+          "required_depth": 0.07355069588396794,
+          "sep_arcsec": 6.015576805676115,
+          "source_id": 4967249906843757568
+        },
+        {
+          "required_depth": 0.7865696229143813,
+          "sep_arcsec": 31.36899328473933,
+          "source_id": 4967296803591446400
+        },
+        {
+          "required_depth": 0.09368131401689787,
+          "sep_arcsec": 32.4591083555228,
+          "source_id": 4967249872486553600
+        },
+        {
+          "required_depth": 0.10335183192810928,
+          "sep_arcsec": 33.21004314527918,
+          "source_id": 4967249872484022400
+        }
+      ],
+      "table": [
+        {
+          "bp_rp": 0.6750812530517578,
+          "dec": -34.109132372140905,
+          "phot_g_mean_mag": 15.728550910949707,
+          "pmdec": -6.551765498798026,
+          "pmra": 13.495605045392239,
+          "possible": true,
+          "ra": 35.98641205913505,
+          "ref_epoch": 2016.0,
+          "required_depth": 0.07355069588396794,
+          "sep_arcsec": 6.015576805676115,
+          "source_id": 4967249906843757568,
+          "tmag": 15.372062315635729,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.1968116760253906,
+          "dec": -34.10834457341651,
+          "phot_g_mean_mag": 20.599506378173828,
+          "pmdec": -6.477012282398802,
+          "pmra": 13.744080260968836,
+          "possible": false,
+          "ra": 35.98447624682533,
+          "ref_epoch": 2016.0,
+          "required_depth": 5.18267671220677,
+          "sep_arcsec": 12.44064827009065,
+          "source_id": 4967249906844218112,
+          "tmag": 19.991980648045086,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.4176158905029297,
+          "dec": -34.11348649972742,
+          "phot_g_mean_mag": 20.631208419799805,
+          "pmdec": -9.225861922112827,
+          "pmra": 3.73443190067851,
+          "possible": false,
+          "ra": 35.980498504279765,
+          "ref_epoch": 2016.0,
+          "required_depth": 4.891658022117642,
+          "sep_arcsec": 26.18512070188276,
+          "source_id": 4967249868188835840,
+          "tmag": 19.929235569756692,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.3302459716796875,
+          "dec": -34.106912867618604,
+          "phot_g_mean_mag": 18.61033821105957,
+          "pmdec": -8.378253337731879,
+          "pmra": 11.523631123708796,
+          "possible": true,
+          "ra": 35.978308682242044,
+          "ref_epoch": 2016.0,
+          "required_depth": 0.7865696229143813,
+          "sep_arcsec": 31.36899328473933,
+          "source_id": 4967296803591446400,
+          "tmag": 17.94493827565415,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.2132377624511719,
+          "dec": -34.11854225113601,
+          "phot_g_mean_mag": 16.24951171875,
+          "pmdec": 7.750753022715531,
+          "pmra": 16.05500090618298,
+          "possible": true,
+          "ra": 35.98488186848603,
+          "ref_epoch": 2016.0,
+          "required_depth": 0.09368131401689787,
+          "sep_arcsec": 32.4591083555228,
+          "source_id": 4967249872486553600,
+          "tmag": 15.634727784769952,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.215224266052246,
+          "dec": -34.11871266655988,
+          "phot_g_mean_mag": 16.3570499420166,
+          "pmdec": 7.976609733250388,
+          "pmra": 15.996925530612383,
+          "possible": true,
+          "ra": 35.9846993136298,
+          "ref_epoch": 2016.0,
+          "required_depth": 0.10335183192810928,
+          "sep_arcsec": 33.21004314527918,
+          "source_id": 4967249872484022400,
+          "tmag": 15.741390797900953,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 0.3406715393066406,
+          "dec": -34.12022704631891,
+          "phot_g_mean_mag": 21.124393463134766,
+          "pmdec": null,
+          "pmra": null,
+          "possible": false,
+          "ra": 35.97367155462622,
+          "ref_epoch": 2016.0,
+          "required_depth": 12.536305096591583,
+          "sep_arcsec": 56.900995134785475,
+          "source_id": 4967249872484481152,
+          "tmag": 20.951019233051657,
+          "tmag_from": "colour"
+        }
+      ],
+      "target_source_id": 4967249906845494144,
+      "tmag": 9.1259
+    },
+    "outcome": "pass",
+    "reason": "4 of 7 neighbours could host the signal"
+  },
+  "other_signals": [
+    {
+      "depth": 0.000268156956593912,
+      "duration": 0.25,
+      "period": 28.89976808224421,
+      "period_ratio": 2.891396127638352,
+      "rank": 2,
+      "sde": 19.07882965723431,
+      "t0": 1398.0038068289125
+    }
+  ],
+  "pixels": {
+    "evidence": {
+      "asked": [
+        107,
+        106,
+        105,
+        104,
+        30,
+        3
+      ],
+      "files": {
+        "tic146282666/imageData_146282666.1_sector104.pickle": "1912607abcc94aac798244b2a1e6d5f1aab6fbb57dcc10eadc340d6b0c3f06cf",
+        "tic146282666/imageData_146282666.1_sector105.pickle": "4a0bb4b29dfd8037f494d1c9fb5f55bd2b89266a12eb1e0b8bffec83d75587d5",
+        "tic146282666/imageData_146282666.1_sector106.pickle": "c1656424aa7e771e78f64a2eaf79d4212f4f2a9654d807ee8dd27239e6983fff",
+        "tic146282666/imageData_146282666.1_sector107.pickle": "e18cd03a0b29d83c0bc2523eea38817a2c2d811d8f738ad277715a52cca61317",
+        "tic146282666/imageData_146282666.1_sector30.pickle": "e277d9a48a182d6afd703a3c7738d4a70f870caebda063be66c167138b56b245",
+        "tic146282666/ticKey_tic146282666.txt": "97786b125c00e12e2106fbeaf1cb51f0eaf1c27a0be68aed15ed7870b823f2e5"
+      },
+      "no_image": [],
+      "offset_mean_arcsec": 12.031225498363407,
+      "offset_qual_arcsec": 5.195112103970701,
+      "sectors": [
+        {
+          "offset_arcsec": 7.4354910547299395,
+          "quality": 0.7845103698420928,
+          "sector": 107
+        },
+        {
+          "offset_arcsec": 5.195112103970701,
+          "quality": 0.8531722837026696,
+          "sector": 106
+        },
+        {
+          "offset_arcsec": 22.03358787487874,
+          "quality": 0.4127786727201128,
+          "sector": 105
+        },
+        {
+          "offset_arcsec": 13.171580096171201,
+          "quality": 0.7131063142817861,
+          "sector": 104
+        },
+        {
+          "offset_arcsec": 23.419036080995134,
+          "quality": 0.39479299745393054,
+          "sector": 30
+        }
+      ],
+      "stale_removed": []
+    },
+    "max_offset_arcsec": 15.0,
+    "outcome": "pass",
+    "reason": "centroid offset 5.2\" within 15\""
+  },
+  "red_noise": {
+    "104": {
+      "beta": 1.145523101935456,
+      "cadences_per_bin": 67.0,
+      "n_bins": 199
+    },
+    "105": {
+      "beta": 1.1148665080037334,
+      "cadences_per_bin": 67.0,
+      "n_bins": 176
+    },
+    "106": {
+      "beta": 1.2468461652036886,
+      "cadences_per_bin": 67.0,
+      "n_bins": 145
+    },
+    "107": {
+      "beta": 1.0,
+      "cadences_per_bin": 67.0,
+      "n_bins": 159
+    },
+    "3": {
+      "beta": 1.1438342190631774,
+      "cadences_per_bin": 67.0,
+      "n_bins": 150
+    },
+    "30": {
+      "beta": 1.1331348849840288,
+      "cadences_per_bin": 67.0,
+      "n_bins": 195
+    }
+  },
+  "signal": {
+    "kind": "candidate",
+    "name": "146282666-1"
+  },
+  "sources": {
+    "104": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.9833743,
+      "flfrcsap": 0.93792069,
+      "n_good": 15694,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0104/0000/0001/4628/2666/tess2026137223500-s0104-0000000146282666-0306-s_lc.fits",
+      "sha256": "857f8d6c5e60937da8bc30fdef480cd6d2f277f2913df23602c007aced6e211b",
+      "timing_suspect": false
+    },
+    "105": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.98429644,
+      "flfrcsap": 0.94639581,
+      "n_good": 15002,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0105/0000/0001/4628/2666/tess2026164183000-s0105-0000000146282666-0307-s_lc.fits",
+      "sha256": "201fe0cd2e0d7dd3ee23213ff497bd5a75586df286b9b24da94fc83eeee40d2a",
+      "timing_suspect": false
+    },
+    "106": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.97735393,
+      "flfrcsap": 0.95229322,
+      "n_good": 12896,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0106/0000/0001/4628/2666/tess2026192185000-s0106-0000000146282666-0308-s_lc.fits",
+      "sha256": "ea4614febeec0ef9fec731e79fa6fd9e4db0294a16abc75025def75e40cb79ce",
+      "timing_suspect": false
+    },
+    "107": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.98037875,
+      "flfrcsap": 0.94214219,
+      "n_good": 14087,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0107/0000/0001/4628/2666/tess2026221103959-s0107-0000000146282666-0309-s_lc.fits",
+      "sha256": "6a0ac46656700fca5e14e6c52bebcfc48e1983f8a8db467abfe198827bf803ce",
+      "timing_suspect": false
+    },
+    "3": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.97380292,
+      "flfrcsap": 0.94357276,
+      "n_good": 12895,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0003/0000/0001/4628/2666/tess2018263035959-s0003-0000000146282666-0123-s_lc.fits",
+      "sha256": "19462a9b1e369e0da056f6f57637e6ac0c23c31173e69ee99448e1393660f206",
+      "timing_suspect": false
+    },
+    "30": {
+      "cadence_s": 120.0,
+      "crowdsap": 0.97614539,
+      "flfrcsap": 0.94897842,
+      "n_good": 16023,
+      "provenance": "SPOC",
+      "route": "s3",
+      "s3_key": "tess/public/tid/s0030/0000/0001/4628/2666/tess2020266004630-s0030-0000000146282666-0195-s_lc.fits",
+      "sha256": "4dca3ded475c7dcc82719f00a020233b9f20e52c2ec227aec8267284d0718156",
+      "timing_suspect": false
+    }
+  },
+  "star": {
+    "angular_distance": 0.12641076743602753,
+    "contratio": 0.0110689318,
+    "dec": -34.1094359375371,
+    "disposition": null,
+    "dr3_from": "targets",
+    "dr3_reason": null,
+    "dr3_source_id": 4967249906845494144,
+    "e_mass": 0.154343,
+    "e_rad": 0.0573694,
+    "e_rho": 0.143277,
+    "e_teff": 133.377,
+    "gaia": "4967249906845494144",
+    "logg": 4.32183,
+    "logg_flame": 4.26338193780501,
+    "logg_gspphot": 4.1346001625061035,
+    "mass": 1.14,
+    "mass_flame": 1.0922635793685913,
+    "ra": 35.9882136249855,
+    "rad": 1.22059,
+    "radius_flame": 1.2778290510177612,
+    "rho": 0.626897,
+    "ruwe": 1.0394459962844849,
+    "sectors": "3,30,104,105,106,107",
+    "teff": 6090.0,
+    "tic": 146282666,
+    "tmag": 9.1259
+  },
+  "tic": 146282666,
+  "triage_reason": null,
+  "upcoming_sectors": null,
+  "window_duration": null,
+  "windows": null,
+  "windows_reason": "evidence-only run: windows come from the main vet's density-prior fit"
+}

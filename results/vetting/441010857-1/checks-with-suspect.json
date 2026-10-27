@@ -1,0 +1,783 @@
+{
+  "advances": false,
+  "catalogued": {
+    "fallback_duration_days": 0.25,
+    "mask_width_durations": 2.0,
+    "rows": [],
+    "transits": [
+      30,
+      31,
+      60
+    ]
+  },
+  "checks": [
+    {
+      "check": "novelty",
+      "evidence": {
+        "catalog_rows": 951362,
+        "nearby_rows": 0,
+        "neighbour_arcmin": 2.5,
+        "tce_matches": [],
+        "tce_period_matches": []
+      },
+      "outcome": "pass",
+      "reason": "no known object matches"
+    },
+    {
+      "check": "odd_even",
+      "evidence": {
+        "families": {
+          "pdcsap": {
+            "check": "odd_even",
+            "evidence": {
+              "depth_even": 0.0016045792409062898,
+              "depth_odd": 0.0019020456602205638,
+              "err_even": 0.0001530656649732413,
+              "err_odd": 0.00022667367965056577,
+              "n_even": 17,
+              "n_odd": 4
+            },
+            "outcome": "inconclusive",
+            "reason": "fewer than 5 in-transit cadences on odd or even transits"
+          },
+          "qlp": {
+            "check": "odd_even",
+            "evidence": {
+              "depth_even": null,
+              "depth_odd": null,
+              "err_even": null,
+              "err_odd": null,
+              "n_even": 0,
+              "n_odd": 0
+            },
+            "outcome": "inconclusive",
+            "reason": "fewer than 5 in-transit cadences on odd or even transits"
+          }
+        }
+      },
+      "outcome": "inconclusive",
+      "reason": "pdcsap: fewer than 5 in-transit cadences on odd or even transits; qlp: fewer than 5 in-transit cadences on odd or even transits"
+    },
+    {
+      "check": "secondary",
+      "evidence": {
+        "depth": -4.0930841517017313e-05,
+        "err": 0.00010461856055871787,
+        "n": 30,
+        "sigma": -0.39123881363330937
+      },
+      "outcome": "pass",
+      "reason": "no dip at phase 0.5 (-0.4 sigma)"
+    },
+    {
+      "check": "sector_depth",
+      "evidence": {
+        "families": {
+          "pdcsap": {
+            "check": "sector_depth",
+            "evidence": {
+              "chi2": 1.3363341585550432,
+              "dof": 1,
+              "mean_depth": 0.0016977401113716744,
+              "p_value": 0.24768148277044394,
+              "sectors": [
+                {
+                  "depth": 0.0018109981393633623,
+                  "err": 0.00016028249599742218,
+                  "n": 8,
+                  "provenance": "TESS-SPOC",
+                  "sector": 38
+                },
+                {
+                  "depth": 0.0015078755739356131,
+                  "err": 0.00020752648338362602,
+                  "n": 13,
+                  "provenance": "TESS-SPOC",
+                  "sector": 64
+                }
+              ]
+            },
+            "outcome": "pass",
+            "reason": "depths agree across 2 sectors (p = 0.25)"
+          },
+          "qlp": {
+            "check": "sector_depth",
+            "evidence": {
+              "sectors": []
+            },
+            "outcome": "inconclusive",
+            "reason": "fewer than two sectors with in-transit data"
+          }
+        }
+      },
+      "outcome": "pass",
+      "reason": "pdcsap: depths agree across 2 sectors (p = 0.25)"
+    },
+    {
+      "check": "holdout",
+      "evidence": {
+        "seasons": [
+          {
+            "depth": null,
+            "end": 1623.3493958551528,
+            "err": null,
+            "n": 0,
+            "predicted_period": 24.05402445586837,
+            "predicted_t0": 2335.460444695365,
+            "ref": 0.0018277101194047463,
+            "ref_err": 0.00014577994832783064,
+            "ref_n": 16,
+            "season": 0,
+            "start": 1601.3912734656813,
+            "status": "no_predicted_transit_in_data",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 2
+          },
+          {
+            "end": 2359.966967443494,
+            "reason": "1 of 3 training seasons hold a transit in their data, need 2: one season can't predict a season a year away",
+            "season": 1,
+            "start": 2334.710444695365,
+            "status": "untestable",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 1
+          },
+          {
+            "end": 3065.5550488224317,
+            "reason": "1 of 3 training seasons hold a transit in their data, need 2: one season can't predict a season a year away",
+            "season": 2,
+            "start": 3041.8763325731425,
+            "status": "untestable",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 1
+          },
+          {
+            "depth": null,
+            "end": 4150.610196360477,
+            "err": null,
+            "n": 0,
+            "predicted_period": 24.054185121565613,
+            "predicted_t0": 1613.8318984656812,
+            "ref": 0.001844219030205485,
+            "ref_err": 0.0001327024799179368,
+            "ref_n": 18,
+            "season": 3,
+            "start": 4128.415762615397,
+            "status": "no_predicted_transit_in_data",
+            "training_seasons": 3,
+            "training_seasons_with_transits": 2
+          }
+        ]
+      },
+      "outcome": "inconclusive",
+      "reason": "0 season(s) could be tested; need 2"
+    },
+    {
+      "check": "signal_present",
+      "evidence": {
+        "depth": 0.0016977401113714707,
+        "err": 0.00012685245911289993,
+        "n": 21,
+        "snr": 13.383580604144736
+      },
+      "outcome": "pass",
+      "reason": "combined depth is 13.4 sigma"
+    },
+    {
+      "check": "shape",
+      "evidence": {
+        "acceptance": 0.277425,
+        "b_median": 0.6805512407650227,
+        "grazing_probability": 0.017520833333333333,
+        "rp_rs_median": 0.042284617655547946
+      },
+      "outcome": "pass",
+      "reason": "U-shaped: grazing in 2% of samples"
+    },
+    {
+      "check": "density",
+      "evidence": {
+        "acceptance": 0.277425,
+        "fit_log_rho": 1.6696294364586786,
+        "fit_log_rho_minus": 0.5424005306795383,
+        "fit_log_rho_plus": 0.25037899978528544,
+        "fit_log_rho_sd": 0.5424005306795383,
+        "fit_rho_gcc": 46.73362145837333,
+        "tension_sigma": 3.577248323013123,
+        "tic_log_rho": -0.32288557553247177,
+        "tic_log_rho_sd": 0.1266760937712016,
+        "tic_rho_gcc": 0.47546047999999996
+      },
+      "outcome": "fail",
+      "reason": "transit implies 46.7 g/cm3, the TIC gives 0.475 (3.6 sigma)"
+    },
+    {
+      "check": "radius",
+      "evidence": {
+        "rad_tic": 1.50886,
+        "rp_rearth": 6.9592198525196345,
+        "rp_rs_median": 0.042284617655547946
+      },
+      "outcome": "pass",
+      "reason": "7.0 Earth radii"
+    }
+  ],
+  "criteria_version": "vet-v3",
+  "dropped_suspect": [],
+  "ephemeris": {
+    "depth": 0.0013761968733422,
+    "duration": 0.0625,
+    "period": 24.05388992348611,
+    "t0": 1613.8350234656812
+  },
+  "evidence_only": true,
+  "families": {
+    "pdcsap": [
+      11,
+      38,
+      64
+    ],
+    "qlp": [
+      102
+    ]
+  },
+  "fit": {
+    "acceptance": 0.277425,
+    "b": {
+      "median": 0.6805512407650227,
+      "minus": 0.30545715436130505,
+      "plus": 0.196594985105224
+    },
+    "log_rho": {
+      "median": 1.6696294364586786,
+      "minus": 0.5424005306795383,
+      "plus": 0.25037899978528544
+    },
+    "period": {
+      "median": 24.054108553605754,
+      "minus": 0.00011344451585415527,
+      "plus": 9.124705025698177e-05
+    },
+    "q1": {
+      "median": 0.5467905465024082,
+      "minus": 0.33505942260104027,
+      "plus": 0.32198247749402065
+    },
+    "q2": {
+      "median": 0.5282393632208302,
+      "minus": 0.3460804853310155,
+      "plus": 0.32770685898283636
+    },
+    "rho_prior": null,
+    "rp_rs": {
+      "median": 0.042284617655547946,
+      "minus": 0.0043139372948625965,
+      "plus": 0.005562943254422019
+    },
+    "t0": {
+      "median": 1613.8346382475563,
+      "minus": 0.003554160057547051,
+      "plus": 0.00422154953230347
+    }
+  },
+  "fit_prior": {
+    "a_rs": {
+      "median": 31.37789931957638,
+      "minus": 2.1275962017472665,
+      "plus": 2.682687050955444
+    },
+    "acceptance": 0.3126,
+    "b": {
+      "median": 1.3359998854947843,
+      "minus": 0.18937297123708707,
+      "plus": 0.24096954542541327
+    },
+    "ephemeris": {
+      "period": {
+        "median": 24.053967331266637,
+        "sd": 0.0001675206227937334
+      },
+      "t0": {
+        "median": 1613.8391413078973,
+        "sd": 0.004279354482665593
+      }
+    },
+    "log_rho": {
+      "median": 0.004355738076100776,
+      "minus": 0.09147435611467718,
+      "plus": 0.10688057549015555
+    },
+    "period": {
+      "median": 24.053967331266637,
+      "minus": 0.00012566715718165256,
+      "plus": 0.00010580519553116119
+    },
+    "q1": {
+      "median": 0.0877545988757811,
+      "minus": 0.06902679942107637,
+      "plus": 0.20900838024838866
+    },
+    "q2": {
+      "median": 0.47050724920505616,
+      "minus": 0.3199998014996669,
+      "plus": 0.3189431335129398
+    },
+    "rho_prior": [
+      -0.32288557553247177,
+      0.1266760937712016
+    ],
+    "rp_rearth": {
+      "median": 61.60620539933047,
+      "p16": 31.569884385792253,
+      "p84": 100.44507737974054
+    },
+    "rp_rs": {
+      "median": 0.37432282579442944,
+      "minus": 0.1825024035383685,
+      "plus": 0.23598720642081916
+    },
+    "t0": {
+      "median": 1613.8391413078973,
+      "minus": 0.003539844907436418,
+      "plus": 0.004704363203472894
+    }
+  },
+  "fit_prior_reason": null,
+  "masked": [],
+  "modshift": {
+    "Fred": 0.9990017010524952,
+    "dep_sec": 0.0003040903957802765,
+    "err_sec": 9.610178167912785e-05,
+    "phs_pos": 0.19018006128756215,
+    "phs_pri": 0.000362662502513928,
+    "phs_sec": 0.9138875146142852,
+    "phs_ter": 0.5707061942189533,
+    "sig_pos": 4.490618166026824,
+    "sig_pri": 13.115247097918008,
+    "sig_sec": 3.164253466138613,
+    "sig_ter": 2.8314736789134307
+  },
+  "neighbours": {
+    "check": "neighbours",
+    "evidence": {
+      "centre": "Gaia DR3 6122183689530591488, J2016.0",
+      "depth": 0.0013761968733422,
+      "depth_from": "the signals file",
+      "possible_hosts": [
+        {
+          "required_depth": 0.04173173147367953,
+          "sep_arcsec": 9.77344918462546,
+          "source_id": 6122183689530020736
+        },
+        {
+          "required_depth": 0.4587872320171141,
+          "sep_arcsec": 20.439340930244935,
+          "source_id": 6122183689530020480
+        },
+        {
+          "required_depth": 0.4523834079680772,
+          "sep_arcsec": 49.89610669565485,
+          "source_id": 6122183758249498240
+        }
+      ],
+      "table": [
+        {
+          "bp_rp": 1.0811996459960938,
+          "dec": -34.74128752485009,
+          "phot_g_mean_mag": 18.114574432373047,
+          "pmdec": 3.0878108729671707,
+          "pmra": -13.089799263156864,
+          "possible": false,
+          "ra": 210.52106575647898,
+          "ref_epoch": 2016.0,
+          "required_depth": 1.71762015717986,
+          "sep_arcsec": 6.797744352971483,
+          "source_id": 6122183689528006656,
+          "tmag": 17.559216403298542,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.6365289688110352,
+          "dec": -34.741838143175684,
+          "phot_g_mean_mag": 14.312233924865723,
+          "pmdec": -54.723095616081466,
+          "pmra": 26.314673815221237,
+          "possible": true,
+          "ra": 210.51928323302997,
+          "ref_epoch": 2016.0,
+          "required_depth": 0.04173173147367953,
+          "sep_arcsec": 9.77344918462546,
+          "source_id": 6122183689530020736,
+          "tmag": 13.523064593502436,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.3799781799316406,
+          "dec": -34.74484133733615,
+          "phot_g_mean_mag": 16.812271118164062,
+          "pmdec": -2.8073247846941296,
+          "pmra": -3.1822628095500525,
+          "possible": true,
+          "ra": 210.52280393803062,
+          "ref_epoch": 2016.0,
+          "required_depth": 0.4587872320171141,
+          "sep_arcsec": 20.439340930244935,
+          "source_id": 6122183689530020480,
+          "tmag": 16.125926890576018,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.96551513671875,
+          "dec": -34.73239845831857,
+          "phot_g_mean_mag": 19.560836791992188,
+          "pmdec": 1.3365284016686534,
+          "pmra": -12.031058178682704,
+          "possible": false,
+          "ra": 210.51503681821296,
+          "ref_epoch": 2016.0,
+          "required_depth": 4.699230884916958,
+          "sep_arcsec": 30.428845830019345,
+          "source_id": 6122183685234078848,
+          "tmag": 18.65196554175711,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 0.6344184875488281,
+          "dec": -34.732953540880196,
+          "phot_g_mean_mag": 20.80037498474121,
+          "pmdec": null,
+          "pmra": null,
+          "possible": false,
+          "ra": 210.51318091100464,
+          "ref_epoch": 2016.0,
+          "required_depth": 24.964152140368764,
+          "sep_arcsec": 32.33316806967735,
+          "source_id": 6122183758248435072,
+          "tmag": 20.465190634617954,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 2.2482566833496094,
+          "dec": -34.73719271872962,
+          "phot_g_mean_mag": 19.451074600219727,
+          "pmdec": -0.6944142858259423,
+          "pmra": -11.022374179821444,
+          "possible": false,
+          "ra": 210.53150276284873,
+          "ref_epoch": 2016.0,
+          "required_depth": 3.899628333687663,
+          "sep_arcsec": 32.7365820203038,
+          "source_id": 6122183719593810432,
+          "tmag": 18.44945662596737,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 2.3409900665283203,
+          "dec": -34.74406785382828,
+          "phot_g_mean_mag": 19.343215942382812,
+          "pmdec": -3.082520384498113,
+          "pmra": -9.55453325425605,
+          "possible": false,
+          "ra": 210.532764613209,
+          "ref_epoch": 2016.0,
+          "required_depth": 3.4393511541096826,
+          "sep_arcsec": 39.23181178069288,
+          "source_id": 6122182929319820160,
+          "tmag": 18.313089880696218,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 2.2729759216308594,
+          "dec": -34.72816680891997,
+          "phot_g_mean_mag": 18.834875106811523,
+          "pmdec": -6.769541600200419,
+          "pmra": -9.631745062971147,
+          "possible": false,
+          "ra": 210.51939689646457,
+          "ref_epoch": 2016.0,
+          "required_depth": 2.1951687829115842,
+          "sep_arcsec": 40.696431597006786,
+          "source_id": 6122183685234084096,
+          "tmag": 17.82556837808849,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.8142356872558594,
+          "dec": -34.74079808285232,
+          "phot_g_mean_mag": 20.50291633605957,
+          "pmdec": -4.255977158192107,
+          "pmra": -7.124763924605824,
+          "possible": false,
+          "ra": 210.53679447554708,
+          "ref_epoch": 2016.0,
+          "required_depth": 11.754975663902956,
+          "sep_arcsec": 47.65884492374371,
+          "source_id": 6122182967974224256,
+          "tmag": 19.64745291884162,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 0.8194999694824219,
+          "dec": -34.72617166798418,
+          "phot_g_mean_mag": 16.540733337402344,
+          "pmdec": 2.8092215470235082,
+          "pmra": -10.964647166789192,
+          "possible": true,
+          "ra": 210.51579649298972,
+          "ref_epoch": 2016.0,
+          "required_depth": 0.4523834079680772,
+          "sep_arcsec": 49.89610669565485,
+          "source_id": 6122183758249498240,
+          "tmag": 16.11066525286481,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 2.0157909393310547,
+          "dec": -34.75051226589128,
+          "phot_g_mean_mag": 20.18696403503418,
+          "pmdec": -3.9830419094167615,
+          "pmra": 8.624206970809054,
+          "possible": false,
+          "ra": 210.51048004429308,
+          "ref_epoch": 2016.0,
+          "required_depth": 8.234105917817656,
+          "sep_arcsec": 50.229916247115995,
+          "source_id": 6122183582154841728,
+          "tmag": 19.26093970586509,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.7302074432373047,
+          "dec": -34.741472590802424,
+          "phot_g_mean_mag": 20.754825592041016,
+          "pmdec": -10.603368532424746,
+          "pmra": -2.8830774872209517,
+          "possible": false,
+          "ra": 210.50395282370002,
+          "ref_epoch": 2016.0,
+          "required_depth": 15.252071670234471,
+          "sep_arcsec": 50.30526979727487,
+          "source_id": 6122183655168992128,
+          "tmag": 19.930220676409267,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 0.5658016204833984,
+          "dec": -34.74955315084667,
+          "phot_g_mean_mag": 20.6651611328125,
+          "pmdec": 1.384767384900813,
+          "pmra": -5.867222500989623,
+          "possible": false,
+          "ra": 210.53250518478217,
+          "ref_epoch": 2016.0,
+          "required_depth": 22.795507915415673,
+          "sep_arcsec": 50.36583298713552,
+          "source_id": 6122182929319813376,
+          "tmag": 20.36652176628281,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.246957778930664,
+          "dec": -34.727890205439486,
+          "phot_g_mean_mag": 20.795978546142578,
+          "pmdec": null,
+          "pmra": null,
+          "possible": false,
+          "ra": 210.5104853134376,
+          "ref_epoch": 2016.0,
+          "required_depth": 18.958580670281965,
+          "sep_arcsec": 51.454122752332694,
+          "source_id": 6122183758248433920,
+          "tmag": 20.16641313512538,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 1.865081787109375,
+          "dec": -34.754115276075694,
+          "phot_g_mean_mag": 20.470367431640625,
+          "pmdec": -5.0612148751567805,
+          "pmra": -11.24783992462182,
+          "possible": false,
+          "ra": 210.52533598123566,
+          "ref_epoch": 2016.0,
+          "required_depth": 11.21760271296716,
+          "sep_arcsec": 54.61659612354418,
+          "source_id": 6122182933614486144,
+          "tmag": 19.5966487199693,
+          "tmag_from": "colour"
+        },
+        {
+          "bp_rp": 0.8679580688476562,
+          "dec": -34.723071421844345,
+          "phot_g_mean_mag": 18.952714920043945,
+          "pmdec": -1.403054893334318,
+          "pmra": -2.2717452434498533,
+          "possible": false,
+          "ra": 210.52347192738117,
+          "ref_epoch": 2016.0,
+          "required_depth": 4.080476364561095,
+          "sep_arcsec": 59.375495275078364,
+          "source_id": 6122183788313306240,
+          "tmag": 18.49867574952822,
+          "tmag_from": "colour"
+        }
+      ],
+      "target_source_id": 6122183689530591488,
+      "tmag": 9.8186
+    },
+    "outcome": "pass",
+    "reason": "3 of 16 neighbours could host the signal"
+  },
+  "other_signals": [
+    {
+      "depth": 7.341716644364461e-05,
+      "duration": 0.25,
+      "period": 2.0845913973619794,
+      "period_ratio": 0.08666337976904907,
+      "rank": 2,
+      "sde": 6.864150510007176,
+      "t0": 1602.682940132348
+    }
+  ],
+  "pixels": {
+    "evidence": {
+      "asked": [
+        102,
+        64,
+        38,
+        11
+      ],
+      "files": {
+        "tic441010857/imageData_441010857.1_sector102.pickle": "d60546ac9f1c075d18745480944f9ba4fd43cf0dc01aadb6ca2d10cd73b4248e",
+        "tic441010857/imageData_441010857.1_sector11.pickle": "6e68d39d457a3c390e12d2b5ce88610f8412d536f55e160719a42bb5833fa574",
+        "tic441010857/imageData_441010857.1_sector38.pickle": "48f077b13a495ec5c7ce21c55d8f62b2ca9687ca59621a681fa5d7355888e937",
+        "tic441010857/imageData_441010857.1_sector64.pickle": "39c822443dc5ef5c6da51ef02c98d159fb34aca54269fdc3b25d09fb19ae197e",
+        "tic441010857/ticKey_tic441010857.txt": "9c673146f2abbb616f8048969ee536d6964f0b1a7bdf5d7416afd61d3119943f"
+      },
+      "no_image": [],
+      "offset_mean_arcsec": 3.7920268316036894,
+      "offset_qual_arcsec": 3.2790274513306925,
+      "sectors": [
+        {
+          "offset_arcsec": 4.307728333302709,
+          "quality": 0.8180489649995737,
+          "sector": 64
+        },
+        {
+          "offset_arcsec": 3.2790274513306925,
+          "quality": 0.8223578739785397,
+          "sector": 38
+        }
+      ],
+      "stale_removed": []
+    },
+    "max_offset_arcsec": 15.0,
+    "outcome": "pass",
+    "reason": "centroid offset 3.3\" within 15\""
+  },
+  "red_noise": {
+    "102": {
+      "beta": 1.0621431078585466,
+      "cadences_per_bin": 13.0,
+      "n_bins": 478
+    },
+    "11": {
+      "beta": 1.0,
+      "cadences_per_bin": 2.0,
+      "n_bins": 239,
+      "note": "1.5 cadences per bin on average, need 3"
+    },
+    "38": {
+      "beta": 1.0774326017078795,
+      "cadences_per_bin": 5.0,
+      "n_bins": 723
+    },
+    "64": {
+      "beta": 1.0373276445631203,
+      "cadences_per_bin": 13.0,
+      "n_bins": 719
+    }
+  },
+  "signal": {
+    "kind": "candidate",
+    "name": "441010857-1"
+  },
+  "sources": {
+    "102": {
+      "cadence_s": 200.0,
+      "n_good": 7919,
+      "provenance": "QLP",
+      "route": "mast_api",
+      "s3_key": "mast/hlsp/qlp/s0102/0000/0004/4101/0857/hlsp_qlp_tess_ffi_s0102-0000000441010857_tess_v01_llc.fits",
+      "sha256": "a645fa70b5f063a7e2dbe1a9e9fc0c63d79e5bd9c41509e8b80f215726525833",
+      "timing_suspect": true
+    },
+    "11": {
+      "cadence_s": 1800.0,
+      "crowdsap": 0.95915693,
+      "flfrcsap": 0.90974993,
+      "n_good": 824,
+      "provenance": "TESS-SPOC",
+      "route": "s3",
+      "s3_key": "mast/hlsp/tess-spoc/s0011/target/0000/0004/4101/0857/hlsp_tess-spoc_tess_phot_0000000441010857-s0011_tess_v1_lc.fits",
+      "sha256": "db5f28e6fc304df9ad441e52fe88232a5ec9d570e4035eacebcad2cf5e2e1ada",
+      "timing_suspect": false
+    },
+    "38": {
+      "cadence_s": 600.0,
+      "crowdsap": 0.96100622,
+      "flfrcsap": 0.90624207,
+      "n_good": 3632,
+      "provenance": "TESS-SPOC",
+      "route": "s3",
+      "s3_key": "mast/hlsp/tess-spoc/s0038/target/0000/0004/4101/0857/hlsp_tess-spoc_tess_phot_0000000441010857-s0038_tess_v1_lc.fits",
+      "sha256": "d33cf212aa9b1945561e0f7f4a934e9df4faf74477a7c0e8fe47427030192a0a",
+      "timing_suspect": false
+    },
+    "64": {
+      "cadence_s": 200.0,
+      "crowdsap": 0.95891374,
+      "flfrcsap": 0.91685724,
+      "n_good": 10357,
+      "provenance": "TESS-SPOC",
+      "route": "s3",
+      "s3_key": "mast/hlsp/tess-spoc/s0064/target/0000/0004/4101/0857/hlsp_tess-spoc_tess_phot_0000000441010857-s0064_tess_v1_lc.fits",
+      "sha256": "59623fdf4bbe022920e8931a68d3bbdc8d3768c1a15c3e704e5c84761b7969c2",
+      "timing_suspect": false
+    }
+  },
+  "star": {
+    "angular_distance": 0.08943235874176025,
+    "contratio": 0.0357967131,
+    "dec": -34.7391728866993,
+    "disposition": null,
+    "dr3_from": "targets",
+    "dr3_reason": null,
+    "dr3_source_id": 6122183689530591488,
+    "e_mass": 0.159985,
+    "e_rad": 0.124975,
+    "e_rho": 0.0984968,
+    "e_teff": 131.551,
+    "gaia": "6122183689528006912",
+    "logg": 4.14523,
+    "logg_flame": 4.085024492044651,
+    "logg_gspphot": 3.963200092315674,
+    "mass": 1.16,
+    "mass_flame": 1.0807642936706543,
+    "ra": 210.520631256167,
+    "rad": 1.50886,
+    "radius_flame": 1.560821533203125,
+    "rho": 0.337685,
+    "ruwe": 1.1309171915054321,
+    "sectors": "11,38,64,102",
+    "teff": 6128.0,
+    "tic": 441010857,
+    "tmag": 9.8186
+  },
+  "tic": 441010857,
+  "triage_reason": null,
+  "upcoming_sectors": null,
+  "window_duration": null,
+  "windows": null,
+  "windows_reason": "evidence-only run: windows come from the main vet's density-prior fit"
+}

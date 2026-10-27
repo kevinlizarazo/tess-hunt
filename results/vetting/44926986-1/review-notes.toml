@@ -1,0 +1,9 @@
+# Notes on review.json added under decision 0037, each shown in dossier.md beside the finding it names. They are
+# not part of the review or the call.
+
+[[note]]
+finding = "F2"
+date = 2026-10-26
+text = """\
+F2 gives a flux ratio of 0.359; the TESS magnitudes F2 quotes, 9.4929 and 10.6073, give 0.358. F2's conclusion \
+holds either way."""

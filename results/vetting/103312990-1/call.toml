@@ -1,0 +1,7 @@
+signal = "103312990-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Nothing kills it: the dip is in every season at a steady depth, shows no binary signature on the target, and is not known. It can't pass because the public data can't place it on HD 297321: a nearby eclipsing binary within an arcminute is not excluded, Gaia sees an unresolved companion that no public data identify, and only one season can test the held-out check."
+rests_on = ["F1", "F2", "F3", "holdout", "triceratops"]
+criteria = ["vet-v3"]
+deciding_evidence = "Seeing-limited ground-based photometry on a predicted transit that resolves the neighbours (F1); high-resolution imaging that finds or bounds the companion (F2); the sector 110 to 113 light curves or a QLP redelivery of sector 99 for a second held-out season (F3). Under vet-v3 TRICERATOPS stays inconclusive on the high RUWE whatever the imaging shows, so a pass also needs a recorded decision on how imaging clears that blocker."

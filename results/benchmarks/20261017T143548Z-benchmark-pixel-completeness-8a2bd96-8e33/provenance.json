@@ -1,0 +1,43 @@
+{
+  "argv": [
+    "tess-hunt",
+    "benchmark",
+    "pixel-completeness",
+    "--targets",
+    "$TESS_HUNT_DATA/runs/20261013T031523Z-targets-cce2f6e-630d/targets.parquet",
+    "--production"
+  ],
+  "criteria": [
+    {
+      "file": "criteria/triage-v1.toml",
+      "sha256": "a4b1afbaccc08556151b976582bcac80c0dbbc4f69c124437cd06c924a9b9473"
+    }
+  ],
+  "ended_at": "2026-10-17T14:41:11.951849+00:00",
+  "git": {
+    "commit": "8a2bd96006f2afba8aa303ca54e5274048cbc466",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "known": {
+      "file": "known_planets.csv",
+      "sha256": "2b91a2a1f23d32b1832b5bfa72d7e5650d236df2d6feabf8f07c90d977e88617"
+    },
+    "targets": {
+      "file": "targets.parquet",
+      "sha256": "e9c7533dc31b62bd9352fe25760bb388455393051b7818ff6fbd917223a713c5"
+    }
+  },
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261017T143548Z-benchmark-pixel-completeness-8a2bd96-8e33",
+  "stage": "benchmark-pixel-completeness",
+  "started_at": "2026-10-17T14:35:48.291562+00:00",
+  "summary": {
+    "fail": 4,
+    "inconclusive": 0,
+    "pass": 16,
+    "planets": 20
+  },
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a"
+}

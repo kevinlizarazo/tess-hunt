@@ -48,6 +48,13 @@ def make_lc(
     return LightCurve(tic, time, flux, err, sector, sources)
 
 
+def with_products(lc: LightCurve, provenance: dict[int, str], suspect=()) -> LightCurve:
+    """Each sector's product and fetch's timing flag, as a fetched light curve carries them."""
+    for sector, name in provenance.items():
+        lc.sources[str(sector)].update(provenance=name, timing_suspect=sector in suspect)
+    return lc
+
+
 def correlated_noise(lc: LightCurve, rms_ppm: float, smooth_hours: float, seed: int) -> np.ndarray:
     """White noise smoothed by a running mean of `smooth_hours` within each sector, scaled to
     `rms_ppm`. It stays correlated over a transit and survives a 1.2 d biweight, like the residuals

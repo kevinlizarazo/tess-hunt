@@ -1,0 +1,104 @@
+# Vetting criteria, version 3: vet-v2's sections and values unchanged, then the new sections, each
+# with its decision (docs/decisions/0021 on).
+# Changing a value after any result exists needs a docs/decisions entry first.
+
+[depth]
+core_fraction = 0.5             # central part of each transit used for depths
+
+[signal_present]
+min_snr = 7.0                   # combined core depth over its red-noise-inflated error (decision 0017)
+min_points = 5
+
+[red_noise]
+# Moved from code, values unchanged (decision 0014).
+exclude_width = 3.0             # transit durations around each transit left out of beta
+min_bins = 20
+kept_bin_fraction = 0.8         # of the fullest bin's cadences
+min_cadences_per_bin = 3.0
+
+[odd_even]
+max_sigma = 3.0
+min_points = 5
+
+[secondary]
+max_sigma = 3.0
+min_points = 5
+
+[sector_depth]
+min_p_value = 0.001
+min_points = 5
+
+[holdout]
+season_gap_days = 60.0
+min_expected_snr = 4.0
+min_sigma = 2.0
+max_depth_tension = 3.0
+min_points = 5
+min_training_seasons = 2        # a period fitted on one season can't predict a season a year away
+refit_resolutions = 5.0         # half-width of the refit's period grid, in BLS resolutions (decision 0014)
+refit_points = 801
+refit_duration_factors = [0.75, 1.0, 1.25]
+
+[fit]
+walkers = 32
+steps = 5000
+burn = 2000
+window_half_width_durations = 3.0   # cadences within this many durations of mid-transit (decision 0015)
+seed = 1
+min_points = 20                 # cadences near transit needed to fit (decision 0014)
+min_acceptance = 0.01           # below this the walkers never moved (decision 0014)
+max_rp_rs = 1.0                 # the Rp/R* prior bound; vet-v1's code had 0.5 (decision 0018)
+
+[shape]
+max_grazing_probability = 0.5
+
+[density]
+max_sigma = 3.0
+default_log_rho_error = 0.1     # dex, when the TIC gives no density error
+
+[radius]
+max_rearth = 22.0               # LEO-Vetter's limit for a planet (decision 0018)
+
+[novelty]
+neighbour_arcmin = 2.5
+harmonics = [1.0, 0.5, 2.0, 0.3333333333333333, 3.0]
+inconclusive_kinds = ["tce"]    # a match only to SPOC TCEs or ExoMiner rows (decision 0013)
+
+[masks]
+sources = ["TOI", "CTOI", "archive"]   # the search's [detrend] mask_sources; other rows are novelty evidence (0021)
+
+[timing]
+exclude_timing_suspect = true          # every check and fit leaves out sectors fetch flagged (0022)
+
+[families]
+pdcsap = ["SPOC", "TESS-SPOC"]         # crowding-corrected (0023)
+qlp = ["QLP"]
+fit = "pdcsap"                         # the family both fits use
+
+[predict]
+sectors_file = "benchmarks/tess_sectors.csv"
+first_sector = 110          # sectors before it are observed already (2026-10-16)
+sigma = [1.0, 3.0]          # window half-widths reported, in posterior standard deviations
+
+[neighbours]
+radius_arcmin = 1.0          # the spec's radius
+max_required_depth = 1.0     # a neighbour needing a deeper eclipse than total cannot be the source
+bp_rp_range = [0.0, 3.0]     # colours tried for a star with G only; the brightest TESS magnitude counts
+
+[triceratops]
+runs = 10                   # averaged (spec section 4.1)
+draws = 1000000             # calc_probs N, the paper's
+fpp_pass = 0.5              # "likely planet" with nfpp_pass (Giacalone et al. 2021)
+nfpp_pass = 0.001
+nfpp_fail = 0.1             # "likely nearby false positive"
+fpp_validated = 0.015       # recorded as a label only, with a contrast curve and 2-min data
+max_ruwe = 1.4              # an unresolved companion the priors don't condition on
+search_radius_pixels = 10
+match_arcsec = 2.0          # a Gaia neighbour counts as weighed when a TRICERATOPS star sits this close
+min_transits = 3            # the cadence group TRICERATOPS runs on
+bin_phase = true            # the fold averaged into bins one exposure wide (0026); the maintainer confirms it at the controls stop
+
+[literature]
+forms = ["TIC", "TOI", "HD", "HIP", "Gaia DR3", "2MASS", "TYC", "WDS"]   # name forms full-text search uses
+max_hits = 200              # more is recorded as too broad; ADS's object search stands for it
+arxiv_pause_s = 3.0         # arXiv's one request per three seconds

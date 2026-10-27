@@ -271,8 +271,9 @@ def test_controls_are_judged_at_the_threshold(tmp_path, monkeypatch):
     summary = json.loads((run / "provenance.json").read_text())["summary"]
     assert code == 1 and summary["controls_required_missed"] == ["100.01"]
     row = pd.read_csv(run / "controls.csv", dtype={"toi": str}).set_index("toi").loc["100.01"]
-    # Found at its ephemeris, but below the run's threshold.
-    assert row["sde"] > 15 and not row["recovered"]
+    # Found at its ephemeris, but below the run's threshold. With no signal at the ephemeris, classify
+    # reports the top signal's SDE at rank 0.
+    assert row["rank"] >= 1 and not row["alias"] and row["sde"] > 15 and not row["recovered"]
 
 
 def test_a_control_host_missing_from_control_targets_is_refused_before_the_run(

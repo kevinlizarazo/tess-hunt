@@ -1,0 +1,173 @@
+{
+  "check": "literature",
+  "evidence": {
+    "hits": [],
+    "incomplete": [],
+    "names": [
+      "TIC 296819076",
+      "Gaia DR3 5877911685214643072",
+      "TYC 9020-187-1",
+      "2MASS J14563840-6053286"
+    ],
+    "notes": [],
+    "too_broad": []
+  },
+  "outcome": "pass",
+  "reason": "complete: 0 hits to screen",
+  "search": {
+    "exofop": {
+      "confirmed_planets": "",
+      "ctois": [],
+      "error": null,
+      "imaging": [],
+      "planets": [],
+      "status": "ok",
+      "tois": []
+    },
+    "names": [
+      "TIC 296819076",
+      "Gaia DR3 5877911685214643072",
+      "TYC 9020-187-1",
+      "2MASS J14563840-6053286"
+    ],
+    "simbad": {
+      "error": null,
+      "names": [
+        "TIC 296819076",
+        "Gaia DR3 5877911685214643072",
+        "GSC 09020-00187",
+        "TYC 9020-187-1",
+        "2MASS J14563840-6053286",
+        "Gaia DR1 5877911680884102272",
+        "Gaia DR2 5877911685214643072"
+      ],
+      "status": "ok"
+    },
+    "sources": {
+      "ads": {
+        "TIC 296819076": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "note": null,
+          "query": "((=abs:\"TIC 296819076\" OR simbid:\"3396928\" OR nedid:\"0\") database:astronomy)",
+          "resolved": {
+            "ned": false,
+            "simbad": true
+          },
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "arxiv": {
+        "2MASS J14563840-6053286": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5877911685214643072": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 296819076": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 9020-187-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "openalex": {
+        "2MASS J14563840-6053286": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5877911685214643072": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 296819076": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 9020-187-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "zenodo": {
+        "2MASS J14563840-6053286": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5877911685214643072": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 296819076": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 9020-187-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      }
+    },
+    "tic": 296819076
+  },
+  "signal": {
+    "name": "296819076-1",
+    "tic": 296819076
+  },
+  "trim": {
+    "decision": "0038",
+    "dropped": [
+      "search.sources.ads.*.hits[].title: every title ADS gave",
+      "evidence.hits[].title where no open source gave the paper's title",
+      "search.exofop.comments, and the comment text of ExoFOP's TOI and CTOI rows (tois[].notes, ctois[].cnotes)",
+      "search.exofop.files: the names of the files on ExoFOP's target page",
+      "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row"
+    ],
+    "replaced_titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19",
+    "source_sha256": "19e934a6e9c022d1f326c29cf40934965a734eb4bbca96f25d32c0dd211551a0",
+    "titles_run": "20261026T184940Z-vetting-titles-af322af-9b15"
+  },
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

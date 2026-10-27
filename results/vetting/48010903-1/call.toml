@@ -1,0 +1,6 @@
+signal = "48010903-1"
+outcome = "killed"
+date = 2026-10-22
+reasons = "An eccentric eclipsing binary of stars, not a planet: the real period is longer than the search's, and the search's second signal on the star is the binary's secondary eclipse, too deep and too long for any planet. The shape and radius checks fail too, on a fit that sits near the grazing line, so they are the weaker grounds. The next-look windows in this dossier use the search's period, not the binary's."
+rests_on = ["F3", "shape", "radius", "F1"]
+criteria = ["vet-v3"]

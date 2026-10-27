@@ -1,0 +1,60 @@
+{
+  "check": "pixels",
+  "evidence": {
+    "asked": [
+      103,
+      102,
+      65,
+      38,
+      11
+    ],
+    "files": {
+      "tic370977908/imageData_370977908.1_sector102.pickle": "8b51e027256692daacf68eb41918a649de548b1bf0122ae034ccba7c3b842954",
+      "tic370977908/imageData_370977908.1_sector103.pickle": "f29f9333f5e48da6492faa71c5580f5106db7a925916acd61a5dde03d072c1c7",
+      "tic370977908/imageData_370977908.1_sector11.pickle": "7fa68502aa8e904eef217d6548b60120b40cfde9f0c44ce7686a05f5f5945e04",
+      "tic370977908/imageData_370977908.1_sector38.pickle": "d2a91fb942366b8d0a28225d5b035d6b992da1feb5056d109f666949dcd74a29",
+      "tic370977908/imageData_370977908.1_sector65.pickle": "fde05343817af33061feee0d0c42c30dc200bd4c026254565c77f0c5a16d2d6b",
+      "tic370977908/ticKey_tic370977908.txt": "3840320aee2788397f1062d9c9ef7e892943fdf233958f43e969860a2886959a"
+    },
+    "no_image": [],
+    "offset_mean_arcsec": 8.202301194217315,
+    "offset_qual_arcsec": 9.320014680163837,
+    "sectors": [
+      {
+        "offset_arcsec": 10.048457589448272,
+        "quality": 0.6140080943926988,
+        "sector": 103
+      },
+      {
+        "offset_arcsec": 3.38207110300782,
+        "quality": 0.7522060162413825,
+        "sector": 102
+      },
+      {
+        "offset_arcsec": 6.265413865844971,
+        "quality": 0.40581986280527343,
+        "sector": 65
+      },
+      {
+        "offset_arcsec": 9.320014680163837,
+        "quality": 0.7639463447917906,
+        "sector": 38
+      },
+      {
+        "offset_arcsec": 14.492668266858404,
+        "quality": 0.38541555585673587,
+        "sector": 11
+      }
+    ],
+    "stale_removed": []
+  },
+  "max_offset_arcsec": 15.0,
+  "outcome": "pass",
+  "reason": "centroid offset 9.3\" within 15\"",
+  "signal": {
+    "name": "370977908-1",
+    "tic": 370977908
+  },
+  "triage_run": "20261015T155441Z-triage-7b12e25-3f57",
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

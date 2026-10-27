@@ -1,0 +1,434 @@
+{
+  "check": "literature",
+  "evidence": {
+    "hits": [
+      {
+        "arxiv": "0708.1752",
+        "doi": "10.1051/0004-6361:20078357",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2007A&A...474..653V"
+        ],
+        "title": "Validation of the new Hipparcos reduction",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "1997A&A...323L..49P"
+        ],
+        "title": null,
+        "title_source": null
+      },
+      {
+        "arxiv": "1811.08902",
+        "doi": "10.1051/0004-6361/201834371",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2019A&A...623A..72K"
+        ],
+        "title": "Stellar and substellar companions of nearby stars from Gaia DR2",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2105.11662",
+        "doi": "10.3847/1538-4365/abf93c",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2021ApJS..254...42B"
+        ],
+        "title": "The Hipparcos\u2013Gaia Catalog of Accelerations: Gaia EDR3 Edition",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "1978mcts.book.....H"
+        ],
+        "title": null,
+        "title_source": null
+      },
+      {
+        "arxiv": "1910.00542",
+        "doi": "10.1093/mnras/stz2803",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2019MNRAS.490.3158C"
+        ],
+        "title": "A catalogue of stellar diameters and fluxes for mid-infrared interferometry\u2605",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1208.2037",
+        "doi": "10.1111/j.1365-2966.2012.21873.x",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2012MNRAS.427..343M"
+        ],
+        "title": "Fundamental parameters and infrared excesses ofHipparcosstars",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "1993yCat.3135....0C"
+        ],
+        "title": null,
+        "title_source": null
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2014ASPC..485..223B"
+        ],
+        "title": null,
+        "title_source": null
+      },
+      {
+        "arxiv": "1912.04120",
+        "doi": "10.3847/1538-4365/ab609f",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2020ApJS..247...11R"
+        ],
+        "title": "Radial Velocity Photon Limits for the Dwarf Stars of Spectral Classes F\u2013M",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1208.3048",
+        "doi": "10.1051/0004-6361/201219219",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2012A&A...546A..61D"
+        ],
+        "title": "Radial velocities for the HIPPARCOS-GaiaHundred-Thousand-Proper-Motion project",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1009.2766",
+        "doi": "10.1111/j.1365-2966.2010.17699.x",
+        "found_by": [
+          "ads TIC 370977908"
+        ],
+        "ids": [
+          "2011MNRAS.411..435B"
+        ],
+        "title": "Bayesian inference of stellar parameters and interstellar extinction using parallaxes and multiband photometry",
+        "title_source": "openalex_doi"
+      }
+    ],
+    "incomplete": [],
+    "names": [
+      "TIC 370977908",
+      "HIP 73866",
+      "Gaia DR3 5900598183502439296",
+      "HD 133325",
+      "TYC 8305-2147-1",
+      "2MASS J15054863-5127257"
+    ],
+    "notes": [],
+    "too_broad": []
+  },
+  "outcome": "pass",
+  "reason": "complete: 12 hits to screen",
+  "search": {
+    "exofop": {
+      "confirmed_planets": "",
+      "ctois": [],
+      "error": null,
+      "imaging": [],
+      "planets": [],
+      "status": "ok",
+      "tois": []
+    },
+    "names": [
+      "TIC 370977908",
+      "HIP 73866",
+      "Gaia DR3 5900598183502439296",
+      "HD 133325",
+      "TYC 8305-2147-1",
+      "2MASS J15054863-5127257"
+    ],
+    "simbad": {
+      "error": null,
+      "names": [
+        "TIC 370977908",
+        "HIP 73866",
+        "Gaia DR3 5900598183502439296",
+        "CD-50  9068",
+        "CPC  0 12926",
+        "CPD-50  7552",
+        "GSC 08305-02147",
+        "HD 133325",
+        "HIC  73866",
+        "PPM 343403",
+        "SAO 242218",
+        "SRS   1794",
+        "TYC 8305-2147-1",
+        "2MASS J15054863-5127257",
+        "Gaia DR1 5900598179176963200",
+        "Gaia DR2 5900598183502439296"
+      ],
+      "status": "ok"
+    },
+    "sources": {
+      "ads": {
+        "TIC 370977908": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [
+            {
+              "arxiv": "0708.1752",
+              "doi": "10.1051/0004-6361:20078357",
+              "id": "2007A&A...474..653V"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "1997A&A...323L..49P"
+            },
+            {
+              "arxiv": "1811.08902",
+              "doi": "10.1051/0004-6361/201834371",
+              "id": "2019A&A...623A..72K"
+            },
+            {
+              "arxiv": "2105.11662",
+              "doi": "10.3847/1538-4365/abf93c",
+              "id": "2021ApJS..254...42B"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "1978mcts.book.....H"
+            },
+            {
+              "arxiv": "1910.00542",
+              "doi": "10.1093/mnras/stz2803",
+              "id": "2019MNRAS.490.3158C"
+            },
+            {
+              "arxiv": "1208.2037",
+              "doi": "10.1111/j.1365-2966.2012.21873.x",
+              "id": "2012MNRAS.427..343M"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "1993yCat.3135....0C"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "2014ASPC..485..223B"
+            },
+            {
+              "arxiv": "1912.04120",
+              "doi": "10.3847/1538-4365/ab609f",
+              "id": "2020ApJS..247...11R"
+            },
+            {
+              "arxiv": "1208.3048",
+              "doi": "10.1051/0004-6361/201219219",
+              "id": "2012A&A...546A..61D"
+            },
+            {
+              "arxiv": "1009.2766",
+              "doi": "10.1111/j.1365-2966.2010.17699.x",
+              "id": "2011MNRAS.411..435B"
+            }
+          ],
+          "note": null,
+          "query": "((=abs:\"TIC 370977908\" OR simbid:\"3439747\" OR nedid:\"0\") database:astronomy)",
+          "resolved": {
+            "ned": false,
+            "simbad": true
+          },
+          "status": "ok",
+          "total": 12
+        }
+      },
+      "arxiv": {
+        "2MASS J15054863-5127257": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5900598183502439296": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HD 133325": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HIP 73866": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 370977908": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 8305-2147-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "openalex": {
+        "2MASS J15054863-5127257": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5900598183502439296": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HD 133325": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HIP 73866": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 370977908": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 8305-2147-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "zenodo": {
+        "2MASS J15054863-5127257": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5900598183502439296": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HD 133325": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HIP 73866": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 370977908": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 8305-2147-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      }
+    },
+    "tic": 370977908
+  },
+  "signal": {
+    "name": "370977908-1",
+    "tic": 370977908
+  },
+  "trim": {
+    "decision": "0038",
+    "dropped": [
+      "search.sources.ads.*.hits[].title: every title ADS gave",
+      "evidence.hits[].title where no open source gave the paper's title",
+      "search.exofop.comments, and the comment text of ExoFOP's TOI and CTOI rows (tois[].notes, ctois[].cnotes)",
+      "search.exofop.files: the names of the files on ExoFOP's target page",
+      "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row"
+    ],
+    "replaced_titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19",
+    "source_sha256": "d811c859dd59cf8c36e7d5df93a52c295422520c1bab3a83a27f2de06441af05",
+    "titles_run": "20261026T184940Z-vetting-titles-af322af-9b15"
+  },
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

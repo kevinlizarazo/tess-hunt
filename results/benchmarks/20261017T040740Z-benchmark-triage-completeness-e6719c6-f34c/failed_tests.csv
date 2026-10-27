@@ -1,0 +1,15 @@
+kind,test,injections
+fa_failed,chases,3
+fa_failed,chi,8
+fa_failed,data_gapped,15
+fa_failed,dmm,5
+fa_failed,invalid_transits,26
+fa_failed,non_unique,20
+fa_failed,single_event,7
+fa_failed,sinusoidal,4
+fa_failed,unphysical_duration,2
+fa_failed,weak,4
+fp_failed,odd_even,36
+fp_failed,secondary,24
+unknown,asymmetric,1
+unknown,odd_even,9

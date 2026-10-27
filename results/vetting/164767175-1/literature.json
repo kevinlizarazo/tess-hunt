@@ -1,0 +1,1217 @@
+{
+  "check": "literature",
+  "evidence": {
+    "hits": [
+      {
+        "arxiv": "2411.02521",
+        "doi": "10.3847/1538-3881/ad8f9a",
+        "found_by": [
+          "ads TIC 164767175",
+          "openalex HIP 8152",
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "2025AJ....169...25M",
+          "https://openalex.org/W4405373412"
+        ],
+        "title": "The Impact of Observing Cadence and Undetected Companions on the Accuracy of Planet Mass Measurements from Radial Velocity Monitoring",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": "2510.12783",
+        "doi": "10.48550/arxiv.2510.12783",
+        "found_by": [
+          "ads TIC 164767175",
+          "openalex HIP 8152"
+        ],
+        "ids": [
+          "2025MNRAS.544.2614E",
+          "https://openalex.org/W4415272861",
+          "https://openalex.org/W4415415233"
+        ],
+        "title": "An Ultra-Short Period Super-Earth and Sub-Neptune Spanning the Radius Valley Orbiting the Kinematic Thick Disk Star TOI-2345",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": null,
+        "doi": "10.1051/0004-6361/202452523",
+        "found_by": [
+          "openalex HIP 8152",
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "https://openalex.org/W4412347443"
+        ],
+        "title": "Cold Jupiters and small planets: Friends, foes, or indifferent?",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": null,
+        "doi": "10.3847/1538-3881/aba61d",
+        "found_by": [
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "https://openalex.org/W3043148216"
+        ],
+        "title": "Hidden Worlds: Dynamical Architecture Predictions of Undetected Planets in Multi-planet Systems and Applications to TESS Systems",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": "2605.27002",
+        "doi": "10.1051/0004-6361/202659915/pdf",
+        "found_by": [
+          "ads TIC 164767175",
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "2026A&A...711A.198H",
+          "https://openalex.org/W7162700105",
+          "https://openalex.org/W7164816799"
+        ],
+        "title": "The small transiting planet population revealed by ESPRESSO with extreme precision radial velocities",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": "2409.03852",
+        "doi": "10.3847/1538-3881/adcd71",
+        "found_by": [
+          "ads TIC 164767175",
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "2025AJ....170....3T",
+          "https://openalex.org/W4410955370"
+        ],
+        "title": "Searching for Additional Planets in TESS Multiplanet Systems: Testing Empirical Models Based on Kepler Data",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": null,
+        "doi": "10.1093/mnras/stag1756",
+        "found_by": [
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "https://openalex.org/W7213419160"
+        ],
+        "title": "No statistically significant evidence for a correlation between stellar and planetary composition",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": "2405.14786",
+        "doi": "10.3847/1538-4365/ad4484",
+        "found_by": [
+          "ads TIC 164767175",
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "2024ApJS..272...32P",
+          "https://openalex.org/W4398466698"
+        ],
+        "title": "The TESS-Keck Survey. XX. 15 New TESS Planets and a Uniform RV Analysis of All Survey Targets",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "openalex TOI-266"
+        ],
+        "ids": [
+          "https://openalex.org/W1530622523"
+        ],
+        "title": "La pens\u00e9e maternaliste \u00e0 l'oeuvre : une lecture des aventures de Perrine et de Charlot de Marie-Claire Daveluy",
+        "title_source": "openalex"
+      },
+      {
+        "arxiv": "0708.1752",
+        "doi": "10.1051/0004-6361:20078357",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2007A&A...474..653V"
+        ],
+        "title": "Validation of the new Hipparcos reduction",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "1997A&A...323L..49P"
+        ],
+        "title": null,
+        "title_source": null
+      },
+      {
+        "arxiv": "1811.08902",
+        "doi": "10.1051/0004-6361/201834371",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2019A&A...623A..72K"
+        ],
+        "title": "Stellar and substellar companions of nearby stars from Gaia DR2",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2105.11662",
+        "doi": "10.3847/1538-4365/abf93c",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2021ApJS..254...42B"
+        ],
+        "title": "The Hipparcos\u2013Gaia Catalog of Accelerations: Gaia EDR3 Edition",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2002.00691",
+        "doi": "10.3847/1538-3881/abc6af",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2021AJ....161...24G"
+        ],
+        "title": "Vetting of 384 TESS Objects of Interest with TRICERATOPS and Statistical Validation of 12 Planet Candidates",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1910.00542",
+        "doi": "10.1093/mnras/stz2803",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2019MNRAS.490.3158C"
+        ],
+        "title": "A catalogue of stellar diameters and fluxes for mid-infrared interferometry\u2605",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1208.2037",
+        "doi": "10.1111/j.1365-2966.2012.21873.x",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2012MNRAS.427..343M"
+        ],
+        "title": "Fundamental parameters and infrared excesses ofHipparcosstars",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1605.07384",
+        "doi": "10.1051/0004-6361/201628497",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2016A&A...591A.118S"
+        ],
+        "title": "The PASTEL catalogue: 2016 version",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1609.03210",
+        "doi": "10.3847/1538-3881/153/2/75",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2017AJ....153...75K"
+        ],
+        "title": "THE RADIAL VELOCITY EXPERIMENT (RAVE): FIFTH DATA RELEASE",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1309.4284",
+        "doi": "10.1088/0004-6256/146/5/134",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2013AJ....146..134K"
+        ],
+        "title": "THE RADIAL VELOCITY EXPERIMENT (RAVE): FOURTH DATA RELEASE",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2002.04512",
+        "doi": "10.3847/1538-3881/ab9ab8",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2020AJ....160...83S"
+        ],
+        "title": "The Sixth Data Release of the Radial Velocity Experiment (Rave). II. Stellar Atmospheric Parameters, Chemical Abundances, and Distances",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2306.00251",
+        "doi": "10.3847/1538-3881/acd557",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2023AJ....166...33M"
+        ],
+        "title": "The TESS-Keck Survey. XV. Precise Properties of 108 TESS Planets and Their Host Stars",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1004.1069",
+        "doi": "10.1051/0004-6361/201014247",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2010A&A...515A.111S"
+        ],
+        "title": "The PASTEL catalogue of stellar parameters",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2505.22205",
+        "doi": "10.1051/0004-6361/202554739",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2025A&A...699A.100D"
+        ],
+        "title": "The Gaia spectroscopic catalogue of exoplanets and host stars",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2014ASPC..485..223B"
+        ],
+        "title": null,
+        "title_source": null
+      },
+      {
+        "arxiv": "1506.04568",
+        "doi": "10.1051/0004-6361/201526413",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2015A&A...580A..23P"
+        ],
+        "title": "A new catalogue of Str\u00f6mgren-Crawforduvby\u03b2photometry",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1912.04120",
+        "doi": "10.3847/1538-4365/ab609f",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2020ApJS..247...11R"
+        ],
+        "title": "Radial Velocity Photon Limits for the Dwarf Stars of Spectral Classes F\u2013M",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1907.03377",
+        "doi": "10.3847/1538-3881/ab4e1c",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2019AJ....158..243P"
+        ],
+        "title": "A Search for Multiplanet Systems with TESS Using a Bayesian N-body Retrieval and Machine Learning",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "astro-ph/0601049",
+        "doi": "10.1051/0004-6361:20054021",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2006A&A...450..735M"
+        ],
+        "title": "Effective temperature scale and bolometric corrections from 2MASS photometry",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1208.3048",
+        "doi": "10.1051/0004-6361/201219219",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2012A&A...546A..61D"
+        ],
+        "title": "Radial velocities for the HIPPARCOS-GaiaHundred-Thousand-Proper-Motion project",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1009.2766",
+        "doi": "10.1111/j.1365-2966.2010.17699.x",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2011MNRAS.411..435B"
+        ],
+        "title": "Bayesian inference of stellar parameters and interstellar extinction using parallaxes and multiband photometry",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2409.11965",
+        "doi": "10.1051/0004-6361/202451704",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2024A&A...691A..53S"
+        ],
+        "title": "SWEET-Cat: A view on the planetary mass-radius relation",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2306.16587",
+        "doi": "10.3847/1538-3881/ace2ca",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2023AJ....166..153A"
+        ],
+        "title": "The TESS-Keck Survey. XVI. Mass Measurements for 12 Planets in Eight Systems",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "1710.05803",
+        "doi": "10.1051/0004-6361/201731572",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2018A&A...609A.116R"
+        ],
+        "title": "Empirical photometric calibration of the Gaia red clump: Colours, effective temperature, and absolute magnitude",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2106.13354",
+        "doi": "10.3847/1538-3881/ac0d06",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2021AJ....162...75L"
+        ],
+        "title": "Speckle Observations of TESS Exoplanet Host Stars. II. Stellar Companions at 1\u20131000 au and Implications for Small Planet Detection",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2310.03299",
+        "doi": "10.3847/1538-3881/ad1189",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2024AJ....167...89Z"
+        ],
+        "title": "Dynamical Architectures of S-type Transiting Planets in Binaries. I. Target Selection Using Hipparcos and Gaia Proper Motion Anomalies*",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2106.06156",
+        "doi": "10.3847/1538-3881/ac6266",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2022AJ....163..297C"
+        ],
+        "title": "The TESS-Keck Survey: * Science Goals and Target Selection",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2101.08671",
+        "doi": "10.3847/1538-3881/abdec6",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2021AJ....161..164H"
+        ],
+        "title": "Speckle Observations of TESS Exoplanet Host Stars: Understanding the Binary Exoplanet Host Star Orbital Period Distribution",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2203.01954",
+        "doi": "10.1093/mnrasl/slac024",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2022MNRAS.512L..60H"
+        ],
+        "title": "The flaring TESS Objects of Interest: flare rates for all two-minute cadence TESS planet candidates",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": "2203.15826",
+        "doi": "10.1093/mnras/stac652",
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "2022MNRAS.513..102C"
+        ],
+        "title": "The TESS Triple-9 Catalog: 999 uniformly vetted exoplanet candidates",
+        "title_source": "openalex_doi"
+      },
+      {
+        "arxiv": null,
+        "doi": null,
+        "found_by": [
+          "ads TIC 164767175"
+        ],
+        "ids": [
+          "1987A&AS...69..505M"
+        ],
+        "title": null,
+        "title_source": null
+      }
+    ],
+    "incomplete": [],
+    "names": [
+      "TIC 164767175",
+      "HIP 8152",
+      "Gaia DR3 5140454049422547200",
+      "2MASS J01445032-1824032",
+      "TOI-266",
+      "TYC 5855-2286-1"
+    ],
+    "notes": [],
+    "too_broad": []
+  },
+  "outcome": "pass",
+  "reason": "complete: 40 hits to screen",
+  "search": {
+    "exofop": {
+      "confirmed_planets": "HIP 8152 b, HIP 8152 c",
+      "ctois": [],
+      "error": null,
+      "imaging": [
+        {
+          "icont": "delta 4.49 mag @ 0.5\"",
+          "idate": "2019-10-15",
+          "ifilt": "562: 562 (54) nm",
+          "igroup": "tfopwg",
+          "iinst": "'Alopeke",
+          "imid": "15997",
+          "imobid": "5",
+          "ipix": "0.01",
+          "iplname": "",
+          "ipsf": "0.02",
+          "itag": "17242",
+          "itel": "Gemini (8 m)",
+          "itoi": "",
+          "itype": "Speckle"
+        },
+        {
+          "icont": "delta 6.47 mag @ 0.5\"",
+          "idate": "2019-10-15",
+          "ifilt": "832: 832 (40) nm",
+          "igroup": "tfopwg",
+          "iinst": "'Alopeke",
+          "imid": "15998",
+          "imobid": "5",
+          "ipix": "0.01",
+          "iplname": "",
+          "ipsf": "0.02",
+          "itag": "17242",
+          "itel": "Gemini (8 m)",
+          "itoi": "",
+          "itype": "Speckle"
+        },
+        {
+          "icont": "delta 7.4 mag @ 1\"",
+          "idate": "2019-07-14",
+          "ifilt": "I: 879 (289) nm",
+          "igroup": "",
+          "iinst": "HRCam",
+          "imid": "1290",
+          "imobid": "1386",
+          "ipix": "0.01575",
+          "iplname": "",
+          "ipsf": "0.06364",
+          "itag": "4611",
+          "itel": "SOAR (4.1 m)",
+          "itoi": "",
+          "itype": "Speckle"
+        },
+        {
+          "icont": "",
+          "idate": "2019-01-21",
+          "ifilt": "832 (40) nm",
+          "igroup": "tfopwg",
+          "iinst": "NESSI",
+          "imid": "5242",
+          "imobid": "507",
+          "ipix": "0.02",
+          "iplname": "",
+          "ipsf": "0.05",
+          "itag": "18809",
+          "itel": "WIYN (3.5 m)",
+          "itoi": "",
+          "itype": "Speckle"
+        },
+        {
+          "icont": "",
+          "idate": "2019-01-21",
+          "ifilt": "562 (44) nm",
+          "igroup": "tfopwg",
+          "iinst": "NESSI",
+          "imid": "5241",
+          "imobid": "507",
+          "ipix": "0.02",
+          "iplname": "",
+          "ipsf": "0.05",
+          "itag": "18809",
+          "itel": "WIYN (3.5 m)",
+          "itoi": "",
+          "itype": "Speckle"
+        },
+        {
+          "icont": "delta 6.169 mag @ 0.5\"",
+          "idate": "2018-12-22",
+          "ifilt": "Brgamma",
+          "igroup": "tfopwg",
+          "iinst": "PHARO",
+          "imid": "334",
+          "imobid": "4",
+          "ipix": "0.025",
+          "iplname": "",
+          "ipsf": "0.108314",
+          "itag": "1530",
+          "itel": "Palomar (5 m)",
+          "itoi": "TOI 266",
+          "itype": "AO"
+        }
+      ],
+      "planets": [
+        {
+          "disposition": null,
+          "duration_hours": 2.9954278382616,
+          "epoch_bjd": 2458393.0855,
+          "name": "HIP 8152 b",
+          "period": 10.751014,
+          "provenance": "Confirmed Planets (Exoplanet Archive)",
+          "toi": null
+        },
+        {
+          "disposition": null,
+          "duration_hours": 4.38340795862218,
+          "epoch_bjd": 2458398.2869,
+          "name": "HIP 8152 c",
+          "period": 19.60562,
+          "provenance": "Confirmed Planets (Exoplanet Archive)",
+          "toi": null
+        },
+        {
+          "disposition": null,
+          "duration_hours": 2.8581721113281966,
+          "epoch_bjd": 2460973.354682,
+          "name": "TIC 164767175.01",
+          "period": 10.751124783434165,
+          "provenance": "TOIs (TESS Project)",
+          "toi": "TOI 266.01"
+        },
+        {
+          "disposition": null,
+          "duration_hours": 4.1605137935369765,
+          "epoch_bjd": 2460986.17995,
+          "name": "TIC 164767175.02",
+          "period": 19.605096603391566,
+          "provenance": "TOIs (TESS Project)",
+          "toi": "TOI 266.02"
+        },
+        {
+          "disposition": "PC",
+          "duration_hours": 3.312,
+          "epoch_bjd": 2458398.288,
+          "name": "TIC 164767175.02",
+          "period": 6.54,
+          "provenance": "Planet Parameters (User uploaded)",
+          "toi": "TOI 266.02"
+        },
+        {
+          "disposition": "PC",
+          "duration_hours": 3.336,
+          "epoch_bjd": 2458398.2884,
+          "name": "TIC 164767175.02",
+          "period": 6.548,
+          "provenance": "Planet Parameters (User uploaded)",
+          "toi": "TOI 266.02"
+        },
+        {
+          "disposition": "PC",
+          "duration_hours": 2.952,
+          "epoch_bjd": 2458393.0868,
+          "name": "TIC 164767175.01",
+          "period": 10.7491,
+          "provenance": "Planet Parameters (User uploaded)",
+          "toi": "TOI 266.01"
+        },
+        {
+          "disposition": "PC",
+          "duration_hours": 2.9568,
+          "epoch_bjd": 2458393.0867,
+          "name": "TIC 164767175.01",
+          "period": 10.7494,
+          "provenance": "Planet Parameters (User uploaded)",
+          "toi": "TOI 266.01"
+        },
+        {
+          "disposition": null,
+          "duration_hours": 3.2062911554789952,
+          "epoch_bjd": 2459134.907631507,
+          "name": "TIC 164767175.01",
+          "period": 10.751021934274243,
+          "provenance": "Planet Parameters (User uploaded)",
+          "toi": "TOI 266.01"
+        }
+      ],
+      "status": "ok",
+      "tois": [
+        {
+          "ctoi": "TIC 164767175.01",
+          "date": "2026-06-03 12:19:02",
+          "discovery": "TESS",
+          "disp_tess": "CP",
+          "disp_tfop": "CP",
+          "editdisp": "TOI 266.01",
+          "editpri": "TOI 266.01",
+          "esm": "2.2",
+          "predicted_mass": "5",
+          "predicted_rv": "1.4",
+          "pri_1a": "5",
+          "pri_1b": "5",
+          "pri_2": "4",
+          "pri_3": "4",
+          "pri_4": "3",
+          "pri_5": "4",
+          "pri_m": "3",
+          "sector": "3,30,97",
+          "signal": "1",
+          "source": "qlp-s97-ffi",
+          "toi": "TOI 266.01",
+          "toidate1": "2018-11-30",
+          "toidate2": "2026-04-17",
+          "tsm": "38.5"
+        },
+        {
+          "ctoi": "TIC 164767175.02",
+          "date": "2026-06-03 12:19:02",
+          "discovery": "TESS",
+          "disp_tess": "CP",
+          "disp_tfop": "CP",
+          "editdisp": "TOI 266.02",
+          "editpri": "TOI 266.02",
+          "esm": "1.2",
+          "predicted_mass": "4.59",
+          "predicted_rv": "1.1",
+          "pri_1a": "5",
+          "pri_1b": "5",
+          "pri_2": "4",
+          "pri_3": "4",
+          "pri_4": "3",
+          "pri_5": "4",
+          "pri_m": "3",
+          "sector": "3,30,97",
+          "signal": "2",
+          "source": "qlp-s97-ffi",
+          "toi": "TOI 266.02",
+          "toidate1": "2018-11-30",
+          "toidate2": "2026-04-17",
+          "tsm": "29.5"
+        }
+      ]
+    },
+    "names": [
+      "TIC 164767175",
+      "HIP 8152",
+      "Gaia DR3 5140454049422547200",
+      "2MASS J01445032-1824032",
+      "TOI-266",
+      "TYC 5855-2286-1"
+    ],
+    "simbad": {
+      "error": null,
+      "names": [
+        "TIC 164767175",
+        "HIP 8152",
+        "Gaia DR3 5140454049422547200",
+        "2MASS J01445032-1824032",
+        "BD-19   302",
+        "CPD-19   182",
+        "GSC 05855-02286",
+        "HIC   8152",
+        "TOI-266",
+        "PPM 210598",
+        "SAO 147995",
+        "TYC 5855-2286-1",
+        "YZ 108   471",
+        "uvby98 -001900302",
+        "RAVE J014450.3-182403",
+        "Gaia DR1 5140454045126761984",
+        "Gaia DR2 5140454049422547200"
+      ],
+      "status": "ok"
+    },
+    "sources": {
+      "ads": {
+        "TIC 164767175": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [
+            {
+              "arxiv": "0708.1752",
+              "doi": "10.1051/0004-6361:20078357",
+              "id": "2007A&A...474..653V"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "1997A&A...323L..49P"
+            },
+            {
+              "arxiv": "2405.14786",
+              "doi": "10.3847/1538-4365/ad4484",
+              "id": "2024ApJS..272...32P"
+            },
+            {
+              "arxiv": "1811.08902",
+              "doi": "10.1051/0004-6361/201834371",
+              "id": "2019A&A...623A..72K"
+            },
+            {
+              "arxiv": "2105.11662",
+              "doi": "10.3847/1538-4365/abf93c",
+              "id": "2021ApJS..254...42B"
+            },
+            {
+              "arxiv": "2002.00691",
+              "doi": "10.3847/1538-3881/abc6af",
+              "id": "2021AJ....161...24G"
+            },
+            {
+              "arxiv": "1910.00542",
+              "doi": "10.1093/mnras/stz2803",
+              "id": "2019MNRAS.490.3158C"
+            },
+            {
+              "arxiv": "1208.2037",
+              "doi": "10.1111/j.1365-2966.2012.21873.x",
+              "id": "2012MNRAS.427..343M"
+            },
+            {
+              "arxiv": "1605.07384",
+              "doi": "10.1051/0004-6361/201628497",
+              "id": "2016A&A...591A.118S"
+            },
+            {
+              "arxiv": "1609.03210",
+              "doi": "10.3847/1538-3881/153/2/75",
+              "id": "2017AJ....153...75K"
+            },
+            {
+              "arxiv": "1309.4284",
+              "doi": "10.1088/0004-6256/146/5/134",
+              "id": "2013AJ....146..134K"
+            },
+            {
+              "arxiv": "2002.04512",
+              "doi": "10.3847/1538-3881/ab9ab8",
+              "id": "2020AJ....160...83S"
+            },
+            {
+              "arxiv": "2306.00251",
+              "doi": "10.3847/1538-3881/acd557",
+              "id": "2023AJ....166...33M"
+            },
+            {
+              "arxiv": "1004.1069",
+              "doi": "10.1051/0004-6361/201014247",
+              "id": "2010A&A...515A.111S"
+            },
+            {
+              "arxiv": "2505.22205",
+              "doi": "10.1051/0004-6361/202554739",
+              "id": "2025A&A...699A.100D"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "2014ASPC..485..223B"
+            },
+            {
+              "arxiv": "1506.04568",
+              "doi": "10.1051/0004-6361/201526413",
+              "id": "2015A&A...580A..23P"
+            },
+            {
+              "arxiv": "2510.12783",
+              "doi": "10.1093/mnras/staf1806",
+              "id": "2025MNRAS.544.2614E"
+            },
+            {
+              "arxiv": "1912.04120",
+              "doi": "10.3847/1538-4365/ab609f",
+              "id": "2020ApJS..247...11R"
+            },
+            {
+              "arxiv": "1907.03377",
+              "doi": "10.3847/1538-3881/ab4e1c",
+              "id": "2019AJ....158..243P"
+            },
+            {
+              "arxiv": "astro-ph/0601049",
+              "doi": "10.1051/0004-6361:20054021",
+              "id": "2006A&A...450..735M"
+            },
+            {
+              "arxiv": "1208.3048",
+              "doi": "10.1051/0004-6361/201219219",
+              "id": "2012A&A...546A..61D"
+            },
+            {
+              "arxiv": "1009.2766",
+              "doi": "10.1111/j.1365-2966.2010.17699.x",
+              "id": "2011MNRAS.411..435B"
+            },
+            {
+              "arxiv": "2605.27002",
+              "doi": "10.1051/0004-6361/202659915",
+              "id": "2026A&A...711A.198H"
+            },
+            {
+              "arxiv": "2409.11965",
+              "doi": "10.1051/0004-6361/202451704",
+              "id": "2024A&A...691A..53S"
+            },
+            {
+              "arxiv": "2306.16587",
+              "doi": "10.3847/1538-3881/ace2ca",
+              "id": "2023AJ....166..153A"
+            },
+            {
+              "arxiv": "1710.05803",
+              "doi": "10.1051/0004-6361/201731572",
+              "id": "2018A&A...609A.116R"
+            },
+            {
+              "arxiv": "2106.13354",
+              "doi": "10.3847/1538-3881/ac0d06",
+              "id": "2021AJ....162...75L"
+            },
+            {
+              "arxiv": "2310.03299",
+              "doi": "10.3847/1538-3881/ad1189",
+              "id": "2024AJ....167...89Z"
+            },
+            {
+              "arxiv": "2106.06156",
+              "doi": "10.3847/1538-3881/ac6266",
+              "id": "2022AJ....163..297C"
+            },
+            {
+              "arxiv": "2409.03852",
+              "doi": "10.3847/1538-3881/adcd71",
+              "id": "2025AJ....170....3T"
+            },
+            {
+              "arxiv": "2101.08671",
+              "doi": "10.3847/1538-3881/abdec6",
+              "id": "2021AJ....161..164H"
+            },
+            {
+              "arxiv": "2203.01954",
+              "doi": "10.1093/mnrasl/slac024",
+              "id": "2022MNRAS.512L..60H"
+            },
+            {
+              "arxiv": "2411.02521",
+              "doi": "10.3847/1538-3881/ad8f9a",
+              "id": "2025AJ....169...25M"
+            },
+            {
+              "arxiv": "2203.15826",
+              "doi": "10.1093/mnras/stac652",
+              "id": "2022MNRAS.513..102C"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "1987A&AS...69..505M"
+            }
+          ],
+          "note": null,
+          "query": "((=abs:\"TIC 164767175\" OR simbid:\"1289183\" OR nedid:\"0\") database:astronomy)",
+          "resolved": {
+            "ned": false,
+            "simbad": true
+          },
+          "status": "ok",
+          "total": 36
+        }
+      },
+      "arxiv": {
+        "2MASS J01445032-1824032": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5140454049422547200": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HIP 8152": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 164767175": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TOI-266": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 5855-2286-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "openalex": {
+        "2MASS J01445032-1824032": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5140454049422547200": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HIP 8152": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [
+            {
+              "arxiv": null,
+              "doi": "10.3847/1538-3881/ad8f9a",
+              "id": "https://openalex.org/W4405373412",
+              "title": "The Impact of Observing Cadence and Undetected Companions on the Accuracy of Planet Mass Measurements from Radial Velocity Monitoring"
+            },
+            {
+              "arxiv": "2510.12783",
+              "doi": "10.48550/arxiv.2510.12783",
+              "id": "https://openalex.org/W4415272861",
+              "title": "An Ultra-Short Period Super-Earth and Sub-Neptune Spanning the Radius Valley Orbiting the Kinematic Thick Disk Star TOI-2345"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.1093/mnras/staf1806",
+              "id": "https://openalex.org/W4415415233",
+              "title": "An ultra-short period super-Earth and sub-Neptune spanning the Radius Valley orbiting the kinematic thick disc star TOI-2345"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.1051/0004-6361/202452523",
+              "id": "https://openalex.org/W4412347443",
+              "title": "Cold Jupiters and small planets: Friends, foes, or indifferent?"
+            }
+          ],
+          "status": "ok",
+          "total": 4
+        },
+        "TIC 164767175": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TOI-266": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [
+            {
+              "arxiv": null,
+              "doi": "10.3847/1538-3881/aba61d",
+              "id": "https://openalex.org/W3043148216",
+              "title": "Hidden Worlds: Dynamical Architecture Predictions of Undetected Planets in Multi-planet Systems and Applications to TESS Systems"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "https://openalex.org/W7162700105",
+              "title": "The small transiting planet population revealed by ESPRESSO with extreme precision radial velocities"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.1051/0004-6361/202659915/pdf",
+              "id": "https://openalex.org/W7164816799",
+              "title": "The small transiting planet population revealed by ESPRESSO with extreme precision radial velocities"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.3847/1538-3881/adcd71",
+              "id": "https://openalex.org/W4410955370",
+              "title": "Searching for Additional Planets in TESS Multiplanet Systems: Testing Empirical Models Based on Kepler Data"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.3847/1538-3881/ad8f9a",
+              "id": "https://openalex.org/W4405373412",
+              "title": "The Impact of Observing Cadence and Undetected Companions on the Accuracy of Planet Mass Measurements from Radial Velocity Monitoring"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.1093/mnras/stag1756",
+              "id": "https://openalex.org/W7213419160",
+              "title": "No statistically significant evidence for a correlation between stellar and planetary composition"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.3847/1538-4365/ad4484",
+              "id": "https://openalex.org/W4398466698",
+              "title": "The TESS-Keck Survey. XX. 15 New TESS Planets and a Uniform RV Analysis of All Survey Targets"
+            },
+            {
+              "arxiv": null,
+              "doi": null,
+              "id": "https://openalex.org/W1530622523",
+              "title": "La pens\u00e9e maternaliste \u00e0 l'oeuvre : une lecture des aventures de Perrine et de Charlot de Marie-Claire Daveluy"
+            },
+            {
+              "arxiv": null,
+              "doi": "10.1051/0004-6361/202452523",
+              "id": "https://openalex.org/W4412347443",
+              "title": "Cold Jupiters and small planets: Friends, foes, or indifferent?"
+            }
+          ],
+          "status": "ok",
+          "total": 9
+        },
+        "TYC 5855-2286-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      },
+      "zenodo": {
+        "2MASS J01445032-1824032": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "Gaia DR3 5140454049422547200": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "HIP 8152": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TIC 164767175": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TOI-266": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        },
+        "TYC 5855-2286-1": {
+          "error": null,
+          "from_run": "20261020T091938Z-vetting-literature-2315775-066c",
+          "hits": [],
+          "status": "ok",
+          "total": 0
+        }
+      }
+    },
+    "tic": 164767175
+  },
+  "signal": {
+    "name": "164767175-1",
+    "tic": 164767175
+  },
+  "trim": {
+    "decision": "0038",
+    "dropped": [
+      "search.sources.ads.*.hits[].title: every title ADS gave",
+      "evidence.hits[].title where no open source gave the paper's title",
+      "search.exofop.comments, and the comment text of ExoFOP's TOI and CTOI rows (tois[].notes, ctois[].cnotes)",
+      "search.exofop.files: the names of the files on ExoFOP's target page",
+      "search.exofop.imaging[].imuser and .inotes: the observer's user name and notes on each imaging row"
+    ],
+    "replaced_titles_run": "20261026T155726Z-vetting-titles-0b1deac-1d19",
+    "source_sha256": "45fbc5b8c764369a4188d237693c46b3cd86bc6d2a1031dddc63f49f0642c476",
+    "titles_run": "20261026T184940Z-vetting-titles-af322af-9b15"
+  },
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

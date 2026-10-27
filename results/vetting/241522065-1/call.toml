@@ -1,0 +1,8 @@
+signal = "241522065-1"
+outcome = "held"
+date = 2026-10-22
+reasons = "Nothing argues against a planet: the dip is real and periodic from 2021 to 2026 at the same depth in both product families, sits on the target in every sector's difference image, and passes TRICERATOPS and every other check. It can't pass only because TESS's two seasons with trustworthy timestamps can't test each other, so the held-out check is inconclusive."
+rests_on = ["holdout"]
+criteria = ["vet-v3"]
+deciding_evidence = "A third TESS season: sectors 112 to 114 hold predicted transits and give the held-out check a second training season for each held-out one; or a QLP redelivery of sectors 99 to 102 with corrected timestamps, with which the evidence-only run already predicts two held-out seasons (F5)."
+promotion = "The TCE matched is ExoMiner vetting_catalog_FFI 241522065-1-S38, a SPOC TCE that never became a TOI. Promoted by the maintainer in decision 0033 on the bar the nine shortlisted signals met in triage."
