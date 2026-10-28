@@ -242,6 +242,29 @@ def test_a_pass_the_evidence_does_not_support_is_refused(tmp_path, change, messa
     assert any(re.search(message, p) for p in found), found
 
 
+def test_a_pass_on_an_evidence_only_vet_is_refused(tmp_path):
+    path = signal_dir(tmp_path)
+    checks = json.loads((path / "checks.json").read_text())
+    (path / "checks.json").write_text(json.dumps({**checks, "evidence_only": True}))
+    assert calls.problems(path) == ["checks.json is an evidence-only vet, which never makes a call"]
+
+
+def test_a_pass_on_criteria_changed_since_the_vetting_run_is_refused(tmp_path):
+    # Bar 2 matches ExoFOP's rows at the period tolerance of the criteria the vetting run recorded.
+    path = signal_dir(tmp_path)
+    made = json.loads((path / "provenance-checks.json").read_text())
+    made["criteria"][0]["sha256"] = "0" * 64
+    (path / "provenance-checks.json").write_text(json.dumps(made))
+    assert calls.problems(path) == [
+        "criteria/search-v2.toml changed since the vetting run; its period tolerance is unknown"
+    ]
+
+
+def test_a_review_of_another_signal_is_refused(tmp_path):
+    found = calls.problems(signal_dir(tmp_path, review={**REVIEW, "signal": "44926986-2"}))
+    assert found == [f"review.json is for 44926986-2, not {NAME}"]
+
+
 def test_a_planet_elsewhere_on_exofop_does_not_stand_in_the_way(tmp_path):
     elsewhere = {**PLANET_AT_THE_PERIOD, "period": 3.3}
     no_period = {**PLANET_AT_THE_PERIOD, "name": "TIC 44926986.02", "toi": None, "period": None}

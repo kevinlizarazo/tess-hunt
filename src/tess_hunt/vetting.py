@@ -222,24 +222,34 @@ def _catalogued(known: pd.DataFrame, lc: LightCurve, checks: dict, job: dict) ->
     }
 
 
-def _plots(lc: LightCurve, checks: dict, job: dict, path: Path) -> None:
+def _plots(lc: LightCurve, checks: dict, job: dict, path: Path) -> dict[str, str]:
+    """Each plot drawn into `path`, and the error of each one that raised: a plot that fails leaves the vet standing,
+    and the dossier names it where the plot would be."""
     crit_search, crit_vet, eph = job["crit_search"], job["crit_vet"], job["eph"]
     # The light curve the checks saw: without the sectors vet dropped, detrended around the rows it
     # masked.
     seen = lc.select(~np.isin(lc.sector, checks["dropped_suspect"]))
     flat = detrend(seen, crit_search["detrend"], [Ephemeris(**m) for m in checks["masked"]])
-    plots.transits(flat, eph, path / "transits.png")
-    plots.folds(
-        flat,
-        eph,
-        crit_vet["families"],
-        path / "folds.png",
-        crit_vet["holdout"]["season_gap_days"],
-    )
-    plots.odd_even(flat, eph, path / "odd_even.png")
-    plots.phase(flat, eph, checks["modshift"], path / "phase.png")
     pixels = checks["pixels"]["evidence"] if checks["pixels"] else None
-    plots.centroids(pixels, checks["neighbours"], path / "centroids.png", job["pixel_limit"])
+    gap = crit_vet["holdout"]["season_gap_days"]
+    draw = {
+        "transits.png": lambda out: plots.transits(flat, eph, out),
+        "folds.png": lambda out: plots.folds(flat, eph, crit_vet["families"], out, gap),
+        "odd_even.png": lambda out: plots.odd_even(flat, eph, out),
+        "phase.png": lambda out: plots.phase(flat, eph, checks["modshift"], out),
+        "centroids.png": lambda out: plots.centroids(
+            pixels, checks["neighbours"], out, job["pixel_limit"]
+        ),
+    }
+    failed = {}
+    for name, plot in draw.items():
+        try:
+            plot(path / name)
+        except Exception as exc:
+            failed[name] = scrub(f"raised {type(exc).__name__}: {exc}")
+            # A file half written would read as the plot.
+            (path / name).unlink(missing_ok=True)
+    return failed
 
 
 def _vet(job: dict) -> dict:
@@ -275,7 +285,7 @@ def _vet(job: dict) -> dict:
         np.savez_compressed(out / "fit_prior_samples.npz", samples=fit_prior.samples)
     if table is not None:
         table.to_csv(out / "neighbours.csv", index=False)
-    _plots(lc, checks, job, out / "plots")
+    checks["plot_errors"] = _plots(lc, checks, job, out / "plots")
     # Written last: a directory with a checks.json holds everything the signal got.
     (out / "checks.json").write_text(json.dumps(jsonable(checks), indent=2, sort_keys=True) + "\n")
     windows = checks["windows"]
@@ -285,6 +295,7 @@ def _vet(job: dict) -> dict:
         "outcomes": {c["check"]: c["outcome"] for c in report["checks"]},
         "neighbours": found["outcome"],
         "windows": None if windows is None else sum("epoch" in w for w in windows),
+        "plot_errors": checks["plot_errors"],
     }
 
 
@@ -317,6 +328,17 @@ def _read_signals(path: Path) -> pd.DataFrame:
             f"{path.name}: names are letters, digits, '.', '-' and '_', not {unsafe} "
             "(each is a directory)"
         )
+    # A signal with no period or duration would reach vet and fail there, one job at a time.
+    days = table[["period", "duration"]].apply(pd.to_numeric, errors="coerce")
+    no_days = table.loc[~(np.isfinite(days) & (days > 0)).all(axis=1), "name"].tolist()
+    if no_days:
+        raise SystemExit(
+            f"{path.name}: period and duration are positive numbers of days, not for {', '.join(no_days)}"
+        )
+    tic = pd.to_numeric(table["tic"], errors="coerce")
+    no_tic = table.loc[~(np.isfinite(tic) & (tic == np.round(tic))), "name"].tolist()
+    if no_tic:
+        raise SystemExit(f"{path.name}: no TIC number for {', '.join(no_tic)}")
     # A BJD would fold the light curve at an epoch thousands of years away, and vet would run anyway.
     bjd = table.loc[~table["t0"].between(-20000, 10000, inclusive="neither"), "name"].tolist()
     if bjd:
@@ -395,13 +417,23 @@ def _triage(path: Path, signals: pd.DataFrame, crit_search: Criteria, production
     run_id = path.resolve().name
     if provenance.get("stage") != "triage" or provenance.get("ended_at") is None:
         raise SystemExit(f"{run_id} is not a finished triage run")
+    # The vetting run records the triage run by its directory's name.
+    if provenance.get("run_id") != run_id:
+        raise SystemExit(
+            f"{run_id}'s provenance is run {provenance.get('run_id')}'s: a run directory keeps its run's name"
+        )
     if production and not provenance.get("production"):
         raise SystemExit(
             f"{run_id} is not a production triage run; a production vetting run needs one"
         )
+    ran_with = provenance.get("criteria")
+    if not isinstance(ran_with, list) or len(ran_with) < 2:
+        raise SystemExit(
+            f"{run_id}'s provenance names no search and triage criteria; a triage run records both"
+        )
     # Triage's ModShift and pixel evidence came from light curves detrended under its search
     # criteria; checks detrended otherwise would not sit beside them as one signal's evidence.
-    searched = provenance["criteria"][0]
+    searched = ran_with[0]
     if searched["sha256"] != crit_search.sha256:
         raise SystemExit(
             f"--criteria-search {crit_search.path.name} is not the {searched['file']} that "
@@ -414,7 +446,7 @@ def _triage(path: Path, signals: pd.DataFrame, crit_search: Criteria, production
         sha256_file(search_signals) != provenance["inputs"]["search_signals"]["sha256"]
     ):
         raise SystemExit(f"{search}/signals.parquet is not the file {run_id} triaged")
-    used = provenance["criteria"][1]
+    used = ran_with[1]
     criteria = repo_root() / used["file"]
     # The centroid plot draws the pixel check's limit as the triage run judged with it.
     if not criteria.is_file() or load_criteria(criteria).sha256 != used["sha256"]:
@@ -545,6 +577,8 @@ def cmd_run(args) -> int:
         print(
             f"{name} ({r['kind']}): {outcomes}; neighbours {r['neighbours']}; windows {r['windows']}"
         )
+        for plot, error in r["plot_errors"].items():
+            print(f"{name}: {plot} not drawn, {error}")
     for name, error in errors.items():
         print(f"{name}: {error}")
     run.finish(evidence_only=args.include_suspect, signals=vetted, errors=errors)
@@ -957,18 +991,31 @@ def cmd_titles(args) -> int:
 
 
 def _fetched(vetting: dict, package: dict, tic: int, run_id: str) -> dt.date | None:
-    """When the light curve a vetting run read for `tic` was fetched, from the revet fetch run that made it; None for
-    the light curve the package was made from. The code sees when data were fetched, not when they were public."""
+    """When the light curve a vetting run read for `tic` was fetched, from the finished revet fetch run that wrote
+    it; None for the light curve the package was made from. The code sees when data were fetched, not when they were
+    public."""
     read = vetting["inputs"].get(f"light_curve_{tic}", {}).get("sha256")
     if read == package["inputs"].get(f"light_curve_{tic}", {}).get("sha256"):
         return None
-    made = runs_dir() / str(vetting.get("revet_run")) / "provenance.json"
-    if vetting.get("revet_run") is None or not made.is_file():
+    lc_run = runs_dir() / str(vetting.get("revet_run"))
+    made = (
+        json.loads((lc_run / "provenance.json").read_text())
+        if vetting.get("revet_run") is not None and (lc_run / "provenance.json").is_file()
+        else {}
+    )
+    if made.get("stage") != "revet-fetch" or made.get("ended_at") is None:
         raise SystemExit(
-            f"{run_id} read a light curve for TIC {tic} that neither package {package['run_id']} read nor a revet "
-            "fetch run made, so when it was fetched is unknown"
+            f"{run_id} read a light curve for TIC {tic} that neither package {package['run_id']} read nor a finished "
+            "revet fetch run made, so when it was fetched is unknown"
         )
-    return dt.date.fromisoformat(json.loads(made.read_text())["started_at"][:10])
+    # The run's start dates only the bytes it wrote.
+    star = json.loads((lc_run / "merge.json").read_text()).get(str(tic)) or {}
+    if star.get("lc_sha256") != read:
+        raise SystemExit(
+            f"{run_id} read another light curve for TIC {tic} than revet fetch run {lc_run.name} made, so when it "
+            "was fetched is unknown"
+        )
+    return dt.date.fromisoformat(made["started_at"][:10])
 
 
 def cmd_prereg(args) -> int:
@@ -1014,6 +1061,21 @@ def cmd_prereg(args) -> int:
         raise SystemExit(f"{run_id} vetted none of the signals package {package_id} predicts")
     lcs = _light_curves(provenance)
     records = repo_root() / "results" / "vetting"
+    # Decision 0040 judges a signal once and each later version carries that result, so a re-vet that vets a judged
+    # signal beside others judges only the others.
+    skipped = {}
+    for name in list(vetted):
+        judged = _judged(records / name)
+        if judged is not None:
+            result = json.loads((judged / "prereg.json").read_text())["result"]
+            skipped[name] = f"judged in {judged.relative_to(records.parent.parent)} ({result})"
+            del vetted[name]
+    if not vetted:
+        listed = "; ".join(f"{name} was {why}" for name, why in skipped.items())
+        raise SystemExit(
+            f"{run_id} leaves no signal to judge ({listed}): decision 0040 judges a signal once, and each later "
+            "version carries that result"
+        )
     fetched = {}
     for name, checks in vetted.items():
         tic = int(checks["tic"])
@@ -1025,18 +1087,12 @@ def cmd_prereg(args) -> int:
         recorded = read.get(f"light_curve_{tic}", {}).get("sha256")
         if not path.is_file() or sha256_file(path) != recorded:
             raise SystemExit(f"the light curve for TIC {tic} changed since {run_id} vetted it")
-        judged = _judged(records / name)
-        if judged is not None:
-            result = json.loads((judged / "prereg.json").read_text())["result"]
-            raise SystemExit(
-                f"{name} was judged in {judged.relative_to(records.parent.parent)} ({result}): decision 0040 judges a "
-                "signal once, and each later version carries that result"
-            )
         fetched[name] = _fetched(provenance, package, tic, run_id)
     run = start_run("vetting-prereg", [crit_search, crit_vet], args.production, sys.argv)
     run.record("vetting_run", run_id)
     run.record("package", package_id)
     run.record("as_of", args.as_of.isoformat())
+    run.record("skipped", skipped)
     run.record_input("vetting_provenance", args.run / "provenance.json")
     for file in ("provenance.json", "references.json", "predictions.csv"):
         run.record_input(f"package_{Path(file).stem}", args.package / file)
@@ -1077,8 +1133,16 @@ def cmd_prereg(args) -> int:
             "sha256": sha256_file(path),
         }
         print(f"{name}: {result['result']} ({result['status']})")
-    run.finish(vetting_run=run_id, package=package_id, as_of=args.as_of.isoformat(), signals=done)
-    print(f"vetting prereg: {len(done)} signal(s) -> {run.path}")
+    for name, why in skipped.items():
+        print(f"{name}: skipped, {why}")
+    run.finish(
+        vetting_run=run_id,
+        package=package_id,
+        as_of=args.as_of.isoformat(),
+        signals=done,
+        skipped=skipped,
+    )
+    print(f"vetting prereg: {len(done)} signal(s), {len(skipped)} skipped -> {run.path}")
     return 0
 
 
@@ -1396,6 +1460,7 @@ def _signal_files(
     if not SAFE_NAME.fullmatch(name) or not (vetted / "checks.json").is_file():
         raise SystemExit(f"{runs['checks'].resolve().name} vetted no {name}")
     checks = vetted / "checks.json"
+    kind = json.loads(checks.read_text())["signal"]["kind"]
     carries = _carries(previous)
     files = {"checks.json": checks, "provenance-checks.json": runs["checks"] / "provenance.json"}
     if (vetted / "neighbours.csv").is_file():
@@ -1411,7 +1476,9 @@ def _signal_files(
         ("prereg", ("prereg.json",), "preregistered test"),
     ):
         path = runs.get(role)
-        if path is None:
+        # The second list judges only second-list rows; any other signal's pixel check is triage's, and its record
+        # names no second-list run.
+        if path is None or (role == "second-list" and kind != "second"):
             continue
         files[f"provenance-{role}.json"] = path / "provenance.json"
         made = path / "signals" / name
@@ -1492,11 +1559,18 @@ def _revet_files(
     if star is None or star["lc_sha256"] is None:
         raise SystemExit(f"revet fetch run {run_id} made no light curve for TIC {tic}")
     file = lc_run / "lc" / f"{tic}.npz"
-    inputs = json.loads((vetting / "provenance.json").read_text())["inputs"]
-    read = inputs.get(f"light_curve_{tic}", {}).get("sha256")
+    vetted_from = json.loads((vetting / "provenance.json").read_text())
+    read = vetted_from["inputs"].get(f"light_curve_{tic}", {}).get("sha256")
     if not file.is_file() or read != star["lc_sha256"] or sha256_file(file) != read:
         raise SystemExit(
             f"{vetted} did not vet the light curve revet fetch run {run_id} made for TIC {tic}"
+        )
+    # `vetting prereg` dated the light curve by the run the vetting run read it from, so the version's merge record
+    # is that run's, even where another run holds the same bytes.
+    if vetted_from.get("revet_run") != run_id:
+        raise SystemExit(
+            f"{vetted} read its light curves from {vetted_from.get('revet_run') or 'no revet fetch run'}, not revet "
+            f"fetch run {run_id}"
         )
     before = json.loads((previous / "provenance-checks.json").read_text())["inputs"]
     base = before.get(f"light_curve_{tic}", {}).get("sha256")
@@ -1556,13 +1630,21 @@ def _same_signal(files: dict[str, Path], previous: Path, predictions: Path) -> N
             f"a version of {name} carries the second list's pixel check: give --second-list, the run the previous "
             "record holds"
         )
+    # A judged result stands whatever results/predictions/ holds now.
+    judged = _carries(previous).get("prereg")
+    if judged is not None and "prereg.json" not in files:
+        run = json.loads((judged / "provenance-prereg.json").read_text())["run_id"]
+        raise SystemExit(
+            f"a version of {name} carries {_label(judged)}'s preregistered test, which judged it once (decision "
+            f"0040): give --prereg {run}"
+        )
     held = [
         p.parent
         for p in sorted(predictions.glob("*/references.json"))
         if name in json.loads(p.read_text())["signals"]
     ]
     if not held:
-        if "provenance-prereg.json" in files:
+        if "provenance-prereg.json" in files and judged is None:
             raise SystemExit(
                 f"--prereg: no package under results/predictions/ predicts {name}, so its version has no "
                 "preregistered test to report"
@@ -1570,13 +1652,6 @@ def _same_signal(files: dict[str, Path], previous: Path, predictions: Path) -> N
         return
     listed = ", ".join(p.name for p in held)
     if "prereg.json" not in files:
-        judged = _carries(previous).get("prereg")
-        if judged is not None:
-            run = json.loads((judged / "provenance-prereg.json").read_text())["run_id"]
-            raise SystemExit(
-                f"a version of {name} carries {_label(judged)}'s preregistered test, which judged it once (decision "
-                f"0040): give --prereg {run}"
-            )
         raise SystemExit(
             f"{name} is in the predictions package {listed}: a version carries the preregistered test (--prereg, a "
             "vetting prereg run)"
@@ -1618,11 +1693,13 @@ def _clear(draft: Path) -> None:
 
 
 def cmd_dossier(args) -> int:
-    results = (repo_root() / "results").resolve()
+    repo = repo_root().resolve()
+    results = repo / "results"
     out = args.out.resolve()
-    if out == results or results in out.parents:
+    # A draft anywhere in the checkout could be committed beside the published records.
+    if out == repo or repo in out.parents:
         raise SystemExit(
-            "drafts go outside the repo's results/; `vetting publish` is the only way in"
+            "drafts go outside the repository; `vetting publish` is the only way into its results/"
         )
     if args.version is not None and len(args.signals or []) != 1:
         raise SystemExit("a version's draft is one signal's: give --signals NAME")
@@ -1637,12 +1714,18 @@ def cmd_dossier(args) -> int:
         if previous is not None:
             files |= _revet_files(args.lc_run, args.run, previous, _tic(files), production=False)
             _same_signal(files, previous, results / "predictions")
-            # The version's dossier compares its checks with the previous record's, read from beside it.
-            behind = draft if args.version == 2 else draft / f"r{args.version - 1}"
-            _copy(
-                {f: previous / f for f in ("checks.json", "provenance-checks.json", "dossier.md")},
-                behind,
-            )
+            # The version's dossier compares its checks with the previous record's, and names the version that
+            # judged a carried result by the vetting runs of the records before it, all read from beside it.
+            for record in _records(_signal_dir(previous)):
+                if (calls.version(record) or 1) >= args.version:
+                    continue
+                kept = (
+                    ("checks.json", "provenance-checks.json", "dossier.md")
+                    if record == previous
+                    else ("provenance-checks.json",)
+                )
+                beside = draft / record.name if calls.version(record) else draft
+                _copy({f: record / f for f in kept}, beside)
             draft = draft / f"r{args.version}"
         _clear(draft)
         _copy(files, draft)
@@ -1767,7 +1850,14 @@ def cmd_publish(args) -> int:
         readme = dossier.readme(root, staged)
         left = dossier.listed(root, staged)[1]
         new = {name: source for name, source in files.items() if not (dest / name).exists()}
-        _copy(new, dest)
+        try:
+            _copy(new, dest)
+        except BaseException:
+            # Files copied before the failure would sit in the record with no dossier beside them; the same runs
+            # copy them again.
+            for name in new:
+                (dest / name).unlink(missing_ok=True)
+            raise
     # Last of the record: the README lists only a directory that holds it.
     (dest / "dossier.md").write_text(text)
     (root / "README.md").write_text(readme)
@@ -1960,7 +2050,7 @@ def add_parser(sub) -> None:
     pr.add_argument("--production", action="store_true")
     pr.set_defaults(func=cmd_prereg)
     d = modes.add_parser(
-        "dossier", help="render draft dossiers for the maintainer, outside the repo's results/"
+        "dossier", help="render draft dossiers for the maintainer, outside the repository"
     )
     _record_arguments(d, required=False)
     d.add_argument(

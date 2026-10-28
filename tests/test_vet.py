@@ -22,7 +22,7 @@ from tess_hunt.cli import main
 from tess_hunt.config import load_criteria, runs_dir
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match, in_transit
-from tess_hunt.fit import fit_transit
+from tess_hunt.fit import NAMES, FitResult, fit_transit
 from tess_hunt.serialize import jsonable
 from tess_hunt.transit import a_rs_from_density, light_curve
 from tess_hunt.vet import other_known_transits, vet_signal, with_v1_code_values
@@ -440,6 +440,9 @@ def test_density_prior_units_and_fallback():
         (np.log10(2.0 * 1.408), 0.2 / (2.0 * np.log(10)))
     )
     assert vet.density_prior({"rho": 1.0}, 0.07)[1] == 0.07
+    # A TIC error of zero or below is no error: the default stands in, as for a missing one.
+    for e_rho in (0.0, -0.1):
+        assert vet.density_prior({"rho": 1.0, "e_rho": e_rho}, 0.07)[1] == 0.07, e_rho
     for rho in (nan, None, 0.0, -1.0):
         assert vet.density_prior({"rho": rho, "e_rho": 0.1}, 0.1) is None, rho
 
@@ -450,6 +453,50 @@ def quick_planet():
         cadences={1: 30.0, 2: 30.0, 64: 30.0},
         noise_ppm=dict.fromkeys((1, 2, 64), 200.0),
     )
+
+
+def test_vet_writes_the_density_prior_fits_samples_under_vet_v3(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    lc = with_products(quick_planet(), dict.fromkeys((1, 2, 64), "SPOC"))
+    lc.tic = 1
+    lc.save(tmp_path / "data" / "lc" / "1.npz")
+    targets = tmp_path / "targets.parquet"
+    pd.DataFrame([STAR]).to_parquet(targets)
+    fits = []
+
+    def fit(lc, eph, cfg, rho_prior=None, seed=None):
+        # Each fit's own samples, so the two files can be told apart.
+        rng = np.random.default_rng(len(fits))
+        values = {
+            "t0": eph.t0 + rng.normal(0.0, 1e-3, 400),
+            "period": eph.period + rng.normal(0.0, 1e-5, 400),
+            "rp_rs": np.full(400, 0.04),
+            "b": np.full(400, 0.3),
+            "log_rho": np.full(400, 0.15),
+            "q1": np.full(400, 0.36),
+            "q2": np.full(400, 0.36),
+        }
+        fits.append(FitResult(np.column_stack([values[n] for n in NAMES]), 0.3, rho_prior))
+        return fits[-1]
+
+    monkeypatch.setattr(vet, "fit_transit", fit)
+    args = [
+        "vet",
+        *("--tic", "1", "--period", "5.0", "--t0", "1326.1", "--duration", "0.13"),
+        *("--depth", "0.0017", "--targets", str(targets)),
+        *("--catalogs", str(write_catalog_snapshot(tmp_path / "snap"))),
+        *("--criteria-search", str(ROOT / "criteria" / "search-v2.toml")),
+        *("--criteria-vet", str(ROOT / "criteria" / "vet-v3.toml")),
+    ]
+    assert main(args) == 0
+    [run] = runs_dir().iterdir()
+    flat, prior = fits
+    assert flat.rho_prior is None
+    assert prior.rho_prior == vet.density_prior(STAR, VET3["density"]["default_log_rho_error"])
+    for name, made in (("fit_samples.npz", flat), ("fit_prior_samples.npz", prior)):
+        with np.load(run / name) as z:
+            assert np.array_equal(z["samples"], made.samples), name
+    assert json.loads((run / "checks.json").read_text())["fit_prior"] is not None
 
 
 @pytest.mark.slow

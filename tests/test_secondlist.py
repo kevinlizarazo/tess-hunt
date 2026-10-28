@@ -9,7 +9,7 @@ import test_calls as tc
 import test_dossier as td
 import test_vetting as tv
 
-from tess_hunt import calls, dossier, secondlist, triage
+from tess_hunt import calls, dossier, secondlist, triage, vetting
 from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.checks import failed
 from tess_hunt.cli import main
@@ -549,6 +549,26 @@ def no_second_list_row(tmp_path, runs) -> list[str]:
     return second_list_argv(runs)
 
 
+def changed_search_stars(tmp_path, runs) -> list[str]:
+    path = runs["triage"].parent / tv.SEARCH_RUN / "stars.parquet"
+    stars = pd.read_parquet(path)
+    pd.concat([stars, stars.iloc[:1]]).to_parquet(path)
+    return second_list_argv(runs)
+
+
+def changed_light_curve(tmp_path, runs) -> list[str]:
+    path = tmp_path / "data" / "lc" / "1.npz"
+    lc = LightCurve.load(path)
+    lc.flux = lc.flux * 1.0001
+    lc.save(path)
+    return second_list_argv(runs)
+
+
+def production_run_on_dev_triage(tmp_path, runs) -> list[str]:
+    td.production(runs["run"])
+    return [*second_list_argv(runs), "--production"]
+
+
 @pytest.mark.parametrize(
     "argv, message",
     [
@@ -568,6 +588,17 @@ def no_second_list_row(tmp_path, runs) -> list[str]:
             triage_code(lambda p: p["git"].update(dirty_paths=["src/tess_hunt/pixels.py"])),
             "would not run as in .*pixels.py had uncommitted changes",
         ),
+        (
+            triage_code(lambda p: p["criteria"][1].update(sha256="0" * 64)),
+            r"triage-v1.toml changed since .*its \[pixels\] are unknown",
+        ),
+        (
+            triage_code(lambda p: p["inputs"]["targets"].update(sha256="0" * 64)),
+            "read none of the targets files",
+        ),
+        (changed_search_stars, "stars.parquet is not the file"),
+        (changed_light_curve, "the light curve for TIC 1 changed since"),
+        (production_run_on_dev_triage, "not a production triage run; a production second list"),
     ],
 )
 def test_second_list_refuses_inputs_it_cannot_stand_on(tmp_path, monkeypatch, argv, message):
@@ -595,6 +626,7 @@ def test_the_dossier_shows_the_second_lists_pixel_check(tmp_path, monkeypatch):
     assert "second list ran it" not in text and "which triage did not run on this row" in text
     plots = td.section(text, "Plots")
     assert "centroids.png" not in plots and "Triage's centroid" not in plots
+    assert "Centroids: no plot (No second-list run was given.)." in plots
 
     assert main([*argv, "--second-list", str(second)]) == 0
     signal = out / NAME
@@ -616,6 +648,24 @@ def test_the_dossier_shows_the_second_lists_pixel_check(tmp_path, monkeypatch):
     plots = td.section(text, "Plots")
     assert "](pixels.png)" in plots and "The second list's pixel check" in plots
     assert "centroids.png" not in plots and "Triage's centroid" not in plots
+
+    # The second list judges only second-list rows: another signal's record holds no second-list run.
+    roles = {"checks": runs["run"], "second-list": second}
+    assert "provenance-second-list.json" in vetting._signal_files(roles, NAME)
+    assert not {"provenance-second-list.json", "pixels.json"} & set(
+        vetting._signal_files(roles, "TOI-9.01")
+    )
+
+    # A second-list run made before the second list drew its own plot: the dossier says it has none.
+    td.writable(second)
+    (second / "signals" / NAME / "pixels.png").unlink()
+    assert main([*argv, "--second-list", str(second)]) == 0
+    plots = td.section((signal / "dossier.md").read_text(), "Plots")
+    assert "](pixels.png)" not in plots
+    assert (
+        f"Centroids: no plot (second-list run {second.name} drew none beside its pixels.json)."
+        in plots
+    )
 
 
 KILLED = tc.edit(

@@ -1,4 +1,7 @@
+import json
 import socket
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -120,6 +123,60 @@ def test_mid_utc_is_when_the_transit_is_seen_from_earth(monkeypatch):
         ("103312990-1", 4359.609270087955, "2026-11-15 02:39"),
     ):
         assert predict.seen_utc(btjd, *stars[name]) == seen, (name, btjd)
+
+
+# Run in a process of its own: astropy checks its leap-second table once per process, at the first UTC conversion.
+PAST_EXPIRY = """
+import json, socket, sys, warnings
+from astropy.config import set_temp_cache
+from astropy.time import Time
+from astropy.utils import iers
+
+attempts = []
+
+def refuse(*args, **kwargs):
+    attempts.append(repr(args[:2]))
+    raise OSError("no network in this test")
+
+socket.socket.connect = refuse
+socket.create_connection = refuse
+socket.getaddrinfo = refuse
+# After the bundled table's expiry, so no table astropy holds is current.
+iers.LeapSeconds._today = staticmethod(lambda: Time("2027-08-01", scale="tai", format="iso", out_subfmt="date"))
+from tess_hunt import predict
+
+conversion, cache = sys.argv[1], sys.argv[2]
+with set_temp_cache(cache), warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    if conversion == "btjd":
+        value = predict.btjd("2026-12-22T00:00:00")
+    else:
+        value = predict.seen_utc(4397.2124043992535, 156.829227880851, -47.5203964706134)
+print(json.dumps({"value": value, "attempts": attempts, "warned": [str(w.message) for w in caught]}))
+"""
+
+
+@pytest.mark.parametrize("conversion", ["btjd", "seen_utc"])
+def test_conversions_warn_rather_than_download_once_the_leap_second_table_expires(
+    tmp_path, conversion
+):
+    """astropy's bundled leap-second table expires 2027-06-28, and uv.lock fixes astropy. From 150 days before then a
+    UTC conversion would try to download a newer table; these two keep to the bundled one and warn that it is
+    stale."""
+    done = subprocess.run(
+        [sys.executable, "-c", PAST_EXPIRY, conversion, str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=ROOT,
+        timeout=300,
+    )
+    found = json.loads(done.stdout.splitlines()[-1])
+    assert found["attempts"] == [], "a download was tried"
+    assert "leap-second file is expired." in found["warned"]
+    # S112's start, and 103312990-1's epoch 379 as the M4 dry-run package gives it.
+    expected = {"btjd": btjd("2026-12-22T00:00:00"), "seen_utc": "2026-12-22 17:05"}
+    assert found["value"] == expected[conversion]
 
 
 @pytest.mark.network

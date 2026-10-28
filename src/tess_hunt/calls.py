@@ -377,6 +377,8 @@ def problems(signal_dir: Path) -> list[str]:
     name = signal_name(signal_dir)
     if call["signal"] != name:
         out.append(f"call.toml is for {call['signal']}, not {name}")
+    if review is not None and review["signal"] != name:
+        out.append(f"review.json is for {review['signal']}, not {name}")
     if checks["evidence_only"]:
         out.append("checks.json is an evidence-only vet, which never makes a call")
     if checks["criteria_version"] not in call["criteria"]:

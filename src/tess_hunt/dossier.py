@@ -658,7 +658,7 @@ def _others(r: Record) -> str:
 
 def _radius(r: Record) -> str:
     check = r.check("radius")
-    flat = check["evidence"].get("rp_rearth") if check["outcome"] != "inconclusive" else None
+    flat = check["evidence"]["rp_rearth"] if check["outcome"] != "inconclusive" else None
     text = (
         f"Radius: {r.said('radius')}. Rp is {_f(flat, '.2f')} Earth radii from the flat-prior fit"
     )
@@ -701,7 +701,7 @@ def _fit_prior(r: Record) -> str:
 
 def _planet(r: Record) -> str:
     shape = r.check("shape")
-    b = shape["evidence"].get("b_median") if shape["outcome"] != "inconclusive" else None
+    b = shape["evidence"]["b_median"] if shape["outcome"] != "inconclusive" else None
     items = [
         f"Odd and even transits: {r.said('odd_even')}.",
         f"Secondary at phase 0.5: {r.said('secondary')}.",
@@ -866,8 +866,8 @@ def _ddt(r: Record) -> str:
     if r.call is None:
         return rule + (
             " If passed, M4 makes the DDT ask for 2-min data when the next look is full-frame images only. If held on "
-            "the transit's shape, it may on the maintainer's call; held on blending, or killed, it does not, since "
-            "2-min data come from the same pixels."
+            "the transit's shape, it may on the maintainer's call; held on blending it does not, since 2-min data "
+            "come from the same pixels; killed, it does not."
         )
     outcome = r.call["outcome"]
     if outcome == "passed":
@@ -937,16 +937,33 @@ def _looks(r: Record) -> str:
 
 
 def _plots(r: Record) -> str:
-    found = [
-        (f"plots/{name}", caption)
-        for name, caption in PLOTS.items()
-        if (r.path / "plots" / name).is_file() and not (r.second and name == "centroids.png")
-    ]
-    if r.second and (r.path / SECOND_LIST_CENTROIDS[0]).is_file():
-        found.append(SECOND_LIST_CENTROIDS)
-    if not found:
+    # Before `vetting run` caught each plot's failure, one that raised discarded the vet, so a record that names no
+    # failed plot drew every one.
+    failed = r.checks.get("plot_errors", {})
+    shown = []
+    for name, caption in PLOTS.items():
+        # A second-list row's centroid plot is the second list's, below.
+        if r.second and name == "centroids.png":
+            continue
+        if (r.path / "plots" / name).is_file():
+            shown.append(f"{caption}:\n\n![{caption}](plots/{name})")
+        elif name in failed:
+            shown.append(f"{caption}: not drawn ({failed[name]}).")
+    if r.second:
+        name, caption = SECOND_LIST_CENTROIDS
+        if (r.path / name).is_file():
+            shown.append(f"{caption}:\n\n![{caption}]({name})")
+        elif r.pixels is None:
+            shown.append(f"Centroids: no plot ({r.no_pixels()}).")
+        else:
+            # A second-list run made before the second list drew its own plot.
+            run = r.provenance["second-list"]["run_id"]
+            shown.append(
+                f"Centroids: no plot (second-list run {run} drew none beside its pixels.json)."
+            )
+    if not shown:
         return "No plots in this record."
-    return "\n\n".join(f"{caption}:\n\n![{caption}]({path})" for path, caption in found)
+    return "\n\n".join(shown)
 
 
 def _catalogued(r: Record) -> str:

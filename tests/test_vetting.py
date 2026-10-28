@@ -313,11 +313,24 @@ def test_vetting_run_refuses_a_v1_snapshot(tmp_path, monkeypatch):
         (lambda rows: rows[:1] + [{**rows[1], "kind": "planet"}], "unknown kind"),
         (lambda rows: rows[:1] + [{**rows[1], "name": "1-1"}], "more than once: 1-1"),
         (lambda rows: rows[:1] + [{**rows[1], "t0": 2459326.1}], "BTJD"),
+        (lambda rows: rows[:1] + [{**rows[1], "name": "../TOI-9.01"}], "names are letters"),
+        (lambda rows: rows[:1] + [{**rows[1], "period": NAN}], "positive numbers of days"),
+        (lambda rows: rows[:1] + [{**rows[1], "period": -5.0}], "positive numbers of days"),
+        (lambda rows: rows[:1] + [{**rows[1], "duration": 0.0}], "positive numbers of days"),
+        (lambda rows: rows[:1] + [{**rows[1], "tic": NAN}], "no TIC number for TOI-9.01"),
     ],
 )
 def test_vetting_run_refuses_a_signal_list_it_cannot_vet(tmp_path, monkeypatch, change, message):
     argv, _ = setup(tmp_path, monkeypatch, signals=change(SIGNALS))
     with pytest.raises(SystemExit, match=message):
+        main(argv)
+    assert no_run(tmp_path)
+
+
+def test_vetting_run_refuses_a_star_it_has_no_light_curve_for(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch)
+    (tmp_path / "data" / "lc" / "2.npz").unlink()
+    with pytest.raises(SystemExit, match="no light curve for TIC 2; fetch first"):
         main(argv)
     assert no_run(tmp_path)
 
@@ -586,18 +599,58 @@ def test_triage_evidence_for_another_star_is_refused(tmp_path, monkeypatch):
     assert not list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
 
 
-def other_search_criteria(tmp_path: Path) -> list[str]:
+def production(tmp_path: Path, triage: Path) -> list[str]:
+    # The triage run fixture is not a production run.
+    return ["--triage-run", str(triage), "--production"]
+
+
+def other_search_criteria(tmp_path: Path, triage: Path) -> list[str]:
     path = tmp_path / "search-other.toml"
     path.write_text(SEARCH.read_text() + "# not the file triage ran with\n")
-    return ["--criteria-search", str(path)]
+    return ["--triage-run", str(triage), "--criteria-search", str(path)]
+
+
+def edited_triage(change):
+    """The triage run with its provenance changed by `change`."""
+
+    def edit(tmp_path: Path, triage: Path) -> list[str]:
+        path = triage / "provenance.json"
+        provenance = json.loads(path.read_text())
+        change(provenance)
+        path.write_text(json.dumps(provenance))
+        return ["--triage-run", str(triage)]
+
+    return edit
+
+
+def changed_search_signals(tmp_path: Path, triage: Path) -> list[str]:
+    path = triage.parent / SEARCH_RUN / "signals.parquet"
+    found = pd.read_parquet(path)
+    pd.concat([found, found.iloc[:1]]).to_parquet(path)
+    return ["--triage-run", str(triage)]
+
+
+def renamed_triage(tmp_path: Path, triage: Path) -> list[str]:
+    # Its provenance still names TRIAGE_RUN, so the directory is not the run the vetting run would record.
+    renamed = triage.parent / "20261015T000000Z-triage-abc-9"
+    triage.rename(renamed)
+    return ["--triage-run", str(renamed)]
 
 
 @pytest.mark.parametrize(
     "extra, message",
     [
-        # The triage run fixture is not a production run.
-        (lambda tmp_path: ["--production"], "not a production triage run"),
+        (production, "not a production triage run"),
         (other_search_criteria, "is not the criteria/search-v2.toml that"),
+        (edited_triage(lambda p: p.update(ended_at=None)), "is not a finished triage run"),
+        (changed_search_signals, "signals.parquet is not the file"),
+        (
+            edited_triage(lambda p: p["criteria"][1].update(sha256="0" * 64)),
+            "triage-v1.toml changed since .* its pixel limit is unknown",
+        ),
+        (edited_triage(lambda p: p.pop("criteria")), "names no search and triage criteria"),
+        (edited_triage(lambda p: p["criteria"].pop()), "names no search and triage criteria"),
+        (renamed_triage, f"provenance is run {TRIAGE_RUN}'s"),
     ],
 )
 def test_vetting_run_refuses_triage_evidence_its_checks_cannot_stand_beside(
@@ -606,7 +659,7 @@ def test_vetting_run_refuses_triage_evidence_its_checks_cannot_stand_beside(
     argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
     triage = triage_run(tmp_path)
     with pytest.raises(SystemExit, match=message):
-        main([*argv, "--triage-run", str(triage), *extra(tmp_path)])
+        main([*argv, *extra(tmp_path, triage)])
     assert not list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
 
 
@@ -669,6 +722,29 @@ def test_every_catalogued_row_on_the_star_is_listed_with_the_transits_it_overlap
 
 def test_a_signal_that_raises_is_recorded_and_the_others_are_vetted(tmp_path, monkeypatch):
     argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
+    draw = vetting._plots
+
+    def breaks_on_the_control(lc, *args):
+        if lc.tic == CONTROL["tic"]:
+            raise RuntimeError("detrending for the plots failed")
+        return draw(lc, *args)
+
+    # The control's directory already holds its samples and neighbours.csv when this raises.
+    monkeypatch.setattr(vetting, "_plots", breaks_on_the_control)
+    assert main(argv) == 1
+    run = only_run(tmp_path)
+    assert [p.name for p in (run / "signals").iterdir()] == ["1-1"]
+    assert (run / "signals" / "1-1" / "checks.json").is_file()
+    provenance = json.loads((run / "provenance.json").read_text())
+    assert provenance["ended_at"] is not None
+    assert provenance["summary"]["errors"] == {
+        "TOI-9.01": "raised RuntimeError: detrending for the plots failed"
+    }
+    assert list(provenance["summary"]["signals"]) == ["1-1"]
+
+
+def test_a_plot_that_raises_is_named_and_the_vet_stands(tmp_path, monkeypatch, capsys):
+    argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
     phase = plots.phase
 
     def breaks_on_the_control(lc, *args):
@@ -676,13 +752,22 @@ def test_a_signal_that_raises_is_recorded_and_the_others_are_vetted(tmp_path, mo
             raise RuntimeError("plotting failed")
         return phase(lc, *args)
 
-    # The control's directory already holds its samples and neighbours.csv when this raises.
     monkeypatch.setattr(plots, "phase", breaks_on_the_control)
-    assert main(argv) == 1
+    assert main(argv) == 0
     run = only_run(tmp_path)
-    assert [p.name for p in (run / "signals").iterdir()] == ["1-1"]
-    assert (run / "signals" / "1-1" / "checks.json").is_file()
-    provenance = json.loads((run / "provenance.json").read_text())
-    assert provenance["ended_at"] is not None
-    assert provenance["summary"]["errors"] == {"TOI-9.01": "raised RuntimeError: plotting failed"}
-    assert list(provenance["summary"]["signals"]) == ["1-1"]
+    control = run / "signals" / "TOI-9.01"
+    assert read(run, "TOI-9.01")["plot_errors"] == {
+        "phase.png": "raised RuntimeError: plotting failed"
+    }
+    assert {p.name for p in (control / "plots").iterdir()} == PLOTS - {"phase.png"}
+    assert read(run, "1-1")["plot_errors"] == {}
+    assert {p.name for p in (run / "signals" / "1-1" / "plots").iterdir()} == PLOTS
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert summary["errors"] == {}
+    assert summary["signals"]["TOI-9.01"]["plot_errors"] == {
+        "phase.png": "raised RuntimeError: plotting failed"
+    }
+    assert (
+        "TOI-9.01: phase.png not drawn, raised RuntimeError: plotting failed"
+        in capsys.readouterr().out
+    )

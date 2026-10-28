@@ -1,7 +1,15 @@
 # 0024: vet-v3 fits again with the TIC density as a prior, and predicts the transits in TESS's next sectors
 
 - Date: 2026-10-17
-- Status: Accepted (approved by the maintainer in the M3 design)
+- Status: Accepted (approved by the maintainer in the M3 design). Added on 2026-10-28, by a ruling of the M4 build's
+  controller with no acceptance by the maintainer recorded: astropy's bundled leap-second table, which `uv.lock` fixes,
+  expires on 2027-06-28, and from 150 days before then astropy tries to download a newer table when it converts a time
+  to or from UTC. It checks once per process, at the first such conversion. `predict.btjd` and `predict.seen_utc` turn
+  that download off for their own conversions: they keep to the bundled table and warn that it is stale, and the other
+  modules keep astropy's default. Every published dossier's windows convert to the same times as before
+  (`test_seen_utc_matches_the_dossier` in `tests/test_dossier.py`), and both conversions run offline past the expiry
+  (`test_conversions_warn_rather_than_download_once_the_leap_second_table_expires` in `tests/test_predict.py`). A leap
+  second announced after the table would be missed: one second, beside windows whose widths run to minutes.
 
 ## Context
 

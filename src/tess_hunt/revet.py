@@ -3,6 +3,8 @@ wrote it, adds the sectors only the new fetch has, and takes a changed old secto
 timing-suspect product. The earlier light curves are read, never written: every finished run keeps the file it
 hashed."""
 
+import hashlib
+import io
 import sys
 import tempfile
 from pathlib import Path
@@ -64,18 +66,37 @@ def merge(base: LightCurve, fresh: LightCurve) -> tuple[LightCurve, dict]:
 
 
 def _revet_star(
-    tic: int, products: pd.DataFrame, base_dir: Path, out_dir: Path, cfg_fetch: dict, session
+    tic: int,
+    products: pd.DataFrame,
+    base: Path,
+    recorded: str,
+    out_dir: Path,
+    cfg_fetch: dict,
+    session,
 ) -> dict:
-    base = base_dir / f"{tic}.npz"
-    record = {"base_sha256": sha256_file(base), "lc_sha256": None, "sectors": None}
+    # The merge reads the bytes the run recorded as its input, read once before the fetch: a base rewritten while
+    # the run fetched would otherwise be merged unrecorded.
+    blob = base.read_bytes()
+    if hashlib.sha256(blob).hexdigest() != recorded:
+        raise SystemExit(
+            f"the light curve for TIC {tic} in --base-lc-dir changed after this run recorded it; a re-vet merges "
+            "onto the file the run records"
+        )
+    old = LightCurve.load(io.BytesIO(blob))
+    record = {"base_sha256": recorded, "lc_sha256": None, "sectors": None}
     with tempfile.TemporaryDirectory() as tmp:
         entry = fetch.fetch_star(tic, products, Path(tmp), cfg_fetch, session=session)
-        record["fetch"] = {"status": entry["status"], "problems": entry["problems"]}
-        # Nothing fetched is no re-vet: the old light curve alone would read as one with no new data.
-        if entry["status"] != "ok":
-            return record
-        fresh = LightCurve.load(Path(tmp) / f"{tic}.npz")
-    merged, record["sectors"] = merge(LightCurve.load(base), fresh)
+        fresh = LightCurve.load(Path(tmp) / f"{tic}.npz") if entry["status"] == "ok" else None
+    got = fresh.sources if fresh is not None else {}
+    record["fetch"] = {"status": entry["status"], "problems": entry["problems"]}
+    record["unfetched"] = sorted((s for s in entry["problems"] if s not in got), key=int)
+    # Nothing fetched is no re-vet: the old light curve alone would read as one with no new data.
+    if fresh is None:
+        return record
+    merged, record["sectors"] = merge(old, fresh)
+    # Nor is a fetch that brought no sector the merge takes: the merged file would be the old one again.
+    if not any(s["status"] in ("added", "redelivered") for s in record["sectors"].values()):
+        return record
     target = out_dir / f"{tic}.npz"
     merged.save(target)
     record["lc_sha256"] = sha256_file(target)
@@ -86,6 +107,12 @@ def cmd_fetch(args) -> int:
     if args.production:
         fetch._require_finished_targets(args.targets)
     criteria = load_criteria(args.criteria)
+    # Without them every fresh product reads as clean, and a suspect product delivered again as a redelivery.
+    if not criteria["fetch"].get("timing_suspect"):
+        raise SystemExit(
+            f"{args.criteria.name} has no [[fetch.timing_suspect]] rules: a re-vet takes an old sector only when a "
+            "timing-suspect product is delivered again clean (decision 0041)"
+        )
     tics = [int(t) for t in pd.read_parquet(args.targets)["tic"]]
     # Checked before the run starts, so a refusal leaves no unfinished run directory.
     no_base = [str(t) for t in tics if not (args.base_lc_dir / f"{t}.npz").is_file()]
@@ -102,15 +129,27 @@ def cmd_fetch(args) -> int:
     session = requests.Session()
     stars = {
         str(tic): _revet_star(
-            tic, products, args.base_lc_dir, run.path / "lc", criteria["fetch"], session
+            tic,
+            products,
+            args.base_lc_dir / f"{tic}.npz",
+            run.provenance["inputs"][f"base_light_curve_{tic}"]["sha256"],
+            run.path / "lc",
+            criteria["fetch"],
+            session,
         )
         for tic in tics
     }
     run.write_json("merge.json", stars)
     failed = [int(t) for t, r in stars.items() if r["lc_sha256"] is None]
     run.finish(stars=len(stars), failed=failed)
+    for tic in failed:
+        missed = ", ".join(f"S{s}" for s in stars[str(tic)]["unfetched"]) or "none"
+        print(
+            f"TIC {tic}: no sector added or redelivered, so no light curve; sectors fetched with problems and no "
+            f"file: {missed}"
+        )
     print(
-        f"revet fetch: {len(stars) - len(failed)} merged, {len(failed)} fetched nothing -> {run.path}"
+        f"revet fetch: {len(stars) - len(failed)} merged, {len(failed)} with nothing new -> {run.path}"
     )
     return 1 if failed else 0
 

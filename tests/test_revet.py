@@ -10,6 +10,7 @@ import test_fetch as tf
 from fakes import FakeSession
 from synthetic import make_lc
 
+from tess_hunt import revet
 from tess_hunt.cli import main
 from tess_hunt.fetch import fetch_star
 from tess_hunt.lightcurve import LightCurve
@@ -175,5 +176,79 @@ def test_revet_fetch_writes_no_light_curve_for_a_star_it_fetched_nothing_for(tmp
     record = json.loads((run / "merge.json").read_text())[str(tf.TIC)]
     assert record["fetch"]["status"] == "empty" and record["fetch"]["problems"]
     assert record["lc_sha256"] is None and record["sectors"] is None
+    assert record["unfetched"] == ["1", "100"]
     provenance = json.loads((run / "provenance.json").read_text())
     assert provenance["summary"]["failed"] == [tf.TIC]
+
+
+def test_revet_fetch_fails_a_star_it_got_no_new_sector_for(tmp_path, monkeypatch, capsys):
+    # MAST lists QLP S100, but its file never comes: the fetch gets S1 again, which M2's light curve already holds.
+    _, argv = revet_inputs(tmp_path, monkeypatch, tf.routes())
+
+    assert main(argv) == 1
+    run = only_run(tmp_path)
+    assert not (run / "lc" / f"{tf.TIC}.npz").exists()
+    record = json.loads((run / "merge.json").read_text())[str(tf.TIC)]
+    assert record["fetch"]["status"] == "ok" and list(record["fetch"]["problems"]) == ["100"]
+    assert {s: r["status"] for s, r in record["sectors"].items()} == {"1": "kept"}
+    assert record["lc_sha256"] is None and record["unfetched"] == ["100"]
+    assert json.loads((run / "provenance.json").read_text())["summary"]["failed"] == [tf.TIC]
+    out = capsys.readouterr().out
+    assert f"TIC {tf.TIC}: no sector added or redelivered" in out and "S100" in out
+
+
+def test_revet_fetch_refuses_fetch_criteria_without_timing_rules(tmp_path, monkeypatch):
+    _, argv = revet_inputs(tmp_path, monkeypatch, {})
+    text = SEARCH.read_text()
+    rules = text[text.index("[[fetch.timing_suspect]]") : text.index("[detrend]")]
+    path = tmp_path / "search-no-timing-rules.toml"
+    path.write_text(text.replace(rules, ""))
+    argv[argv.index(str(SEARCH))] = str(path)
+    # Every fresh product would read as clean, and a suspect one delivered again as a redelivery.
+    with pytest.raises(SystemExit, match=r"no \[\[fetch.timing_suspect\]\] rules"):
+        main(argv)
+    assert not list((tmp_path / "data" / "runs").glob("*-revet-fetch-*"))
+
+
+def rewrite(path: Path) -> None:
+    lc = LightCurve.load(path)
+    lc.flux = lc.flux * 1.01
+    lc.save(path)
+
+
+def test_revet_fetch_merges_the_base_it_recorded(tmp_path, monkeypatch):
+    served = tf.routes() | {MAST_API + "u100": tf.QLP.read_bytes()}
+    base_dir, argv = revet_inputs(tmp_path, monkeypatch, served)
+    base = base_dir / f"{tf.TIC}.npz"
+    m2 = LightCurve.load(base)
+    fetch_star = revet.fetch.fetch_star
+
+    def rewrites_the_base(*args, **kwargs):
+        # Another stage rewrites the shared cache while the fetch runs.
+        rewrite(base)
+        return fetch_star(*args, **kwargs)
+
+    monkeypatch.setattr(revet.fetch, "fetch_star", rewrites_the_base)
+    assert main(argv) == 0
+    run = only_run(tmp_path)
+    merged = LightCurve.load(run / "lc" / f"{tf.TIC}.npz")
+    assert np.array_equal(merged.select(merged.sector == 1).flux, m2.flux)
+    inputs = json.loads((run / "provenance.json").read_text())["inputs"]
+    record = json.loads((run / "merge.json").read_text())[str(tf.TIC)]
+    assert record["base_sha256"] == inputs[f"base_light_curve_{tf.TIC}"]["sha256"]
+
+
+def test_revet_fetch_refuses_a_base_rewritten_after_it_was_recorded(tmp_path, monkeypatch):
+    served = tf.routes() | {MAST_API + "u100": tf.QLP.read_bytes()}
+    base_dir, argv = revet_inputs(tmp_path, monkeypatch, served)
+    session = FakeSession(served)
+
+    def rewrites_then_serves():
+        # The run has recorded every star's base by now, and fetched nothing yet.
+        rewrite(base_dir / f"{tf.TIC}.npz")
+        return session
+
+    monkeypatch.setattr(requests, "Session", rewrites_then_serves)
+    with pytest.raises(SystemExit, match=f"light curve for TIC {tf.TIC} in --base-lc-dir changed"):
+        main(argv)
+    assert not (only_run(tmp_path) / "lc").exists()
