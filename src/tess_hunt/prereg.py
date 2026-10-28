@@ -221,10 +221,10 @@ sd $sd min. Each window's mid-time less the refit's nearest predicted mid-time: 
 # Each signal whose section says more than the others, from its record (design 4.3).
 NOTES = {
     "399023421-1": Template("""\
-Its review found the timing-suspect QLP transits arriving later than the observers' windows predict. The review's
-finding F9, quoted word for word: "$review_F9" Those QLP sectors are left out of the refit, as of every check. The
-refit stands as published: if the new season's transits arrive late against its cores, the season can be missed, and
-a miss on drift counts as a miss.
+tess-hunt's adversarial review of this signal found its timing-suspect QLP transits arriving later than the observers'
+windows predict. The review's finding F9, quoted word for word: "$review_F9" The refit leaves those QLP sectors out,
+as every check does. It stands as published: if the new season's transits arrive late against its cores, the season
+can be missed, and a miss on drift counts as a miss.
 
 RAVEN ($fact_raven) lists a dip on the star at $raven_period d. The review's
 finding F4, quoted word for word: "$review_F4"
