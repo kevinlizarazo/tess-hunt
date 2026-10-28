@@ -18,9 +18,10 @@ threshold-crossing event or an ExoMiner row. All 14 have been vetted:
 [results/vetting/README.md](results/vetting/README.md) gives the reason for each call and links each signal's dossier:
 every check, an adversarial review and the runs behind them.
 
-In progress ([pull request #1](https://github.com/kevinlizarazo/tess-hunt/pull/1)): predictions for the six held
-signals that TESS observes again in Sectors 112 to 114 (December 2026 to March 2027), to be deposited before those
-sectors start, and a request for 2-minute cadence on one of them, TIC 241522065.
+In progress ([pull request #1](https://github.com/kevinlizarazo/tess-hunt/pull/1)): transit predictions for the six
+held signals that TESS observes again in Sectors 112 to 114 (December 2026 to March 2027), preregistered on Zenodo
+on 2026-10-28 ([doi:10.5281/zenodo.23745923](https://doi.org/10.5281/zenodo.23745923)), before those sectors start.
+A request for 2-minute cadence on one of them, TIC 241522065, went to the TESS office the same day.
 
 ## How it works
 
