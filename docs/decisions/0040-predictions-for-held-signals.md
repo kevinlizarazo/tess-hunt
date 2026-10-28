@@ -13,7 +13,10 @@
   "When it is judged" is [0041](0041-revets-as-versions.md)'s, by the controller's rulings of 2026-10-28: a result that
   is not pending stands, and every later re-vet carries it; a light curve fetched on or after the judging date
   completes no season, since the code sees when data were fetched, not when they were public; and a result is judged
-  as of a day between its vetting run's start and the day the test runs.
+  as of a day between its vetting run's start and the day the test runs. Amended 2026-10-28 by the maintainer's
+  decision, after the package's pre-release review found that Zenodo lets an edit of a record's files, opened within
+  30 days of publishing, be published until day 45: the deposit deadline moved from 2026-11-20 to 2026-11-05, 45 days
+  before the same lock start, and `facts.toml` holds the 45-day limit as `zenodo_edit_publish_days`.
 
 ## Context
 
@@ -26,14 +29,15 @@ them will get from TESS.
 The record's windows come from the density-prior fit (0024), but the held-out season check never reads them. With a
 season held out it refits the period on the other seasons near the search's ephemeris (`checks.holdout`) and measures
 depth only in each predicted transit's core. With the new season held out, the other seasons are exactly the M3 light
-curve, so the prediction the check will judge is fixed now. A deposit on Zenodo can have its files edited for 30 days
-after publishing ([facts.toml](../../results/predictions/facts.toml)), so a prediction is locked only for sectors that
-start after that.
+curve, so the prediction the check will judge is fixed now. Zenodo lets a deposit's owner open an edit of its files
+within 30 days of publishing and publish the edit within 45 days ([facts.toml](../../results/predictions/facts.toml)),
+so a deposit's files are fixed 45 days after publishing, and a prediction is locked only for sectors that start after
+that.
 
 ## Decision
 
 - **Which signals and sectors.** Each held signal with a window sector that starts on or after the lock start, the
-  date the deposit's files lock (`--lock-start`). Deposited by 2026-11-20, the files lock by 2026-12-20, so
+  date the deposit's files lock (`--lock-start`). Deposited by 2026-11-05, the files are fixed by 2026-12-20, so
   103312990-1's S110 and S111 are left out and named with the reason; every other sector above is predicted. Only a
   published record whose call is `held` is predicted.
 - **What is judged.** The prediction the test will judge, computed now: `holdout.refit_ephemeris` on the M3 light
@@ -116,9 +120,9 @@ start after that.
   found inside a window but outside the refit's cores is a miss.
 - Which sectors fall in the new season is judged from the sectors' dates; the test itself splits seasons on the
   cadences the re-vet's light curve holds.
-- The lock rests on Zenodo's file window as read on the date `facts.toml` gives, and Zenodo can still change a
-  record's files "in duly justified cases". The package is made for a deposit by 2026-11-20; deposited later, its
-  files lock later than the lock start it states.
+- The lock rests on Zenodo's two limits on editing a record's files as read on the dates `facts.toml` gives, and
+  Zenodo can still change a record's files "in duly justified cases". The package is made for a deposit by
+  2026-11-05; deposited later, its files are fixed later than the lock start it states.
 
 ## Evidence
 
@@ -133,7 +137,8 @@ start after that.
   `test_a_production_run_states_only_the_committed_facts`, `test_a_family_without_cadences_in_the_cores_shows_none`,
   `test_the_ddt_proposal_s_state_comes_from_facts` (its state recorded on a later day than every other fact),
   `test_every_window_sector_is_checked_against_the_last_vetted_cadence`,
-  `test_publish_refuses_a_run_that_was_not_production`, `test_the_committed_index_is_its_render`.
+  `test_publish_refuses_a_run_that_was_not_production`, `test_the_committed_index_is_its_render`,
+  `test_deposit_by_is_the_lock_less_zenodo_s_publish_limit`.
 - The M4 build's check of the prediction on the M3 light curves of 423100454-1, 399023421-1, 438857197-1 and
   103312990-1 (the last with QLP S90 in training), each season with a refit removed in turn, against the season rows of
   their published `checks.json`.

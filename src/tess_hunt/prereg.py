@@ -61,6 +61,8 @@ PREDICTION_COLUMNS = [
 ]
 MINUTES_PER_DAY = 1440.0
 FACTS = "results/predictions/facts.toml"
+# Zenodo's two limits on editing a record's files; a sentence that states them names both read dates.
+ZENODO_FACTS = ("zenodo_edit_days", "zenodo_edit_publish_days")
 
 README = Template("""\
 # Predictions for $n_signals held tess-hunt signals in TESS Sectors $first_sector to $last_sector
@@ -161,11 +163,12 @@ inconclusive, and a missed new season is then evidence against the signal that t
 
 ## The lock
 
-Zenodo lets a record's owner edit its files for $fact_zenodo_edit_days days after publishing (as read on
-$fact_zenodo_edit_days_read).
-Deposited by $deposit_by, this package's files are locked by $lock_start, so only sectors starting on or after
-$lock_start are predicted. Each earlier sector in a record's windows is left out, and its signal's section names it.
-Sector dates come from tess-hunt's `$sectors_file` (tess.mit.edu's sector pages, read $sectors_read).
+Zenodo lets a record's owner open an edit of its files within $fact_zenodo_edit_days days of publishing, and the edit
+must be published within $fact_zenodo_edit_publish_days days of publishing (as read on $zenodo_read), so a record's
+files are fixed $fact_zenodo_edit_publish_days days after it is published. Deposited by $deposit_by, this package's
+files are fixed by $lock_start, so only sectors starting on or after $lock_start are predicted. Each earlier sector in
+a record's windows is left out, and its signal's section names it. Sector dates come from tess-hunt's `$sectors_file`
+(tess.mit.edu's sector pages, read $sectors_read).
 
 $sections
 
@@ -263,11 +266,13 @@ make is held out, on the light curve the signal was vetted on, with the training
 with. The signals are $signals, on TIC $tics. Each is a candidate signal, not a planet.
 
 The package was made by run $run_id at tess-hunt commit $commit, from the vetting records of run $vetting_run. Zenodo
-lets a record's files be edited for $fact_zenodo_edit_days days after publication; deposited by $deposit_by, this
-package's files lock by $lock_start, and no sector starting earlier is predicted. Each signal is judged once, on its
-complete new season in a light curve fetched before $judged_by; data fetched on or after that date complete no
-season, and a season that still lacks a predicted sector in a re-vet judged as of that date or later stays untested.
-The README states the test, the data that can test each signal, when it is judged and what a result means.
+lets a record's owner open an edit of its files within $fact_zenodo_edit_days days of publication and publish it
+within $fact_zenodo_edit_publish_days days (as read on $zenodo_read), so the files are fixed
+$fact_zenodo_edit_publish_days days after publication; deposited by $deposit_by, this package's files are fixed by
+$lock_start, and no sector starting earlier is predicted. Each signal is judged once, on its complete new season in a
+light curve fetched before $judged_by; data fetched on or after that date complete no season, and a season that still
+lacks a predicted sector in a re-vet judged as of that date or later stays untested. The README states the test, the
+data that can test each signal, when it is judged and what a result means.
 
 ## Keywords
 
@@ -288,9 +293,10 @@ INDEX = Template("""\
 Each directory here is one package of preregistered predictions for held signals, made by one run of `tess-hunt
 predictions run` and copied unchanged from its run directory by `tess-hunt predictions publish`
 ([decision 0040](../../docs/decisions/0040-predictions-for-held-signals.md)). Its `README.md` says what is predicted,
-the test that will judge it, and when. The maintainer deposits each package on Zenodo, which lets a record's files be
-edited for $fact_zenodo_edit_days days after publishing; after that they are locked. Published packages are never
-edited: a correction is a new package.
+the test that will judge it, and when. The maintainer deposits each package on Zenodo, which lets a record's owner open
+an edit of its files within $fact_zenodo_edit_days days of publishing and publish it within
+$fact_zenodo_edit_publish_days days (as read on $zenodo_read); after that the files are fixed. Published packages are
+never edited: a correction is a new package.
 
 [facts.toml](facts.toml) holds the archive facts the packages state, each with its source and the date it was read.
 `dois.toml`, once the maintainer writes it, holds the DOI and publication date Zenodo gave each package.
@@ -884,6 +890,7 @@ def readme(
             "need_2min": _words(need) or None,
             "archives_read": _read_on(facts, ("tess_spoc_last_sector", "qlp_last_sector")),
             "lists_read": _read_on(facts, ("two_minute_lists", "off_two_minute_lists")),
+            "zenodo_read": _read_on(facts, ZENODO_FACTS),
             "ddt_ask": _ddt_ask(need, predictions, facts),
             "judged_by": JUDGED_BY.isoformat(),
             "lock_start": lock_start.isoformat(),
@@ -913,6 +920,7 @@ def readme(
 def zenodo(provenance: dict, predictions: dict[str, dict], facts: dict) -> str:
     kept = _kept_sectors(predictions)
     found = fact_values(facts) | {
+        "zenodo_read": _read_on(facts, ZENODO_FACTS),
         "n_signals": str(len(predictions)),
         "signals": _words(list(predictions)),
         "tics": _words(sorted(p["tic"] for p in predictions.values())),
@@ -925,12 +933,16 @@ def zenodo(provenance: dict, predictions: dict[str, dict], facts: dict) -> str:
         "deposit_by": _deposit_by(dt.date.fromisoformat(provenance["lock_start"]), facts),
         "judged_by": JUDGED_BY.isoformat(),
     }
-    return ZENODO.substitute(found)
+    return ZENODO.substitute(_filled(found))
 
 
 def _deposit_by(lock_start: dt.date, facts: dict) -> str:
-    """The last day a deposit locks its files by `lock_start`."""
-    return (lock_start - dt.timedelta(days=facts["zenodo_edit_days"]["value"])).isoformat()
+    """The last day a deposit's files are fixed by `lock_start`. Zenodo lets the owner open an edit of a record's files
+    only within `zenodo_edit_days` of publishing, but the edit can then be published until `zenodo_edit_publish_days`,
+    so the files can change until the later day. A facts file without `zenodo_edit_publish_days` raises a KeyError
+    that names it."""
+    days = facts["zenodo_edit_publish_days"]["value"]
+    return (lock_start - dt.timedelta(days=days)).isoformat()
 
 
 def _ddt_ask(need: list[str], predictions: dict[str, dict], facts: dict) -> str:
@@ -1205,7 +1217,8 @@ def index(repo: Path) -> str:
         else "No package is published yet."
     )
     facts = tomllib.loads((root / "facts.toml").read_text())
-    return INDEX.substitute(fact_values(facts) | {"packages": table})
+    found = {"zenodo_read": _read_on(facts, ZENODO_FACTS), "packages": table}
+    return INDEX.substitute(fact_values(facts) | _filled(found))
 
 
 def _write_index(repo: Path) -> None:

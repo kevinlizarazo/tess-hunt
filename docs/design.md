@@ -317,10 +317,11 @@ from a run directory and writes its own.
   depths per product family. The density-prior windows go beside it for observers, marked as not judged. The test is
   vet-v3's `[holdout]` measurement and thresholds with the published prediction and training depths in place of a
   fresh refit; the result is replicated, missed or untested, and pending until the season is judged. Zenodo lets a
-  record's files be edited for 30 days after publishing ([facts.toml](../results/predictions/facts.toml), read
-  2026-10-27), so a package deposited by 2026-11-20 locks by 2026-12-20 and predicts only sectors that start then or
-  later: 103312990-1's S110 and S111 are left out. A signal is judged once, on its complete new season, at the first
-  re-vet whose light curve has data the test can use in every predicted sector. The judging date, 2027-12-31, applies
+  record's owner open an edit of its files within 30 days of publishing and publish it within 45 days
+  ([facts.toml](../results/predictions/facts.toml), read 2026-10-28), so a package deposited by 2026-11-05 is fixed by
+  2026-12-20 and predicts only sectors that start then or later: 103312990-1's S110 and S111 are left out. A signal
+  is judged once, on its complete new season, at the first re-vet whose light curve has data the test can use in every
+  predicted sector. The judging date, 2027-12-31, applies
   to when that light curve was fetched, which is what the code can see, not when the re-vet runs: a light curve
   fetched before it that covers every predicted sector is judged whenever the re-vet runs, one fetched on or after it
   completes no season, and a season still missing a sector in a re-vet judged as of that date or later stays
@@ -652,8 +653,8 @@ Done when:
   and the maintainer has decided whether to send it (by 2026-11-10, six weeks before S112 starts; the DDT page's
   two-week exception reaches S112 until 2026-12-08);
 - the predictions package is committed under `results/predictions/`, rendered from the records, deposited on Zenodo by
-  2026-11-20, and its DOI recorded in the repository: the prediction is public before the data exists, for held
-  signals;
+  2026-11-05 ([0040](decisions/0040-predictions-for-held-signals.md)), and its DOI recorded in the repository: the
+  prediction is public before the data exists, for held signals;
 - the re-vet path is built and tested, and no light curve a run read, no published record and no finished run
   changed;
 - the DDT text and the predictions package each had a review before they went out;
@@ -823,10 +824,11 @@ production search.
   to and from UTC behind the sector edges and the windows' times keep to it offline and warn once it has expired, so
   a leap second announced after it would be missed: one second, beside windows whose widths run to minutes
   ([0024](decisions/0024-density-prior-fit-and-windows.md)).
-- **Zenodo's edit window:** a deposit's files can be edited for 30 days after publishing, and after that only in duly
-  justified cases ([facts.toml](../results/predictions/facts.toml), read 2026-10-27). A prediction is locked only for
-  sectors that start after that. The package is made for a deposit by 2026-11-20; deposited later, its files lock
-  later than the lock start it states, and an error found after they lock stays in the deposit
+- **Zenodo's edit window:** a deposit's owner can open an edit of its files within 30 days of publishing and must
+  publish it within 45 days, and after that the files change only in duly justified cases
+  ([facts.toml](../results/predictions/facts.toml), read 2026-10-28). A prediction is locked only for sectors that
+  start 45 days or more after publishing. The package is made for a deposit by 2026-11-05; deposited later, its files
+  are fixed later than the lock start it states, and an error found after they are fixed stays in the deposit
   ([0040](decisions/0040-predictions-for-held-signals.md)).
 - **Held signals in public:** the DDT ask is public once sent, since the DDT page lists proposals and approved DDT
   observations have no proprietary period ([0039](decisions/0039-ddt-for-held-signals.md)), and the predictions

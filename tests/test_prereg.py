@@ -379,6 +379,39 @@ def test_399023421_section_quotes_the_review_and_cites_raven():
     assert "9.825 d" in text
 
 
+def test_deposit_by_is_the_lock_less_zenodo_s_publish_limit(tmp_path):
+    found = facts()
+    days = found["zenodo_edit_publish_days"]["value"]
+    assert prereg._deposit_by(LOCK, found) == (LOCK - dt.timedelta(days=days)).isoformat()
+    # The maintainer's deadline of 2026-10-28: an edit opened within 30 days can be published until day 45.
+    assert prereg._deposit_by(LOCK, found) == "2026-11-05"
+    later = found | {"zenodo_edit_publish_days": {**found["zenodo_edit_publish_days"], "value": 60}}
+    assert prereg._deposit_by(LOCK, later) == "2026-10-21"
+
+    record = write_record(tmp_path / NAME)
+    signals = {NAME: predicted(planet(), record)}
+
+    def readme(stated: dict) -> str:
+        text = prereg.readme(
+            made(signals), signals, {NAME: record}, VET3.values, stated, TESS_SECTORS
+        )
+        return " ".join(text.split())
+
+    # The lock's sentence names both facts' read dates, one when they share it.
+    assert "must be published within 45 days of publishing (as read on 2026-10-28)" in readme(found)
+    earlier = found | {"zenodo_edit_days": {**found["zenodo_edit_days"], "read": "2026-10-27"}}
+    assert (
+        "(as read on 2026-10-27 and 2026-10-28), so a record's files are fixed 45 days"
+        in readme(earlier)
+    )
+    # A facts file without the limit raises, naming it, in the README and the Zenodo text alike.
+    partial = {k: v for k, v in found.items() if k != "zenodo_edit_publish_days"}
+    with pytest.raises(KeyError, match="zenodo_edit_publish_days"):
+        readme(partial)
+    with pytest.raises(KeyError, match="zenodo_edit_publish_days"):
+        prereg.zenodo(made(signals), signals, partial)
+
+
 def vetting_run(tmp_path, monkeypatch, production=True) -> tuple[list[str], Path]:
     """A finished vetting run that read star 1's light curve, its record of 1-1 published in a repo, and the
     predictions run's arguments."""
@@ -490,13 +523,12 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch):
     assert made["inputs"]["facts"]["sha256"] == sha256_file(repo / prereg.FACTS)
     zenodo = (run / "zenodo.md").read_text()
     assert "CC BY 4.0" in zenodo and made["run_id"] in zenodo
-    # The lock date holds only for a deposit made in time, and the Zenodo text says so.
-    assert "deposited by 2026-11-20, this package's files lock by 2026-12-20" in " ".join(
-        zenodo.split()
-    )
+    flat, zflat = " ".join(readme.split()), " ".join(zenodo.split())
+    # The lock date holds only for a deposit made in time, and the README and the Zenodo text say so.
+    assert "Deposited by 2026-11-05, this package's files are fixed by 2026-12-20" in flat
+    assert "deposited by 2026-11-05, this package's files are fixed by 2026-12-20" in zflat
     # The judging date cuts on when a light curve was fetched, as judge_signal applies it (decision 0041), not on when
     # a re-vet runs; the deposited text states that rule.
-    flat, zflat = " ".join(readme.split()), " ".join(zenodo.split())
     assert (
         "The judging date, 2027-12-31, applies to when a re-vet's light curve was fetched" in flat
     )

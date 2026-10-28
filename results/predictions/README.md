@@ -3,9 +3,10 @@
 Each directory here is one package of preregistered predictions for held signals, made by one run of `tess-hunt
 predictions run` and copied unchanged from its run directory by `tess-hunt predictions publish`
 ([decision 0040](../../docs/decisions/0040-predictions-for-held-signals.md)). Its `README.md` says what is predicted,
-the test that will judge it, and when. The maintainer deposits each package on Zenodo, which lets a record's files be
-edited for 30 days after publishing; after that they are locked. Published packages are never
-edited: a correction is a new package.
+the test that will judge it, and when. The maintainer deposits each package on Zenodo, which lets a record's owner open
+an edit of its files within 30 days of publishing and publish it within
+45 days (as read on 2026-10-28); after that the files are fixed. Published packages are
+never edited: a correction is a new package.
 
 [facts.toml](facts.toml) holds the archive facts the packages state, each with its source and the date it was read.
 `dois.toml`, once the maintainer writes it, holds the DOI and publication date Zenodo gave each package.
