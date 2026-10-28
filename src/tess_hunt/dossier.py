@@ -1095,7 +1095,7 @@ def render_review(
         if verdicts:
             body += "\n\n" + _list(verdicts)
         elif f["rating"] != "note":
-            body += "\n\nNo refuter has answered yet."
+            body += "\n\nNo refuter ran on it."
         for note in notes.get(f["id"], []):
             body += (
                 f"\n\n**Note added on {note['date']} under {_decision('0037', vetting)}, not part of the review or the "

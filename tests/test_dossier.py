@@ -494,6 +494,8 @@ def test_a_finding_no_refuter_ran_on_says_so():
     unchecked = {**REVIEW["findings"][1], "id": "F4", "refuters": []}
     text = dossier.render_review({**REVIEW, "findings": [*REVIEW["findings"], unchecked]})
     assert "### F4 (on the star, hold): confirmed, no refuter ran on it\n" in text
+    assert "\n\nNo refuter ran on it.\n\n" in text.split("### F4 ")[1]
+    assert "No refuter has answered yet." not in text
     assert "### F2 (on the star, hold): confirmed\n" in text
     assert "### F1 (real and new, note)\n" in text
 

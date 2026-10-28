@@ -189,10 +189,15 @@ The loose files in `triage/` ([decision 0012](../docs/decisions/0012-leo-vetter-
 Each directory under `vetting/` is one signal's record, named `<tic>-<rank>` as triage names the signal.
 `tess-hunt vetting publish` wrote it once the maintainer's call was in it
 ([decision 0028](../docs/decisions/0028-outcomes-and-calls.md)); `vetting/README.md` lists every published call that
-stands on its record. Published files are never edited: only `dossier.md` and `vetting/README.md` are rendered again
-from the files beside them, and a correction is a new run. The one exception is decision 0038's: `tess-hunt vetting
-trim` trimmed the literature records published before it and scrubbed the home directory from their reviews. A
-passed signal is a planet candidate, not a confirmed planet.
+stands on its record. A re-vet adds a version beside the record ([Versions](#versions)). Published files are never
+edited, and a correction is a new run. The one exception is decision 0038's: `tess-hunt vetting trim` trimmed the
+literature records published before it and scrubbed the home directory from their reviews. In M3 only `dossier.md` and
+`vetting/README.md` were rendered again from the files beside them, and `vetting/README.md` still is at every
+publish. From M4 on a dossier is rendered once, when its record is published, so a later change to the render code
+shows only in later versions. The M3 dossiers keep the text they were published with, without what M4 changed in the
+held signals' DDT note ([decision 0039](../docs/decisions/0039-ddt-for-held-signals.md)), on page one (a Triage row),
+for review findings no refuter ran on, and in the windows table (decision 0028's Status lists these). A passed signal
+is a planet candidate, not a confirmed planet.
 
 - `call.toml`: the maintainer's call: `outcome` (passed, killed or held), `date`, `reasons` in his words, `rests_on`
   (the checks and review findings it rests on), `criteria`, and as the outcome needs, `deciding_evidence` (what would
@@ -221,7 +226,9 @@ passed signal is a planet candidate, not a confirmed planet.
   [decision 0025](../docs/decisions/0025-neighbours.md); its `centre` names the position the separations run from,
   [decision 0034](../docs/decisions/0034-neighbour-table-epochs.md)); every catalogued row on the star with the
   transits of ours it overlaps (`catalogued`); the upcoming sectors and predicted transit windows; triage's ModShift and
-  pixel evidence and the search's other signals on the star.
+  pixel evidence and the search's other signals on the star; and `plot_errors`, each plot the vetting run could not
+  draw with its error, which the dossier names where the plot would be (empty when every plot was drawn; a record
+  vetted before M4 has none).
 - `checks-with-suspect.json`: the same vet with the timing-suspect sectors kept in, as evidence only, never used for
   the call ([decision 0022](../docs/decisions/0022-vet-without-timing-suspect-sectors.md)).
 - `neighbours.csv`: the Gaia DR3 stars in the neighbour cone, each with its TESS magnitude and the eclipse depth it
@@ -268,6 +275,86 @@ The Gaia DR2 and DR3 values the review (`review.json`) quotes, such as radial ve
 (`rv_amplitude_robust`, `rv_chisq_pvalue`), astrometric noise (`astrometric_excess_noise`, `ipd_frac_multi_peak`)
 and non-single-star flags, are Gaia data too, and so are the same text in `dossier.md` and the Gaia
 values in the outputs in `review-scripts.tar.gz`.
+
+### Versions
+
+A re-vet is a new version of a signal's record, never an overwrite
+([decision 0041](../docs/decisions/0041-revets-as-versions.md)). `tess-hunt vetting publish --version N` writes
+`vetting/<name>/r<N>/`, N from 2 (the M3 record is the first), and changes nothing outside it but `vetting/README.md`,
+whose row for the signal then shows its latest version whose call stands and links the versions before it. A version
+is published once its `dossier.md`, written last, is there, and never changes after. It holds the files a record
+holds, as above, from runs made from its own vetting run, and these:
+
+- `call.toml`, `review.json`, `review-scripts.tar.gz` and any `review-notes.toml`, written into `r<N>/` before it is
+  published. The call names the signal, not `r<N>`.
+- `provenance-checks.json`, which also names the directory the vetting run read its light curves from (`lc_dir`), the
+  revet fetch run whose `lc/` that is (`revet_run`) and the catalog snapshot (`catalogs`).
+- For a second-list row, `pixels.json`, `pixels.png` and `provenance-second-list.json`: the previous record's, byte
+  for byte, since a re-vet carries the pixel check rather than rerunning it. That provenance names the M3 vetting run,
+  not the version's; the dossier says the check was carried.
+- `merge.json` and `provenance-merge.json`: what the revet fetch run that wrote the vetting run's light curve did, and
+  that run's `provenance.json`, whose summary counts the stars and lists those that `failed` (no sector added or
+  redelivered, so no light curve). `merge.json` holds every star of that run, by TIC: `base_sha256`, the sha256 of the
+  light curve it merged onto (for the version's star, the one the previous record's vetting run read); `lc_sha256`,
+  the merged light curve's, null for a star that failed; `fetch`, the fetch's status and problems; `unfetched`, the
+  sectors fetched with problems that got no file; and `sectors`, each sector's status with both products (provenance,
+  S3 key, sha256 and timing flag): `kept` (the earlier file), `added` (a sector only the new fetch has),
+  `redelivered` (the same product again, clean, over a timing-suspect file) or `kept_m2` (another file found and not
+  taken).
+- For a signal a package under `predictions/` predicts, `prereg.json` and `provenance-prereg.json`: the preregistered
+  test of its new season ([decision 0040](../docs/decisions/0040-predictions-for-held-signals.md)) and the run of
+  `tess-hunt vetting prereg` that made it. `prereg.json` gives the `result` (`replicated`, `missed`, `untested` or
+  `pending`), the season's `status` and, for an untested or pending result, its `reason`; the `predicted_sectors`, the
+  `package` and the `vetting_run`; the day it was judged as of (`as_of`), the judging date (`judged_by`) and the day
+  the light curve's revet fetch run started (`fetched`, null for the package's own light curve); and, once the season
+  is judged, the `season` and the depths and statistics the test compared. The provenance's `skipped` names each
+  signal of the vetting run it left out because an earlier version had judged it, with that version and its result.
+  A result once judged stands: every later version holds the judging version's two files byte for byte, and its
+  dossier says which version judged it.
+
+A version's `dossier.md` names the version in its title. A section after the call's line links the version before it
+and says what changed: the sectors added, redelivered, and kept though another product was found; the windows it
+lists for sectors its light curve already holds, which are post-dictions; a carried pixel check; and the masked rows,
+catalogued rows and novelty matches that differ from the previous record's, with both catalog snapshots named. It
+gives the preregistered test's result beside vet-v3's own held-out result.
+
+## DDT proposals
+
+Each directory under `ddt/` holds one DDT ask for a held signal, named as the signal's record under `vetting/`
+([decision 0039](../docs/decisions/0039-ddt-for-held-signals.md)). `tess-hunt ddt render` wrote `proposal.md` and
+`targets.csv` from the files beside them and the signal's published record; nothing in them is typed by hand.
+
+- `proposal.template.md`: the proposal's words, in the DDT template's sections, with a placeholder for each value.
+- `proposal.md`: the template filled with `substitute`, so a value the sources lack raises instead of rendering. The
+  numbers come from the published record (`checks.json`, `triceratops.json`, `literature.json` for the star's names,
+  `call.toml`, `review.json` and `provenance-checks.json`) and the criteria files its runs read; the facts about
+  archives, sector dates and target lists come from `facts.toml`. The review's text it quotes is quoted word for word
+  ([decision 0037](../docs/decisions/0037-quoted-text-in-the-dossier.md)). Its author line is a placeholder, and the
+  maintainer pastes it into the TESS office's template to send it.
+- `targets.csv`: the target list in the shape of the TESS office's template: its `#` header block, the column line and
+  one row, with CRLF line ends. The DDT PI and who made the file when keep the template's placeholders.
+- `facts.toml`: each fact the proposal states about archives, dates and target lists, with the page it was read from
+  and the date it was read.
+
+Sending a proposal is the maintainer's act; `predictions/facts.toml` records 241522065-1's state with its date
+(`ddt_241522065`). These files hold no Gaia data, the star's Gaia DR3 source id included, so they are CC BY 4.0 whole.
+
+## Predictions
+
+Each directory under `predictions/` is one package of preregistered predictions for held signals, made by one
+production run of `tess-hunt predictions run` and copied unchanged by `tess-hunt predictions publish`
+([decision 0040](../docs/decisions/0040-predictions-for-held-signals.md)). The package's own `README.md` says what is
+predicted, the test that will judge it, when, and what a result means, and describes each of its files.
+[predictions/README.md](predictions/README.md), rendered by `predictions publish` and `tess-hunt predictions index`,
+lists the packages.
+
+- `predictions/facts.toml`: each fact the packages state about archives, target lists and the state of a DDT
+  proposal, with the page or file it was read from and the date it was read. A production run takes it only from the
+  checkout its code runs from and refuses it with uncommitted changes; each package holds a copy.
+- `predictions/dois.toml`, once the maintainer writes it: each package's run id with the DOI and publication date
+  Zenodo gave its deposit. Without it the index shows "DOI pending".
+
+The packages hold no Gaia data, so they are CC BY 4.0 whole.
 
 ## Catalog snapshots
 

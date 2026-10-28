@@ -23,8 +23,10 @@ def load_sectors(sectors_file: str) -> pd.DataFrame:
 def btjd(utc: str) -> float:
     # astropy's bundled leap-second table expires 2027-06-28 and uv.lock fixes astropy; from 150 days before then
     # a UTC conversion would try to download a newer table. These conversions keep to the bundled one, and warn once
-    # it has expired (decision 0024). astropy checks once per process, so when one of these is a process's first UTC
-    # conversion it settles the check for that whole process.
+    # it has expired (decision 0024). The setting is scoped to these two calls, never global: frozen modules use
+    # astropy too, directly or through the libraries they call, and their behaviour must not change. astropy checks
+    # once per process, so when one of these is a process's first UTC conversion it settles the check for that whole
+    # process.
     with iers.conf.set_temp("auto_download", False):
         return float(Time(utc, scale="utc").tdb.jd - 2457000.0)
 

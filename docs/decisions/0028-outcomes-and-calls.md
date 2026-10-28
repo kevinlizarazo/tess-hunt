@@ -31,7 +31,8 @@
   the published dossiers staying as they were published: page one's Triage row names the triage run the vetting run
   read and the criteria file it judged under, which `vetting run` now records as input `triage_criteria` (a record
   made before says its vetting run recorded none); a finding rated kill or hold that no refuter ran on is headed
-  "confirmed, no refuter ran on it"; and the windows table leaves out the 1-sigma half-width, which is the sd.
+  "confirmed, no refuter ran on it" and says "No refuter ran on it." where the refuters' verdicts would be; and the
+  windows table leaves out the 1-sigma half-width, which is the sd.
 
 ## Context
 
