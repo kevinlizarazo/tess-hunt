@@ -1,5 +1,5 @@
 # Facts about archives, dates and target lists that the DDT proposal for 241522065-1 states. Each names the page it
-# was read from and the date it was read; the proposal's template reads only `value` and `source`.
+# was read from and the date it was read; the proposal renders each `value`, and `read` as the one date all were read.
 
 [qlp_last_sector]
 value = 105
@@ -21,6 +21,12 @@ read = "2026-10-27"
 [spoc_2min_latency_days]
 value = "24 to 38"
 note = "Sectors 105 to 107: from a sector's end to its 2-min light-curve download script on MAST."
+source = "https://archive.stsci.edu/missions/tess/download_scripts/sector/"
+read = "2026-10-27"
+
+[spoc_2min_latency_sectors]
+value = "105 to 107"
+note = "The sectors spoc_2min_latency_days was measured on; their 2-min light-curve download scripts were Last-Modified 2026-08-18, 2026-09-10 and 2026-10-02."
 source = "https://archive.stsci.edu/missions/tess/download_scripts/sector/"
 read = "2026-10-27"
 

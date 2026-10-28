@@ -18,10 +18,10 @@ The rule leaves out a case M4 found: a hold that needs a season the public produ
 with a sector ahead had only FFI data in the sectors fetched, except 423100454 in S12, and the sectors ahead are its
 last through S134 (tess-point). QLP on MAST stops at a partial S105, with nothing for S106 or later, and has not
 redelivered S99 to S104, whose timestamps are suspect ([0022](0022-vet-without-timing-suspect-sectors.md));
-TESS-SPOC's FFI light curves stop at S85 ([facts.toml](../../results/ddt/241522065-1/facts.toml), each fact with its
-source and the date it was read). So for these stars the sectors ahead become light curves only through QLP, which
-has stalled, through 2-min data, which need a DDT ask, or through the project's own FFI photometry, which the spec
-leaves out of scope.
+TESS-SPOC's FFI light curves are on MAST only through S85 ([facts.toml](../../results/ddt/241522065-1/facts.toml),
+each fact with its source and the date it was read, 2026-10-27). So for these stars the sectors ahead become light
+curves only through QLP, which has stalled, through 2-min data, which need a DDT ask, or through the project's own FFI
+photometry, which the spec leaves out of scope.
 
 241522065-1 is held only for a third season ([its call](../../results/vetting/241522065-1/call.toml)): its two
 seasons with trustworthy timestamps can't test each other, so the held-out check is inconclusive. S112 to S114 would

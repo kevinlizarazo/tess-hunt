@@ -28,10 +28,11 @@ KEYWORDS = "planet candidate;transit;held-out season"
 # inconclusive leaves `inconclusive` unfilled, since the proposal's case would then need rewriting.
 CHECK_NAMES = {"novelty": "the check against known objects", "holdout": "the held-out season test"}
 # Phrases the proposal for 241522065-1 quotes from a finding's evidence (decision 0037), {placeholder: (finding,
-# text)}. Each is given only when review.json holds it word for word, so a quote can't drift from the review.
+# text)}. Each is given only when review.json holds it word for word, so a quote can't drift from the review. They
+# leave out characters LaTeX treats specially, since the proposal is pasted into the office's .tex template.
 QUOTES = {
     "quote_eumemic_mes": ("F6", "MES 8.9"),
-    "quote_eumemic_tier": ("F6", "tier C (MES < 10)"),
+    "quote_eumemic_tier": ("F6", "tier C"),
     "quote_untested": ("F6", "Whether the 5.58 d dip is on the target was not tested here."),
 }
 
@@ -213,19 +214,15 @@ def _from_review(path: Path) -> dict:
 def _from_facts(facts: dict, tic: int, sectors: list[int]) -> dict:
     read = {str(fact["read"]) for fact in facts.values()}
     lists, off = facts.get("two_minute_lists"), facts.get("off_two_minute_lists")
-    return (
-        {f"fact_{key}": str(fact["value"]) for key, fact in facts.items()}
-        | {f"source_{key}": fact["source"] for key, fact in facts.items()}
-        | {
-            # The dates of the sectors asked for: a sector facts.toml gives no date for raises, naming the fact.
-            "first_start": str(facts[f"s{sectors[0]}_start"]["value"]),
-            "last_end": str(facts[f"s{sectors[-1]}_end"]["value"]),
-            # The lists are named only when facts.toml finds the star on none of them.
-            "not_on_lists": lists["value"] if lists and off and tic in off["value"] else None,
-            # One date stands for every fact only when all were read that day.
-            "facts_read": read.pop() if len(read) == 1 else None,
-        }
-    )
+    return {f"fact_{key}": str(fact["value"]) for key, fact in facts.items()} | {
+        # The dates of the sectors asked for: a sector facts.toml gives no date for raises, naming the fact.
+        "first_start": str(facts[f"s{sectors[0]}_start"]["value"]),
+        "last_end": str(facts[f"s{sectors[-1]}_end"]["value"]),
+        # The lists are named only when facts.toml finds the star on none of them.
+        "not_on_lists": lists["value"] if lists and off and tic in off["value"] else None,
+        # One date stands for every fact only when all were read that day.
+        "facts_read": read.pop() if len(read) == 1 else None,
+    }
 
 
 def values(record: Path, facts: Path, sectors: list[int]) -> dict[str, str]:

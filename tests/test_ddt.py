@@ -111,11 +111,10 @@ def test_values_come_from_the_record():
     with pytest.raises(KeyError, match="s113_end"):
         ddt.values(RECORD, FACTS, [112, 113])
 
-    # The facts by their values and sources, the target lists the star is on none of.
+    # The facts by their values, the target lists the star is on none of.
     facts = tomllib.loads(FACTS.read_text())
     for key, fact in facts.items():
         assert values[f"fact_{key}"] == str(fact["value"]), key
-        assert values[f"source_{key}"] == fact["source"], key
     assert values["facts_read"] == "2026-10-27"
     assert values["not_on_lists"] == facts["two_minute_lists"]["value"]
 
@@ -306,6 +305,16 @@ def test_the_committed_proposal_is_its_render():
     # and placeholders that show in rendered Markdown.
     for internal in ("(s)", "20261014T", "vet-v3", "finding F", "<proposer", "<repository"):
         assert internal not in proposal, internal
+    # The text is pasted into the office's .tex template (OT1 encoding), so it holds none of the characters LaTeX
+    # treats specially in running text ("<" prints as an inverted mark there, "&" stops compilation). Left out: the
+    # Markdown heading marks, the table, and the author line, which is the template's own placeholder.
+    pasted = [
+        line.lstrip("#")
+        for line in proposal.splitlines()
+        if not line.startswith(("|", "[proposer name]"))
+    ]
+    for char in "<>&%$#_|~^\\{}`":
+        assert not any(char in line for line in pasted), char
     assert "[proposer name] ([institution] | [contact email])" in proposal
     assert "[repository URL]" in proposal
     # No machine path, no one named and no Gaia DR3 source id.
