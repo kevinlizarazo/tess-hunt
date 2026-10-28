@@ -132,19 +132,20 @@ TESS-SPOC's full-frame light curves stop at Sector $fact_tess_spoc_last_sector, 
 partial Sector $fact_qlp_last_sector (as read on $archives_read). So for $n_need_2min of the $n_signals signals
 ($need_2min) only SPOC 2-min data can test the prediction. As read on $lists_read, none of the $n_signals stars is on
 $fact_two_minute_lists, and a list can still change before its sector. $ddt_ask Each of the $n_need_2min is predicted
-anyway: anyone can check a public prediction by eye. Any other product, the project's own full-frame photometry included, needs a decision record
-saying how the test applies to it, made before it is run on these stars.
+anyway: anyone can check a public prediction by eye. Any other product, the project's own full-frame photometry
+included, needs a decision record saying how the test applies to it, made before it is run on these stars.
 
 ## When it is judged
 
 Once for each signal, on the complete season: at the first re-vet whose light curve covers every predicted sector for
-that star with data the test can use. A re-vet before then may run, but reports the result as pending. The judging
-date, $judged_by, applies to when a light curve was fetched, since that is what the code can see, not when the data
-went public or when the re-vet runs. A light curve fetched before it that covers every predicted sector is judged
-whenever the re-vet runs; one fetched on or after it completes no season; and a season that still lacks a predicted
-sector in a re-vet judged as of that date or later stays untested. A result once judged stands for every later
-re-vet. A season runs from gap to gap, so a sector left out of the prediction (below) can still fall in the new
-season; its cadences stay in it, as vet-v3 counts them, and each signal's section says which.
+that star with data the test can use. A re-vet judged as of a day before $judged_by, on a light curve that lacks a
+predicted sector, may run but reports the result as pending. The judging date, $judged_by, applies to when a re-vet's
+light curve was fetched, since that is what the code can see, not when the data went public or when the re-vet runs.
+A light curve fetched before it that covers every predicted sector is judged whenever the re-vet runs; one fetched on
+or after it completes no season; and a season that still lacks a predicted sector in a re-vet judged as of that date
+or later stays untested. A result once judged stands for every later re-vet. A season runs from gap to gap, so a
+sector left out of the prediction (below) can still fall in the new season; its cadences stay in it, as vet-v3 counts
+them, and each signal's section says which.
 
 ## What a result means
 

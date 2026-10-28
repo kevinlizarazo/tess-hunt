@@ -497,7 +497,13 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch):
     # The judging date cuts on when a light curve was fetched, as judge_signal applies it (decision 0041), not on when
     # a re-vet runs; the deposited text states that rule.
     flat, zflat = " ".join(readme.split()), " ".join(zenodo.split())
-    assert "The judging date, 2027-12-31, applies to when a light curve was fetched" in flat
+    assert (
+        "The judging date, 2027-12-31, applies to when a re-vet's light curve was fetched" in flat
+    )
+    assert (
+        "A re-vet judged as of a day before 2027-12-31, on a light curve that lacks a predicted sector, may run but"
+        " reports the result as pending." in flat
+    )
     assert "one fetched on or after it completes no season" in flat
     assert (
         "still lacks a predicted sector in a re-vet judged as of that date or later stays untested"
