@@ -639,8 +639,8 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch, capsys):
         "the test can use. Until then, a re-vet reports the result as pending." in flat
     )
     assert (
-        "The judging date is 2027-12-31. It applies to when a re-vet's light curve was fetched, since that is what "
-        "the code can see, not to when the data became public or when the re-vet runs." in flat
+        "The judging date is 2027-12-31. It applies to when a re-vet's light curve was downloaded, a date tess-hunt "
+        "records, not to when the data became public or when the re-vet runs." in flat
     )
     assert (
         "A complete light curve fetched before that date is judged whenever the re-vet runs."

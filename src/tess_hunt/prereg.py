@@ -158,8 +158,8 @@ tess-hunt vets a held signal again when new data arrive (a re-vet). Each signal 
 whose light curve covers every predicted sector with data the test can use. Until then, a re-vet reports the result
 as pending.
 
-The judging date is $judged_by. It applies to when a re-vet's light curve was fetched, since that is what the code can
-see, not to when the data became public or when the re-vet runs. A complete light curve fetched before that date is
+The judging date is $judged_by. It applies to when a re-vet's light curve was downloaded, a date tess-hunt records,
+not to when the data became public or when the re-vet runs. A complete light curve fetched before that date is
 judged whenever the re-vet runs. A light curve fetched on or after it does not count, and a season still incomplete on
 the judging date stays untested. A judged result stands for every later re-vet.
 
