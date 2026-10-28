@@ -312,22 +312,21 @@ from a run directory and writes its own.
 **publish**
 - **Predictions for held signals** ([0040](decisions/0040-predictions-for-held-signals.md)): each held signal with a
   window sector that starts on or after the deposit's lock gets a public prediction of its next season. What is
-  preregistered is the prediction vet-v3's held-out check will judge, computed on the M3 light curve before the new
-  data exist: the refit ephemeris with the new season held out, its cores, each predicted mid-time, and the training
-  depths per product family. The density-prior windows go beside it for observers, marked as not judged. The test is
-  vet-v3's `[holdout]` measurement and thresholds with the published prediction and training depths in place of a
-  fresh refit; the result is replicated, missed or untested, and pending until the season is judged. Zenodo lets a
-  record's owner open an edit of its files within 30 days of publishing and publish it within 45 days
+  preregistered is the prediction vet-v3's held-out check will judge, computed on the M3 light curve before the new data
+  exist: the refit ephemeris with the new season held out, its cores, each predicted mid-time, and the training depths
+  per product family. The density-prior windows go beside it for observers, marked as not judged. The test is vet-v3's
+  `[holdout]` measurement and thresholds with the published prediction and training depths in place of a fresh refit;
+  the result is replicated, missed or untested, and pending until the season is judged. Zenodo lets a record's owner
+  open an edit of its files within 30 days of publishing and publish it within 45 days
   ([facts.toml](../results/predictions/facts.toml), read 2026-10-28), so a package deposited by 2026-11-05 is fixed by
-  2026-12-20 and predicts only sectors that start then or later: 103312990-1's S110 and S111 are left out. A signal
-  is judged once, on its complete new season, at the first re-vet whose light curve has data the test can use in every
-  predicted sector. The judging date, 2027-12-31, applies
-  to when that light curve was fetched, which is what the code can see, not when the re-vet runs: a light curve
-  fetched before it that covers every predicted sector is judged whenever the re-vet runs, one fetched on or after it
-  completes no season, and a season still missing a sector in a re-vet judged as of that date or later stays
-  untested. A result once judged stands, and every later version carries it
-  ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt predictions run` makes a package in one production run,
-  and `tess-hunt predictions publish` copies it to `results/predictions/<run id>/`.
+  2026-12-20 and predicts only sectors that start then or later: 103312990-1's S110 and S111 are left out. A signal is
+  judged once, on its complete new season, at the first re-vet whose light curve has data the test can use in every
+  predicted sector. The judging date, 2027-12-31, applies to when that light curve was fetched, which is what the code
+  can see, not when the re-vet runs: a light curve fetched before it that covers every predicted sector is judged
+  whenever the re-vet runs, one fetched on or after it completes no season, and a season still missing a sector in a
+  re-vet judged as of that date or later stays untested. A result once judged stands, and every later version carries it
+  ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt predictions run` makes a package in one production run, and
+  `tess-hunt predictions publish` copies it to `results/predictions/<run id>/`.
 - **The DDT ask for a held signal** ([0039](decisions/0039-ddt-for-held-signals.md)): a held signal may go to it, on
   the maintainer's call each time, when 2-min data would supply its deciding evidence: the transit's shape, or a
   season no public light curve will otherwise cover. A hold on blending does not go. `tess-hunt ddt render` fills the

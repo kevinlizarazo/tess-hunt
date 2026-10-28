@@ -237,7 +237,7 @@ sd $sd min. Each window's mid-time less the refit's nearest predicted mid-time: 
 
 # A signal's section adds it when its observers' windows reach half its refit period either side.
 WIDE = Template("""\
- At $sigma sigma its observers' windows reach $widest min either side of their mid-times, against a refit period
+ At $sigma sigma its observers' windows reach up to $widest min either side of their mid-times, against a refit period
 of $orbit min: at least half the period either side, so the widest spans a whole orbit and the windows cannot place a
 transit by eye. The refit's predicted mid-times in `predictions.csv` are what the test judges.""")
 
@@ -974,9 +974,9 @@ def zenodo(provenance: dict, predictions: dict[str, dict], facts: dict) -> str:
 
 
 def _deposit_by(lock_start: dt.date, facts: dict) -> str:
-    """The last day a deposit's files are fixed by `lock_start`. Zenodo lets the owner open an edit of a record's files
-    only within `zenodo_edit_days` of publishing, but the edit can then be published until `zenodo_edit_publish_days`,
-    so the files can change until the later day. A facts file without `zenodo_edit_publish_days` raises a KeyError
+    """The last day to deposit so that the files are fixed by `lock_start`. Zenodo lets the owner open an edit of a
+    record's files within `zenodo_edit_days` of publishing and publish it within `zenodo_edit_publish_days`, so the
+    files can change until the later of the two. A facts file without `zenodo_edit_publish_days` raises a KeyError
     that names it."""
     days = facts["zenodo_edit_publish_days"]["value"]
     return (lock_start - dt.timedelta(days=days)).isoformat()

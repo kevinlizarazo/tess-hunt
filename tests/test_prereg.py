@@ -388,7 +388,7 @@ def test_deposit_by_is_the_lock_less_zenodo_s_publish_limit(tmp_path):
     found = facts()
     days = found["zenodo_edit_publish_days"]["value"]
     assert prereg._deposit_by(LOCK, found) == (LOCK - dt.timedelta(days=days)).isoformat()
-    # The maintainer's deadline of 2026-10-28: an edit opened within 30 days can be published until day 45.
+    # The maintainer's decision of 2026-10-28: an edit opened within 30 days can be published until day 45.
     assert prereg._deposit_by(LOCK, found) == "2026-11-05"
     later = found | {"zenodo_edit_publish_days": {**found["zenodo_edit_publish_days"], "value": 60}}
     assert prereg._deposit_by(LOCK, later) == "2026-10-21"
@@ -446,7 +446,7 @@ def test_windows_wider_than_half_the_period_say_so(tmp_path):
     assert "cannot place a transit by eye" not in section(narrow)
     assert "cannot place a transit by eye" not in section(wide("under", half - 1))
     assert (
-        f"At 3 sigma its observers' windows reach {half:.0f} min either side of their mid-times, against a refit "
+        f"At 3 sigma its observers' windows reach up to {half:.0f} min either side of their mid-times, against a refit "
         f"period of {2 * half:.0f} min: at least half the period either side, so the widest spans a whole orbit and "
         "the windows cannot place a transit by eye. The refit's predicted mid-times in `predictions.csv` are what the "
         "test judges." in section(wide("half", half))

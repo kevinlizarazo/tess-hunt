@@ -128,7 +128,8 @@ that.
 
 - [tests/test_prereg.py](../../tests/test_prereg.py): `test_prediction_equals_holdout_refit` (with each season of a
   three-season light curve removed, the prediction and reference equal holdout's row for that season, the gates'
-  counts included), `test_sectors_before_the_lock_are_left_out`, `test_testable_routes`,
+  counts included), `test_prereg_equals_holdout_on_an_unchanged_light_curve` (on that light curve the result equals
+  holdout's for each season), `test_sectors_before_the_lock_are_left_out`, `test_testable_routes`,
   `test_observer_windows_equal_the_records`, `test_package_fails_on_a_missing_value`,
   `test_399023421_section_quotes_the_review_and_cites_raven`, `test_predictions_run_and_publish` (a production run,
   its publication, the index with and without `dois.toml`), `test_refuses_a_light_curve_the_vetting_run_did_not_read`,
