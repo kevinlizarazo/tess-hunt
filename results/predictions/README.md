@@ -16,4 +16,4 @@ new package.
 
 | Package | Made | Signals | DOI |
 |---|---|---|---|
-| [`20261028T204003Z-predictions-98bf417-0ef5`](20261028T204003Z-predictions-98bf417-0ef5/README.md) | 2026-10-28 | 103312990-1, 241522065-1, 296819076-1, 399023421-1, 423100454-1 and 438857197-1 | DOI pending |
+| [`20261028T204003Z-predictions-98bf417-0ef5`](20261028T204003Z-predictions-98bf417-0ef5/README.md) | 2026-10-28 | 103312990-1, 241522065-1, 296819076-1, 399023421-1, 423100454-1 and 438857197-1 | [10.5281/zenodo.23745923](https://doi.org/10.5281/zenodo.23745923), published 2026-10-28 |

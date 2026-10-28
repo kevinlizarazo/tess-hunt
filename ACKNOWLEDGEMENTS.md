@@ -282,3 +282,10 @@ SpiceyPy (Annex et al. 2020), the SPICE toolkit (Acton 1996; Acton et al. 2017) 
   (https://matplotlib.org/stable/users/project/citing.html, read 2026-10-26 from its source in the matplotlib
   repository, `doc/project/citing.rst`) gives: J. D. Hunter, "Matplotlib: A 2D Graphics Environment", Computing in
   Science & Engineering, vol. 9, no. 3, pp. 90-95, 2007 (doi:10.1109/MCSE.2007.55).
+
+## This project's deposits
+
+- The preregistered transit predictions for six held signals,
+  [results/predictions/20261028T204003Z-predictions-98bf417-0ef5/](results/predictions/20261028T204003Z-predictions-98bf417-0ef5/),
+  are deposited on Zenodo, published 2026-10-28: doi:10.5281/zenodo.23745923 (this version, which pins the deposited
+  files; all versions: doi:10.5281/zenodo.23745922). Cite the version DOI for the predictions.
