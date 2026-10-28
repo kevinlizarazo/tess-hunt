@@ -30,7 +30,7 @@ from tess_hunt import (
 from tess_hunt.catalogs import load_known, snapshot_inputs
 from tess_hunt.checks import inconclusive
 from tess_hunt.checks.families import split
-from tess_hunt.config import Criteria, data_dir, lc_dir, load_criteria
+from tess_hunt.config import Criteria, data_dir, lc_dir, load_criteria, runs_dir
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import (
     Ephemeris,
@@ -71,8 +71,6 @@ CONTRAST_COLUMNS = ["tic", "file", "filt", "source_url"]
 DR3_VALUES = ("dr3_source_id", "ruwe")
 # Our code around LEO-Vetter's pixel test: the second list runs it only as the triage run did.
 PIXEL_WRAPPER = "src/tess_hunt/pixels.py"
-# The maintainer's files, written into a version's directory before `publish` lays out its record (decision 0041).
-BEFORE_PUBLISH = ("call.toml", "review.json", "review-notes.toml", "review-scripts.tar.gz")
 
 
 def _number(value) -> float:
@@ -958,6 +956,21 @@ def cmd_titles(args) -> int:
     return 1 if counts["error"] else 0
 
 
+def _fetched(vetting: dict, package: dict, tic: int, run_id: str) -> dt.date | None:
+    """When the light curve a vetting run read for `tic` was fetched, from the revet fetch run that made it; None for
+    the light curve the package was made from. The code sees when data were fetched, not when they were public."""
+    read = vetting["inputs"].get(f"light_curve_{tic}", {}).get("sha256")
+    if read == package["inputs"].get(f"light_curve_{tic}", {}).get("sha256"):
+        return None
+    made = runs_dir() / str(vetting.get("revet_run")) / "provenance.json"
+    if vetting.get("revet_run") is None or not made.is_file():
+        raise SystemExit(
+            f"{run_id} read a light curve for TIC {tic} that neither package {package['run_id']} read nor a revet "
+            "fetch run made, so when it was fetched is unknown"
+        )
+    return dt.date.fromisoformat(json.loads(made.read_text())["started_at"][:10])
+
+
 def cmd_prereg(args) -> int:
     """Decision 0040's test for each signal of a predictions package that a re-vet's vetting run vetted: its new season
     judged against the package's prediction and training depths, on the light curve the vetting run read."""
@@ -977,6 +990,13 @@ def cmd_prereg(args) -> int:
         raise SystemExit(
             f"--as-of {args.as_of} is after today ({today}): a season is judged on the data there are"
         )
+    # Backdated, a result could stay pending past the judging date on a light curve read after it.
+    started = dt.date.fromisoformat(provenance["started_at"][:10])
+    if args.as_of < started:
+        raise SystemExit(
+            f"--as-of {args.as_of} is before the day {run_id} started ({started}): a season is judged as of when "
+            "its light curve was read"
+        )
     read = provenance["inputs"]
     for name, path in snapshot_inputs(args.catalogs).items():
         if not path.is_file() or sha256_file(path) != read.get(name, {}).get("sha256"):
@@ -993,6 +1013,8 @@ def cmd_prereg(args) -> int:
     if not vetted:
         raise SystemExit(f"{run_id} vetted none of the signals package {package_id} predicts")
     lcs = _light_curves(provenance)
+    records = repo_root() / "results" / "vetting"
+    fetched = {}
     for name, checks in vetted.items():
         tic = int(checks["tic"])
         if tic != predicted[name]["tic"]:
@@ -1000,10 +1022,17 @@ def cmd_prereg(args) -> int:
                 f"{run_id} vetted {name} on TIC {tic}; package {package_id} predicts it on TIC {predicted[name]['tic']}"
             )
         path = lcs / f"{tic}.npz"
-        if not path.is_file() or sha256_file(path) != read.get(f"light_curve_{tic}", {}).get(
-            "sha256"
-        ):
+        recorded = read.get(f"light_curve_{tic}", {}).get("sha256")
+        if not path.is_file() or sha256_file(path) != recorded:
             raise SystemExit(f"the light curve for TIC {tic} changed since {run_id} vetted it")
+        judged = _judged(records / name)
+        if judged is not None:
+            result = json.loads((judged / "prereg.json").read_text())["result"]
+            raise SystemExit(
+                f"{name} was judged in {judged.relative_to(records.parent.parent)} ({result}): decision 0040 judges a "
+                "signal once, and each later version carries that result"
+            )
+        fetched[name] = _fetched(provenance, package, tic, run_id)
     run = start_run("vetting-prereg", [crit_search, crit_vet], args.production, sys.argv)
     run.record("vetting_run", run_id)
     run.record("package", package_id)
@@ -1029,7 +1058,9 @@ def cmd_prereg(args) -> int:
             crit_search.values,
             crit_vet.values,
         )
-        result = prereg.judge_signal(args.package, name, prepared, crit_vet.values, args.as_of)
+        result = prereg.judge_signal(
+            args.package, name, prepared, crit_vet.values, args.as_of, fetched=fetched[name]
+        )
         path = run.path / "signals" / name / "prereg.json"
         path.parent.mkdir(parents=True)
         record = {
@@ -1249,14 +1280,67 @@ def _finished(path: Path, stage: str, what: str, production: bool) -> dict:
     return provenance
 
 
-def _carried(second: Path, previous: Path | None) -> bool:
-    """Whether `second` is the second-list run the previous version's record holds, the one run a version may take
-    from another vetting run: a re-vet carries the pixel check rather than running it again (decision 0041)."""
-    kept = previous / "provenance-second-list.json" if previous is not None else None
-    return (
-        kept is not None
-        and kept.is_file()
-        and sha256_file(kept) == sha256_file(second / "provenance.json")
+def _published(record: Path) -> bool:
+    """A record `publish` finished: it writes dossier.md last."""
+    return (record / "checks.json").is_file() and (record / "dossier.md").is_file()
+
+
+def _signal_dir(record: Path) -> Path:
+    return record.parent if calls.version(record) else record
+
+
+def _label(record: Path) -> str:
+    version = calls.version(record)
+    return f"r{version}" if version else "the M3 record"
+
+
+def _records(signal: Path) -> list[Path]:
+    """A signal's published records in order: the M3 record, then each version."""
+    versions = sorted((p for p in signal.glob("r*") if calls.version(p)), key=calls.version)
+    return [record for record in (signal, *versions) if _published(record)]
+
+
+def _judged(signal: Path) -> Path | None:
+    """The earliest published record whose preregistered test is not pending: decision 0040 judges a signal once, so
+    its result stands."""
+    for record in _records(signal):
+        result = record / "prereg.json"
+        if result.is_file() and json.loads(result.read_text())["result"] != "pending":
+            return record
+    return None
+
+
+def _carries(previous: Path | None) -> dict[str, Path]:
+    """The runs a version takes from an earlier record instead of running them again, by role, each with the record
+    that holds it: the previous record's second-list run, since a re-vet carries the pixel check, and the
+    preregistered test of the earliest version that judged the signal (decisions 0040 and 0041)."""
+    if previous is None:
+        return {}
+    held = {"second-list": previous, "prereg": _judged(_signal_dir(previous))}
+    return {
+        role: record
+        for role, record in held.items()
+        if record is not None and (record / f"provenance-{role}.json").is_file()
+    }
+
+
+def _carried(run: Path, role: str, carries: dict[str, Path]) -> bool:
+    """Whether `run` is the `role` run that the record `carries` names for it holds, its provenance byte for byte."""
+    record = carries.get(role)
+    return record is not None and sha256_file(record / f"provenance-{role}.json") == sha256_file(
+        run / "provenance.json"
+    )
+
+
+def _origin(record: Path, vetting_run: str) -> Path | None:
+    """The published record, of the signal `record` is a record of, that `vetting_run` vetted."""
+    return next(
+        (
+            r
+            for r in _records(_signal_dir(record))
+            if json.loads((r / "provenance-checks.json").read_text())["run_id"] == vetting_run
+        ),
+        None,
     )
 
 
@@ -1264,13 +1348,15 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
     """The runs a signal's record is made from, by the role their files play in it, checked to belong together
     before anything is copied: one vetting run, the TRICERATOPS, literature, second-list and preregistered-test runs
     made from it, and an evidence-only run, all on the same criteria (Ruling C). A version may carry the previous
-    record's second-list run (decision 0041)."""
+    record's second-list run and must carry the preregistered test of the version that judged the signal, both made
+    from another vetting run (decision 0041)."""
     main = _finished(args.run, "vetting-run", "vetting", production)
     run_id = args.run.resolve().name
     # It keeps the timing-suspect sectors in and never makes a call (decision 0022).
     if main.get("evidence_only"):
         raise SystemExit(f"{run_id} is an evidence-only vetting run; give it as --evidence-only")
     criteria = [c["sha256"] for c in main["criteria"]]
+    carries = _carries(previous)
     runs = {"checks": args.run}
     given = (
         ("triceratops", args.triceratops, "vetting-triceratops", "TRICERATOPS"),
@@ -1287,10 +1373,14 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
         if role == "checks-with-suspect":
             if not made.get("evidence_only"):
                 raise SystemExit(f"{name} is not an evidence-only vetting run")
-        elif made["vetting_run"] != run_id and not (
-            role == "second-list" and _carried(path, previous)
-        ):
+        elif made["vetting_run"] != run_id and not _carried(path, role, carries):
             raise SystemExit(f"{what} run {name} was made from {made['vetting_run']}, not {run_id}")
+        elif role == "prereg" and "prereg" in carries and not _carried(path, role, carries):
+            judged = carries["prereg"]
+            raise SystemExit(
+                f"{what} run {name} judges the signal again; {_label(judged)} judged it, and decision 0040 judges a "
+                "signal once: give --prereg the run that version holds"
+            )
         if [c["sha256"] for c in made["criteria"]] != criteria:
             raise SystemExit(f"{what} run {name} ran on other criteria than {run_id}")
         runs[role] = path
@@ -1306,6 +1396,7 @@ def _signal_files(
     if not SAFE_NAME.fullmatch(name) or not (vetted / "checks.json").is_file():
         raise SystemExit(f"{runs['checks'].resolve().name} vetted no {name}")
     checks = vetted / "checks.json"
+    carries = _carries(previous)
     files = {"checks.json": checks, "provenance-checks.json": runs["checks"] / "provenance.json"}
     if (vetted / "neighbours.csv").is_file():
         files["neighbours.csv"] = vetted / "neighbours.csv"
@@ -1327,22 +1418,31 @@ def _signal_files(
         # A signal a check killed gets no TRICERATOPS; the dossier says the run did not judge it.
         if not (made / outputs[0]).is_file():
             continue
-        inputs = json.loads((path / "provenance.json").read_text())["inputs"]
-        carried = role == "second-list" and _carried(path, previous)
-        # A carried second-list run read the previous record's checks.json, and that record holds its files.
-        read = previous / "checks.json" if carried else checks
+        made_from = json.loads((path / "provenance.json").read_text())
+        inputs = made_from["inputs"]
+        carried = _carried(path, role, carries)
+        # A carried run read the checks.json of the record its own vetting run made, and the record it is carried
+        # from holds its files.
+        origin = _origin(previous, made_from["vetting_run"]) if carried else None
+        if carried and origin is None:
+            raise SystemExit(
+                f"{what} run {path.resolve().name} was made from {made_from['vetting_run']}, which no published "
+                f"record of {name} holds"
+            )
+        read = origin / "checks.json" if carried else checks
         if inputs.get(f"checks_{name}", {}).get("sha256") != sha256_file(read):
             raise SystemExit(
                 f"{what} run {path.resolve().name} read another checks.json for {name} than "
-                f"{(previous if carried else runs['checks']).resolve().name} holds"
+                f"{(origin or runs['checks']).resolve().name} holds"
             )
         found = {out: made / out for out in outputs if (made / out).is_file()}
+        kept = carries.get(role)
         if carried and any(
-            not (previous / out).is_file() or sha256_file(previous / out) != sha256_file(file)
+            not (kept / out).is_file() or sha256_file(kept / out) != sha256_file(file)
             for out, file in found.items()
         ):
             raise SystemExit(
-                f"second-list run {path.resolve().name}'s files for {name} are not the ones the previous record holds"
+                f"{what} run {path.resolve().name}'s files for {name} are not the ones {_label(kept)} holds"
             )
         files.update(found)
     suspect = runs.get("checks-with-suspect")
@@ -1372,7 +1472,7 @@ def _previous(args, root: Path, name: str) -> Path | None:
             "a version is a re-vet: give --lc-run, the revet fetch run whose light curves --run vetted"
         )
     previous = root / name if args.version == 2 else root / name / f"r{args.version - 1}"
-    if not ((previous / "checks.json").is_file() and (previous / "dossier.md").is_file()):
+    if not _published(previous):
         label = "M3 record" if args.version == 2 else f"r{args.version - 1}"
         raise SystemExit(
             f"no {label} published in results/vetting/{name}: a version follows the one before it"
@@ -1413,9 +1513,9 @@ def _revet_files(
 
 
 def _same_signal(files: dict[str, Path], previous: Path, predictions: Path) -> None:
-    """A version vets the previous record's signal at the same ephemeris on the same criteria, keeps a second-list
-    row's pixel check, and for a signal a published predictions package holds, carries the preregistered test
-    (decisions 0040 and 0041)."""
+    """A version vets the previous record's signal at the same ephemeris on the same criteria with the same triage
+    run, its evidence-only twin on the same light curve and snapshot, keeps a second-list row's pixel check, and for a
+    signal a published predictions package holds, carries the preregistered test (decisions 0040 and 0041)."""
     now, before = (
         json.loads(p.read_text()) for p in (files["checks.json"], previous / "checks.json")
     )
@@ -1426,14 +1526,31 @@ def _same_signal(files: dict[str, Path], previous: Path, predictions: Path) -> N
                 f"the vetting run vetted {name} with another {key} than the previous record: a re-vet vets the same "
                 "signal"
             )
-    used = (
-        json.loads(p.read_text())["criteria"]
+    made, was = (
+        json.loads(p.read_text())
         for p in (files["provenance-checks.json"], previous / "provenance-checks.json")
     )
-    if len({tuple(c["sha256"] for c in criteria) for criteria in used}) != 1:
+    if [c["sha256"] for c in made["criteria"]] != [c["sha256"] for c in was["criteria"]]:
         raise SystemExit(
             f"the vetting run ran on other criteria than the previous record of {name}"
         )
+    # Triage's pixel and ModShift evidence stay the earlier record's.
+    if made.get("triage_run") != was.get("triage_run"):
+        raise SystemExit(
+            f"the vetting run read another triage run than the previous record of {name} ({made.get('triage_run')}, "
+            f"not {was.get('triage_run')})"
+        )
+    twin = files.get("provenance-checks-with-suspect.json")
+    if twin is not None:
+        read = json.loads(twin.read_text())["inputs"]
+        same = (f"light_curve_{now['tic']}", "known", "catalog_manifest")
+        if any(
+            read.get(k, {}).get("sha256") != made["inputs"].get(k, {}).get("sha256") for k in same
+        ):
+            raise SystemExit(
+                f"the evidence-only run read another light curve or catalog snapshot for {name} than the version's "
+                "vetting run"
+            )
     if (previous / "pixels.json").is_file() and "pixels.json" not in files:
         raise SystemExit(
             f"a version of {name} carries the second list's pixel check: give --second-list, the run the previous "
@@ -1445,16 +1562,28 @@ def _same_signal(files: dict[str, Path], previous: Path, predictions: Path) -> N
         if name in json.loads(p.read_text())["signals"]
     ]
     if not held:
+        if "provenance-prereg.json" in files:
+            raise SystemExit(
+                f"--prereg: no package under results/predictions/ predicts {name}, so its version has no "
+                "preregistered test to report"
+            )
         return
     listed = ", ".join(p.name for p in held)
     if "prereg.json" not in files:
+        judged = _carries(previous).get("prereg")
+        if judged is not None:
+            run = json.loads((judged / "provenance-prereg.json").read_text())["run_id"]
+            raise SystemExit(
+                f"a version of {name} carries {_label(judged)}'s preregistered test, which judged it once (decision "
+                f"0040): give --prereg {run}"
+            )
         raise SystemExit(
             f"{name} is in the predictions package {listed}: a version carries the preregistered test (--prereg, a "
             "vetting prereg run)"
         )
-    made = json.loads(files["provenance-prereg.json"].read_text())
-    package = predictions / made["package"]
-    if package not in held or made["inputs"]["package_references"]["sha256"] != sha256_file(
+    tested = json.loads(files["provenance-prereg.json"].read_text())
+    package = predictions / tested["package"]
+    if package not in held or tested["inputs"]["package_references"]["sha256"] != sha256_file(
         package / "references.json"
     ):
         raise SystemExit(f"the preregistered test ran on another package than {listed}")
@@ -1574,16 +1703,10 @@ def cmd_publish(args) -> int:
     where = f"results/vetting/{args.name}"
     if previous is not None:
         dest, where = dest / f"r{args.version}", f"{where}/r{args.version}"
-        there = (
-            sorted(p.name for p in dest.iterdir() if p.name not in BEFORE_PUBLISH)
-            if dest.is_dir()
-            else []
-        )
-        # A version is published once: nothing in it changes after, not even from the same runs.
-        if there:
-            raise SystemExit(
-                f"{where} is already published ({', '.join(there)}); a published record never changes"
-            )
+        # A version is published once, when its dossier.md, written last, is there; nothing in it changes after,
+        # not even from the same runs. Until then the same runs finish an interrupted publish.
+        if (dest / "dossier.md").is_file():
+            raise SystemExit(f"{where} is already published; a published record never changes")
         files |= _revet_files(args.lc_run, args.run, previous, _tic(files), production=True)
         _same_signal(files, previous, root.parent / "predictions")
     # Judged and rendered, the README included, from a staged copy before anything is copied: a refusal or a render

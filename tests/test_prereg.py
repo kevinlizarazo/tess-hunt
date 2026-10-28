@@ -641,9 +641,9 @@ def package(path: Path, prediction: dict, sectors, name: str = NAME) -> Path:
     return path
 
 
-def judged(lc, path: Path, as_of: dt.date, crit_vet: dict = VET3.values) -> dict:
+def judged(lc, path: Path, as_of: dt.date, crit_vet: dict = VET3.values, fetched=None) -> dict:
     prepared = vet.prepare(lc, STAR, EPH, known(), SEARCH.values, VET3.values)
-    return prereg.judge_signal(path, NAME, prepared, crit_vet, as_of)
+    return prereg.judge_signal(path, NAME, prepared, crit_vet, as_of, fetched=fetched)
 
 
 def replaced(lc: LightCurve, other: LightCurve, sectors) -> LightCurve:
@@ -705,6 +705,19 @@ def test_prereg_results(tmp_path):
     suspect = with_products(planet(), dict.fromkeys(SECTORS, "SPOC"), suspect={30})
     found = judged(suspect, whole, EARLY)
     assert found["result"] == "pending" and "S30 (timing-suspect)" in found["reason"]
+
+    # The season pending above, completed by a light curve fetched on or after the judging date: untested, whatever
+    # it holds (decision 0041). Fetched the day before, it is judged.
+    assert found["fetched"] is None
+    found = judged(planet(), whole, LATE, fetched=dt.date(2028, 1, 2))
+    assert (found["result"], found["status"]) == ("untested", "fetched_after_judged_by")
+    assert found["reason"] == (
+        "the light curve was fetched on 2028-01-02, on or after the judging date 2027-12-31: data fetched then "
+        "complete no season"
+    )
+    assert found["fetched"] == "2028-01-02"
+    found = judged(planet(), whole, LATE, fetched=dt.date(2027, 12, 30))
+    assert found["result"] == "replicated"
 
     # The two training gates read the package's counts.
     one = {**prediction, "training_seasons": prediction["training_seasons"][:1]}

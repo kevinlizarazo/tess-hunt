@@ -1232,21 +1232,28 @@ def published_m3(tmp_path, monkeypatch) -> tuple[dict[str, Path], Path]:
     return runs, repo
 
 
-def revet_run(tmp_path, tics=(1,), tag="a", base: Path | None = None) -> Path:
-    """A finished production revet fetch run that merged a new SPOC sector, S65, onto each star's light curve in
-    `base`, the shared cache by default."""
+def revet_run(
+    tmp_path,
+    tics=(1,),
+    tag="a",
+    base: Path | None = None,
+    sector: int = 65,
+    started: str = "2026-12-01T00:00:00+00:00",
+) -> Path:
+    """A finished production revet fetch run, started at `started`, that merged a new SPOC sector onto each star's
+    light curve in `base`, the shared cache by default."""
     base = base or tmp_path / "data" / "lc"
     run_id = f"20261201T000000Z-revet-fetch-abc1234-{tag}"
     path = tmp_path / "data" / "runs" / run_id
     stars, inputs = {}, {}
     for tic in tics:
         fresh = make_transit_lc(
-            rp_rs=0.04, sectors=(65,), cadences={65: 30.0}, noise_ppm={65: 200.0}
+            rp_rs=0.04, sectors=(sector,), cadences={sector: 30.0}, noise_ppm={sector: 200.0}
         )
         fresh.tic = tic
-        with_products(fresh, {65: "SPOC"})
+        with_products(fresh, {sector: "SPOC"})
         # Fetched SPOC sources carry CROWDSAP; the synthetic ones don't.
-        fresh.sources["65"]["crowdsap"] = 0.95
+        fresh.sources[str(sector)]["crowdsap"] = 0.95
         merged, sectors = revet.merge(LightCurve.load(base / f"{tic}.npz"), fresh)
         merged.save(path / "lc" / f"{tic}.npz")
         stars[str(tic)] = {
@@ -1264,8 +1271,8 @@ def revet_run(tmp_path, tics=(1,), tag="a", base: Path | None = None) -> Path:
         "run_id": run_id,
         "stage": "revet-fetch",
         "production": True,
-        "started_at": "2026-12-01T00:00:00+00:00",
-        "ended_at": "2026-12-01T00:10:00+00:00",
+        "started_at": started,
+        "ended_at": started,
         "git": {"commit": "abc1234" + "0" * 33, "dirty_paths": []},
         "criteria": [
             {"file": "criteria/search-v2.toml", "sha256": load_criteria(tv.SEARCH).sha256}
@@ -1277,14 +1284,17 @@ def revet_run(tmp_path, tics=(1,), tag="a", base: Path | None = None) -> Path:
     return path
 
 
-def revetted(tmp_path, monkeypatch, lc_run: Path, lc_dir: Path | None = None) -> dict[str, Path]:
-    """A re-vet's runs, all production: a vetting run on `lc_run`'s light curves (or `lc_dir`'s) with its
-    evidence-only twin, and the TRICERATOPS, literature and titles runs made from it."""
+def revetted(
+    tmp_path, monkeypatch, lc_run: Path, lc_dir: Path | None = None, triage: bool = True
+) -> dict[str, Path]:
+    """A re-vet's runs, all production: a vetting run on `lc_run`'s light curves (or `lc_dir`'s), with the M3
+    record's triage run unless `triage` is false, its evidence-only twin, and the TRICERATOPS, literature and titles
+    runs made from it."""
     runs_dir = tmp_path / "data" / "runs"
     before = set(runs_dir.glob("*-vetting-run-*"))
     argv = [
         *tv.run_argv(tmp_path),
-        *("--triage-run", str(runs_dir / tv.TRIAGE_RUN)),
+        *(("--triage-run", str(runs_dir / tv.TRIAGE_RUN)) if triage else ()),
         *("--lc-dir", str(lc_dir or lc_run / "lc")),
     ]
     assert main(argv) == 0
@@ -1419,9 +1429,14 @@ def test_version_refuses_a_gap_or_an_existing_version(tmp_path, monkeypatch):
 
 
 def test_version_refuses_a_light_curve_not_from_its_lc_run(tmp_path, monkeypatch):
-    _, repo = published_m3(tmp_path, monkeypatch)
+    m3, repo = published_m3(tmp_path, monkeypatch)
     called(repo / "results" / "vetting" / NAME / "r2")
     before = published(repo)
+    # The evidence-only twin read another light curve than the version's vetting run: the M3 one.
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path, tag="c"))
+    with pytest.raises(SystemExit, match="the evidence-only run read another light curve"):
+        main(version_argv({**runs, "suspect": m3["suspect"]}))
+    assert published(repo) == before
     # The version's vetting run read the shared cache, not the revet fetch run's light curve.
     lc_run = revet_run(tmp_path)
     shared = revetted(tmp_path, monkeypatch, lc_run, lc_dir=tmp_path / "data" / "lc")
@@ -1438,6 +1453,70 @@ def test_version_refuses_a_light_curve_not_from_its_lc_run(tmp_path, monkeypatch
     with pytest.raises(SystemExit, match="onto another light curve"):
         main(version_argv(runs))
     assert published(repo) == before
+
+
+def test_version_keeps_the_previous_records_triage_run(tmp_path, monkeypatch):
+    # Triage's pixel and ModShift evidence stay the M3 record's (decision 0041): a vetting run without that triage
+    # run, or with another, makes no version.
+    _, repo = published_m3(tmp_path, monkeypatch)
+    called(repo / "results" / "vetting" / NAME / "r2")
+    before = published(repo)
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path), triage=False)
+    with pytest.raises(SystemExit, match=f"another triage run than the previous record of {NAME}"):
+        main(version_argv(runs))
+    assert published(repo) == before
+
+
+def test_an_interrupted_version_is_finished(tmp_path, monkeypatch):
+    _, repo = published_m3(tmp_path, monkeypatch)
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
+    version = called(repo / "results" / "vetting" / NAME / "r2")
+    readme = (repo / "results" / "vetting" / "README.md").read_text()
+    copy = vetting._copy
+
+    def crashes(files, dest):
+        copy(files, dest)
+        if dest == version:
+            raise RuntimeError("the machine went down")
+
+    # The record's files copied, and nothing after: no dossier, no README.
+    monkeypatch.setattr(vetting, "_copy", crashes)
+    with pytest.raises(RuntimeError, match="went down"):
+        main(version_argv(runs))
+    monkeypatch.setattr(vetting, "_copy", copy)
+    assert (version / "checks.json").is_file() and not (version / "dossier.md").exists()
+    assert (repo / "results" / "vetting" / "README.md").read_text() == readme
+    # Not published until its dossier is there: no version follows it, and another run's file is refused.
+    called(repo / "results" / "vetting" / NAME / "r3")
+    with pytest.raises(SystemExit, match="no r2 published"):
+        main(version_argv(runs, 3))
+    other = made_run(
+        tmp_path,
+        "vetting-triceratops",
+        runs["run"],
+        {NAME: {"triceratops.json": triceratops_record(runs["run"], "inconclusive")}},
+        tag="x",
+    )
+    production(other)
+    half = published(repo)
+    with pytest.raises(SystemExit, match="already holds another .*triceratops.json"):
+        main(
+            [
+                *version_argv(runs, roles=("run", "suspect", "literature", "titles", "lc_run")),
+                "--triceratops",
+                str(other),
+            ]
+        )
+    assert published(repo) == half
+    # The same runs finish it.
+    assert main(version_argv(runs)) == 0
+    assert (version / "dossier.md").read_text() == dossier.render(version)
+    assert (
+        f"[{NAME} r2]({NAME}/r2/dossier.md)"
+        in (repo / "results" / "vetting" / "README.md").read_text()
+    )
+    with pytest.raises(SystemExit, match="is already published"):
+        main(version_argv(runs))
 
 
 def test_a_version_is_drafted_beside_its_previous_record(tmp_path, monkeypatch):
@@ -1680,33 +1759,49 @@ def predictions_package(tmp_path: Path, vetting_run: Path, record: Path) -> Path
         "git": {"commit": "abc1234" + "0" * 33, "dirty_paths": []},
         "criteria": json.loads((vetting_run / "provenance.json").read_text())["criteria"],
         "vetting_run": vetting_run.name,
-        "inputs": {},
+        # A package records the light curve each signal's vetting run read.
+        "inputs": {
+            "light_curve_1": json.loads((vetting_run / "provenance.json").read_text())["inputs"][
+                "light_curve_1"
+            ]
+        },
         "summary": {},
     }
     (path / "provenance.json").write_text(json.dumps(made, indent=2))
     return path
 
 
-def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path, monkeypatch):
-    m3, repo = published_m3(tmp_path, monkeypatch)
-    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
-    record = repo / "results" / "vetting" / NAME
-    package = predictions_package(tmp_path, m3["run"], record)
-    argv = [
+def prereg_argv(runs: dict[str, Path], package: Path, as_of: str) -> list[str]:
+    return [
         *("vetting", "prereg", "--run", str(runs["run"]), "--package", str(package)),
-        *("--catalogs", str(tmp_path / "snap")),
+        *("--catalogs", str(runs["run"].parents[2] / "snap"), "--as-of", as_of),
         *("--criteria-search", str(tv.SEARCH), "--criteria-vet", str(tv.VET3)),
     ]
-    tomorrow = (dt.datetime.now(dt.UTC).date() + dt.timedelta(days=1)).isoformat()
-    for extra, message in (
-        (["--as-of", tomorrow], "after today"),
-        (["--as-of", "2026-10-28", "--run", str(runs["suspect"])], "evidence-only"),
+
+
+def prereg_runs(tmp_path) -> set[Path]:
+    return set((tmp_path / "data" / "runs").glob("*-vetting-prereg-*"))
+
+
+def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path, monkeypatch):
+    m3, repo = published_m3(tmp_path, monkeypatch)
+    lc_run = revet_run(tmp_path)
+    runs = revetted(tmp_path, monkeypatch, lc_run)
+    record = repo / "results" / "vetting" / NAME
+    package = predictions_package(tmp_path, m3["run"], record)
+    today = dt.datetime.now(dt.UTC).date()
+    for argv, message in (
+        (prereg_argv(runs, package, (today + dt.timedelta(days=1)).isoformat()), "after today"),
+        # Judged on a day before the vetting run read its light curve, a result could be pending after the
+        # judging date (decision 0040 judges a signal once).
+        (prereg_argv(runs, package, "2026-01-01"), "before the day .* started"),
+        (prereg_argv({"run": runs["suspect"]}, package, today.isoformat()), "evidence-only"),
     ):
         with pytest.raises(SystemExit, match=message):
-            main([*argv, *extra])
-    assert not list((tmp_path / "data" / "runs").glob("*-vetting-prereg-*"))
-    assert main([*argv, "--as-of", "2026-10-28"]) == 0
-    [made] = (tmp_path / "data" / "runs").glob("*-vetting-prereg-*")
+            main(argv)
+    assert not prereg_runs(tmp_path)
+    assert main(prereg_argv(runs, package, today.isoformat())) == 0
+    [made] = prereg_runs(tmp_path)
     result = json.loads((made / "signals" / NAME / "prereg.json").read_text())
     # The M3 light curve holds one season with trustworthy timestamps (S64 is timing-suspect): the package's gates
     # leave the new season untested, whatever the re-vet's light curve holds.
@@ -1714,29 +1809,71 @@ def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path
     assert result["reason"].startswith("1 training season(s), need 2")
     assert result["package"] == PACKAGE and result["vetting_run"] == runs["run"].name
     assert result["signal"] == {"name": NAME, "tic": 1}
+    # When the light curve was fetched: the revet fetch run's start.
+    assert result["fetched"] == "2026-12-01"
     inputs = json.loads((made / "provenance.json").read_text())["inputs"]
     assert inputs["package_references"]["sha256"] == sha256_file(package / "references.json")
-    assert inputs["light_curve_1"]["sha256"] == sha256_file(runs["lc_run"] / "lc" / "1.npz")
+    assert inputs["light_curve_1"]["sha256"] == sha256_file(lc_run / "lc" / "1.npz")
     production(made)
+    # A light curve fetched on or after the judging date completes no season; the run says when it was fetched.
+    late = revetted(
+        tmp_path,
+        monkeypatch,
+        revet_run(tmp_path, tag="late", started="2028-01-02T00:00:00+00:00"),
+    )
+    assert main(prereg_argv(late, package, today.isoformat())) == 0
+    [late_made] = prereg_runs(tmp_path) - {made}
+    result = json.loads((late_made / "signals" / NAME / "prereg.json").read_text())
+    assert result["fetched"] == "2028-01-02" and result["result"] == "untested"
+    production(late_made)
 
-    # Once the package is published, a version of a signal it predicts carries the test.
+    # A package not published under results/predictions/ predicts nothing a version can carry.
+    version = called(record / "r2")
+    before = published(repo)
+    with pytest.raises(SystemExit, match=f"no package under results/predictions/ predicts {NAME}"):
+        main([*version_argv(runs), "--prereg", str(made)])
+    assert published(repo) == before
+    # Once it is published, a version of a signal it predicts carries the test.
     published_package = repo / "results" / "predictions" / PACKAGE
     published_package.mkdir(parents=True)
     for name in ("references.json", "predictions.csv", "provenance.json"):
         shutil.copyfile(package / name, published_package / name)
-    version = called(record / "r2")
-    before = published(repo)
     with pytest.raises(SystemExit, match="carries the preregistered test"):
         main(version_argv(runs))
     assert published(repo) == before
     assert main([*version_argv(runs), "--prereg", str(made)]) == 0
-    assert sha256_file(version / "prereg.json") == sha256_file(
-        made / "signals" / NAME / "prereg.json"
-    )
+    judged = sha256_file(made / "signals" / NAME / "prereg.json")
+    assert sha256_file(version / "prereg.json") == judged
     assert sha256_file(version / "provenance-prereg.json") == sha256_file(made / "provenance.json")
     real = " ".join(section((version / "dossier.md").read_text(), "Real and new?").split())
     assert (
-        f"package {PACKAGE}, as of 2026-10-28: untested (untestable): 1 training season(s), need 2"
+        f"package {PACKAGE}, as of {today}: untested (untestable): 1 training season(s), need 2"
         in real
     )
+    assert "Carried" not in real
     assert calls.problems(version) == []
+
+    # r2's result is not pending, so it stands: r3 carries it, and nothing judges the signal again.
+    lc_run3 = revet_run(tmp_path, tag="r3", base=lc_run / "lc", sector=66)
+    runs3 = revetted(tmp_path, monkeypatch, lc_run3)
+    with pytest.raises(SystemExit, match=f"{NAME} was judged in results/vetting/{NAME}/r2"):
+        main(prereg_argv(runs3, package, today.isoformat()))
+    assert prereg_runs(tmp_path) == {made, late_made}
+    r3 = called(record / "r3")
+    before = published(repo)
+    with pytest.raises(SystemExit, match="carries r2's preregistered test"):
+        main(version_argv(runs3, 3))
+    assert published(repo) == before
+    # Another preregistered-test run, made from another vetting run, is not r2's: refused.
+    with pytest.raises(SystemExit, match="was made from"):
+        main([*version_argv(runs3, 3), "--prereg", str(late_made)])
+    assert published(repo) == before
+    assert main([*version_argv(runs3, 3), "--prereg", str(made)]) == 0
+    assert sha256_file(r3 / "prereg.json") == judged
+    assert sha256_file(r3 / "provenance-prereg.json") == sha256_file(made / "provenance.json")
+    real = " ".join(section((r3 / "dossier.md").read_text(), "Real and new?").split())
+    assert (
+        f"Carried unchanged from r2, which judged it (vetting run {runs['run'].name}): decision 0040 judges a "
+        "signal once." in real
+    )
+    assert calls.problems(r3) == []

@@ -403,6 +403,13 @@ def test_a_version_is_judged_as_an_m3_record(tmp_path):
     assert any("the literature search is inconclusive" in p for p in found)
     # r1 is not a version: the M3 record is the first.
     assert calls.version(tmp_path / "r1") is None and calls.version(tmp_path / "r12") == 12
+    # A version's refusals name the signal, not its directory.
+    assert calls.problems(signal_dir(m3, name="r6", call=None)) == [f"no call.toml in {NAME}"]
+    found = calls.problems(signal_dir(m3, name="r7", call=PROMOTED, **SPOC))
+    assert f"promotion is for second-list rows; {NAME} is a candidate" in found
+    (m3 / "r8").mkdir()
+    (m3 / "r8" / "call.toml").write_text(HELD)
+    assert calls.problems(m3 / "r8") == [f"no checks.json beside the call in {NAME}"]
 
 
 def test_no_call_is_a_problem(tmp_path):

@@ -9,7 +9,11 @@
   record's rule, one constant in `prereg.py`; RAVEN's citation is a fact in that file, read from its Zenodo record,
   because the record's literature search holds no RAVEN paper; the 2-min target lists the controller read on
   2026-10-27 are a fact there too; and so is the state of 241522065-1's DDT proposal (`ddt_241522065`), which renders
-  the maintainer's decision to send it or not, set with its date before the production run.
+  the maintainer's decision to send it or not, set with its date before the production run. How a re-vet applies
+  "When it is judged" is [0041](0041-revets-as-versions.md)'s, by the controller's rulings of 2026-10-28: a result that
+  is not pending stands, and every later re-vet carries it; a light curve fetched on or after the judging date
+  completes no season, since the code sees when data were fetched, not when they were public; and a result is judged
+  as of a day between its vetting run's start and the day the test runs.
 
 ## Context
 

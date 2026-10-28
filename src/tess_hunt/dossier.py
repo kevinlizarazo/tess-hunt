@@ -778,12 +778,29 @@ def _prereg(r: Record) -> str:
             f"{p['result']} ({p['status']}): depth {_ppm(p['depth'])} ppm (error {_ppm(p['err'])} ppm, {p['n']} "
             f"cadences in the cores), {p['sigma']:.2f} sigma, expected SNR {p['expected_snr']:.2f}, {tension}."
         )
+    made = r.provenance["prereg"]
+    if made is not None and made["vetting_run"] != r.provenance["checks"]["run_id"]:
+        said += (
+            f" Carried unchanged from {_vetted_by(r, made['vetting_run'])}, which judged it (vetting run "
+            f"{made['vetting_run']}): decision 0040 judges a signal once."
+        )
     return (
         head
         + said
         + " It judges only the new season, against the prediction published before that season; vet-v3's held-out "
         "check above holds out each season in turn and refits on the rest."
     )
+
+
+def _vetted_by(r: Record, vetting_run: str) -> str:
+    """The record beside this one that `vetting_run` vetted, by name."""
+    signal = r.path.parent if r.version else r.path
+    versions = sorted((p for p in signal.glob("r*") if calls.version(p)), key=calls.version)
+    for path in (signal, *versions):
+        made = _json(path / "provenance-checks.json")
+        if made is not None and made["run_id"] == vetting_run:
+            return "the M3 record" if path == signal else path.name
+    return "an earlier version"
 
 
 def _real_new(r: Record) -> str:

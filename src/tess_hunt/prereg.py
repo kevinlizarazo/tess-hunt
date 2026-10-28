@@ -111,7 +111,8 @@ $criteria_vet_sha256), with the published prediction and training depths in plac
   it is missed.
 
 The result for each signal is the new season's status: replicated (`predicted`), missed (`missed`), or untested
-(`underpowered`, `untestable`, `no_predicted_transit_in_data`, or no light curve). On the unchanged vetted light curve
+(`underpowered`, `untestable`, `no_predicted_transit_in_data`, no light curve, or a light curve fetched on or after the
+judging date below). On the unchanged vetted light curve
 this is exactly what vet-v3's check computes for that season (tess-hunt's test `test_prediction_equals_holdout_refit`).
 Judging with the published numbers keeps the result fixed if a later re-vet's training data change.
 
@@ -137,9 +138,10 @@ saying how the test applies to it, made before it is run on these stars.
 
 Once for each signal, on the complete season: at the first re-vet whose light curve covers every predicted sector for
 that star with data the test can use or, failing that, on $judged_by, when whatever is untested stays untested. A
-re-vet before then may run, but reports the result as pending. A season runs from gap to gap, so a sector left out of
-the prediction (below) can still fall in the new season; its cadences stay in it, as vet-v3 counts them, and each
-signal's section says which.
+re-vet before then may run, but reports the result as pending. A light curve fetched on or after $judged_by completes
+no season, and a result once judged stands for every later re-vet. A season runs from gap to gap, so a sector left
+out of the prediction (below) can still fall in the new season; its cadences stay in it, as vet-v3 counts them, and
+each signal's section says which.
 
 ## What a result means
 
@@ -469,14 +471,20 @@ def _trained(found: dict) -> dict:
 
 
 def judge_signal(
-    package: Path, signal: str, prepared: Prepared, crit_vet: dict, as_of: dt.date
+    package: Path,
+    signal: str,
+    prepared: Prepared,
+    crit_vet: dict,
+    as_of: dt.date,
+    fetched: dt.date | None = None,
 ) -> dict:
     """Decision 0040's test of `signal`'s new season in a re-vet's light curve, `prepared` as vet prepares it: the
     vet-v3 season, split at `season_gap_days` gaps, that holds the package's predicted sectors, judged by
     `holdout.judge` against the package's prediction and training depths once the package's counts pass holdout's two
     training gates. The result is replicated, missed or untested, or pending while a predicted sector has no data the
     test can use before `JUDGED_BY`. The season is judged once, complete: from `JUDGED_BY` on, one still missing a
-    sector stays untested."""
+    sector stays untested, and a light curve `fetched` on or after it completes none (decision 0041). `fetched` is
+    None for the light curve the package was made from."""
     found = json.loads((package / "references.json").read_text())
     if signal not in found["signals"]:
         raise ValueError(f"the package at {package.name} predicts no {signal}")
@@ -493,6 +501,7 @@ def judge_signal(
         "predicted_sectors": sectors,
         "as_of": as_of.isoformat(),
         "judged_by": JUDGED_BY.isoformat(),
+        "fetched": None if fetched is None else fetched.isoformat(),
     }
 
     def untested(status: str, reason: str) -> dict:
@@ -514,6 +523,13 @@ def judge_signal(
             "untestable",
             f"{with_transits} of {seasons} training seasons hold a transit in their data, need {need}: one season "
             "can't predict a season a year away",
+        )
+    # The code sees when data were fetched, not when they were public, so the judging date applies to the fetch.
+    if fetched is not None and fetched >= JUDGED_BY:
+        return untested(
+            "fetched_after_judged_by",
+            f"the light curve was fetched on {fetched}, on or after the judging date {JUDGED_BY}: data fetched then "
+            "complete no season",
         )
     missing = {s: why for s in sectors if (why := _unusable(prepared, s, p["testable_with"]))}
     if missing:
@@ -547,11 +563,14 @@ def judge_signal(
         core,
     )
     status = row["status"]
-    reasons = {
-        "no_predicted_transit_in_data": f"fewer than {cfg['min_points']} cadences in the predicted cores",
-        "underpowered": f"the expected depth is {row.get('expected_snr', float('nan')):.2f} times the season's "
-        f"error, below {cfg['min_expected_snr']:g}",
-    }
+    # holdout gives a reason only for an untestable season; every untested result here carries one.
+    if status == "no_predicted_transit_in_data":
+        row["reason"] = f"fewer than {cfg['min_points']} cadences in the predicted cores"
+    elif status == "underpowered":
+        row["reason"] = (
+            f"the expected depth is {row['expected_snr']:.2f} times the season's error, below "
+            f"{cfg['min_expected_snr']:g}"
+        )
     return {
         **out,
         "season": {
@@ -561,7 +580,6 @@ def judge_signal(
         },
         **row,
         "result": RESULTS.get(status, "untested"),
-        **({"reason": row.get("reason") or reasons[status]} if status not in RESULTS else {}),
     }
 
 

@@ -3,11 +3,13 @@
 - Date: 2026-10-28
 - Status: Accepted. Made in the M4 design (section 4.5) and approved by the maintainer with it on 2026-10-27. The
   design left the command's shape, the cache layout, the version naming and how `publish` and the README handle
-  versions to the build; the build's choices are stated under Decision. Three rulings the M4 build's controller made,
+  versions to the build; the build's choices are stated under Decision. Six rulings the M4 build's controller made,
   also stated there, are the controller's, with no acceptance by the maintainer recorded: a sector is redelivered only
   when the same product comes again; `vetting run` records where it read its light curves, and the stages after it
   read them from there; `publish` checks that a re-vet's light curve was merged onto the light curve the previous
-  record's vetting run read.
+  record's vetting run read; a preregistered result that is not pending stands, and every later version carries it;
+  `--as-of` lies between the vetting run's start and the day the test runs; and a light curve fetched on or after the
+  judging date completes no season.
 
 ## Context
 
@@ -37,17 +39,19 @@ judged by that prediction, not by a fresh refit.
   S85 over a QLP sector, or a suspect product replaced by another suspect one. A source fetched before fetch flagged
   timing can't show it was suspect, so it is kept.
 - **Same signal, same rules.** A version vets the previous record's signal at the same ephemeris, on the same star,
-  as the same kind, under the same criteria files (their sha256), and `publish` refuses any other. vet-v3's
+  as the same kind, under the same criteria files (their sha256), with the same triage run, and `publish` refuses any
+  other. Its evidence-only twin must have read the same light curve and catalog snapshot as its vetting run. vet-v3's
   `[predict] first_sector` stays, so the windows a re-vet lists for sectors its light curve already holds are
   post-dictions, and the dossier names them so.
 - **The pixel check is carried, not rerun.** A shortlisted signal keeps triage's pixel and ModShift evidence through
-  `--triage-run`, as before. A second-list row's version carries the previous record's second-list pixel check: its
-  `--second-list` may name the second-list run the previous record holds, the one run a version may take from another
-  vetting run. `publish` checks that the run's `provenance.json` is the previous record's `provenance-second-list.json`,
-  that the run read the previous record's `checks.json`, and that its `pixels.json` and `pixels.png` are the previous
-  record's; the version holds them and that provenance unchanged, and its `vetting_run`, the previous record's, shows
-  it was carried. A second-list row's version without it is refused. `vetting second-list` runs the pixel check only on
-  the light curve the search searched, as triage would have, and refuses a re-vet's.
+  `--triage-run`, the previous record's triage run, as before. A second-list row's version carries the previous
+  record's second-list pixel check: its `--second-list` may name the second-list run the previous record holds, made
+  from another vetting run. `publish` checks that the run's `provenance.json` is the previous record's
+  `provenance-second-list.json`, that the run read the `checks.json` of the record its own vetting run made (the M3
+  record, for every version), and that its `pixels.json` and `pixels.png` are the previous record's; the version holds
+  them and that provenance unchanged, and its `vetting_run`, not the version's, shows it was carried. A second-list
+  row's version without it is refused. `vetting second-list` runs the pixel check only on the light curve the search
+  searched, as triage would have, and refuses a re-vet's.
 - **A fresh catalog snapshot.** The re-vet refreshes the snapshot with the same sources and parsers, and vets with it.
   A version's dossier lists the masked rows, the catalogued rows on the star and the novelty matches that differ
   between its `checks.json` and the previous record's, with both snapshots' names, without reading either snapshot.
@@ -57,19 +61,23 @@ judged by that prediction, not by a fresh refit.
 - **A version, never an overwrite.** `tess-hunt vetting publish --name NAME --version N --run VETTING_RUN
   --lc-run REVET_RUN --triceratops RUN --literature RUN --titles RUN [--evidence-only RUN] [--second-list RUN]
   [--prereg RUN]` writes `results/vetting/<name>/r<N>/` (N from 2; the M3 record is the first) with the files an M3
-  record holds, and the revet fetch run's `merge.json` with its provenance as `provenance-merge.json`. It refuses when
-  the previous version (the M3 record for r2, else r<N-1>) is not published; when `r<N>` holds anything but the
-  maintainer's call, review, notes and review scripts, so a version is published once; when the vetting run's light
-  curve is not the revet fetch run's file for the star; and when the revet fetch run merged onto another light curve
-  than the one the previous record's vetting run read (the controller's ruling). Nothing outside `r<N>` changes but
+  record holds, and the revet fetch run's `merge.json` with its provenance as `provenance-merge.json`. A record is
+  published once `publish` has written its `dossier.md`, which it writes last. It refuses when the previous version
+  (the M3 record for r2, else r<N-1>) is not published; when `r<N>` is, so a version is published once; when the
+  vetting run's light curve is not the revet fetch run's file for the star; and when the revet fetch run merged onto
+  another light curve than the one the previous record's vetting run read (the controller's ruling). An interrupted
+  publish, which left files but no `dossier.md`, is finished by the same runs, since a file the same run made again is
+  no change and any other is refused. Nothing outside `r<N>` changes but
   `results/vetting/README.md`, which has one row per signal: its latest version whose call stands, with links to the
   versions before it. With no version published it is the M3 README unchanged. `calls.problems` judges a version as it
   judges an M3 record, from the files in its directory; its call names the signal, not `r<N>`.
 - **The version's dossier** reads its own directory and the previous version's `checks.json` and provenance. Its
   title names the version. A section after the call's line links the version before it and says what changed: the
   sectors added, redelivered and kept though another product was found (from `merge.json`), the post-dictions, a
-  carried pixel check, and the snapshot's changes above. `tess-hunt vetting dossier --version N --lc-run RUN --signals
-  NAME` drafts it outside `results/`, beside copies of the previous record's `checks.json`, provenance and dossier.
+  carried pixel check, and the snapshot's changes above. A carried preregistered result names the version that judged
+  it, found among the records beside it by its vetting run. `tess-hunt vetting dossier --version N --lc-run RUN
+  --signals NAME` drafts it outside `results/`, beside copies of the previous record's `checks.json`, provenance and
+  dossier.
 - **The predictions.** `tess-hunt vetting prereg --run VETTING_RUN --package DIR --catalogs SNAP --as-of DATE` writes
   `prereg.json` for each signal of the package the vetting run vetted. `prereg.judge_signal` applies 0040's test: the
   package's counts through holdout's two training gates; then each predicted sector must hold data the test can use (in
@@ -77,10 +85,23 @@ judged by that prediction, not by a fresh refit.
   vetted light curve, split at `season_gap_days`, that holds the predicted sectors is judged by `holdout.judge` with the
   package's prediction and training depths. The result is replicated, missed or untested (with the status and reason),
   or pending while a predicted sector has no usable data before `prereg.JUDGED_BY`, 2027-12-31. The season is judged
-  once, complete, so from that date a season still missing a sector stays untested (`no_light_curve`). It refuses
-  criteria other than the package's test, a package made on other criteria than the vetting run, and an `--as-of`
-  after the day it runs. A version of a signal that a package under `results/predictions/` predicts must carry the
-  result (`--prereg`, from a run on that package), and its dossier gives it beside vet-v3's own held-out result.
+  once, complete, so from that date a season still missing a sector stays untested (`no_light_curve`). The code sees
+  when data were fetched, not when they were public, so the judging date applies to the fetch (the controller's
+  ruling): a light curve from a revet fetch run that started on or after 2027-12-31 completes no season, and a signal
+  not judged before is untested (`fetched_after_judged_by`) whatever the light curve holds. A vetting run on the
+  package's own light curve is not touched by this; one on a light curve neither the package nor a revet fetch run
+  made is refused, since when it was fetched is unknown. `--as-of` lies between the day the vetting run started and
+  the day the test runs (the controller's ruling), so no result can be backdated to pending. It refuses criteria other
+  than the package's test and a package made on other criteria than the vetting run.
+- **A result once judged stands** (decision 0040, "once per signal"; the controller's ruling). The earliest version
+  whose `prereg.json` is not pending judged the signal. Every later version carries that version's `prereg.json` and
+  `provenance-prereg.json` byte for byte, as a second-list row's version carries its pixel check: `--prereg` names the
+  run that version holds, and `publish` checks its provenance, that it read the `checks.json` of the version it
+  judged, and its result file. `vetting prereg` refuses to judge such a signal again, and `publish` refuses any other
+  preregistered-test run for it. The dossier says the result was carried and from which version. A version of a
+  signal that a package under `results/predictions/` predicts must carry a result (`--prereg`, from a run on that
+  package); `--prereg` for a signal no published package predicts is refused. The dossier gives the result beside
+  vet-v3's own held-out result.
 - **The runbook, in order.** Every run is a production run (`--production`).
   1. `tess-hunt targets tics --from CSV`, the star's TIC in a `tic` column: its targets and products tables.
   2. `tess-hunt revet fetch --targets TARGETS --products PRODUCTS --base-lc-dir DIR`, with `DIR` the directory of the
@@ -89,8 +110,8 @@ judged by that prediction, not by a fresh refit.
   3. `tess-hunt catalogs refresh --targets TARGETS_RUN`, the targets run the snapshots have used: a new snapshot.
   4. `tess-hunt vetting run --signals CSV --targets ... --catalogs NEW_SNAPSHOT --triage-run TRIAGE_RUN --lc-dir
      REVET_RUN/lc`, and its evidence-only twin with `--include-suspect`.
-  5. For a signal a package predicts: `tess-hunt vetting prereg --run VETTING_RUN --package
-     results/predictions/<run id> --catalogs NEW_SNAPSHOT --as-of DATE`.
+  5. For a signal a package predicts and no earlier version judged: `tess-hunt vetting prereg --run VETTING_RUN
+     --package results/predictions/<run id> --catalogs NEW_SNAPSHOT --as-of DATE`, with `DATE` the day it runs.
   6. `tess-hunt vetting triceratops --run VETTING_RUN`, `tess-hunt vetting literature --run VETTING_RUN` and `tess-hunt
      vetting titles --literature LITERATURE_RUN`.
   7. `tess-hunt vetting dossier --version N --run ... --lc-run REVET_RUN --signals NAME --out DIR`, with the other
@@ -128,9 +149,15 @@ judged by that prediction, not by a fresh refit.
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_the_committed_readme_is_its_render`,
   `test_readme_lists_the_latest_standing_call`, `test_version_published_beside_the_m3_record` (every M3 file's bytes
   unchanged), `test_version_refuses_a_gap_or_an_existing_version`,
-  `test_version_refuses_a_light_curve_not_from_its_lc_run`, `test_a_version_is_drafted_beside_its_previous_record`,
-  `test_dossier_says_what_changed`, `test_a_version_of_a_predicted_signal_carries_the_preregistered_test`.
-- [tests/test_secondlist.py](../../tests/test_secondlist.py): `test_second_list_row_carries_the_m3_pixel_record`.
+  `test_version_refuses_a_light_curve_not_from_its_lc_run` (the evidence-only twin's included),
+  `test_version_keeps_the_previous_records_triage_run`, `test_an_interrupted_version_is_finished`,
+  `test_a_version_is_drafted_beside_its_previous_record`, `test_dossier_says_what_changed`,
+  `test_a_version_of_a_predicted_signal_carries_the_preregistered_test` (`--as-of` before the vetting run's start or
+  after today, `--prereg` with no published package, r3 carrying r2's judged result while `vetting prereg` and another
+  run are refused, and the fetch date recorded).
+- [tests/test_secondlist.py](../../tests/test_secondlist.py): `test_second_list_row_carries_the_m3_pixel_record` (r2
+  and r3).
 - [tests/test_prereg.py](../../tests/test_prereg.py): `test_prereg_results` (replicated, missed, untested for a family
-  without training data, pending before 2027-12-31 with a sector missing and untested from it on, the training gates
-  from the package's counts), `test_prereg_equals_holdout_on_an_unchanged_light_curve`.
+  without training data, pending before 2027-12-31 with a sector missing and untested from it on, a light curve
+  fetched on or after it untested, the training gates from the package's counts),
+  `test_prereg_equals_holdout_on_an_unchanged_light_curve`.

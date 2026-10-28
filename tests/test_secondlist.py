@@ -753,3 +753,32 @@ def test_second_list_row_carries_the_m3_pixel_record(tmp_path, monkeypatch):
     assert f"| pixels | fail | {FAILED.reason} |" in text
     # The kill rests on the carried pixel check, and stands.
     assert calls.problems(version) == []
+
+    # r3, re-vetted on r2's light curve with one more sector, carries the same record: the second-list run read the
+    # M3 record's checks.json, not r2's.
+    lc_run3 = td.revet_run(tmp_path, tics=(1, 2), tag="r3", base=lc_run / "lc", sector=66)
+    vetted = set((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
+    argv3 = [
+        *tv.run_argv(tmp_path),
+        "--triage-run",
+        str(runs["triage"]),
+        "--lc-dir",
+        str(lc_run3 / "lc"),
+    ]
+    assert main(argv3) == 0
+    [run3] = set((tmp_path / "data" / "runs").glob("*-vetting-run-*")) - vetted
+    tric3 = td.made_run(tmp_path, "vetting-triceratops", run3, {}, tag="w")
+    lit3 = td.made_run(tmp_path, "vetting-literature", run3, {}, tag="w")
+    td.production(run3, tric3, lit3)
+    r3 = m3 / "r3"
+    r3.mkdir()
+    (r3 / "call.toml").write_text(KILLED)
+    argv = [
+        *(*publish, "--version", "3", "--run", str(run3), "--lc-run", str(lc_run3)),
+        *("--triceratops", str(tric3), "--literature", str(lit3), "--second-list", str(second)),
+    ]
+    assert main(argv) == 0
+    for name in ("pixels.json", "pixels.png", "provenance-second-list.json"):
+        assert sha256_file(r3 / name) == sha256_file(m3 / name), name
+    assert "carried from r2" in " ".join((r3 / "dossier.md").read_text().split())
+    assert calls.problems(r3) == []

@@ -164,7 +164,7 @@ def _names(signal_dir: Path) -> set[str]:
     """What a call may rest on: the checks in the record and the review's findings."""
     checks = _json(signal_dir / "checks.json")
     if checks is None:
-        raise CallError(f"no checks.json beside the call in {signal_dir.name}")
+        raise CallError(f"no checks.json beside the call in {signal_name(signal_dir)}")
     names = {c["check"] for c in checks["checks"]} | {"neighbours"}
     if pixels(signal_dir, checks) is not None:
         names.add("pixels")
@@ -299,7 +299,7 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
     kind = checks["signal"]["kind"]
     promotion = call["promotion"]
     if promotion is not None and kind != "second":
-        out.append(f"promotion is for second-list rows; {signal_dir.name} is a {kind}")
+        out.append(f"promotion is for second-list rows; {signal_name(signal_dir)} is a {kind}")
     for c in checks["checks"]:
         if c["outcome"] == "pass":
             continue
@@ -362,7 +362,7 @@ def problems(signal_dir: Path) -> list[str]:
     it."""
     path = signal_dir / "call.toml"
     if not path.is_file():
-        return [f"no call.toml in {signal_dir.name}"]
+        return [f"no call.toml in {signal_name(signal_dir)}"]
     try:
         call = load(path)
         review = (
