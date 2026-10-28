@@ -581,6 +581,8 @@ def test_modshift_and_pixels_come_from_the_triage_run(tmp_path, monkeypatch):
     assert provenance["triage_run"] == TRIAGE_RUN and provenance["search_run"] == SEARCH_RUN
     inputs = provenance["inputs"]
     assert inputs["triage_provenance"]["sha256"] == sha256_file(triage / "provenance.json")
+    # The criteria file triage judged with, which the dossier names on page one.
+    assert inputs["triage_criteria"] == {"file": "triage-v1.toml", "sha256": TRIAGE.sha256}
     assert inputs["triage_evidence_1-1"]["sha256"] == sha256_file(triage / "evidence" / "1-1.json")
     assert inputs["search_signals"]["sha256"] == sha256_file(
         tmp_path / "data" / "runs" / SEARCH_RUN / "signals.parquet"

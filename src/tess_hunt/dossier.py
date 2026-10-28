@@ -355,6 +355,18 @@ def _runs(r: Record) -> str:
     return "; ".join(out)
 
 
+def _triage(r: Record) -> str:
+    """The triage run whose ModShift and pixel evidence the vetting run read, and the criteria it judged under."""
+    made = r.provenance["checks"]
+    if made["triage_run"] is None:
+        return "none: the vetting run read no triage run"
+    # A vetting run made before M4's deferred minors recorded no triage criteria file.
+    used = made["inputs"].get("triage_criteria")
+    if used is None:
+        return f"triage run {made['triage_run']} (the vetting run recorded no criteria file for it)"
+    return f"triage run {made['triage_run']}, under {Path(used['file']).stem}"
+
+
 def _crowdsap(r: Record) -> str:
     out, none = [], []
     for sector, source in sorted(r.checks["sources"].items(), key=lambda s: int(s[0])):
@@ -397,6 +409,7 @@ def _star(r: Record) -> str:
         ["CROWDSAP", _crowdsap(r)],
         ["Sectors vetted", f"{families}; left out as timing-suspect: {dropped}"],
         ["Criteria", criteria],
+        ["Triage", _triage(r)],
         ["Runs", _runs(r)],
     ]
     return _table(["", ""], rows)
@@ -900,7 +913,8 @@ def _looks(r: Record) -> str:
         parts.append(f"No predicted windows: {c['windows_reason']}.")
     elif upcoming:
         dated = [w for w in windows if "epoch" in w]
-        sigmas = list(dated[0]["half_width_minutes"]) if dated else []
+        # A 1-sigma half-width is the sd column again.
+        sigmas = [s for s in (dated[0]["half_width_minutes"] if dated else []) if float(s) != 1]
         rows = [
             [
                 w["sector"],
@@ -1070,6 +1084,9 @@ def render_review(
         head = f"### {f['id']} ({LENSES[f['lens']]}, {f['rating']})"
         if f["rating"] != "note":
             head += ": confirmed" if f["id"] in confirmed else ": refuted"
+            # Confirmed only because nothing refuted it: the reader should not take it for tested.
+            if not f["refuters"]:
+                head += ", no refuter ran on it"
         verdicts = [
             f"Refuter {i}: {'refuted' if v['refuted'] else 'did not refute'}. {v['reason']}"
             for i, v in enumerate(f["refuters"], 1)

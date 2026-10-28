@@ -27,7 +27,11 @@
   `calls.problems` refuses a `review.json` written for another signal; a plot that raises leaves the vet standing,
   with its error in `checks.json`'s `plot_errors`, and the dossier names it where the plot would be; a record holds a
   second-list run's provenance only for a second-list row; and a `publish` whose copy fails partway removes the files
-  it copied.
+  it copied. Three more, by the controller's ruling of the same day, change what a dossier rendered after M4 shows,
+  the published dossiers staying as they were published: page one's Triage row names the triage run the vetting run
+  read and the criteria file it judged under, which `vetting run` now records as input `triage_criteria` (a record
+  made before says its vetting run recorded none); a finding rated kill or hold that no refuter ran on is headed
+  "confirmed, no refuter ran on it"; and the windows table leaves out the 1-sigma half-width, which is the sd.
 
 ## Context
 
@@ -227,5 +231,8 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   `test_a_pass_the_record_supports_is_published`, `test_publish_renders_the_readme_before_it_copies_anything`,
   `test_a_copy_that_fails_partway_leaves_no_new_file`, `test_a_draft_call_that_breaks_the_schema_is_not_rendered`,
   `test_a_plot_the_vetting_run_could_not_draw_is_named_with_its_error`, `test_dossier_draft_says_what_it_lacks` (an
-  `--out` anywhere in the repository). [tests/test_vetting.py](../../tests/test_vetting.py):
-  `test_a_plot_that_raises_is_named_and_the_vet_stands`.
+  `--out` anywhere in the repository), `test_a_finding_no_refuter_ran_on_says_so`,
+  `test_page_one_names_the_triage_run_and_its_criteria`, `test_page_one_answers_the_three_questions` (the windows
+  table without the 1-sigma column), `test_seen_utc_matches_the_dossier` (each published windows table less that
+  column). [tests/test_vetting.py](../../tests/test_vetting.py): `test_a_plot_that_raises_is_named_and_the_vet_stands`,
+  `test_modshift_and_pixels_come_from_the_triage_run` (the triage criteria file recorded).

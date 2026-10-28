@@ -318,6 +318,9 @@ def test_page_one_answers_the_three_questions(tmp_path, monkeypatch):
     assert "110, 111 and 115" in looks
     for w in (w for w in checks["windows"] if "epoch" in w):
         assert f"{w['mid_btjd']:.3f}" in looks and f"{w['sd_minutes']:.1f}" in looks
+        # The 1-sigma half-width is the sd itself, so the table gives it once.
+        assert f"| {w['sd_minutes']:.1f} | {w['half_width_minutes']['3']:.1f} |" in looks
+    assert "| sd (min) | 3 sigma half-width (min) |" in looks and "1 sigma" not in looks
     assert "2-min" in looks and "DDT" in looks
 
     # Then the rest, in the design's order.
@@ -350,14 +353,30 @@ def table_rows(text: str) -> list[str]:
     return [line for line in text.splitlines() if line.startswith("|")]
 
 
+def without_the_1_sigma_column(rows: list[str]) -> list[str]:
+    """A published windows table as a dossier rendered after M4 gives it: without the 1-sigma half-width, the sd."""
+    if not rows:
+        return rows
+    assert rows[0].split(" | ")[5] == "1 sigma half-width (min)"
+    out = []
+    for row in rows:
+        if set(row) <= set("|-"):
+            out.append(row.replace("---|", "", 1))
+        else:
+            cells = row.split(" | ")
+            del cells[5]
+            out.append(" | ".join(cells))
+    return out
+
+
 def test_seen_utc_matches_the_dossier():
-    # Every published record's windows table renders as it was published, with its times from Earth now from
-    # predict.seen_utc: the same epochs, mid-times and sds, and the same UTC.
+    # Every published record's windows table renders as it was published, less the 1-sigma column, with its times
+    # from Earth now from predict.seen_utc: the same epochs, mid-times and sds, and the same UTC.
     shown = 0
     for path in sorted((REPO / "results" / "vetting").glob("*/dossier.md")):
         published = table_rows(section(path.read_text(), "Next TESS looks"))
         rendered = table_rows(section(dossier.render(path.parent), "Next TESS looks"))
-        assert rendered == published, path.parent.name
+        assert rendered == without_the_1_sigma_column(published), path.parent.name
         checks = json.loads((path.parent / "checks.json").read_text())
         star = checks["star"]
         for w in (w for w in checks["windows"] or [] if "epoch" in w):
@@ -468,6 +487,32 @@ def test_review_renders_findings_ratings_and_both_refuters(tmp_path):
     assert "F1 (real and new, note)" in text
     assert tc.REFUTED["reason"] in text and tc.STANDS["reason"] in text
     assert "2306.16587" in text
+
+
+def test_a_finding_no_refuter_ran_on_says_so():
+    # It stands, as decision 0028 has it, but nothing refuted or failed to refute it.
+    unchecked = {**REVIEW["findings"][1], "id": "F4", "refuters": []}
+    text = dossier.render_review({**REVIEW, "findings": [*REVIEW["findings"], unchecked]})
+    assert "### F4 (on the star, hold): confirmed, no refuter ran on it\n" in text
+    assert "### F2 (on the star, hold): confirmed\n" in text
+    assert "### F1 (real and new, note)\n" in text
+
+
+def test_page_one_names_the_triage_run_and_its_criteria(tmp_path, monkeypatch):
+    signal, _ = draft(tmp_path, monkeypatch)
+
+    def shown() -> str:
+        return section(dossier.render(signal), "Signal and star")
+
+    assert f"| Triage | triage run {tv.TRIAGE_RUN}, under triage-v1 |" in shown()
+    # A vetting run made before it recorded triage's criteria file names the run alone.
+    edit_json(signal / "provenance-checks.json", lambda p: p["inputs"].pop("triage_criteria"))
+    assert (
+        f"| Triage | triage run {tv.TRIAGE_RUN} (the vetting run recorded no criteria file for it) |"
+        in shown()
+    )
+    edit_json(signal / "provenance-checks.json", lambda p: p.update(triage_run=None))
+    assert "| Triage | none: the vetting run read no triage run |" in shown()
 
 
 def test_the_review_and_the_call_are_quoted_with_notes_beside_them(tmp_path, monkeypatch):

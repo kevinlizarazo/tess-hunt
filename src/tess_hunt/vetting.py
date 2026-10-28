@@ -493,6 +493,7 @@ def _triage(path: Path, signals: pd.DataFrame, crit_search: Criteria, production
         "search_run": search,
         "provenance": provenance_file,
         "search_signals": search_signals,
+        "criteria": criteria,
         "limit": limit,
         "parts": parts,
         "files": files,
@@ -544,6 +545,8 @@ def cmd_run(args) -> int:
     run.record_input("tess_sectors", repo_root() / sectors_file)
     if triage:
         run.record_input("triage_provenance", triage["provenance"])
+        # The dossier names triage's criteria by this file; the record holds no other trace of them.
+        run.record_input("triage_criteria", triage["criteria"])
         run.record_input("search_signals", triage["search_signals"])
         for name, file in triage["files"].items():
             run.record_input(f"triage_evidence_{name}", file)
