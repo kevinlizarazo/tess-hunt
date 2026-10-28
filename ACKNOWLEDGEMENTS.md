@@ -285,7 +285,7 @@ SpiceyPy (Annex et al. 2020), the SPICE toolkit (Acton 1996; Acton et al. 2017) 
 
 ## This project's deposits
 
-- The preregistered transit predictions for six held signals,
-  [results/predictions/20261028T204003Z-predictions-98bf417-0ef5/](results/predictions/20261028T204003Z-predictions-98bf417-0ef5/),
-  are deposited on Zenodo, published 2026-10-28: doi:10.5281/zenodo.23745923 (this version, which pins the deposited
-  files; all versions: doi:10.5281/zenodo.23745922). Cite the version DOI for the predictions.
+- The preregistered transit predictions for six held signals
+  ([package](results/predictions/20261028T204003Z-predictions-98bf417-0ef5/)) are deposited on Zenodo, published
+  2026-10-28: doi:10.5281/zenodo.23745923 (this version, which pins the deposited files; all versions:
+  doi:10.5281/zenodo.23745922). Cite the version DOI for the predictions.
