@@ -23,6 +23,7 @@ READ = (
     "review.json",
     "provenance-checks.json",
     "provenance-triceratops.json",
+    "checks-with-suspect.json",
 )
 
 
@@ -91,6 +92,9 @@ def test_values_come_from_the_record():
     assert values["min_training_seasons"] == "2"
     [second] = checks["other_signals"]
     assert values["second_depth_ppm"] == f"{second['depth'] * 1e6:.0f}" == "127"
+    assert values["second_period"] == f"{second['period']:.2f}" == "5.58"
+    # With the timing-suspect sectors kept in, the held-out check passes (the dossier's evidence-only table).
+    assert values["holdout_with_suspect"] == "passes"
 
     # Every window in the asked sectors and none other, each row as the dossier shows it.
     rows = table_rows(values["windows"])[2:]
@@ -173,6 +177,12 @@ def test_render_fails_on_a_missing_value(tmp_path):
         ("tric_pass", "triceratops.json", lambda t: t.update(outcome="inconclusive")),
         ("review_all_notes", "review.json", lambda r: r["findings"][0].update(rating="hold")),
         ("second_depth_ppm", "checks.json", lambda c: c.update(other_signals=[])),
+        ("second_period", "checks.json", lambda c: c.update(other_signals=[])),
+        (
+            "holdout_with_suspect",
+            "checks-with-suspect.json",
+            lambda c: check("holdout")(c).update(outcome="inconclusive"),
+        ),
     ):
         one.write_text(f"${key}\n")
         assert ddt.render(one, good, FACTS, SECTORS)
@@ -249,7 +259,7 @@ def test_targets_csv():
     assert ddt.targets_csv(RECORD, "planet candidate;transit").split("\r\n") == [
         "# DDT PI: <proposer name>",
         "# Cadence: 2m",
-        "# Subject: Planet candidate 241522065-1 on TIC 241522065",
+        "# Subject: Transiting planet candidate on TIC 241522065",
         "# DDT: <to be supplied by TESS team>",
         "#",
         "# Original filename: targets.csv",
@@ -293,14 +303,13 @@ def test_the_committed_proposal_is_its_render():
     targets = (out / "targets.csv").read_bytes().decode()
     assert proposal == ddt.render(out / "proposal.template.md", RECORD, FACTS, SECTORS)
     assert targets == ddt.targets_csv(RECORD, ddt.KEYWORDS)
-    # The F6 quote and the phrases from its evidence, word for word and said to be quoted (decision 0037), read with
-    # the template's line breaks as spaces.
+    # The proposal states the record's values in its own words and quotes no finding (decision 0039, 2026-10-28),
+    # read with the template's line breaks as spaces.
     review = json.loads((RECORD / "review.json").read_text())
-    [f6] = [f["claim"] for f in review["findings"] if f["id"] == "F6"]
     flowed = " ".join(proposal.split())
-    assert f'Quoted word for word from the review: "{dossier._scrub(f6)}"' in flowed
-    for _, text in ddt.QUOTES.values():
-        assert f'"{text}"' in flowed, text
+    for finding in review["findings"]:
+        assert dossier._scrub(finding["claim"]) not in flowed, finding["id"]
+    assert "word for word" not in flowed
     # Plain sentences for readers outside the project: no reason strings, run ids, criteria names or finding ids,
     # and placeholders that show in rendered Markdown.
     for internal in ("(s)", "20261014T", "vet-v3", "finding F", "<proposer", "<repository"):

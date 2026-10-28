@@ -23,12 +23,12 @@ from tess_hunt.provenance import repo_root
 # The DDT template's Feasibility section asks how many targets are brighter than this TESS magnitude, since they may
 # need extra-large pixel stamps.
 BRIGHT_TMAG = 7.0
-KEYWORDS = "planet candidate;transit;held-out season"
+KEYWORDS = "planet candidate;transit;sub-Neptune"
 # The inconclusive checks the proposal can name, in words a reader outside the project knows; another check left
 # inconclusive leaves `inconclusive` unfilled, since the proposal's case would then need rewriting.
 CHECK_NAMES = {"novelty": "the check against known objects", "holdout": "the held-out season test"}
-# Phrases the proposal for 241522065-1 quotes from a finding's evidence (decision 0037), {placeholder: (finding,
-# text)}. Each is given only when review.json holds it word for word, so a quote can't drift from the review. They
+# Phrases a proposal may quote from a finding's evidence (decision 0037), {placeholder: (finding, text)}; the
+# proposal for 241522065-1 quotes none since 2026-10-28 (0039). Each is given only when review.json holds it word for word, so a quote can't drift from the review. They
 # leave out characters LaTeX treats specially, since the proposal is pasted into the office's .tex template.
 QUOTES = {
     "quote_eumemic_mes": ("F6", "MES 8.9"),
@@ -117,6 +117,7 @@ def _from_checks(checks: dict, sectors: list[int]) -> dict:
         ),
         # The search's other signal on the star, when there is exactly one.
         "second_depth_ppm": _ppm(second[0]["depth"]) if len(second) == 1 else None,
+        "second_period": _number(second[0]["period"], ".2f") if len(second) == 1 else None,
     }
     prior = checks["fit_prior"]
     if prior is not None:
@@ -240,6 +241,12 @@ def values(record: Path, facts: Path, sectors: list[int]) -> dict[str, str]:
     holdout = _criteria(record, "provenance-checks.json", version)["holdout"]
     call = calls.load(record / "call.toml")
     search_run = json.loads((record / "provenance-checks.json").read_text())["search_run"]
+    suspect = record / "checks-with-suspect.json"
+    with_suspect = (
+        {c["check"]: c["outcome"] for c in json.loads(suspect.read_text())["checks"]}
+        if suspect.exists()
+        else {}
+    )
     found = (
         _from_checks(checks, sectors)
         | _from_triceratops(record, version)
@@ -250,6 +257,8 @@ def values(record: Path, facts: Path, sectors: list[int]) -> dict[str, str]:
             "min_training_seasons": str(holdout["min_training_seasons"]),
             "call_date": str(call["date"]),
             "deciding_evidence": call["deciding_evidence"] and _scrub(call["deciding_evidence"]),
+            # Said only when the held-out check passes with the timing-suspect sectors kept in.
+            "holdout_with_suspect": "passes" if with_suspect.get("holdout") == "pass" else None,
             # A run id opens with the UTC time the run started.
             "search_date": datetime.strptime(search_run.split("-")[0], "%Y%m%dT%H%M%SZ")
             .date()
@@ -275,7 +284,7 @@ def targets_csv(record: Path, keywords: str) -> str:
     lines = [
         "# DDT PI: <proposer name>",
         "# Cadence: 2m",
-        f"# Subject: Planet candidate {checks['signal']['name']} on TIC {tic}",
+        f"# Subject: Transiting planet candidate on TIC {tic}",
         "# DDT: <to be supplied by TESS team>",
         "#",
         "# Original filename: targets.csv",

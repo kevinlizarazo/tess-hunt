@@ -1,61 +1,67 @@
-# 2-minute cadence in Sectors $sectors to test a planet candidate on TIC $tic
+# 2-minute cadence in Sectors $sectors for a sub-Neptune candidate on $hip (TIC $tic)
 
 [proposer name] ([institution] | [contact email])
 
 ## DDT Justification
 
-I ask for 2-minute cadence on TIC $tic ($hip) in Sectors $sectors. My vetting holds back its planet candidate only
-because the held-out season test needs another TESS season, which these sectors would give. tess-point places the
-star in no later sector through Sector $fact_last_sector_checked, and as of $facts_read it is on none of
-$not_on_lists. Its fetched light curves are full-frame-image products ($products), and MAST holds QLP's only through a
-partial Sector $fact_qlp_last_sector and TESS-SPOC's only through Sector $fact_tess_spoc_last_sector, so without
-2-minute data these sectors may never give a testable light curve. I found the candidate in my own search on
-$search_date, so could not have proposed it in an earlier Guest Investigator call, and it cannot wait for a later
-one: Sector $first_sector starts on $first_start.
+I request 2-minute cadence for TIC $tic ($hip) in Sectors $sectors to test a transiting sub-Neptune candidate. The
+signal was a SPOC threshold-crossing event in Sector $tce_sectors that never became a TOI (Martinho and Valizadegan
+2025); my own search recovered it on $search_date, after the previous Guest Investigator call. It cannot wait for the
+next call: Sector $first_sector begins on $first_start, and tess-point (Burke et al. 2020) places the star in no later
+sector through Sector $fact_last_sector_checked. As of $facts_read it is on none of $not_on_lists, so unless a later
+list adds it, TESS will observe it only in full-frame images.
 
 ## Scientific Justification
 
-If real, it is a planet of $rp_rearth Earth radii ($rp_lo to $rp_hi, 16th to 84th percentile), between Earth and
-Neptune in size, on a $period_short-day orbit around a bright star (Tmag $tmag, $teff K, $radius_sun solar radii;
-Stassun et al. 2019). A host this bright suits follow-up by high-resolution imaging and precise radial velocities.
+The candidate transits every $period_short days with a depth of about $depth_ppm ppm. A fit with the TIC stellar
+density as a prior gives a radius of $rp_rearth Earth radii ($rp_lo to $rp_hi, 16th to 84th percentile) around a
+bright star (Tmag $tmag, Teff $teff K, $radius_sun solar radii; Stassun et al. 2019), which suits the high-resolution
+imaging and precise radial velocities that would confirm the planet and measure its mass.
 
-A transit fit with the TIC density as a prior gives period $period d (sd $period_sd_s s), mid-time BTJD $t0 (sd
-$t0_sd_min min) and duration $duration_h h; the search's depth is $depth_ppm ppm. Of my $n_checks vetting checks,
-$n_passed pass and $inconclusive are inconclusive, the first only because the signal matches a SPOC
-threshold-crossing event from Sector $tce_sectors that never became a TOI (Martinho and Valizadegan 2025). TRICERATOPS
-(Giacalone et al. 2021) $tric_pass it as a likely planet, with a mean false-positive probability of $fpp, $nfpp of it
-from nearby stars (bars $fpp_pass and $nfpp_pass). An adversarial review by an AI model ($review_model,
-$review_date) rated all $review_all_notes of its findings as notes, none arguing to reject or hold it.
+In $vetted_products PDCSAP light curves (Caldwell et al. 2020) of Sectors $vetted_sectors the transit is detected at
+$snr sigma over $n_transits transits. The fit gives a period of $period d (sd $period_sd_s s), a mid-transit time of
+BTJD $t0 (sd $t0_sd_min min) and a duration of $duration_h h. Odd and even transits agree in depth, there is no
+secondary eclipse, the depth is stable between sectors, the transit is U-shaped, and the stellar density from a fit
+without the prior agrees with the TIC value. With TRICERATOPS (Giacalone et al. 2021) the candidate $tric_pass as a
+likely planet: the mean false-positive probability is $fpp and the nearby false-positive probability $nfpp, against
+limits of $fpp_pass and $nfpp_pass.
 
-The held-out season test refits the ephemeris without one season and asks whether that season's transits come where,
-and as deep as, predicted. With the star's Sectors $suspect_sectors left out for suspect QLP timestamps (not
-redelivered for Sectors $fact_qlp_suspect_sectors), each of its $n_seasons seasons, $season_years, has
-$season_training training season where the test needs $min_training_seasons, so it could test $tested. A season in
-Sectors $sectors would give each season $n_seasons to train on.
+![Figure 1. The transit in each of the star's $n_seasons seasons with reliable timestamps, $season_years, folded on the fitted period ($vetted_products PDCSAP light curves).](../../vetting/$signal/plots/folds.png)
 
-The test compares depths only between light curves of one kind, and the prediction's reference depths are from
-$vetted_products's PDCSAP light curves, so only PDCSAP data, from TESS-SPOC or SPOC's 2-minute pipeline (Jenkins et
-al. 2016), can test it; a season holding any QLP sector cannot be tested, hence the whole season. A QLP redelivery of
-the old sectors could lift the hold without testing a new prediction. 2-minute data would also give the transit's
-shape at 2-minute cadence, and the cadence my rule after Giacalone et al. (2021) requires, with a contrast curve, for
-a "validated planet". SPOC's 2-minute light curves of Sectors $fact_spoc_2min_latency_sectors reached MAST
-$fact_spoc_2min_latency_days days after each sector ended.
+One test remains open: whether a fit to some TESS seasons predicts the transit times and depth in a season left out.
+It needs at least $min_training_seasons seasons in each fit, and the star has $n_seasons seasons with reliable
+timestamps, $season_years, so the test cannot run. Its later Sectors $suspect_sectors are QLP light curves (Huang et
+al. 2020; Kunimoto et al. 2021) with a known barycentric timing error, not yet redelivered with corrected timestamps
+for Sectors $fact_qlp_suspect_sectors. With those sectors kept in, the test $holdout_with_suspect, but I do not count
+a pass that rests on suspect timestamps. Another season in Sectors $sectors would leave $n_seasons seasons in every
+fit, and the new season would itself test a prediction published in advance.
 
-The search also found a shallower dip ($second_depth_ppm ppm against $depth_ppm). Quoted word for word from the
-review: "$review_F6" The finding's evidence gives eumemic's "$quote_eumemic_mes", in its "$quote_eumemic_tier", and
-ends: "$quote_untested"
+The search also found a shallower periodic dip at $second_period d ($second_depth_ppm ppm against $depth_ppm ppm),
+not a harmonic of the main period, which an independent community search (eumemic/exoplanets) also lists. I have not
+tested whether it comes from the target; if it does, the star hosts two transiting candidates, and these sectors would
+cover both.
 
 ## Target Justification and Feasibility
 
-One target, Tmag $tmag; none brighter than TESS magnitude $bright_limit. 2-minute cadence is needed for the reasons
-above. The fit puts up to $n_windows transits in Sectors $sectors ($first_start to $last_end), each mid-time with its
-standard deviation:
+One target, Tmag $tmag; none is brighter than Tmag $bright_limit.
+
+The prediction test compares depths only between light curves from one pipeline. The earlier seasons are
+$vetted_products PDCSAP light curves, so the new season must also be SPOC PDCSAP photometry, from TESS-SPOC or from
+SPOC's 2-minute processing (Jenkins et al. 2016). All of the star's light curves so far are full-frame-image products
+($products). As of $facts_read, MAST holds TESS-SPOC light curves only through Sector $fact_tess_spoc_last_sector and
+QLP light curves only through part of Sector $fact_qlp_last_sector, while SPOC 2-minute light curves of Sectors
+$fact_spoc_2min_latency_sectors reached MAST $fact_spoc_2min_latency_days days after each sector ended. The 2-minute
+data would also sample ingress and egress more finely. I apply the validation thresholds of Giacalone et al. (2021),
+as opposed to their likely-planet limits, only to a TRICERATOPS analysis of 2-minute data with a high-resolution
+contrast curve.
+
+The fit predicts up to $n_windows transits in Sectors $sectors ($first_start to $last_end):
 
 $windows
 
-These windows are for observers; the test judges a refit on the $season_years seasons alone, to be deposited publicly
-before Sector $first_sector starts. The vetted light curves (Sectors $vetted_sectors) show the dip at $snr sigma in
-$n_transits transits, so up to $n_windows new ones should show it again.
+If all fall in the data, the signal should be detected about as strongly as in the earlier sectors. Before Sector
+$first_sector begins I will deposit publicly the transit times and depth predicted from the $season_years seasons
+alone.
 
 ## References
 
@@ -65,5 +71,6 @@ $n_transits transits, so up to $n_windows new ones should show it again.
   C. J., et al. 2020, ascl:2003.001 (tess-point)
 - Catalogues: Martinho, M., and Valizadegan, H. 2025, ExoMiner++ 2.0, Zenodo, doi:10.5281/zenodo.17707413;
   eumemic/exoplanets, https://github.com/eumemic/exoplanets
-- The candidate's record and this proposal's sources (archive pages and target lists, read $facts_read):
-  results/vetting/$signal/ and results/ddt/$signal/facts.toml in [repository URL]
+- The candidate's vetting record, and the dated source of each archive and target-list fact above:
+  results/vetting/$signal/ and results/ddt/$signal/facts.toml in [repository URL]. The search and vetting code and
+  this text were written with an AI model.

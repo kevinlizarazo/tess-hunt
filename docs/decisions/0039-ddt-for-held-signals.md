@@ -5,7 +5,10 @@
   maintainer's call. The proposal's form follows rulings the M4 build's controller made on 2026-10-27, stated in full
   under Decision and put to the maintainer with the proposal: the target list in the TESS office's own shape, its
   proposer and creator lines left as the template's placeholders, the proposal as plain Markdown for want of a LaTeX
-  tool, and the template's two questions answered from the record and `facts.toml` alone.
+  tool, and the template's two questions answered from the record and `facts.toml` alone. Amended 2026-10-28 at the
+  maintainer's request that it read as a proposal of its kind: it is written in the first person singular, states
+  the record's values in plain words, quotes no review text, shows the record's folded-transit plot, and says the
+  code and text were written with an AI model; the target list's subject and keywords drop project terms.
 
 ## Context
 
@@ -62,10 +65,10 @@ TESS-SPOC's light curves on MAST only through S85, only SPOC 2-min data can.
   (`provenance-checks.json` names the vetting run's, for the held-out check's minimum training seasons;
   `provenance-triceratops.json` the TRICERATOPS run's, for its pass bars; each checked against the sha256 the run
   recorded), and from `facts.toml`. A value the record lacks, or holds as null, NaN or an empty list, raises rather
-  than rendering (`docs/design.md`, section 5.5). The review's text it quotes (a finding's claim, and phrases from its
-  evidence, each given only when `review.json` holds it word for word) is quoted word for word and says so
-  ([0037](0037-quoted-text-in-the-dossier.md)). It leaves out Gaia DR3 data, the star's DR3 source id included, so
-  `results/ddt/` stays CC BY 4.0 whole.
+  than rendering (`docs/design.md`, section 5.5). It quotes no review text; a review's text a proposal does quote (a
+  finding's claim, and phrases from its evidence, each given only when `review.json` holds it word for word) is
+  quoted word for word and says so ([0037](0037-quoted-text-in-the-dossier.md)). It leaves out Gaia DR3 data, the
+  star's DR3 source id included, so `results/ddt/` stays CC BY 4.0 whole.
 - **The proposal's form** (the controller's rulings of 2026-10-27, above). It follows the DDT template's sections (DDT
   Justification, Scientific Justification, Target Justification and Feasibility, References) as plain Markdown, since
   no LaTeX or pandoc is installed; the maintainer pastes it into the template. Its author line is a placeholder. The
@@ -101,7 +104,7 @@ TESS-SPOC's light curves on MAST only through S85, only SPOC 2-min data can.
   unfilled placeholder), `test_criteria_come_from_the_files_the_runs_read` (the TRICERATOPS run's bars, a run naming
   no criteria file, a changed file), `test_the_review_is_quoted_as_the_dossier_quotes_it`, `test_targets_csv`,
   `test_ddt_render_writes_the_proposal_and_the_target_list`, `test_the_committed_proposal_is_its_render` (the
-  committed files are exactly the render, quote the review word for word, use no internal labels, and hold no machine
+  committed files are exactly the render, quote no finding, use no internal labels, and hold no machine
   path, no one's name and no Gaia DR3 source id).
 - [results/ddt/241522065-1/](../../results/ddt/241522065-1/): `facts.toml`, `proposal.template.md`, the rendered
   `proposal.md` and `targets.csv`.
