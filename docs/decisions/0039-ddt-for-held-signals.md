@@ -8,7 +8,7 @@
   tool, and the template's two questions answered from the record and `facts.toml` alone. Amended 2026-10-28 at the
   maintainer's request that it read as a proposal of its kind: it is written in the first person singular, states
   the record's values in plain words, quotes no review text, shows the record's folded-transit plot, and says the
-  code and text were written with an AI model; the target list's subject and keywords drop project terms.
+  code and text were written with LLM assistance; the target list's subject and keywords drop project terms.
 
 ## Context
 

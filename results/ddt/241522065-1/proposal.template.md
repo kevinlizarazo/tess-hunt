@@ -73,4 +73,4 @@ alone.
   eumemic/exoplanets, https://github.com/eumemic/exoplanets
 - The candidate's vetting record, and the dated source of each archive and target-list fact above:
   results/vetting/$signal/ and results/ddt/$signal/facts.toml in [repository URL]. The search and vetting code and
-  this text were written with an AI model.
+  this text were written with LLM assistance.
