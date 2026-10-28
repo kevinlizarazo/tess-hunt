@@ -1,5 +1,5 @@
-# Facts about archives, and the state of a DDT proposal, that the predictions packages state. Each names the page or
-# file it was read from and the date it was read; the packages' templates read only `value`.
+# Facts about archives, target lists, a cited paper and a DDT proposal that tess-hunt's prediction packages state.
+# Each gives the page or file it was read from and the date it was read.
 
 [zenodo_edit_days]
 value = 30
@@ -9,7 +9,7 @@ read = "2026-10-28"
 
 [zenodo_edit_publish_days]
 value = 45
-note = "An edit of a record's files, opened within zenodo_edit_days of publication, can be published until this day. Word for word: \"The draft must be published within 45 days of the original publishing of the record.\""
+note = "An edit of a record's files, opened within 30 days of publication, must be published within 45 days of publication. Word for word: \"The draft must be published within 45 days of the original publishing of the record.\""
 source = "https://help.zenodo.org/docs/deposit/manage-files/"
 read = "2026-10-28"
 
@@ -32,7 +32,7 @@ read = "2026-10-27"
 
 [off_two_minute_lists]
 value = [103312990, 241522065, 296819076, 399023421, 423100454, 438857197]
-note = "The TICs on none of the lists two_minute_lists names."
+note = "None of these stars is on any of the target lists named in the entry above."
 source = "https://tess.mit.edu/public/target_lists/target_lists.html"
 read = "2026-10-27"
 
@@ -44,6 +44,6 @@ read = "2026-10-28"
 
 [raven]
 value = "Lafarga et al. 2026, MNRAS, https://doi.org/10.1093/mnras/stag512, arXiv:2603.22597"
-note = "The page of the article's online material, Zenodo record 19661443, from which the catalog snapshot read RAVEN's table (nsfp09_table.csv); it gives the article's DOI and arXiv id and the journal."
+note = "The article's online material on Zenodo (record 19661443), the source of the RAVEN table in tess-hunt's catalog snapshot (nsfp09_table.csv). The page gives the article's DOI, arXiv id and journal."
 source = "https://zenodo.org/records/19661443"
 read = "2026-10-27"
