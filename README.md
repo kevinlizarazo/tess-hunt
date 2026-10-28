@@ -1,43 +1,70 @@
 # tess-hunt
 
-An independent search for transiting planets in public NASA TESS light curves.
+An independent search for transiting planets in public NASA TESS light curves. Every signal it reports is a candidate,
+not a confirmed planet, until other observers confirm it.
 
-**Status:** the search, triage and vetting (milestones 1 to 3) are published; milestone 4, predictions for the held
-signals, is in progress. No signal this project reports is a confirmed planet; every one is a candidate until
-other observers confirm it. The known planets under `results/benchmarks/` are positive controls from the TOI catalog.
+## Results
 
-M2 searched the whole sample. `targets` builds it from the TIC with a Gaia DR3 dwarf cut, `fetch` reads the light
-curves, a search of scrambled light curves sets the detection threshold, and the production search runs with the
-known planets as positive controls. `triage` checks every signal above the threshold for novelty against published
-catalogs and with LEO-Vetter's flux tests, runs pixel centroids on the signals that pass both, and shortlists those
-that pass all three. M3 vetted the [shortlist](results/triage/20261015T155441Z-triage-7b12e25-3f57/summary.md) and
-the second-list signals the maintainer promoted (signals novelty matched only to SPOC TCE or ExoMiner rows). Each has
-a dossier, an adversarial review and the maintainer's call, passed, killed or held, listed in
-[results/vetting/README.md](results/vetting/README.md). None has passed.
+The search covered 30,195 Sun-like dwarfs in the southern ecliptic hemisphere. Of its 2,993 signals above the
+detection threshold, triage shortlisted 9, and 5 more were added from signals whose only catalog match was a SPOC
+threshold-crossing event or an ExoMiner row. All 14 have been vetted:
 
-Published results ([results/README.md](results/README.md)):
-- `results/benchmarks/`: M1's runs, the search fix's reruns, the summaries of the targets, fetch and null runs, the
-  null threshold, the production search's positive controls, the completeness map for typical sample stars, vet-v3's
-  controls, triage's completeness and M3's read-only diagnoses
-- `results/triage/`: the triage run with its shortlist, and the pixel check's controls
-- `results/vetting/`: each vetted signal's record: the dossier, the review, the call and the runs behind them
-- `results/catalogs/`: the manifest of the catalog snapshot the novelty check used
+- **Passed:** none.
+- **Killed:** 4. One is an eclipsing binary, one was already published, one was found at the wrong period, and one
+  transits too briefly for a planet around its star.
+- **Held:** 10. Nothing in the public data rules them out, but none can pass yet, most often because the data can't
+  place the dip on the target star.
 
-## What it searches
+[results/vetting/README.md](results/vetting/README.md) gives the reason for each call and links each signal's dossier:
+every check, an adversarial review and the runs behind them.
 
-Sun-like dwarfs (5300 to 6500 K) of TESS magnitude 10.5 or brighter, observed in at least four sectors including at
-least one of sectors 97 to 107, for periodic dips between 1 and 40 days. Every vetting check but three is proven to
-fail on a planted false positive. The three never fail. `signal_present` only asks whether there is a dip at the
-ephemeris, and a weak dip is a lack of evidence for a planet, not evidence against one; its test shows that pure
-noise is inconclusive and does not advance ([decision 0017](docs/decisions/0017-signal-present-check.md)). The
-neighbour table and the literature search are evidence: a star that could host the signal, or a paper that names the
-star, does not show the signal is not a planet, so each passes or is inconclusive
-([decision 0025](docs/decisions/0025-neighbours.md), [decision 0027](docs/decisions/0027-literature-by-name.md)).
-Pass/fail criteria are committed before the stage that applies them runs on the data
-([design, section 5.3](docs/design.md#53-criteria-frozen-before-the-data)). The design is in
-[docs/design.md](docs/design.md); decisions are in [docs/decisions/](docs/decisions/).
+In progress ([pull request #1](https://github.com/kevinlizarazo/tess-hunt/pull/1)): predictions for the six held
+signals that TESS observes again in Sectors 112 to 114 (December 2026 to March 2027), to be deposited before those
+sectors start, and a request for 2-minute cadence on one of them, TIC 241522065.
 
-## Setup
+## How it works
+
+1. **Targets.** Stars from the TESS Input Catalog with a Gaia DR3 dwarf cut: 5300 to 6500 K, TESS magnitude 10.5 or
+   brighter, observed in at least four sectors including at least one of Sectors 97 to 107.
+2. **Search.** Periodic dips between 1 and 40 days in the SPOC, TESS-SPOC and QLP light curves. A search of the same
+   light curves scrambled sets the detection threshold, and known planets from the TOI catalog run alongside as
+   positive controls.
+3. **Triage.** Each signal above the threshold is checked for novelty against published catalogs and with
+   LEO-Vetter's flux tests. Those that pass both get a pixel centroid check, and those that pass it are shortlisted.
+4. **Vetting.** Each shortlisted signal gets the light-curve checks, a held-out season test (a fit that never saw one
+   season must predict when and how deep that season's transits fall), a table of nearby stars that could host the
+   dip, TRICERATOPS false-positive probabilities and a literature search. An AI model then reviews the evidence
+   adversarially, and the maintainer calls the signal passed, killed or held.
+
+The code and documents are written with Claude, Anthropic's AI model, under the maintainer's direction.
+
+## Safeguards
+
+- Pass/fail criteria are committed under [criteria/](criteria/) before the stage that applies them runs on the data
+  ([design, section 5.3](docs/design.md#53-criteria-frozen-before-the-data)). Changing one after seeing results takes
+  a decision record giving the reason.
+- Every vetting check but three is shown to fail on a planted false positive. The three can only pass or be
+  inconclusive, because their negative results don't show a signal isn't a planet: a weak dip, a nearby star that
+  could host it, or a paper that names the star ([decision 0017](docs/decisions/0017-signal-present-check.md),
+  [0025](docs/decisions/0025-neighbours.md), [0027](docs/decisions/0027-literature-by-name.md)).
+- Every published run carries a provenance file naming the commit that made it.
+- The design is in [docs/design.md](docs/design.md) and every decision in [docs/decisions/](docs/decisions/).
+
+## Repository layout
+
+- `src/tess_hunt/`: the pipeline; `uv run tess-hunt --help` lists its stages
+- `criteria/`: the frozen pass/fail criteria, one file per version
+- `benchmarks/`: the known-planet and control lists, the sector table and the scripts behind the diagnoses
+- `results/`: everything published; [results/README.md](results/README.md) describes each file
+  - `benchmarks/`: the runs that set and test the method: the detection threshold, positive controls,
+    injection-recovery, completeness and the checks' controls
+  - `triage/`: the triage run and its shortlist
+  - `vetting/`: one record per vetted signal
+  - `catalogs/`: the manifest of the catalog snapshot the novelty check used
+- `docs/`: the design and the decision records
+- `tests/`: the test suite
+
+## Running it
 
 Requires [uv](https://docs.astral.sh/uv/) on Linux or macOS (Windows through WSL). Pixel vetting also needs `curl`
 and `unzip` on PATH.
@@ -53,6 +80,10 @@ search also reads SIMBAD and NASA ADS. ADS needs a token, read from `ADS_API_TOK
 without it ADS is recorded as not searched and the search can't pass
 ([decision 0027](docs/decisions/0027-literature-by-name.md)). Pixel vetting keeps transit-diffImage's difference
 images (pickle files) and records their sha256; transit-diffImage deletes the TESScut cutouts it builds them from.
+
+## Citing
+
+[CITATION.cff](CITATION.cff) gives the citation; GitHub's "Cite this repository" button reads it.
 
 ## Licenses
 
