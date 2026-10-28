@@ -1,0 +1,43 @@
+# Facts about archives, and the state of a DDT proposal, that the predictions packages state. Each names the page or
+# file it was read from and the date it was read; the packages' templates read only `value`.
+
+[zenodo_edit_days]
+value = 30
+note = "Within 30 days after publication the owner can edit the uploaded files of a record; after that only in duly justified cases, such as copyright infringement or exposure of personal data."
+source = "https://help.zenodo.org/docs/deposit/manage-files/"
+read = "2026-10-27"
+
+[tess_spoc_last_sector]
+value = 85
+source = "https://archive.stsci.edu/hlsp/tess-spoc"
+read = "2026-10-27"
+
+[qlp_last_sector]
+value = 105
+note = "S105 is partial; MAST holds nothing for S106 or later."
+source = "https://archive.stsci.edu/hlsps/qlp/"
+read = "2026-10-27"
+
+[two_minute_lists]
+value = "the final 2-min and 20-s target lists for Sector 110 or the Guest Investigator priority lists for Sectors 111 to 114"
+note = "Read from the target-list page: S110's final lists 2m/all_targets_S110_v1.csv and 20s/all_targets_20s_S110_v1.csv, and the GI priority-sorted lists 2m/GI_S111.pri to 2m/GI_S114.pri and 20s/GI-20s_S111.pri to 20s/GI-20s_S114.pri (Last-Modified 2026-10-27 04:06 UTC). A sector's final list comes out shortly before it, so a later list can still add a star."
+source = "https://tess.mit.edu/public/target_lists/target_lists.html"
+read = "2026-10-27"
+
+[off_two_minute_lists]
+value = [103312990, 241522065, 296819076, 399023421, 423100454, 438857197]
+note = "The TICs on none of the lists two_minute_lists names."
+source = "https://tess.mit.edu/public/target_lists/target_lists.html"
+read = "2026-10-27"
+
+[ddt_241522065]
+value = "sent to the TESS DDT program on 2026-10-28"
+note = "The maintainer sent the proposal, as a two-page PDF made from the TESS office's Word template, and targets.csv to the TESS office on 2026-10-28 and recorded it here that day."
+source = "results/ddt/241522065-1/proposal.md"
+read = "2026-10-28"
+
+[raven]
+value = "Lafarga et al. 2026, MNRAS, https://doi.org/10.1093/mnras/stag512, arXiv:2603.22597"
+note = "The page of the article's online material, Zenodo record 19661443, from which the catalog snapshot read RAVEN's table (nsfp09_table.csv); it gives the article's DOI and arXiv id and the journal."
+source = "https://zenodo.org/records/19661443"
+read = "2026-10-27"

@@ -10,4 +10,6 @@ edited: a correction is a new package.
 [facts.toml](facts.toml) holds the archive facts the packages state, each with its source and the date it was read.
 `dois.toml`, once the maintainer writes it, holds the DOI and publication date Zenodo gave each package.
 
-No package is published yet.
+| Package | Made | Signals | DOI |
+|---|---|---|---|
+| [`20261028T162309Z-predictions-4b7423f-0aa5`](20261028T162309Z-predictions-4b7423f-0aa5/README.md) | 2026-10-28 | 103312990-1, 241522065-1, 296819076-1, 399023421-1, 423100454-1 and 438857197-1 | DOI pending |
