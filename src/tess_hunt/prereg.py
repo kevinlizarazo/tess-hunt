@@ -76,7 +76,8 @@ This package fixes, before those sectors are observed, the prediction each signa
 and the test itself. It was made on $made (UTC) by one run of `tess-hunt predictions run`, $run_id, from the signals'
 published vetting records and the light curves their vetting run, $vetting_run, read. Every number in it comes from
 those files, from that run, from the criteria file and the sector dates file that vetting run read, and from the
-`facts.toml` beside this README; the text it quotes from a review says so where it begins.
+`facts.toml` beside this README; the text it quotes from a review says so where it begins. tess-hunt's code and this
+text were written with LLM assistance.
 
 ## What is judged
 
@@ -115,9 +116,12 @@ $criteria_vet_sha256), with the published prediction and training depths in plac
 
 The result for each signal is the new season's status: replicated (`predicted`), missed (`missed`), or untested
 (`underpowered`, `untestable`, `no_predicted_transit_in_data`, no light curve, or a light curve fetched on or after the
-judging date below). On the unchanged vetted light curve
-this is exactly what vet-v3's check computes for that season (tess-hunt's test `test_prediction_equals_holdout_refit`).
-Judging with the published numbers keeps the result fixed if a later re-vet's training data change.
+judging date below). On the unchanged vetted light curve this is exactly what vet-v3's check computes for that season.
+Two of tess-hunt's tests show it on a synthetic three-season light curve, each season held out in turn:
+`test_prediction_equals_holdout_refit` checks that the package's refit, training depths and the counts its two
+training gates read equal the check's, and `test_prereg_equals_holdout_on_an_unchanged_light_curve` checks that the
+test's status and measurements, and so its result, equal the check's. Judging with the published numbers keeps the
+result fixed if a later re-vet's training data change.
 
 ## Which data can test it
 
@@ -228,14 +232,21 @@ Predicted: $n_transits transits in $kept. Left out: $left_out.$in_season Data th
 $testable.
 
 Observers' windows: $n_windows in $kept, from the density-prior fit to the $fit_family family alone, with mid-time
-sd $sd min. Each window's mid-time less the refit's nearest predicted mid-time: $offset min.
+sd $sd min. Each window's mid-time less the refit's nearest predicted mid-time: $offset min.$wide
 """)
+
+# A signal's section adds it when its observers' windows reach half its refit period either side.
+WIDE = Template("""\
+ At $sigma sigma its observers' windows reach $widest min either side of their mid-times, against a refit period
+of $orbit min: at least half the period either side, so the widest spans a whole orbit and the windows cannot place a
+transit by eye. The refit's predicted mid-times in `predictions.csv` are what the test judges.""")
 
 # Each signal whose section says more than the others, from its record (design 4.3).
 NOTES = {
     "399023421-1": Template("""\
-tess-hunt's adversarial review of this signal found its timing-suspect QLP transits arriving later than the observers'
-windows predict. The review's finding F9, quoted word for word: "$review_F9" The refit leaves those QLP sectors out,
+tess-hunt's adversarial review of this signal was written by an AI model, $review_model, on $review_date. It found
+the signal's timing-suspect QLP transits arriving later than the observers' windows predict.
+The review's finding F9, quoted word for word: "$review_F9" The refit leaves those QLP sectors out,
 as every check does. It stands as published: if the new season's transits arrive late against its cores, the season
 can be missed, and a miss on drift counts as a miss.
 
@@ -272,7 +283,8 @@ $fact_zenodo_edit_publish_days days after publication; deposited by $deposit_by,
 $lock_start, and no sector starting earlier is predicted. Each signal is judged once, on its complete new season in a
 light curve fetched before $judged_by; data fetched on or after that date complete no season, and a season that still
 lacks a predicted sector in a re-vet judged as of that date or later stays untested. The README states the test, the
-data that can test each signal, when it is judged and what a result means.
+data that can test each signal, when it is judged and what a result means. tess-hunt's code and the package's text
+were written with LLM assistance$reviewed.
 
 ## Keywords
 
@@ -640,8 +652,8 @@ def _year(btjd: float) -> int:
 
 def record_values(record: Path) -> dict[str, str]:
     """The record's own values the package states: the search's ephemeris, the sectors left out for suspect
-    timestamps, each review finding's claim quoted as the dossier quotes it (decision 0037), and RAVEN's period where
-    the record lists one RAVEN row on the star."""
+    timestamps, each review finding's claim quoted as the dossier quotes it (decision 0037), the model that wrote the
+    review and its date, and RAVEN's period where the record lists one RAVEN row on the star."""
     checks = json.loads((record / "checks.json").read_text())
     eph = checks["ephemeris"]
     raven = [r for r in checks["catalogued"]["rows"] if r["source"] == "RAVEN"]
@@ -656,9 +668,9 @@ def record_values(record: Path) -> dict[str, str]:
     }
     review = record / "review.json"
     if review.is_file():
-        found |= {
-            f"review_{f['id']}": _scrub(f["claim"]) for f in calls.load_review(review)["findings"]
-        }
+        reviewed = calls.load_review(review)
+        found |= {f"review_{f['id']}": _scrub(f["claim"]) for f in reviewed["findings"]}
+        found |= {"review_model": reviewed["model"], "review_date": str(reviewed["date"])}
     return _filled(found)
 
 
@@ -749,6 +761,22 @@ def _left_out(prediction: dict, lock_start: dt.date) -> tuple[str, str]:
     )
 
 
+def _wide(windows: list[dict], period: float, sigmas: list[float]) -> str:
+    """The sentence a signal's section adds when its observers' widest window, at the largest sigma `[predict]`
+    reports, reaches half its refit period either side, and so spans a whole orbit; otherwise nothing."""
+    sigma = max(sigmas)
+    widest = max(w["half_width_minutes"][f"{sigma:g}"] for w in windows)
+    orbit = period * MINUTES_PER_DAY
+    if widest < 0.5 * orbit:
+        return ""
+    found = {
+        "sigma": f"{sigma:g}",
+        "widest": _number(widest, ".0f"),
+        "orbit": _number(orbit, ".0f"),
+    }
+    return WIDE.substitute(_filled(found))
+
+
 def _offsets(windows: list[dict], transits: list[dict]) -> list[float]:
     mids = np.array([t["mid_btjd"] for t in transits])
     return [
@@ -795,6 +823,7 @@ def _section(
             "fit_family": crit_vet["families"]["fit"].upper(),
             "sd": _span(sd, ".0f"),
             "offset": _span(offsets, "+.0f"),
+            "wide": _wide(windows, refit["period"], crit_vet["predict"]["sigma"]),
         }
     )
     text = SIGNAL.substitute(found)
@@ -919,8 +948,16 @@ def readme(
 
 def zenodo(provenance: dict, predictions: dict[str, dict], facts: dict) -> str:
     kept = _kept_sectors(predictions)
+    # A signal's note is where the README quotes its review.
+    quoted = [name for name in predictions if name in NOTES]
+    reviewed = (
+        f", and the adversarial review of {_words(quoted)} that the README quotes was written by an AI model"
+        if quoted
+        else ""
+    )
     found = fact_values(facts) | {
         "zenodo_read": _read_on(facts, ZENODO_FACTS),
+        "reviewed": reviewed,
         "n_signals": str(len(predictions)),
         "signals": _words(list(predictions)),
         "tics": _words(sorted(p["tic"] for p in predictions.values())),

@@ -374,6 +374,11 @@ def test_399023421_section_quotes_the_review_and_cites_raven():
         assert (
             f'finding {finding}, quoted word for word: "{dossier._scrub(claims[finding])}"' in text
         )
+    # The model that wrote the review, and its date, from review.json.
+    assert (
+        f"tess-hunt's adversarial review of this signal was written by an AI model, {review['model']}, on "
+        f"{review['date']}." in " ".join(text.split())
+    )
     # The citation as facts.toml read it from the Zenodo record, and the period from the record's RAVEN row.
     assert facts()["raven"]["value"] in text and "Lafarga et al. 2026" in text
     assert "9.825 d" in text
@@ -410,6 +415,42 @@ def test_deposit_by_is_the_lock_less_zenodo_s_publish_limit(tmp_path):
         readme(partial)
     with pytest.raises(KeyError, match="zenodo_edit_publish_days"):
         prereg.zenodo(made(signals), signals, partial)
+
+
+def test_zenodo_says_an_ai_model_wrote_the_review_the_readme_quotes(tmp_path):
+    prediction = predicted(planet(), write_record(tmp_path / NAME))
+    both = {NAME: prediction, "399023421-1": {**prediction, "tic": 399023421}}
+    text = " ".join(prereg.zenodo(made(both), both, facts()).split())
+    assert (
+        "tess-hunt's code and the package's text were written with LLM assistance, and the adversarial review of "
+        "399023421-1 that the README quotes was written by an AI model." in text
+    )
+
+
+def test_windows_wider_than_half_the_period_say_so(tmp_path):
+    """A signal's section says its observers' windows can't place a transit only when the widest, at 3 sigma, reaches
+    half the refit period either side."""
+    narrow = write_record(tmp_path / "narrow" / NAME)
+    prediction = predicted(planet(), narrow)
+    half = 0.5 * prediction["predicted"]["period"] * prereg.MINUTES_PER_DAY
+
+    def section(record: Path) -> str:
+        text = prereg._section(prediction, record, VET3.values, TESS_SECTORS, LOCK, facts())
+        return " ".join(text.split())
+
+    def wide(name: str, width: float) -> Path:
+        found = [{**w, "half_width_minutes": {"1": width / 3, "3": width}} for w in windows()]
+        return write_record(tmp_path / name / NAME, windows=found)
+
+    # The fixture's 3-sigma half-widths are a few hundred minutes, on a 3.7 d period.
+    assert "cannot place a transit by eye" not in section(narrow)
+    assert "cannot place a transit by eye" not in section(wide("under", half - 1))
+    assert (
+        f"At 3 sigma its observers' windows reach {half:.0f} min either side of their mid-times, against a refit "
+        f"period of {2 * half:.0f} min: at least half the period either side, so the widest spans a whole orbit and "
+        "the windows cannot place a transit by eye. The refit's predicted mid-times in `predictions.csv` are what the "
+        "test judges." in section(wide("half", half))
+    )
 
 
 def vetting_run(tmp_path, monkeypatch, production=True) -> tuple[list[str], Path]:
@@ -527,6 +568,12 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch):
     # The lock date holds only for a deposit made in time, and the README and the Zenodo text say so.
     assert "Deposited by 2026-11-05, this package's files are fixed by 2026-12-20" in flat
     assert "deposited by 2026-11-05, this package's files are fixed by 2026-12-20" in zflat
+    # The code and text were written with LLM assistance; this package quotes no review.
+    assert "tess-hunt's code and this text were written with LLM assistance." in flat
+    assert "tess-hunt's code and the package's text were written with LLM assistance." in zflat
+    assert "AI model" not in zflat
+    # 1-1's windows are far narrower than its period.
+    assert "cannot place a transit by eye" not in flat
     # The judging date cuts on when a light curve was fetched, as judge_signal applies it (decision 0041), not on when
     # a re-vet runs; the deposited text states that rule.
     assert (
