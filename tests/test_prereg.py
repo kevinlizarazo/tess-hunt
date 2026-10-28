@@ -305,17 +305,31 @@ def test_a_family_without_cadences_in_the_cores_shows_none(tmp_path):
     assert "shows none for its depth and error" in prereg.README.template
 
 
-def test_the_readme_names_a_ddt_proposal_as_a_request(tmp_path):
-    record = write_record(tmp_path / "results" / "vetting" / NAME)
+@pytest.mark.parametrize(
+    "state",
+    [
+        tomllib.loads(FACTS.read_text())["ddt_241522065"]["value"],
+        "sent to the TESS DDT program on 2026-11-08",
+        "not sent",
+    ],
+)
+def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state):
+    record = write_record(tmp_path / NAME)
     signals = {NAME: predicted(planet(), record)}
-    (tmp_path / "results" / "ddt" / NAME).mkdir(parents=True)
-    (tmp_path / "results" / "ddt" / NAME / "proposal.md").write_text("# A proposal\n")
-    text = prereg.readme(made(signals), signals, {NAME: record}, VET3.values, facts(), TESS_SECTORS)
-    assert (
-        f"For {NAME} tess-hunt has written a DDT proposal asking for 2-min data (`results/ddt/<signal>/` in its "
-        "repository): a request, which the TESS office may or may not take."
-        in " ".join(text.split())
+    stated = facts() | {
+        "ddt_1": {"value": state, "source": "results/ddt/1-1/proposal.md", "read": "2026-10-27"}
+    }
+    text = " ".join(
+        prereg.readme(
+            made(signals), signals, {NAME: record}, VET3.values, stated, TESS_SECTORS
+        ).split()
     )
+    assert (
+        f"For {NAME}, tess-hunt has a DDT proposal asking for 2-min data (`results/ddt/{NAME}/` in its repository); "
+        f"its state, as `facts.toml` gives it: {state}. A sent proposal is a request, which the TESS office may or "
+        "may not take." in text
+    )
+    assert "no 2-min data are in sight" not in text
 
 
 def test_399023421_section_quotes_the_review_and_cites_raven():
@@ -581,4 +595,6 @@ def test_the_committed_index_is_its_render():
 def test_every_fact_names_its_source_and_read_date():
     for key, fact in facts().items():
         assert set(fact) - {"note"} == {"value", "source", "read"}, key
-        assert fact["source"].startswith("https://") and dt.date.fromisoformat(fact["read"])
+        # A page read on the web, or a file in this repository.
+        assert fact["source"].startswith("https://") or (ROOT / fact["source"]).is_file(), key
+        assert dt.date.fromisoformat(fact["read"])

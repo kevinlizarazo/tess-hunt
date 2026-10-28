@@ -1,5 +1,5 @@
-# Facts about archives that the predictions packages state. Each names the page it was read from and the date it was
-# read; the packages' templates read only `value`.
+# Facts about archives, and the state of a DDT proposal, that the predictions packages state. Each names the page or
+# file it was read from and the date it was read; the packages' templates read only `value`.
 
 [zenodo_edit_days]
 value = 30
@@ -28,6 +28,11 @@ read = "2026-10-27"
 value = [103312990, 241522065, 296819076, 399023421, 423100454, 438857197]
 note = "The TICs on none of the lists two_minute_lists names."
 source = "https://tess.mit.edu/public/target_lists/target_lists.html"
+read = "2026-10-27"
+
+[ddt_241522065]
+value = "written; not sent as of 2026-10-27"
+source = "results/ddt/241522065-1/proposal.md"
 read = "2026-10-27"
 
 [raven]

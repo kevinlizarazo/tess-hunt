@@ -168,7 +168,7 @@ $sections
 - The catalog snapshot that vetting run read, $catalogs: `known.parquet` sha256 $known_sha256, `manifest.json` sha256
   $manifest_sha256.
 - Sector dates: `$sectors_file`, sha256 $sectors_sha256.
-- Archive facts: `facts.toml`, sha256 $facts_sha256.
+- Facts about archives and the DDT proposal: `facts.toml`, sha256 $facts_sha256.
 
 Each signal's published record, `results/vetting/<signal>/` in the tess-hunt repository, and the light curve its
 vetting run read:
@@ -184,15 +184,16 @@ $hashes
   the training depths (`reference`, as fractions of the flux, and by family), the training seasons and families, the
   products that can test it (`testable_with`) and the sectors left out; and the test's criteria values (`test`).
 - `windows.csv`: the observers' windows: $window_columns. `epoch` counts periods from the density-prior fit's t0.
-- `facts.toml`: the archive facts this README states, each with its source and the date it was read.
+- `facts.toml`: the facts about archives and the DDT proposal this README states, each with its source and the date it
+  was read.
 - `provenance.json`: the run's commit, criteria, inputs with their sha256, and command line.
 - `zenodo.md`: the deposit's title, description, keywords and licence.
 
 ## Licence and sources
 
 CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). The package holds no Gaia data. It is derived from TESS
-light curves (SPOC, TESS-SPOC and QLP, from MAST) and the TESS Input Catalog. Archive facts, read $facts_read:
-$fact_sources.
+light curves (SPOC, TESS-SPOC and QLP, from MAST) and the TESS Input Catalog. The facts in `facts.toml`, read
+$facts_read, come from: $fact_sources.
 """)
 
 SIGNAL = Template("""\
@@ -727,7 +728,7 @@ def readme(
             "n_need_2min": str(len(need)),
             # The sentence assumes some signal needs 2-min data, as M4's do; with none its placeholder raises.
             "need_2min": _words(need) or None,
-            "ddt_ask": _ddt_ask(need, records),
+            "ddt_ask": _ddt_ask(need, predictions, facts),
             "judged_by": JUDGED_BY.isoformat(),
             "lock_start": lock_start.isoformat(),
             "deposit_by": _deposit_by(lock_start, facts),
@@ -776,18 +777,26 @@ def _deposit_by(lock_start: dt.date, facts: dict) -> str:
     return (lock_start - dt.timedelta(days=facts["zenodo_edit_days"]["value"])).isoformat()
 
 
-def _ddt_ask(need: list[str], records: dict[str, Path]) -> str:
-    """Which of the signals only 2-min data can test have a DDT proposal in the repository (decision 0039), said as a
-    request: the TESS office decides it."""
-    asked = [n for n in need if (records[n].parent.parent / "ddt" / n / "proposal.md").is_file()]
-    rest = [n for n in need if n not in asked]
-    if not asked:
+def _ddt_ask(need: list[str], predictions: dict[str, dict], facts: dict) -> str:
+    """The DDT proposal (decision 0039) of each signal only 2-min data can test, in the state its `ddt_<tic>` fact
+    gives, which the maintainer's decision sets; a sent proposal is a request, which the TESS office decides."""
+    states = {
+        n: facts[f"ddt_{predictions[n]['tic']}"]["value"]
+        for n in need
+        if f"ddt_{predictions[n]['tic']}" in facts
+    }
+    rest = [n for n in need if n not in states]
+    if not states:
         return "No DDT proposal asks for 2-min data on any of them, so for these no 2-min data are in sight."
-    text = (
-        f"For {_words(asked)} tess-hunt has written a DDT proposal asking for 2-min data (`results/ddt/<signal>/` in "
-        "its repository): a request, which the TESS office may or may not take."
-    )
-    return text + (f" For {_words(rest)} no 2-min data are in sight." if rest else "")
+    texts = [
+        f"For {n}, tess-hunt has a DDT proposal asking for 2-min data (`results/ddt/{n}/` in its repository); its "
+        f"state, as `facts.toml` gives it: {state}."
+        for n, state in states.items()
+    ]
+    texts.append("A sent proposal is a request, which the TESS office may or may not take.")
+    if rest:
+        texts.append(f"For {_words(rest)} no 2-min data are in sight.")
+    return " ".join(texts)
 
 
 def _window_columns(crit_vet: dict) -> list[str]:
