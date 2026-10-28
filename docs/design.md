@@ -6,7 +6,7 @@ Amended for M2 from the M2 design of 2026-10-12 (kept outside the repository): s
 sections 4.1, 5.2, 5.4, 5.7, 5.8, 6, 6.2, 7 and 8. Amended for M4 from the M4 design of 2026-10-27 (kept outside the
 repository) and M4's decisions: sections 1.1, 4.1, 7, 8 and 9. Each changed rule links its decision record in
 [docs/decisions/](decisions/).
-Repo: `kevinlizarazo/tess-hunt` (private, written to go public later).
+Repo: `kevinlizarazo/tess-hunt` (public since 2026-10-28).
 
 ## 1. Goal
 
@@ -51,7 +51,7 @@ Consequences for this design:
 |---|---|
 | Ambition | As far as Pavel: dossier, Zenodo preprint, preregistered predictions, DDT proposal |
 | Search slice | A (bright Sun-like dwarfs on the newest sectors) first; B (long-period duo/tri-transits) later as a second search mode |
-| Owner | `kevinlizarazo` personal account, private |
+| Owner | `kevinlizarazo` personal account, public since 2026-10-28 |
 | Licenses | Code MIT, results CC BY 4.0, copyright "Kevin Lizarazo"; `CITATION.cff` carries the same name |
 | Commit email | Repo-local GitHub noreply address; global git config untouched |
 | Reviews | Fresh read-only Claude sessions using Kevin's reviewer-plus-refuter workflow, on his go-ahead |
