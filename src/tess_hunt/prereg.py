@@ -23,17 +23,19 @@ from astropy.time import Time
 from tess_hunt import calls, predict, vetting
 from tess_hunt.catalogs import load_known, snapshot_inputs
 from tess_hunt.checks.families import family_labels
-from tess_hunt.checks.holdout import reference, refit_ephemeris, season_labels
+from tess_hunt.checks.holdout import judge, reference, refit_ephemeris, season_labels
 from tess_hunt.config import lc_dir, load_criteria
 from tess_hunt.ddt import _number
 from tess_hunt.dossier import _scrub, _table, _words
 from tess_hunt.ephemeris import Ephemeris, in_transit
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import publish_run, repo_root, sha256_file, start_run
-from tess_hunt.vet import prepare
+from tess_hunt.vet import Prepared, prepare
 
 # Decision 0040's rule: a new season not judged on its complete data by this date stays untested.
 JUDGED_BY = dt.date(2027, 12, 31)
+# The new season's status as decision 0040 names it; every other status is untested.
+RESULTS = {"predicted": "replicated", "missed": "missed"}
 # fetch's products (mast.PROVENANCES), as the package names them.
 PRODUCTS = {"SPOC": "SPOC 2-min", "TESS-SPOC": "TESS-SPOC", "QLP": "QLP"}
 PACKAGE = (
@@ -440,6 +442,126 @@ def predict_signal(
         "testable_with": testable_products(trained, crit_vet["families"], cfg["min_points"]),
         "transits": _transits(predicted, kept, sectors, star),
         "left_out": left_out,
+    }
+
+
+def _unusable(prepared: Prepared, sector: int, testable_with: list[str]) -> str | None:
+    """Why a predicted sector holds no data the test can use, or None when it does."""
+    if sector in prepared.dropped:
+        return "timing-suspect"
+    if sector not in prepared.noisy.sector:
+        return "no data"
+    product = PRODUCTS.get(prepared.good.sources[str(sector)]["provenance"])
+    return None if product in testable_with else f"{product}, which can't test it"
+
+
+def _trained(found: dict) -> dict:
+    """The package's training depths as `holdout.judge` reads them: a depth no cadence gave is NaN, which the
+    package's JSON holds as null."""
+
+    def nan(values: dict) -> dict:
+        return {k: float("nan") if v is None else v for k, v in values.items()}
+
+    return {
+        **nan({k: found[k] for k in ("ref", "ref_err", "ref_n")}),
+        "families": {name: nan(ref) for name, ref in found["families"].items()},
+    }
+
+
+def judge_signal(
+    package: Path, signal: str, prepared: Prepared, crit_vet: dict, as_of: dt.date
+) -> dict:
+    """Decision 0040's test of `signal`'s new season in a re-vet's light curve, `prepared` as vet prepares it: the
+    vet-v3 season, split at `season_gap_days` gaps, that holds the package's predicted sectors, judged by
+    `holdout.judge` against the package's prediction and training depths once the package's counts pass holdout's two
+    training gates. The result is replicated, missed or untested, or pending while a predicted sector has no data the
+    test can use before `JUDGED_BY`. The season is judged once, complete: from `JUDGED_BY` on, one still missing a
+    sector stays untested."""
+    found = json.loads((package / "references.json").read_text())
+    if signal not in found["signals"]:
+        raise ValueError(f"the package at {package.name} predicts no {signal}")
+    p = found["signals"][signal]
+    cfg, core = crit_vet["holdout"], crit_vet["depth"]["core_fraction"]
+    test = {"holdout": cfg, "core_fraction": core, "families": crit_vet["families"]}
+    if found["test"] != test:
+        raise ValueError(
+            f"vet-v3's [holdout] as given is not the test the package froze for {signal}"
+        )
+    rows = pd.read_csv(package / "predictions.csv")
+    sectors = sorted(int(s) for s in rows.loc[rows["signal"] == signal, "sector"].unique())
+    out = {
+        "predicted_sectors": sectors,
+        "as_of": as_of.isoformat(),
+        "judged_by": JUDGED_BY.isoformat(),
+    }
+
+    def untested(status: str, reason: str) -> dict:
+        return {**out, "result": "untested", "status": status, "reason": reason}
+
+    need = p["min_training_seasons"]
+    seasons, with_transits = (
+        len(p["training_seasons"]),
+        sum(s["holds_transits"] for s in p["training_seasons"]),
+    )
+    # holdout's own gates and words, read from the counts the package froze.
+    if seasons < need:
+        return untested(
+            "untestable",
+            f"{seasons} training season(s), need {need}: one season can't predict a season a year away",
+        )
+    if with_transits < need:
+        return untested(
+            "untestable",
+            f"{with_transits} of {seasons} training seasons hold a transit in their data, need {need}: one season "
+            "can't predict a season a year away",
+        )
+    missing = {s: why for s in sectors if (why := _unusable(prepared, s, p["testable_with"]))}
+    if missing:
+        listed = _words([f"S{s} ({why})" for s, why in missing.items()])
+        if as_of < JUDGED_BY:
+            return {
+                **out,
+                "result": "pending",
+                "status": "pending",
+                "reason": f"no light curve the test can use yet in {listed}; the season is judged once, complete, "
+                f"or on {JUDGED_BY} as it stands then",
+            }
+        return untested(
+            "no_light_curve", f"no light curve the test can use in {listed} by {JUDGED_BY}"
+        )
+    noisy = prepared.noisy
+    labels = season_labels(noisy.time, cfg["season_gap_days"])
+    held = np.unique(labels[np.isin(noisy.sector, sectors)])
+    if len(held) != 1:
+        raise ValueError(
+            f"{signal}'s predicted sectors fall in {len(held)} seasons of the light curve, not one"
+        )
+    season = labels == held[0]
+    row = judge(
+        noisy,
+        family_labels(noisy, crit_vet["families"]),
+        season,
+        Ephemeris(**p["predicted"]),
+        _trained(p["reference"]),
+        cfg,
+        core,
+    )
+    status = row["status"]
+    reasons = {
+        "no_predicted_transit_in_data": f"fewer than {cfg['min_points']} cadences in the predicted cores",
+        "underpowered": f"the expected depth is {row.get('expected_snr', float('nan')):.2f} times the season's "
+        f"error, below {cfg['min_expected_snr']:g}",
+    }
+    return {
+        **out,
+        "season": {
+            "start": float(noisy.time[season].min()),
+            "end": float(noisy.time[season].max()),
+            "sectors": sorted(int(s) for s in np.unique(noisy.sector[season])),
+        },
+        **row,
+        "result": RESULTS.get(status, "untested"),
+        **({"reason": row.get("reason") or reasons[status]} if status not in RESULTS else {}),
     }
 
 

@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import re
 import shutil
@@ -5,17 +6,32 @@ import stat
 from dataclasses import replace
 from pathlib import Path
 
+import pandas as pd
 import pytest
 import requests
 import test_calls as tc
 import test_literature as tl
 import test_tricera as tt
 import test_vetting as tv
+from synthetic import make_transit_lc, with_products
 
-from tess_hunt import dossier, literature, predict, provenance, tricera, vetting
+from tess_hunt import (
+    calls,
+    dossier,
+    literature,
+    predict,
+    prereg,
+    provenance,
+    revet,
+    tricera,
+    vetting,
+)
+from tess_hunt.catalogs import load_known
 from tess_hunt.cli import main
+from tess_hunt.config import load_criteria
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
+from tess_hunt.serialize import jsonable
 
 NAME = "1-1"
 REPO = Path(__file__).resolve().parents[1]
@@ -225,6 +241,7 @@ def flags(runs: dict[str, Path], *roles: str) -> list[str]:
         "triceratops": "--triceratops",
         "literature": "--literature",
         "titles": "--titles",
+        "lc_run": "--lc-run",
     }
     return [a for role in roles for a in (flag[role], str(runs[role]))]
 
@@ -1139,3 +1156,587 @@ def test_the_triceratops_paragraph_says_the_table_listing_hosts_could_not_judge_
         in said_on_star
     )
     assert hosts_said in said_on_star
+
+
+def test_the_committed_readme_is_its_render():
+    # With no version published, the README renders the M3 records exactly as they were published.
+    root = REPO / "results" / "vetting"
+    assert dossier.readme(root) == (root / "README.md").read_text()
+
+
+def test_readme_lists_the_latest_standing_call(tmp_path):
+    root = tmp_path / "vetting"
+
+    def published_dir(call, name, parent=root, signal=None, **kwargs):
+        call = tc.edit(call, f'signal = "{tc.NAME}"', f'signal = "{signal or name}"')
+        path = tc.signal_dir(parent, call=call, name=name, **kwargs)
+        (path / "dossier.md").write_text("rendered\n")
+        return path
+
+    held = published_dir(tc.HELD, tc.NAME)
+    # Its re-vet killed it; a third version's call no longer stands on its record (a kill resting on a check that
+    # passed), so the README shows the second.
+    killed = tc.edit(tc.KILLED, "date = 2026-10-28", "date = 2027-01-20")
+    r2 = published_dir(killed, "r2", parent=held, signal=tc.NAME, outcomes={"odd_even": "fail"})
+    published_dir(tc.KILLED, "r3", parent=held, signal=tc.NAME)
+    other = published_dir(tc.HELD, "48010903-1")
+    # A version written before it is published is no row and no earlier version.
+    (other / "r2").mkdir()
+    (other / "r2" / "call.toml").write_text(tc.edit(tc.HELD, f'"{tc.NAME}"', '"48010903-1"'))
+    rows = [line for line in dossier.readme(root).splitlines() if line.startswith("| [")]
+    assert rows == [
+        f"| [{tc.NAME} r2]({tc.NAME}/r2/dossier.md) (earlier: [M3 record]({tc.NAME}/dossier.md)) | killed | "
+        "2027-01-20 | It fails odd and even. |",
+        "| [48010903-1](48010903-1/dossier.md) | held | 2026-10-28 | The public data can't tell the two stars "
+        "apart. |",
+    ]
+    shown, left = dossier.listed(root)
+    assert shown == [held, r2, other]
+    assert set(left) == {f"{tc.NAME}/r3", "48010903-1/r2"}
+    assert "rests on" in left[f"{tc.NAME}/r3"][0]
+    # A staged version stands in for its directory, as `vetting publish` renders the README before copying.
+    staged = published_dir(
+        killed,
+        "r3",
+        parent=tmp_path / "staging" / tc.NAME,
+        signal=tc.NAME,
+        outcomes={"odd_even": "fail"},
+    )
+    assert (
+        f"| [{tc.NAME} r3]({tc.NAME}/r3/dossier.md) (earlier: [M3 record]({tc.NAME}/dossier.md), "
+        f"[r2]({tc.NAME}/r2/dossier.md)) | killed |"
+    ) in dossier.readme(root, staged)
+
+
+def results_repo(tmp_path, monkeypatch) -> Path:
+    """A repo of its own for `vetting` to publish into, holding the criteria and the sectors file later vetting runs
+    read from it."""
+    repo = tmp_path / "repo"
+    shutil.copytree(REPO / "criteria", repo / "criteria")
+    (repo / "benchmarks").mkdir()
+    shutil.copy(REPO / "benchmarks" / "tess_sectors.csv", repo / "benchmarks")
+    monkeypatch.setattr(vetting, "repo_root", lambda: repo)
+    return repo
+
+
+def published_m3(tmp_path, monkeypatch) -> tuple[dict[str, Path], Path]:
+    """1-1's M3 record, published from production runs into a repo of its own."""
+    runs = all_runs(tmp_path, monkeypatch)
+    production(*runs.values())
+    repo = results_repo(tmp_path, monkeypatch)
+    signal = repo / "results" / "vetting" / NAME
+    signal.mkdir(parents=True)
+    (signal / "call.toml").write_text(HELD)
+    (signal / "review.json").write_text(json.dumps(REVIEW))
+    assert main(publish_argv(runs, "run", "triceratops", "literature", "suspect", "titles")) == 0
+    return runs, repo
+
+
+def revet_run(tmp_path, tics=(1,), tag="a", base: Path | None = None) -> Path:
+    """A finished production revet fetch run that merged a new SPOC sector, S65, onto each star's light curve in
+    `base`, the shared cache by default."""
+    base = base or tmp_path / "data" / "lc"
+    run_id = f"20261201T000000Z-revet-fetch-abc1234-{tag}"
+    path = tmp_path / "data" / "runs" / run_id
+    stars, inputs = {}, {}
+    for tic in tics:
+        fresh = make_transit_lc(
+            rp_rs=0.04, sectors=(65,), cadences={65: 30.0}, noise_ppm={65: 200.0}
+        )
+        fresh.tic = tic
+        with_products(fresh, {65: "SPOC"})
+        # Fetched SPOC sources carry CROWDSAP; the synthetic ones don't.
+        fresh.sources["65"]["crowdsap"] = 0.95
+        merged, sectors = revet.merge(LightCurve.load(base / f"{tic}.npz"), fresh)
+        merged.save(path / "lc" / f"{tic}.npz")
+        stars[str(tic)] = {
+            "base_sha256": sha256_file(base / f"{tic}.npz"),
+            "lc_sha256": sha256_file(path / "lc" / f"{tic}.npz"),
+            "sectors": sectors,
+            "fetch": {"status": "ok", "problems": {}},
+        }
+        inputs[f"base_light_curve_{tic}"] = {
+            "file": f"{tic}.npz",
+            "sha256": sha256_file(base / f"{tic}.npz"),
+        }
+    (path / "merge.json").write_text(json.dumps(jsonable(stars), indent=2, sort_keys=True) + "\n")
+    made = {
+        "run_id": run_id,
+        "stage": "revet-fetch",
+        "production": True,
+        "started_at": "2026-12-01T00:00:00+00:00",
+        "ended_at": "2026-12-01T00:10:00+00:00",
+        "git": {"commit": "abc1234" + "0" * 33, "dirty_paths": []},
+        "criteria": [
+            {"file": "criteria/search-v2.toml", "sha256": load_criteria(tv.SEARCH).sha256}
+        ],
+        "inputs": inputs,
+        "summary": {"stars": len(tics), "failed": []},
+    }
+    (path / "provenance.json").write_text(json.dumps(made, indent=2))
+    return path
+
+
+def revetted(tmp_path, monkeypatch, lc_run: Path, lc_dir: Path | None = None) -> dict[str, Path]:
+    """A re-vet's runs, all production: a vetting run on `lc_run`'s light curves (or `lc_dir`'s) with its
+    evidence-only twin, and the TRICERATOPS, literature and titles runs made from it."""
+    runs_dir = tmp_path / "data" / "runs"
+    before = set(runs_dir.glob("*-vetting-run-*"))
+    argv = [
+        *tv.run_argv(tmp_path),
+        *("--triage-run", str(runs_dir / tv.TRIAGE_RUN)),
+        *("--lc-dir", str(lc_dir or lc_run / "lc")),
+    ]
+    assert main(argv) == 0
+    assert main([*argv, "--include-suspect"]) == 0
+    made = {
+        json.loads((p / "provenance.json").read_text())["evidence_only"]: p
+        for p in set(runs_dir.glob("*-vetting-run-*")) - before
+    }
+    run = made[False]
+    tric = made_run(
+        tmp_path,
+        "vetting-triceratops",
+        run,
+        {
+            NAME: {
+                "triceratops.json": triceratops_record(run),
+                "probs.csv": "ID,scenario,prob\n1,TP,0.98\n",
+            }
+        },
+        tag=run.name[-4:],
+    )
+    lit = made_run(
+        tmp_path,
+        "vetting-literature",
+        run,
+        {NAME: {"literature.json": literature_record(run, monkeypatch)}},
+        tag=run.name[-4:],
+    )
+    runs = {
+        "run": run,
+        "suspect": made[True],
+        "triceratops": tric,
+        "literature": lit,
+        "titles": titles_run(tmp_path, lit, tag=run.name[-4:]),
+    }
+    production(*runs.values())
+    return {**runs, "lc_run": lc_run}
+
+
+VERSION_ROLES = ("run", "suspect", "triceratops", "literature", "titles", "lc_run")
+
+
+def version_argv(runs: dict[str, Path], version: int = 2, roles=VERSION_ROLES) -> list[str]:
+    return ["vetting", "publish", "--name", NAME, "--version", str(version), *flags(runs, *roles)]
+
+
+def called(version: Path, call: str = HELD) -> Path:
+    """The maintainer's call and the review, written into a version's directory before it is published."""
+    version.mkdir(parents=True, exist_ok=True)
+    (version / "call.toml").write_text(tc.edit(call, "date = 2026-10-28", "date = 2027-01-20"))
+    (version / "review.json").write_text(json.dumps(REVIEW))
+    return version
+
+
+def record_files(files: dict[str, str], prefix: str) -> set[str]:
+    return {
+        k.removeprefix(prefix)
+        for k in files
+        if k.startswith(prefix) and "r2/" not in k.removeprefix(prefix)
+    }
+
+
+def test_version_published_beside_the_m3_record(tmp_path, monkeypatch):
+    m3, repo = published_m3(tmp_path, monkeypatch)
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
+    root = repo / "results" / "vetting"
+    version = called(root / NAME / "r2")
+    before = published(repo)
+    assert main(version_argv(runs)) == 0
+    after = published(repo)
+
+    # Every M3 file's bytes unchanged; of the files outside r2 only the README is rendered again.
+    assert {k: after[k] for k in before} == {**before, "README.md": after["README.md"]}
+    assert after["README.md"] != before["README.md"]
+    assert all(k.startswith(f"{NAME}/r2/") for k in set(after) - set(before))
+    # r2 holds the record: an M3 record's files, and the merge record of the light curve it vetted.
+    m3_files = record_files(before, f"{NAME}/")
+    r2_files = {k.removeprefix(f"{NAME}/r2/") for k in after if k.startswith(f"{NAME}/r2/")}
+    assert r2_files == m3_files | {"merge.json", "provenance-merge.json"}
+    vetted = runs["run"] / "signals" / NAME
+    assert after[f"{NAME}/r2/checks.json"] == sha256_file(vetted / "checks.json")
+    assert after[f"{NAME}/r2/plots/transits.png"] == sha256_file(vetted / "plots" / "transits.png")
+    assert after[f"{NAME}/r2/provenance-checks.json"] == sha256_file(
+        runs["run"] / "provenance.json"
+    )
+    tric = runs["triceratops"] / "signals" / NAME / "triceratops.json"
+    assert after[f"{NAME}/r2/triceratops.json"] == sha256_file(tric)
+    assert after[f"{NAME}/r2/merge.json"] == sha256_file(runs["lc_run"] / "merge.json")
+    assert after[f"{NAME}/r2/provenance-merge.json"] == sha256_file(
+        runs["lc_run"] / "provenance.json"
+    )
+    assert "65" in json.loads((version / "checks.json").read_text())["sources"]
+    text = (version / "dossier.md").read_text()
+    assert text == dossier.render(version)
+    assert text.startswith(f"# {NAME} r2: TIC 1\n")
+    readme = (root / "README.md").read_text()
+    assert (
+        f"| [{NAME} r2]({NAME}/r2/dossier.md) (earlier: [M3 record]({NAME}/dossier.md)) | held | "
+        "2027-01-20 |"
+    ) in readme
+
+
+def test_version_refuses_a_gap_or_an_existing_version(tmp_path, monkeypatch):
+    m3, repo = published_m3(tmp_path, monkeypatch)
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
+    root = repo / "results" / "vetting"
+    for n in (2, 3):
+        called(root / NAME / f"r{n}")
+    before = published(repo)
+    m3_again = [*publish_argv(m3, "run", "triceratops", "literature", "titles")]
+    for argv, message in (
+        (version_argv(runs, 3), f"no r2 published in results/vetting/{NAME}"),
+        (version_argv(runs, 1), "counts from 2"),
+        (version_argv(runs, roles=VERSION_ROLES[:-1]), "give --lc-run"),
+        ([*m3_again, "--lc-run", str(runs["lc_run"])], "--lc-run is for a version"),
+    ):
+        with pytest.raises(SystemExit, match=message):
+            main(argv)
+        assert published(repo) == before
+    assert main(version_argv(runs)) == 0
+    after = published(repo)
+    # Published once, never again, not even from the same runs.
+    with pytest.raises(SystemExit, match=f"results/vetting/{NAME}/r2 is already published"):
+        main(version_argv(runs))
+    assert published(repo) == after
+    # Without the M3 record there is no version.
+    empty = tmp_path / "empty"
+    called(empty / "results" / "vetting" / NAME / "r2")
+    monkeypatch.setattr(vetting, "repo_root", lambda: empty)
+    with pytest.raises(SystemExit, match="no M3 record published"):
+        main(version_argv(runs))
+
+
+def test_version_refuses_a_light_curve_not_from_its_lc_run(tmp_path, monkeypatch):
+    _, repo = published_m3(tmp_path, monkeypatch)
+    called(repo / "results" / "vetting" / NAME / "r2")
+    before = published(repo)
+    # The version's vetting run read the shared cache, not the revet fetch run's light curve.
+    lc_run = revet_run(tmp_path)
+    shared = revetted(tmp_path, monkeypatch, lc_run, lc_dir=tmp_path / "data" / "lc")
+    with pytest.raises(SystemExit, match="did not vet the light curve revet fetch run"):
+        main(version_argv(shared))
+    assert published(repo) == before
+    # The revet fetch run merged its sectors onto another light curve than the one the M3 record's vetting run read.
+    other = tmp_path / "other-lc"
+    other.mkdir()
+    lc = LightCurve.load(tmp_path / "data" / "lc" / "1.npz")
+    lc.flux = lc.flux * 1.0001
+    lc.save(other / "1.npz")
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path, tag="b", base=other))
+    with pytest.raises(SystemExit, match="onto another light curve"):
+        main(version_argv(runs))
+    assert published(repo) == before
+
+
+def test_a_version_is_drafted_beside_its_previous_record(tmp_path, monkeypatch):
+    m3, repo = published_m3(tmp_path, monkeypatch)
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
+    out = tmp_path / "drafts"
+    roles = ("run", "suspect", "triceratops", "literature", "lc_run")
+    argv = [
+        *("vetting", "dossier", *flags(runs, *roles)),
+        *("--version", "2", "--signals", NAME, "--out", str(out)),
+    ]
+    assert main(argv) == 0
+    draft = out / NAME / "r2"
+    text = (draft / "dossier.md").read_text()
+    assert text == dossier.render(draft)
+    assert "## Changes since the M3 record" in text
+    assert sha256_file(draft / "merge.json") == sha256_file(runs["lc_run"] / "merge.json")
+    # The previous record's checks beside it, as published, which the version's dossier compares with.
+    published_record = repo / "results" / "vetting" / NAME
+    assert sha256_file(out / NAME / "checks.json") == sha256_file(published_record / "checks.json")
+    # A draft of the M3 record made again keeps the version's draft beside it.
+    assert main(["vetting", "dossier", *flags(m3, "run"), "--out", str(out)]) == 0
+    assert (draft / "dossier.md").is_file()
+    # A version's draft is one signal's.
+    with pytest.raises(SystemExit, match="--signals NAME"):
+        main([a for a in argv if a not in ("--signals", NAME)])
+
+
+def version_dir(signal: Path) -> Path:
+    """A version of the draft record in `signal`, laid out as `publish` lays one out, its files edited as a re-vet on a
+    fresh catalog snapshot would change them."""
+    version = signal / "r2"
+    version.mkdir()
+    for path in signal.iterdir():
+        if path.is_file():
+            shutil.copyfile(path, version / path.name)
+    shutil.copytree(signal / "plots", version / "plots")
+    checks = json.loads((version / "checks.json").read_text())
+    checks["sources"] |= {"65": {**checks["sources"]["2"]}, "110": {**checks["sources"]["2"]}}
+    checks["masked"].append({"period": 7.3, "t0": 1330.0, "duration": 0.1, "depth": None})
+    checks["catalogued"]["rows"].append(
+        {
+            "source": "CTOI",
+            "kind": "candidate",
+            "name": "CTOI-1.01",
+            "period": 7.3,
+            "t0": 1330.0,
+            "duration": 0.1,
+            "masked": True,
+            "matches_signal": False,
+            "overlaps": [],
+        }
+    )
+    novelty = next(c for c in checks["checks"] if c["check"] == "novelty")
+    novelty.update(outcome="inconclusive", reason="matches only SPOC TCE or ExoMiner rows")
+    novelty["evidence"].update(
+        category="known_to_spoc",
+        tce_matches=[
+            {
+                "source": "ExoMiner-v2",
+                "kind": "tce",
+                "name": "ExoMiner vetting_catalog_FFI 1-1-S65",
+                "period": 5.0,
+                "ratio": 1.0,
+                "tic": 1,
+            }
+        ],
+    )
+    (version / "checks.json").write_text(json.dumps(checks))
+    edit_json(
+        version / "provenance-checks.json",
+        lambda p: p.update(
+            run_id="20261201T010000Z-vetting-run-abc1234-0002", catalogs="2026-12-01T000000Z"
+        ),
+    )
+
+    def product(provenance, key, suspect):
+        return {
+            "provenance": provenance,
+            "s3_key": key,
+            "sha256": "0" * 64,
+            "timing_suspect": suspect,
+        }
+
+    spoc = product("SPOC", "mast/spoc/s0002_lc.fits", False)
+    sectors = {
+        "1": {"status": "kept", "base": spoc, "fresh": spoc},
+        "2": {
+            "status": "kept_m2",
+            "base": spoc,
+            "fresh": product("TESS-SPOC", "mast/tess-spoc/s0002.fits", False),
+        },
+        "64": {
+            "status": "redelivered",
+            "base": product("QLP", "mast/qlp/s0064/hlsp_qlp_v01_llc.fits", True),
+            "fresh": product("QLP", "mast/qlp/s0064/hlsp_qlp_v02_llc.fits", False),
+        },
+        "65": {"status": "added", "base": None, "fresh": spoc},
+        "110": {"status": "added", "base": None, "fresh": spoc},
+    }
+    merge = {
+        "1": {
+            "base_sha256": "1" * 64,
+            "lc_sha256": "2" * 64,
+            "fetch": {"status": "ok", "problems": {}},
+            "sectors": sectors,
+        }
+    }
+    (version / "merge.json").write_text(json.dumps(merge))
+    revet_made = {
+        "run_id": "20261201T000000Z-revet-fetch-abc1234-0001",
+        "stage": "revet-fetch",
+        "production": True,
+        "git": {"commit": "abc1234" + "0" * 33, "dirty_paths": []},
+    }
+    (version / "provenance-merge.json").write_text(json.dumps(revet_made))
+    return version
+
+
+PACKAGE = "20261112T000000Z-predictions-abc1234-0001"
+
+
+def test_dossier_says_what_changed(tmp_path, monkeypatch):
+    signal, _ = draft(tmp_path, monkeypatch, review=REVIEW, call=HELD)
+    m3_text = (signal / "dossier.md").read_text()
+    version = version_dir(signal)
+    prereg_result = {
+        "package": PACKAGE,
+        "as_of": "2027-01-20",
+        "judged_by": "2027-12-31",
+        "predicted_sectors": [112, 113, 114],
+        "result": "untested",
+        "status": "untestable",
+        "reason": "no training cadences in the held-out season's qlp family",
+    }
+    (version / "prereg.json").write_text(json.dumps(prereg_result))
+    text = dossier.render(version)
+    assert text.startswith("# 1-1 r2: TIC 1\n")
+    changes = " ".join(section(text, "Changes since the M3 record").split())
+    assert "[The M3 record](../dossier.md) stays as it was published" in changes
+    assert "revet fetch run 20261201T000000Z-revet-fetch-abc1234-0001" in changes
+    assert "Sectors added: S65 (SPOC) and S110 (SPOC)." in changes
+    assert (
+        "Redelivered (a timing-suspect product replaced by the same product's newer delivery): S64 (QLP, "
+        "hlsp_qlp_v01_llc.fits replaced by hlsp_qlp_v02_llc.fits)." in changes
+    )
+    assert "S2 (SPOC kept, TESS-SPOC not taken)" in changes
+    # A window in a sector the light curve already holds was not a prediction.
+    assert "The windows for S110 under Next TESS looks are post-dictions" in changes
+    # What a fresh snapshot changed, read from the two checks.json files alone.
+    assert "catalog snapshot `snap`" in changes and "`2026-12-01T000000Z`" in changes
+    assert "Masked rows: new: 7.30000 d (t0 BTJD 1330.0000)." in changes
+    assert "Catalogued rows on the star: new: CTOI candidate CTOI-1.01 at 7.30000 d." in changes
+    assert (
+        "Novelty: pass (no known object matches) in the M3 record, inconclusive (matches only SPOC TCE or "
+        "ExoMiner rows) in this version." in changes
+    )
+    assert (
+        "Its matches: new: ExoMiner-v2 ExoMiner vetting_catalog_FFI 1-1-S65 at 5 d, ratio 1."
+        in changes
+    )
+    # The preregistered test beside vet-v3's own held-out result.
+    real = section(text, "Real and new?").strip().split("\n")
+    at = next(i for i, line in enumerate(real) if line.startswith("- Held-out seasons: "))
+    assert real[at + 1] == (
+        "- The preregistered test of the new season "
+        "([decision 0040](../../../../docs/decisions/0040-predictions-for-held-signals.md)), package "
+        f"{PACKAGE}, as of 2027-01-20: untested (untestable): no training cadences in the held-out season's qlp "
+        "family. It judges only the new season, against the prediction published before that season; vet-v3's "
+        "held-out check above holds out each season in turn and refits on the rest."
+    )
+    replicated = {
+        **{k: v for k, v in prereg_result.items() if k != "reason"},
+        **{"result": "replicated", "status": "predicted", "depth": 0.0016, "err": 0.0002, "n": 40},
+        **{"sigma": 8.0, "expected_snr": 8.5, "tension": 0.5},
+    }
+    (version / "prereg.json").write_text(json.dumps(replicated))
+    assert (
+        "as of 2027-01-20: replicated (predicted): depth 1600 ppm (error 200 ppm, 40 cadences in the cores), "
+        "8.00 sigma, expected SNR 8.50, tension 0.50 sigma."
+    ) in dossier.render(version)
+    # A value the record lacks raises rather than rendering.
+    (version / "prereg.json").write_text(
+        json.dumps({k: v for k, v in replicated.items() if k != "sigma"})
+    )
+    with pytest.raises(KeyError, match="sigma"):
+        dossier.render(version)
+    (version / "prereg.json").write_text(json.dumps(prereg_result))
+    text = dossier.render(version)
+    # Its links climb one level more than the M3 record's, and lead where they did.
+    linked = re.findall(r"\]\(\.\./\.\./\.\./\.\./(docs/decisions/[^)]+)\)", text)
+    assert "docs/decisions/0041-revets-as-versions.md" in linked
+    assert all((REPO / path).is_file() for path in linked)
+    assert "](../../../docs/" not in text and "[The vetting README](../../README.md)" in text
+    # The M3 record renders as it did.
+    assert dossier.render(signal) == m3_text
+    assert "Changes since" not in m3_text and "preregistered test" not in m3_text
+
+
+def predictions_package(tmp_path: Path, vetting_run: Path, record: Path) -> Path:
+    """A finished production predictions package for 1-1, from its published record and the light curve its vetting
+    run read, holding the files the test reads as `predictions run` writes them."""
+    crit_search, crit_vet = load_criteria(tv.SEARCH), load_criteria(tv.VET3)
+    # The fixture's tess-point puts the star in S115 too, which the sectors file does not date yet.
+    s115 = {"sector": 115, "start_utc": "2027-03-14T00:00:00", "end_utc": "2027-04-10T00:00:00"}
+    sectors = pd.concat(
+        [pd.read_csv(REPO / crit_vet["predict"]["sectors_file"]), pd.DataFrame([s115])],
+        ignore_index=True,
+    )
+    prediction = prereg.predict_signal(
+        record,
+        LightCurve.load(tmp_path / "data" / "lc" / "1.npz"),
+        load_known(tmp_path / "snap"),
+        crit_search.values,
+        crit_vet.values,
+        sectors,
+        dt.date(2026, 10, 1),
+    )
+    path = tmp_path / "data" / "runs" / PACKAGE
+    path.mkdir(parents=True)
+    references = {
+        "test": {
+            "holdout": crit_vet["holdout"],
+            "core_fraction": crit_vet["depth"]["core_fraction"],
+            "families": crit_vet["families"],
+        },
+        "signals": {NAME: {k: v for k, v in prediction.items() if k != "transits"}},
+    }
+    (path / "references.json").write_text(
+        json.dumps(jsonable(references), indent=2, sort_keys=True) + "\n"
+    )
+    rows = [{"signal": NAME, "tic": 1, **t} for t in prediction["transits"]]
+    pd.DataFrame(rows).to_csv(path / "predictions.csv", index=False)
+    made = {
+        "run_id": PACKAGE,
+        "stage": "predictions",
+        "production": True,
+        "started_at": "2026-11-12T00:00:00+00:00",
+        "ended_at": "2026-11-12T00:01:00+00:00",
+        "git": {"commit": "abc1234" + "0" * 33, "dirty_paths": []},
+        "criteria": json.loads((vetting_run / "provenance.json").read_text())["criteria"],
+        "vetting_run": vetting_run.name,
+        "inputs": {},
+        "summary": {},
+    }
+    (path / "provenance.json").write_text(json.dumps(made, indent=2))
+    return path
+
+
+def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path, monkeypatch):
+    m3, repo = published_m3(tmp_path, monkeypatch)
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
+    record = repo / "results" / "vetting" / NAME
+    package = predictions_package(tmp_path, m3["run"], record)
+    argv = [
+        *("vetting", "prereg", "--run", str(runs["run"]), "--package", str(package)),
+        *("--catalogs", str(tmp_path / "snap")),
+        *("--criteria-search", str(tv.SEARCH), "--criteria-vet", str(tv.VET3)),
+    ]
+    tomorrow = (dt.datetime.now(dt.UTC).date() + dt.timedelta(days=1)).isoformat()
+    for extra, message in (
+        (["--as-of", tomorrow], "after today"),
+        (["--as-of", "2026-10-28", "--run", str(runs["suspect"])], "evidence-only"),
+    ):
+        with pytest.raises(SystemExit, match=message):
+            main([*argv, *extra])
+    assert not list((tmp_path / "data" / "runs").glob("*-vetting-prereg-*"))
+    assert main([*argv, "--as-of", "2026-10-28"]) == 0
+    [made] = (tmp_path / "data" / "runs").glob("*-vetting-prereg-*")
+    result = json.loads((made / "signals" / NAME / "prereg.json").read_text())
+    # The M3 light curve holds one season with trustworthy timestamps (S64 is timing-suspect): the package's gates
+    # leave the new season untested, whatever the re-vet's light curve holds.
+    assert (result["result"], result["status"]) == ("untested", "untestable")
+    assert result["reason"].startswith("1 training season(s), need 2")
+    assert result["package"] == PACKAGE and result["vetting_run"] == runs["run"].name
+    assert result["signal"] == {"name": NAME, "tic": 1}
+    inputs = json.loads((made / "provenance.json").read_text())["inputs"]
+    assert inputs["package_references"]["sha256"] == sha256_file(package / "references.json")
+    assert inputs["light_curve_1"]["sha256"] == sha256_file(runs["lc_run"] / "lc" / "1.npz")
+    production(made)
+
+    # Once the package is published, a version of a signal it predicts carries the test.
+    published_package = repo / "results" / "predictions" / PACKAGE
+    published_package.mkdir(parents=True)
+    for name in ("references.json", "predictions.csv", "provenance.json"):
+        shutil.copyfile(package / name, published_package / name)
+    version = called(record / "r2")
+    before = published(repo)
+    with pytest.raises(SystemExit, match="carries the preregistered test"):
+        main(version_argv(runs))
+    assert published(repo) == before
+    assert main([*version_argv(runs), "--prereg", str(made)]) == 0
+    assert sha256_file(version / "prereg.json") == sha256_file(
+        made / "signals" / NAME / "prereg.json"
+    )
+    assert sha256_file(version / "provenance-prereg.json") == sha256_file(made / "provenance.json")
+    real = " ".join(section((version / "dossier.md").read_text(), "Real and new?").split())
+    assert (
+        f"package {PACKAGE}, as of 2026-10-28: untested (untestable): 1 training season(s), need 2"
+        in real
+    )
+    assert calls.problems(version) == []

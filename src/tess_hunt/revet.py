@@ -29,16 +29,23 @@ def _status(base: dict | None, fresh: dict | None) -> str:
         return "added"
     if fresh is None or (base["s3_key"], base["sha256"]) == (fresh["s3_key"], fresh["sha256"]):
         return "kept"
-    # A source written before fetch flagged timing can't show it was suspect, so a missing flag keeps the old file.
-    if base.get("timing_suspect") is True and fresh.get("timing_suspect") is False:
+    # A source written before fetch flagged timing can't show it was suspect, so a missing flag keeps the old file. Only
+    # the same product delivered again replaces it: another product over a suspect sector (TESS-SPOC reaching past S85
+    # over a QLP one) is a better product appearing later, which decision 0041 does not take.
+    if (
+        base.get("timing_suspect") is True
+        and fresh.get("timing_suspect") is False
+        and base.get("provenance") == fresh.get("provenance")
+    ):
         return "redelivered"
     return "kept_m2"
 
 
 def merge(base: LightCurve, fresh: LightCurve) -> tuple[LightCurve, dict]:
-    """`base` with the sectors only `fresh` has added, and a sector of both taken from `fresh` only when it replaces
-    a timing-suspect product with one that is not. The record gives each sector's status (`kept`, `added`,
-    `redelivered`, or `kept_m2` when `fresh` had another product and it was not taken) and both products."""
+    """`base` with the sectors only `fresh` has added, and a sector of both taken from `fresh` only when it is the
+    same product delivered again, replacing a timing-suspect file with one that is not. The record gives each
+    sector's status (`kept`, `added`, `redelivered`, or `kept_m2` when `fresh` had another file and it was not taken)
+    and both products."""
     parts, sources, record = [], {}, {}
     for key in sorted(base.sources.keys() | fresh.sources.keys(), key=int):
         old, new = base.sources.get(key), fresh.sources.get(key)

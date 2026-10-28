@@ -175,17 +175,23 @@ def setup(tmp_path, monkeypatch, signals=SIGNALS, suspect=(), fit=None):
     if fit is not None:
         monkeypatch.setattr(vet, "fit_transit", fit)
     monkeypatch.chdir(ROOT)
-    argv = [
+    v2_snapshot(tmp_path / "snap")
+    return run_argv(tmp_path), depths
+
+
+def run_argv(tmp_path: Path) -> list[str]:
+    """`vetting run`'s arguments for the files `setup` wrote."""
+    return [
         "vetting",
         "run",
-        *("--signals", str(signals_csv)),
-        *("--targets", str(targets), "--targets", str(controls)),
-        *("--catalogs", str(v2_snapshot(tmp_path / "snap"))),
+        *("--signals", str(tmp_path / "signals.csv")),
+        *("--targets", str(tmp_path / "targets.parquet")),
+        *("--targets", str(tmp_path / "controls.parquet")),
+        *("--catalogs", str(tmp_path / "snap")),
         *("--criteria-search", str(SEARCH)),
         *("--criteria-vet", str(VET3)),
         *("--workers", "1"),
     ]
-    return argv, depths
 
 
 def only_run(tmp_path) -> Path:
@@ -421,12 +427,16 @@ def test_evidence_only_run_is_marked(tmp_path, monkeypatch):
     assert "advances" not in provenance["summary"]["signals"]["1-1"]
 
 
+REVET_RUN = "20261201T000000Z-revet-fetch-abc1234-0001"
+
+
 def test_vetting_run_reads_lc_dir(tmp_path, monkeypatch):
     argv, _ = setup(tmp_path, monkeypatch, signals=SIGNALS[:1], fit=fake_fit)
-    # A re-vet's light curves, with the shared cache gone: a read of it anywhere would fail.
+    # A re-vet's light curves, in its revet fetch run, with the shared cache gone: a read of it anywhere would fail.
     shared = tmp_path / "data" / "lc"
-    revet = tmp_path / "revet-run" / "lc"
-    revet.parent.mkdir()
+    revet = tmp_path / "data" / "runs" / REVET_RUN / "lc"
+    revet.parent.mkdir(parents=True)
+    (revet.parent / "provenance.json").write_text(json.dumps({"stage": "revet-fetch"}))
     shared.rename(revet)
     lc = LightCurve.load(revet / "1.npz")
     lc.sources["64"]["s3_key"] = "qlp/s0064_v02"
@@ -435,12 +445,28 @@ def test_vetting_run_reads_lc_dir(tmp_path, monkeypatch):
     assert main([*argv, "--lc-dir", str(revet)]) == 0
     assert main([*argv, "--lc-dir", str(revet), "--include-suspect"]) == 0
     assert not shared.exists()
-    runs = list((tmp_path / "data" / "runs").iterdir())
+    runs = list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
     assert len(runs) == 2
     for run in runs:
         provenance = json.loads((run / "provenance.json").read_text())
         assert provenance["inputs"]["light_curve_1"]["sha256"] == sha256_file(revet / "1.npz")
         assert read(run, "1-1")["sources"]["64"]["s3_key"] == "qlp/s0064_v02"
+        # Where it read them, scrubbed as provenance is, and the revet fetch run that made them; and the snapshot.
+        assert provenance["lc_dir"] == f"$TESS_HUNT_DATA/runs/{REVET_RUN}/lc"
+        assert provenance["revet_run"] == REVET_RUN
+        assert provenance["catalogs"] == "snap"
+        assert vetting._light_curves(provenance) == revet
+
+
+def test_vetting_run_records_the_shared_cache(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch, signals=SIGNALS[:1], fit=fake_fit)
+    assert main(argv) == 0
+    provenance = json.loads((only_run(tmp_path) / "provenance.json").read_text())
+    assert provenance["lc_dir"] == "$TESS_HUNT_DATA/lc" and provenance["revet_run"] is None
+    assert vetting._light_curves(provenance) == tmp_path / "data" / "lc"
+    # A run made before decision 0041 recorded neither, and read the shared cache.
+    old = {k: v for k, v in provenance.items() if k not in ("lc_dir", "revet_run")}
+    assert vetting._light_curves(old) == tmp_path / "data" / "lc"
 
 
 def triage_run(tmp_path: Path) -> Path:

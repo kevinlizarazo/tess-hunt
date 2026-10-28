@@ -19,6 +19,7 @@ from tess_hunt.checks.holdout import NO_TRAINING, holdout, season_labels
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris
+from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
 from tess_hunt.serialize import jsonable
 
@@ -620,6 +621,143 @@ def test_refuses_inputs_other_than_the_vetting_runs(tmp_path, monkeypatch, chang
 
 def test_the_committed_index_is_its_render():
     assert (ROOT / "results" / "predictions" / "README.md").read_text() == prereg.index(ROOT)
+
+
+def package(path: Path, prediction: dict, sectors, name: str = NAME) -> Path:
+    """A predictions package's two files the test reads, as `predictions run` writes them, for one signal predicted
+    in `sectors`."""
+    path.mkdir(parents=True)
+    references = {
+        "test": {
+            "holdout": VET3["holdout"],
+            "core_fraction": VET3["depth"]["core_fraction"],
+            "families": VET3["families"],
+        },
+        "signals": {name: {k: v for k, v in prediction.items() if k != "transits"}},
+    }
+    (path / "references.json").write_text(json.dumps(jsonable(references), sort_keys=True))
+    rows = [{"signal": name, "sector": s} for s in sectors]
+    pd.DataFrame(rows).to_csv(path / "predictions.csv", index=False)
+    return path
+
+
+def judged(lc, path: Path, as_of: dt.date, crit_vet: dict = VET3.values) -> dict:
+    prepared = vet.prepare(lc, STAR, EPH, known(), SEARCH.values, VET3.values)
+    return prereg.judge_signal(path, NAME, prepared, crit_vet, as_of)
+
+
+def replaced(lc: LightCurve, other: LightCurve, sectors) -> LightCurve:
+    """`lc` with `other`'s cadences in `sectors` in place of its own."""
+    parts = [lc.select(~np.isin(lc.sector, sectors)), other.select(np.isin(other.sector, sectors))]
+    time, flux, err, sector = (
+        np.concatenate([getattr(p, k) for p in parts])
+        for k in ("time", "flux", "flux_err", "sector")
+    )
+    order = np.argsort(time)
+    return LightCurve(lc.tic, time[order], flux[order], err[order], sector[order], lc.sources)
+
+
+EARLY, LATE = dt.date(2027, 6, 1), dt.date(2028, 1, 1)
+TRAINING, NEW = (1, 2, 3, 14, 15, 16), (28, 29, 30)
+
+
+def test_prereg_results(tmp_path):
+    """The preregistered test of a synthetic new season (decision 0040): replicated, missed, untested and pending."""
+    record = write_record(tmp_path / NAME)
+    prediction = predicted(planet(sectors=TRAINING), record)
+    assert prediction["testable_with"] == ["SPOC 2-min", "TESS-SPOC"]
+    whole = package(tmp_path / "package", prediction, NEW)
+
+    # The dip where the package put it: replicated, on the complete season, before the judging date or after.
+    for as_of in (EARLY, LATE):
+        found = judged(planet(), whole, as_of)
+        assert (found["result"], found["status"]) == ("replicated", "predicted")
+    assert found["season"]["sectors"] == list(NEW) and found["predicted_sectors"] == list(NEW)
+    assert found["sigma"] >= VET3["holdout"]["min_sigma"]
+    assert found["as_of"] == LATE.isoformat() and found["judged_by"] == "2027-12-31"
+
+    # No dip in the new season: missed.
+    flat = with_products(
+        make_lc(sectors=SECTORS, noise_ppm=300.0, seed=6), dict.fromkeys(SECTORS, "SPOC")
+    )
+    found = judged(replaced(planet(), flat, NEW), whole, LATE)
+    assert (found["result"], found["status"]) == ("missed", "missed")
+    assert found["expected_snr"] >= VET3["holdout"]["min_expected_snr"]
+
+    # The new season holds a sector of a family with no training data (S28, QLP, not itself predicted): untested
+    # with the reason, never replicated or missed.
+    found = judged(planet(qlp=(28,)), package(tmp_path / "late", prediction, NEW[1:]), LATE)
+    assert (found["result"], found["status"]) == ("untested", "untestable")
+    assert found["reason"] == "no training cadences in the held-out season's qlp family"
+    assert found["season"]["sectors"] == list(NEW)
+
+    # A predicted sector with no light curve the test can use (S29 is QLP, which has no training data; S30 is not
+    # there): pending before the judging date, untested from it on.
+    partial = planet(qlp=(29,), sectors=(*TRAINING, 28, 29))
+    found = judged(partial, whole, EARLY)
+    assert (found["result"], found["status"]) == ("pending", "pending")
+    assert "S29 (QLP, which can't test it) and S30 (no data)" in found["reason"]
+    assert "2027-12-31" in found["reason"]
+    found = judged(partial, whole, prereg.JUDGED_BY)
+    assert (found["result"], found["status"]) == ("untested", "no_light_curve")
+    assert "S29 (QLP, which can't test it) and S30 (no data)" in found["reason"]
+    # A timing-suspect sector reaches no check, so it can't test the prediction either.
+    suspect = with_products(planet(), dict.fromkeys(SECTORS, "SPOC"), suspect={30})
+    found = judged(suspect, whole, EARLY)
+    assert found["result"] == "pending" and "S30 (timing-suspect)" in found["reason"]
+
+    # The two training gates read the package's counts.
+    one = {**prediction, "training_seasons": prediction["training_seasons"][:1]}
+    found = judged(planet(), package(tmp_path / "one", one, NEW), EARLY)
+    assert (found["result"], found["status"]) == ("untested", "untestable")
+    assert found["reason"].startswith("1 training season(s), need 2")
+    none = {
+        **prediction,
+        "training_seasons": [
+            {**s, "holds_transits": False} for s in prediction["training_seasons"]
+        ],
+    }
+    found = judged(planet(), package(tmp_path / "none", none, NEW), EARLY)
+    assert found["result"] == "untested" and found["reason"].startswith("0 of 2 training seasons")
+
+    # The test is the package's: other [holdout] values are not it.
+    other = {**VET3.values, "holdout": {**VET3["holdout"], "min_sigma": 3.0}}
+    with pytest.raises(ValueError, match=r"not the test the package froze"):
+        judged(planet(), whole, LATE, crit_vet=other)
+    with pytest.raises(ValueError, match="predicts no 9-9"):
+        prereg.judge_signal(
+            whole,
+            "9-9",
+            vet.prepare(planet(), STAR, EPH, known(), SEARCH.values, VET3.values),
+            VET3.values,
+            LATE,
+        )
+
+
+def test_prereg_equals_holdout_on_an_unchanged_light_curve(tmp_path):
+    """With each season of an M3 light curve as the new season, the preregistered test gives the row
+    `checks.holdout` gives that season."""
+    lc = planet(qlp=MIXED_QLP)
+    cfg, core = VET3["holdout"], VET3["depth"]["core_fraction"]
+    prepared = vet.prepare(lc, STAR, EPH, known(), SEARCH.values, VET3.values)
+    seasons = holdout(prepared.noisy, EPH, cfg, core, VET3["families"]).evidence["seasons"]
+    labels = season_labels(prepared.noisy.time, cfg["season_gap_days"])
+    record = write_record(tmp_path / NAME)
+    # What holdout adds to a season row besides the judgement.
+    gates = {"season", "start", "end", "training_seasons", "training_seasons_with_transits"}
+    refit = {"predicted_period", "predicted_t0"}
+    results = []
+    for row in seasons:
+        held = sorted(int(s) for s in np.unique(prepared.noisy.sector[labels == row["season"]]))
+        prediction = predicted(lc.select(~np.isin(lc.sector, held)), record)
+        path = package(tmp_path / f"package-{row['season']}", prediction, held)
+        found = prereg.judge_signal(path, NAME, prepared, VET3.values, EARLY)
+        judgement = set(row) - gates - refit
+        assert as_json({k: found[k] for k in judgement}) == as_json({k: row[k] for k in judgement})
+        assert (found["season"]["start"], found["season"]["end"]) == (row["start"], row["end"])
+        assert found["result"] == prereg.RESULTS.get(row["status"], "untested")
+        results.append(found["result"])
+    assert "replicated" in results
 
 
 def test_every_fact_names_its_source_and_read_date():

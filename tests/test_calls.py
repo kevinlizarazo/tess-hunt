@@ -384,6 +384,27 @@ def test_a_review_file_that_breaks_the_schema_is_refused(tmp_path):
     assert any("Hold" in p for p in found), found
 
 
+def test_a_version_is_judged_as_an_m3_record(tmp_path):
+    """A re-vet's record, results/vetting/<name>/r<N>/, is the signal's record (decision 0041): its call names the
+    signal, and the bar reads the files in the version's directory."""
+    m3 = signal_dir(tmp_path, call=HELD)
+    assert calls.problems(signal_dir(m3, name="r2")) == []
+    assert (
+        calls.problems(signal_dir(m3, name="r3", call=KILLED, outcomes={"odd_even": "fail"})) == []
+    )
+    assert calls.version(m3 / "r2") == 2 and calls.version(m3) is None
+    assert calls.signal_name(m3 / "r2") == NAME
+    # A call naming the version's directory, not the signal, is refused.
+    [problem] = calls.problems(signal_dir(m3, name="r4", call=edit(PASSED, f'"{NAME}"', '"r4"')))
+    assert problem == f"call.toml is for r4, not {NAME}"
+    # The version's own files decide: a pass on a version whose literature search is inconclusive is refused,
+    # whatever the M3 record holds.
+    found = calls.problems(signal_dir(m3, name="r5", literature="inconclusive"))
+    assert any("the literature search is inconclusive" in p for p in found)
+    # r1 is not a version: the M3 record is the first.
+    assert calls.version(tmp_path / "r1") is None and calls.version(tmp_path / "r12") == 12
+
+
 def test_no_call_is_a_problem(tmp_path):
     assert calls.problems(signal_dir(tmp_path, call=None)) == [f"no call.toml in {NAME}"]
 

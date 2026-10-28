@@ -9,7 +9,7 @@ import test_calls as tc
 import test_dossier as td
 import test_vetting as tv
 
-from tess_hunt import dossier, secondlist, triage
+from tess_hunt import calls, dossier, secondlist, triage
 from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.checks import failed
 from tess_hunt.cli import main
@@ -676,3 +676,80 @@ def test_publish_carries_the_second_lists_pixel_record(tmp_path, monkeypatch):
     with pytest.raises(SystemExit, match="was made from"):
         main([*argv, "--second-list", str(other)])
     assert td.published(repo) == before
+
+
+def test_second_list_row_carries_the_m3_pixel_record(tmp_path, monkeypatch):
+    """A re-vet of a second-list row keeps the M3 record's second-list pixel check (decision 0041): the one run a
+    version may name that was made from another vetting run."""
+    runs = second_list_runs(tmp_path, monkeypatch)
+    stub_pixels(monkeypatch)
+    assert main(second_list_argv(runs)) == 0
+    second = second_list_run(tmp_path)
+    tric = td.made_run(tmp_path, "vetting-triceratops", runs["run"], {})
+    lit = td.made_run(tmp_path, "vetting-literature", runs["run"], {})
+    td.production(runs["run"], second, tric, lit)
+
+    # The re-vet: both stars' light curves with a new sector, a vetting run on them, and the runs made from it.
+    lc_run = td.revet_run(tmp_path, tics=(1, 2))
+    vetted = set((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
+    argv = [
+        *tv.run_argv(tmp_path),
+        "--triage-run",
+        str(runs["triage"]),
+        "--lc-dir",
+        str(lc_run / "lc"),
+    ]
+    assert main(argv) == 0
+    [run] = set((tmp_path / "data" / "runs").glob("*-vetting-run-*")) - vetted
+    # The second list runs the pixel check on the light curve the search searched, as triage would have; a re-vet's
+    # light curve is not that one.
+    with pytest.raises(SystemExit, match="decision 0041"):
+        main(second_list_argv(runs, run))
+    assert len(list((tmp_path / "data" / "runs").glob("*-vetting-second-list-*"))) == 1
+    revet_tric = td.made_run(tmp_path, "vetting-triceratops", run, {}, tag="v")
+    revet_lit = td.made_run(tmp_path, "vetting-literature", run, {}, tag="v")
+    td.production(run, revet_tric, revet_lit)
+
+    repo = td.results_repo(tmp_path, monkeypatch)
+    m3 = repo / "results" / "vetting" / NAME
+    m3.mkdir(parents=True)
+    (m3 / "call.toml").write_text(KILLED)
+    publish = ["vetting", "publish", "--name", NAME]
+    record = ("--run", str(runs["run"]), "--triceratops", str(tric), "--literature", str(lit))
+    assert main([*publish, *record, "--second-list", str(second)]) == 0
+    version = m3 / "r2"
+    version.mkdir()
+    (version / "call.toml").write_text(KILLED)
+    argv = [
+        *(*publish, "--version", "2", "--run", str(run), "--lc-run", str(lc_run)),
+        *("--triceratops", str(revet_tric), "--literature", str(revet_lit)),
+    ]
+    before = td.published(repo)
+    # Without it the version would drop the row's pixel check.
+    with pytest.raises(SystemExit, match="carries the second list's pixel check"):
+        main(argv)
+    # A second-list run made from another vetting run than the previous record's is refused, as for an M3 record.
+    pixels = json.loads((second / "signals" / NAME / "pixels.json").read_text())
+    other = td.made_run(
+        tmp_path, "vetting-second-list", runs["suspect"], {NAME: {"pixels.json": pixels}}, tag="b"
+    )
+    td.production(other)
+    with pytest.raises(SystemExit, match="was made from"):
+        main([*argv, "--second-list", str(other)])
+    assert td.published(repo) == before
+
+    # The previous record's own second-list run is the one exception.
+    assert main([*argv, "--second-list", str(second)]) == 0
+    for name in ("pixels.json", "pixels.png", "provenance-second-list.json"):
+        assert sha256_file(version / name) == sha256_file(m3 / name), name
+    # Its provenance, unchanged, names the M3 record's vetting run, not this version's: it was carried.
+    carried = json.loads((version / "provenance-second-list.json").read_text())
+    assert carried["vetting_run"] == runs["run"].name != run.name
+    text = " ".join((version / "dossier.md").read_text().split())
+    assert (
+        f"The second list's pixel check is carried from the M3 record: second-list run {second.name}, made from "
+        f"vetting run {runs['run'].name}, is not run again on a re-vet" in text
+    )
+    assert f"| pixels | fail | {FAILED.reason} |" in text
+    # The kill rests on the carried pixel check, and stands.
+    assert calls.problems(version) == []

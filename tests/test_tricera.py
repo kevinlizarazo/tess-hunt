@@ -2,6 +2,7 @@ import contextlib
 import hashlib
 import io
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -949,6 +950,36 @@ def test_triceratops_refuses_what_it_cannot_stand_behind(tmp_path, monkeypatch, 
     with pytest.raises(SystemExit, match=message):
         main([*argv, *extra(tmp_path, run)])
     assert triceratops_runs(tmp_path) == []
+
+
+def test_triceratops_reads_the_light_curve_its_vetting_run_read(tmp_path, monkeypatch):
+    """A re-vet's vetting run reads its revet fetch run's light curves (decision 0041); TRICERATOPS reads the same
+    files, not the shared cache."""
+    monkeypatch.setattr(tv, "CONTROL", {**tv.CONTROL, "rad": 10.0})
+    argv, _ = tv.setup(tmp_path, monkeypatch, fit=tv.fake_fit)
+    shared = tmp_path / "data" / "lc"
+    revet = tmp_path / "data" / "runs" / tv.REVET_RUN / "lc"
+    revet.parent.mkdir(parents=True)
+    (revet.parent / "provenance.json").write_text(json.dumps({"stage": "revet-fetch"}))
+    shutil.copytree(shared, revet)
+    # The shared cache rewritten by a later fetch: the vetting run never read this file.
+    lc = LightCurve.load(shared / "1.npz")
+    lc.flux = lc.flux * 1.0001
+    lc.save(shared / "1.npz")
+    assert main([*argv, "--lc-dir", str(revet)]) == 0
+    [run] = (tmp_path / "data" / "runs").glob("*-vetting-run-*")
+    install(monkeypatch)
+    tric = [
+        "vetting",
+        "triceratops",
+        *("--run", str(run), "--criteria-search", str(tv.SEARCH), "--criteria-vet", str(tv.VET3)),
+        *("--workers", "1"),
+    ]
+    assert main(tric) == 0
+    [out] = triceratops_runs(tmp_path)
+    provenance = json.loads((out / "provenance.json").read_text())
+    assert provenance["inputs"]["light_curve_1"]["sha256"] == sha256_file(revet / "1.npz")
+    assert (out / "signals" / "1-1" / "triceratops.json").is_file()
 
 
 def test_triceratops_refuses_an_evidence_only_run(tmp_path, monkeypatch):
