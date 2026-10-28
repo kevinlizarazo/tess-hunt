@@ -53,12 +53,12 @@ def planet(qlp=(), seed=5, sectors=SECTORS):
     return with_products(lc, {s: "QLP" if s in qlp else "SPOC" for s in sectors})
 
 
-def windows(sectors=(110, 111, 112, 113)) -> list[dict]:
+def windows(sectors=(110, 111, 112, 113), dates=TESS_SECTORS) -> list[dict]:
     """A density-prior fit's windows as a record holds them: the first transit of each sector, at a period a little
     off the refit's."""
     out = []
     for sector in sectors:
-        start = predict.btjd(TESS_SECTORS.set_index("sector").at[sector, "start_utc"])
+        start = predict.btjd(dates.set_index("sector").at[sector, "start_utc"])
         epoch = math.ceil((start - EPH.t0) / 3.7001)
         out.append(
             {
@@ -306,18 +306,19 @@ def test_a_family_without_cadences_in_the_cores_shows_none(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "state",
+    ("state", "read"),
     [
-        tomllib.loads(FACTS.read_text())["ddt_241522065"]["value"],
-        "sent to the TESS DDT program on 2026-11-08",
-        "not sent",
+        tuple(tomllib.loads(FACTS.read_text())["ddt_241522065"][k] for k in ("value", "read")),
+        # Recorded on a later day than every other fact: each sentence names its own facts' read dates.
+        ("sent to the TESS DDT program on 2026-11-08", "2026-11-08"),
+        ("not sent", "2026-11-09"),
     ],
 )
-def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state):
+def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state, read):
     record = write_record(tmp_path / NAME)
     signals = {NAME: predicted(planet(), record)}
     stated = facts() | {
-        "ddt_1": {"value": state, "source": "results/ddt/1-1/proposal.md", "read": "2026-10-27"}
+        "ddt_1": {"value": state, "source": "results/ddt/1-1/proposal.md", "read": read}
     }
     text = " ".join(
         prereg.readme(
@@ -326,10 +327,39 @@ def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state):
     )
     assert (
         f"For {NAME}, tess-hunt has a DDT proposal asking for 2-min data (`results/ddt/{NAME}/` in its repository); "
-        f"its state, as `facts.toml` gives it: {state}. A sent proposal is a request, which the TESS office may or "
-        "may not take." in text
+        f"its state, as `facts.toml` records it on {read}: {state}. A sent proposal is a request, which the TESS "
+        "office may or may not take." in text
     )
     assert "no 2-min data are in sight" not in text
+    # The other facts keep their own dates.
+    archives = facts()["tess_spoc_last_sector"]["read"]
+    assert f"partial Sector 105 (as read on {archives})" in text
+    assert f"results/ddt/1-1/proposal.md (read {read})" in text
+
+
+def test_every_window_sector_is_checked_against_the_last_vetted_cadence(tmp_path):
+    # A left-out window sector outside the new season, 17 days after the synthetic S30: at a re-vet it would merge with
+    # the last vetted season, though the new season (S112, S113) is far away.
+    dates = pd.concat(
+        [
+            TESS_SECTORS,
+            pd.DataFrame(
+                [
+                    {
+                        "sector": 31,
+                        "start_utc": "2020-11-10T00:00:00",
+                        "end_utc": "2020-12-07T00:00:00",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    record = write_record(tmp_path / NAME, windows=windows((31, 112, 113), dates))
+    with pytest.raises(
+        ValueError, match=r"window sector 31 starts 17\.\d days after its last vetted cadence"
+    ):
+        prereg.predict_signal(record, planet(), known(), SEARCH.values, VET3.values, dates, LOCK)
 
 
 def test_399023421_section_quotes_the_review_and_cites_raven():

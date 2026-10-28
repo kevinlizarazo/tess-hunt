@@ -1,14 +1,15 @@
 # 0040: Held signals get a public prediction of their next season, judged by the held-out check's own test
 
 - Date: 2026-10-27
-- Status: Accepted. Made in the M4 design and approved by the maintainer with it on 2026-10-27. Five choices the M4
+- Status: Accepted. Made in the M4 design and approved by the maintainer with it on 2026-10-27. Six choices the M4
   build's controller made on 2026-10-27, stated in full under Decision, are the controller's, with no acceptance by the
   maintainer recorded: the package records what the held-out check's two training gates read (PF5); the index of
   packages reads an optional `dois.toml` (PF6); the archive facts the package states come from a committed
   `results/predictions/facts.toml`, the sector dates from `benchmarks/tess_sectors.csv`, and the judging date is this
   record's rule, one constant in `prereg.py`; RAVEN's citation is a fact in that file, read from its Zenodo record,
-  because the record's literature search holds no RAVEN paper; and the 2-min target lists the controller read on
-  2026-10-27 are a fact there too.
+  because the record's literature search holds no RAVEN paper; the 2-min target lists the controller read on
+  2026-10-27 are a fact there too; and so is the state of 241522065-1's DDT proposal (`ddt_241522065`), which renders
+  the maintainer's decision to send it or not, set with its date before the production run.
 
 ## Context
 
@@ -72,19 +73,21 @@ start after that.
   deposit's title, description, keywords and licence, naming no person) and a copy of `facts.toml`. It refuses a
   record whose call is not `held`, a record whose `checks.json` is not the vetting run's file for that signal, a light
   curve whose sha256 is not the one the vetting run recorded, a catalog snapshot, criteria or sectors file other than
-  the run's, and a new season that starts within `season_gap_days` of the vetted light curve's last cadence, which the
-  test would merge with that light curve's last season. A production run takes only `results/predictions/facts.toml`
-  from the checkout its code runs from, and refuses it with uncommitted changes, since the clean-tree check covers the
-  code and not `results/`. `tess-hunt predictions publish --run RUN_ID` copies a production run's package into
-  `results/predictions/<run id>/` and renders `results/predictions/README.md`, the index of packages, which reads an
-  optional `results/predictions/dois.toml` (package run id to DOI and publication date) and shows "DOI pending"
-  without it (the controller's ruling PF6); `tess-hunt predictions index` renders the index again. The maintainer
-  deposits each package as one Zenodo record and records its DOI there.
+  the run's, and a window sector, predicted or left out, that starts within `season_gap_days` of the vetted light
+  curve's last cadence, which the test would merge with that light curve's last season. A production run takes only
+  `results/predictions/facts.toml` from the checkout its code runs from, and refuses it with uncommitted changes, since
+  the clean-tree check covers the code and not `results/`. `tess-hunt predictions publish --run RUN_ID` copies a
+  production run's package into `results/predictions/<run id>/` and renders `results/predictions/README.md`, the index
+  of packages, which reads an optional `results/predictions/dois.toml` (package run id to DOI and publication date)
+  and shows "DOI pending" without it (the controller's ruling PF6); `tess-hunt predictions index` renders the index
+  again. The maintainer deposits each package as one Zenodo record and records its DOI there.
 - **Where the words and numbers come from** (`docs/design.md`, section 5.5). The README and the Zenodo text are filled
-  with `substitute`: the numbers from the run, the records and the criteria file the run read; the archive facts (the
-  Zenodo window, the last TESS-SPOC and QLP sectors, the 2-min target lists read and the stars on none of them,
-  RAVEN's citation) from `results/predictions/facts.toml`, each with its source and read date; the sector dates from `benchmarks/tess_sectors.csv` as vet-v3's `[predict]` reads it;
-  the judging date from this record (`prereg.JUDGED_BY`). A value missing, null or NaN raises. 399023421-1's section
+  with `substitute`: the numbers from the run, the records and the criteria file the run read; the facts (the Zenodo
+  window, the last TESS-SPOC and QLP sectors, the 2-min target lists read and the stars on none of them, RAVEN's
+  citation, and the state of 241522065-1's DDT proposal) from `results/predictions/facts.toml`, each with its source
+  and read date, and each sentence names the read dates of the facts it states; the sector dates from
+  `benchmarks/tess_sectors.csv` as vet-v3's `[predict]` reads it; the judging date from this record
+  (`prereg.JUDGED_BY`). A value missing, null or NaN raises. 399023421-1's section
   quotes its review's F9 (the timing-suspect QLP transits arrive 30 to 50 minutes after the windows) and F4 (the RAVEN
   row is most likely a 5:2 alias of this signal) word for word ([0037](0037-quoted-text-in-the-dossier.md)), gives
   RAVEN's period from the record's catalogued row and cites RAVEN from `facts.toml`, read from Zenodo record 19661443,
@@ -96,10 +99,11 @@ start after that.
   (`facts.toml`), so only SPOC 2-min data can test their predictions. As read on 2026-10-27, none of the six stars is
   on S110's final 2-min or 20-s lists or the Guest Investigator priority lists for S111 to S114, though a list can
   change before its sector. Of the four, only 241522065-1 has a DDT proposal ([0039](0039-ddt-for-held-signals.md)),
-  which is a request the TESS office may not take; for the other three no 2-min data are in sight. The package says
-  both. They are predicted anyway: a public prediction costs a row, and anyone can check it by eye. For 241522065-1 a QLP season could still make its two old seasons
-  testable and lift its hold while the predicted season itself stays untested; vet-v3 allows that, and the re-vet's
-  dossier must say which happened.
+  which even sent is a request the TESS office may not take; for the other three no 2-min data are in sight. The
+  package says both, with the proposal's state as `facts.toml` records it. All four are predicted anyway: a public
+  prediction costs a row, and anyone can check it by eye. For 241522065-1 a QLP season could still make its two old
+  seasons testable and lift its hold while the predicted season itself stays untested; vet-v3 allows that, and the
+  re-vet's dossier must say which happened.
 - A miss on drift counts as a miss. 399023421-1's review found its timing-suspect QLP transits running late against
   the windows by about the half-width of a core (F9); if the refit drifts the same way, the test can call a real
   transit missed. The test is the prediction, so the package quotes the finding and does not move the refit.
@@ -123,8 +127,9 @@ start after that.
   `test_refuses_a_record_not_held`, `test_refuses_inputs_other_than_the_vetting_runs`,
   `test_refuses_a_new_season_that_would_merge_with_the_vetted_ones`,
   `test_a_production_run_states_only_the_committed_facts`, `test_a_family_without_cadences_in_the_cores_shows_none`,
-  `test_the_readme_names_a_ddt_proposal_as_a_request`, `test_publish_refuses_a_run_that_was_not_production`,
-  `test_the_committed_index_is_its_render`.
+  `test_the_ddt_proposal_s_state_comes_from_facts` (its state recorded on a later day than every other fact),
+  `test_every_window_sector_is_checked_against_the_last_vetted_cadence`,
+  `test_publish_refuses_a_run_that_was_not_production`, `test_the_committed_index_is_its_render`.
 - The M4 build's check of the prediction on the M3 light curves of 423100454-1, 399023421-1, 438857197-1 and
   103312990-1 (the last with QLP S90 in training), each season with a refit removed in turn, against the season rows of
   their published `checks.json`.

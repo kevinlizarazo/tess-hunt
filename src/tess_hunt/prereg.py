@@ -125,10 +125,10 @@ A family with no training cadences in the cores shows none for its depth and err
 test the new season.
 
 TESS-SPOC's full-frame light curves stop at Sector $fact_tess_spoc_last_sector, and MAST holds QLP's only through a
-partial Sector $fact_qlp_last_sector (both as read on $facts_read). So for $n_need_2min of the $n_signals signals
-($need_2min) only SPOC 2-min data can test the prediction. As read on $facts_read, none of the $n_signals stars is on
-$fact_two_minute_lists, and a list can still change before its sector. $ddt_ask They are predicted anyway: anyone can
-check a public prediction by eye. Any other product, the project's own full-frame photometry included, needs a decision record
+partial Sector $fact_qlp_last_sector (as read on $archives_read). So for $n_need_2min of the $n_signals signals
+($need_2min) only SPOC 2-min data can test the prediction. As read on $lists_read, none of the $n_signals stars is on
+$fact_two_minute_lists, and a list can still change before its sector. $ddt_ask Each of the $n_need_2min is predicted
+anyway: anyone can check a public prediction by eye. Any other product, the project's own full-frame photometry included, needs a decision record
 saying how the test applies to it, made before it is run on these stars.
 
 ## When it is judged
@@ -153,7 +153,8 @@ inconclusive, and a missed new season is then evidence against the signal that t
 
 ## The lock
 
-Zenodo lets a record's owner edit its files for $fact_zenodo_edit_days days after publishing (as read on $facts_read).
+Zenodo lets a record's owner edit its files for $fact_zenodo_edit_days days after publishing (as read on
+$fact_zenodo_edit_days_read).
 Deposited by $deposit_by, this package's files are locked by $lock_start, so only sectors starting on or after
 $lock_start are predicted. Each earlier sector in a record's windows is left out, and its signal's section names it.
 Sector dates come from tess-hunt's `$sectors_file` (tess.mit.edu's sector pages, read $sectors_read).
@@ -192,8 +193,8 @@ $hashes
 ## Licence and sources
 
 CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). The package holds no Gaia data. It is derived from TESS
-light curves (SPOC, TESS-SPOC and QLP, from MAST) and the TESS Input Catalog. The facts in `facts.toml`, read
-$facts_read, come from: $fact_sources.
+light curves (SPOC, TESS-SPOC and QLP, from MAST) and the TESS Input Catalog. The facts in `facts.toml` come from:
+$fact_sources.
 """)
 
 SIGNAL = Template("""\
@@ -403,13 +404,14 @@ def predict_signal(
             }
         )
     in_season = _new_season(kept + earlier, kept, sectors, cfg["season_gap_days"])
-    # holdout labels seasons over the whole light curve: a new season this close to the vetted cadences would merge
-    # with their last season, and the prediction would not be the one it judges.
-    gap = min(_sector(sectors, s)[1] for s in in_season) - float(noisy.time.max())
+    # holdout labels seasons over the whole light curve: a window sector this close to the vetted cadences, predicted or
+    # left out, would merge with their last season at a re-vet, and the prediction would not be the one it judges.
+    last = float(noisy.time.max())
+    gap, first = min((_sector(sectors, s)[1] - last, s) for s in kept + earlier)
     if not gap > cfg["season_gap_days"]:
         raise ValueError(
-            f"{checks['signal']['name']}'s new season starts {gap:.1f} days after its last vetted cadence, not more "
-            f"than season_gap_days ({cfg['season_gap_days']:g}): the test would merge it with that season"
+            f"{checks['signal']['name']}'s window sector {first} starts {gap:.1f} days after its last vetted cadence, "
+            f"not more than season_gap_days ({cfg['season_gap_days']:g}): the test would merge it with that season"
         )
     left_out = []
     for sector in earlier:
@@ -510,15 +512,22 @@ def record_values(record: Path) -> dict[str, str]:
 
 
 def fact_values(facts: dict) -> dict[str, str]:
-    read = {str(fact["read"]) for fact in facts.values()}
-    return _filled(
+    """Each fact's value and its own read date (`fact_<key>`, `fact_<key>_read`), and every source with the date it was
+    read: each sentence names the dates of the facts it states, so facts read on different days render."""
+    sources = dict.fromkeys(f"{fact['source']} (read {fact['read']})" for fact in facts.values())
+    return (
         {f"fact_{key}": str(fact["value"]) for key, fact in facts.items()}
-        | {
-            "fact_sources": "; ".join(dict.fromkeys(fact["source"] for fact in facts.values())),
-            # One date stands for every fact only when all were read that day.
-            "facts_read": read.pop() if len(read) == 1 else None,
-        }
+        | {f"fact_{key}_read": str(fact["read"]) for key, fact in facts.items()}
+        | {"fact_sources": "; ".join(sources)}
     )
+
+
+def _read_on(facts: dict, keys: tuple[str, ...]) -> str | None:
+    """The dates the facts `keys` were read, one when they share it; None when one is missing, so its placeholder
+    raises."""
+    if not all(key in facts for key in keys):
+        return None
+    return _words(sorted({str(facts[key]["read"]) for key in keys}))
 
 
 def note(name: str, values: dict[str, str]) -> str:
@@ -728,6 +737,8 @@ def readme(
             "n_need_2min": str(len(need)),
             # The sentence assumes some signal needs 2-min data, as M4's do; with none its placeholder raises.
             "need_2min": _words(need) or None,
+            "archives_read": _read_on(facts, ("tess_spoc_last_sector", "qlp_last_sector")),
+            "lists_read": _read_on(facts, ("two_minute_lists", "off_two_minute_lists")),
             "ddt_ask": _ddt_ask(need, predictions, facts),
             "judged_by": JUDGED_BY.isoformat(),
             "lock_start": lock_start.isoformat(),
@@ -781,7 +792,7 @@ def _ddt_ask(need: list[str], predictions: dict[str, dict], facts: dict) -> str:
     """The DDT proposal (decision 0039) of each signal only 2-min data can test, in the state its `ddt_<tic>` fact
     gives, which the maintainer's decision sets; a sent proposal is a request, which the TESS office decides."""
     states = {
-        n: facts[f"ddt_{predictions[n]['tic']}"]["value"]
+        n: facts[f"ddt_{predictions[n]['tic']}"]
         for n in need
         if f"ddt_{predictions[n]['tic']}" in facts
     }
@@ -790,7 +801,7 @@ def _ddt_ask(need: list[str], predictions: dict[str, dict], facts: dict) -> str:
         return "No DDT proposal asks for 2-min data on any of them, so for these no 2-min data are in sight."
     texts = [
         f"For {n}, tess-hunt has a DDT proposal asking for 2-min data (`results/ddt/{n}/` in its repository); its "
-        f"state, as `facts.toml` gives it: {state}."
+        f"state, as `facts.toml` records it on {state['read']}: {state['value']}."
         for n, state in states.items()
     ]
     texts.append("A sent proposal is a request, which the TESS office may or may not take.")

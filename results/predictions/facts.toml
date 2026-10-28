@@ -32,6 +32,7 @@ read = "2026-10-27"
 
 [ddt_241522065]
 value = "written; not sent as of 2026-10-27"
+note = "The source shows the proposal written; it records no send state. Whether and when it is sent is the maintainer's decision, recorded here with its date when it is made."
 source = "results/ddt/241522065-1/proposal.md"
 read = "2026-10-27"
 
