@@ -494,6 +494,17 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch):
     assert "deposited by 2026-11-20, this package's files lock by 2026-12-20" in " ".join(
         zenodo.split()
     )
+    # The judging date cuts on when a light curve was fetched, as judge_signal applies it (decision 0041), not on when
+    # a re-vet runs; the deposited text states that rule.
+    flat, zflat = " ".join(readme.split()), " ".join(zenodo.split())
+    assert "The judging date, 2027-12-31, applies to when a light curve was fetched" in flat
+    assert "one fetched on or after it completes no season" in flat
+    assert (
+        "still lacks a predicted sector in a re-vet judged as of that date or later stays untested"
+        in flat
+    )
+    assert "on its complete new season in a light curve fetched before 2027-12-31" in zflat
+    assert "failing that" not in flat and "not judged by" not in zflat
     for text in (readme, zenodo):
         assert "$" not in text and provenance.scrub(text) == text
         assert not any(n.lower() in text.lower() for n in provenance.maintainer() or ())

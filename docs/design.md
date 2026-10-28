@@ -135,8 +135,9 @@ from a run directory and writes its own.
   has stalled ([0039](decisions/0039-ddt-for-held-signals.md)), so a new sector of an FFI-only star may never become a
   light curve (section 8).
 - A re-vet never overwrites the cache ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt revet fetch` fetches
-  each star again and writes the merged light curve into its own run's `lc/`, so every finished run keeps the file it
-  hashed. Each sector of the earlier light curve is kept byte for byte, and a sector only the new fetch has is added.
+  each star again and writes the merged light curve into its own run's `lc/`, so a re-vet changes no file an earlier
+  run hashed. Each sector of the earlier light curve is kept byte for byte, and a sector only the new fetch has is
+  added.
   A sector both have is taken from the new fetch only when the same product comes again clean over a timing-suspect
   file (a QLP S99-S104 redelivery); a better product appearing later for an old sector is not taken.
 - Reads the public bucket `s3://stpubdata` (us-east-1) anonymously. It is free to read and download [T15][T17].
@@ -319,11 +320,13 @@ from a run directory and writes its own.
   record's files be edited for 30 days after publishing ([facts.toml](../results/predictions/facts.toml), read
   2026-10-27), so a package deposited by 2026-11-20 locks by 2026-12-20 and predicts only sectors that start then or
   later: 103312990-1's S110 and S111 are left out. A signal is judged once, on its complete new season, at the first
-  re-vet whose light curve has data the test can use in every predicted sector. A result once judged stands, and
-  every later version carries it; a signal not judged by 2027-12-31 stays untested, and a light curve fetched on or
-  after that day completes no season ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt predictions run`
-  makes a package in one production run, and `tess-hunt predictions publish` copies it to
-  `results/predictions/<run id>/`.
+  re-vet whose light curve has data the test can use in every predicted sector. The judging date, 2027-12-31, applies
+  to when that light curve was fetched, which is what the code can see, not when the re-vet runs: a light curve
+  fetched before it that covers every predicted sector is judged whenever the re-vet runs, one fetched on or after it
+  completes no season, and a season still missing a sector in a re-vet judged as of that date or later stays
+  untested. A result once judged stands, and every later version carries it
+  ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt predictions run` makes a package in one production run,
+  and `tess-hunt predictions publish` copies it to `results/predictions/<run id>/`.
 - **The DDT ask for a held signal** ([0039](decisions/0039-ddt-for-held-signals.md)): a held signal may go to it, on
   the maintainer's call each time, when 2-min data would supply its deciding evidence: the transit's shape, or a
   season no public light curve will otherwise cover. A hold on blending does not go. `tess-hunt ddt render` fills the
@@ -333,7 +336,7 @@ from a run directory and writes its own.
 - For a candidate the maintainer passes:
   - **Preregistration:** predicted transit windows with uncertainties for TESS's upcoming sectors, plus the pass/fail
     rule, deposited on Zenodo before the data exists.
-  - **Zenodo preprint and dataset** (a held signal gets none): each version is its own record with its own DOI,
+  - **Zenodo preprint and dataset** (a held signal gets no preprint): each version is its own record with its own DOI,
     under one concept DOI; 50 GB per record; a license is required [T44][T45].
   - **DDT proposal:** for 2-min cadence through the TESS DDT page (`https://tess.mit.edu/science/ddt/`).
 - **Acknowledgements and DOIs:** per section 6.
@@ -633,8 +636,8 @@ Sector 112, and what the held signals need when their data land:
   frozen ([0040](decisions/0040-predictions-for-held-signals.md), [results/predictions/](../results/predictions/)).
   Its production run follows the maintainer's DDT decision, which its `facts.toml` records with its date;
 - re-vets as versions `r2`, `r3`, ... beside each M3 record, on light curves that keep M2's sectors, with the
-  preregistered test's result beside vet-v3's own held-out result. A result once judged stands, and a signal not
-  judged by 2027-12-31 stays untested ([0041](decisions/0041-revets-as-versions.md));
+  preregistered test's result beside vet-v3's own held-out result. A result once judged stands, and a light curve
+  fetched on or after 2027-12-31 completes no season ([0041](decisions/0041-revets-as-versions.md));
 - the M3 build's deferred minors in the code M4 touched. Among them, the UTC conversions behind the windows keep to
   astropy's bundled leap-second table offline, past its expiry
   ([0024](decisions/0024-density-prior-fit-and-windows.md)).
@@ -680,12 +683,13 @@ production search.
   sample at once for that reason.
 - **Coverage gap and the QLP stall:** TESS-SPOC stops at S85, and QLP on MAST at a partial S105 with nothing for S106
   or later ([facts.toml](../results/ddt/241522065-1/facts.toml), read 2026-10-27), so FFI-only stars have no light
-  curves for S106 or later without our own photometry, which is out of scope. The six held signals with a sector ahead
-  are FFI-only in those sectors, their stars on none of the 2-min target lists read that day, and S110 to S114 are
-  their last sectors through S134 ([0039](decisions/0039-ddt-for-held-signals.md),
-  [0040](decisions/0040-predictions-for-held-signals.md)). Those sectors may never become light curves: only QLP
-  resuming, 2-min data from a DDT ask, or our own photometry after the checkpoint of 2027-02-15 (section 7) would give
-  them.
+  curves for S106 or later. Our own photometry stays out of scope unless the checkpoint of 2027-02-15 (section 7)
+  decides otherwise. The six held signals with a sector ahead are FFI-only in those sectors, their stars on none of
+  the 2-min target lists read that day, and S110 to S114 are their last sectors through S134
+  ([0039](decisions/0039-ddt-for-held-signals.md), [0040](decisions/0040-predictions-for-held-signals.md)). Those
+  sectors may never become light curves. They would if QLP resumed, if TESS-SPOC reached past S85, if a later 2-min
+  list added a star (a list can change before its sector) or a DDT ask was taken, or if the checkpoint started our
+  own photometry.
 - **30-min data:** a candidate seen mostly in 30-min data cannot be validated by TRICERATOPS alone; that is the case
   for the DDT ask.
 - **Unverified estimates:** the yield is an estimate. M2's runs replaced the sample-size and search-cost estimates
@@ -723,8 +727,9 @@ production search.
 - **QLP S99-S104 timing:** their timestamps are wrong until MAST redelivers them [L8]. An ephemeris-independent
   comparison with SPOC puts every reliable median offset within 10 minutes, the largest -6.50 min
   ([output](../results/benchmarks/qlp-timing-robust-2026-10-13.txt)). Detection tolerates minutes. vet-v3 leaves those
-  sectors out of every check and fit ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)), and M4 must not
-  predict from them until they are redelivered or corrected ([0010](decisions/0010-fetch-route-and-qlp-timing.md)).
+  sectors out of every check and fit ([0022](decisions/0022-vet-without-timing-suspect-sectors.md)). M4's predictions
+  leave them out too ([0040](decisions/0040-predictions-for-held-signals.md)), and no prediction may use them until
+  they are redelivered or corrected ([0010](decisions/0010-fetch-route-and-qlp-timing.md)).
 - **QLP dilution:** on crowded stars, QLP `sap_flux` depths in S99-S103 read 0.60 to 0.99 of SPOC's
   crowding-corrected depths ([output](../results/benchmarks/qlp-dilution-2026-10-13.txt)). For a signal seen mainly
   in QLP sectors, LEO-Vetter's radius tests can read a planet too small
@@ -796,8 +801,9 @@ production search.
   [164767175-1](../results/vetting/164767175-1/dossier.md#next-tess-looks) and
   [441010857-1](../results/vetting/441010857-1/dossier.md#next-tess-looks), and
   [277774870-1](../results/vetting/277774870-1/dossier.md#next-tess-looks) and
-  [370977908-1](../results/vetting/370977908-1/dossier.md#next-tess-looks). A passed signal there has no TESS sector
-  to preregister and no DDT ask; M4 decides its route ([0028](decisions/0028-outcomes-and-calls.md)). The DDT page
+  [370977908-1](../results/vetting/370977908-1/dossier.md#next-tess-looks). A passed signal there would have no TESS
+  sector to preregister and no DDT ask; its route is decided if one passes (section 7,
+  [0028](decisions/0028-outcomes-and-calls.md)). The DDT page
   [R2] takes a proposal "at least six weeks before the beginning of the sector", and later "up to two weeks before
   sector start ... under certain circumstances" (read for the M3 design on 2026-10-16), so each sector's normal DDT
   deadline is six weeks before its start in that file.
@@ -837,8 +843,9 @@ production search.
 - **Predictions that may stay untested:** four of the six predicted signals have training data only in the PDCSAP
   family, and TESS-SPOC's FFI light curves stop at S85, so only SPOC 2-min data can test their new season. None of the
   six stars is on the 2-min target lists read on 2026-10-27 ([facts.toml](../results/predictions/facts.toml)), and
-  only 241522065-1 has a DDT proposal, which the TESS office may not take. A season with no data the test can use by
-  2027-12-31 stays untested ([0040](decisions/0040-predictions-for-held-signals.md)).
+  only 241522065-1 has a DDT proposal, which the TESS office may not take. A season with no data the test can use in
+  a light curve fetched before 2027-12-31 stays untested ([0040](decisions/0040-predictions-for-held-signals.md),
+  [0041](decisions/0041-revets-as-versions.md)).
 - **RNAAS eligibility** is unknown until exofop-support answers.
 
 ## 9. Sources

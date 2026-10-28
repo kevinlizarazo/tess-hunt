@@ -32,7 +32,8 @@ from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import publish_run, repo_root, sha256_file, start_run
 from tess_hunt.vet import Prepared, prepare
 
-# Decision 0040's rule: a new season not judged on its complete data by this date stays untested.
+# Decision 0040's judging date, applied to the fetch (decision 0041): a light curve fetched on or after it completes no
+# season, and a season still missing a predicted sector as of it stays untested.
 JUDGED_BY = dt.date(2027, 12, 31)
 # The new season's status as decision 0040 names it; every other status is untested.
 RESULTS = {"predicted": "replicated", "missed": "missed"}
@@ -137,11 +138,13 @@ saying how the test applies to it, made before it is run on these stars.
 ## When it is judged
 
 Once for each signal, on the complete season: at the first re-vet whose light curve covers every predicted sector for
-that star with data the test can use or, failing that, on $judged_by, when whatever is untested stays untested. A
-re-vet before then may run, but reports the result as pending. A light curve fetched on or after $judged_by completes
-no season, and a result once judged stands for every later re-vet. A season runs from gap to gap, so a sector left
-out of the prediction (below) can still fall in the new season; its cadences stay in it, as vet-v3 counts them, and
-each signal's section says which.
+that star with data the test can use. A re-vet before then may run, but reports the result as pending. The judging
+date, $judged_by, applies to when a light curve was fetched, since that is what the code can see, not when the data
+went public or when the re-vet runs. A light curve fetched before it that covers every predicted sector is judged
+whenever the re-vet runs; one fetched on or after it completes no season; and a season that still lacks a predicted
+sector in a re-vet judged as of that date or later stays untested. A result once judged stands for every later
+re-vet. A season runs from gap to gap, so a sector left out of the prediction (below) can still fall in the new
+season; its cadences stay in it, as vet-v3 counts them, and each signal's section says which.
 
 ## What a result means
 
@@ -261,8 +264,9 @@ with. The signals are $signals, on TIC $tics. Each is a candidate signal, not a 
 The package was made by run $run_id at tess-hunt commit $commit, from the vetting records of run $vetting_run. Zenodo
 lets a record's files be edited for $fact_zenodo_edit_days days after publication; deposited by $deposit_by, this
 package's files lock by $lock_start, and no sector starting earlier is predicted. Each signal is judged once, on its
-complete new season; one not judged by $judged_by stays untested. The README states the test, the data that can test
-each signal, when it is judged and what a result means.
+complete new season in a light curve fetched before $judged_by; data fetched on or after that date complete no
+season, and a season that still lacks a predicted sector in a re-vet judged as of that date or later stays untested.
+The README states the test, the data that can test each signal, when it is judged and what a result means.
 
 ## Keywords
 

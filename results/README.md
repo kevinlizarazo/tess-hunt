@@ -300,17 +300,17 @@ holds, as above, from runs made from its own vetting run, and these:
   sectors fetched with problems that got no file; and `sectors`, each sector's status with both products (provenance,
   S3 key, sha256 and timing flag): `kept` (the earlier file), `added` (a sector only the new fetch has),
   `redelivered` (the same product again, clean, over a timing-suspect file) or `kept_m2` (another file found and not
-  taken).
+  taken). `sectors` is null for a star whose fetch got nothing.
 - For a signal a package under `predictions/` predicts, `prereg.json` and `provenance-prereg.json`: the preregistered
   test of its new season ([decision 0040](../docs/decisions/0040-predictions-for-held-signals.md)) and the run of
-  `tess-hunt vetting prereg` that made it. `prereg.json` gives the `result` (`replicated`, `missed`, `untested` or
-  `pending`), the season's `status` and, for an untested or pending result, its `reason`; the `predicted_sectors`, the
-  `package` and the `vetting_run`; the day it was judged as of (`as_of`), the judging date (`judged_by`) and the day
-  the light curve's revet fetch run started (`fetched`, null for the package's own light curve); and, once the season
-  is judged, the `season` and the depths and statistics the test compared. The provenance's `skipped` names each
-  signal of the vetting run it left out because an earlier version had judged it, with that version and its result.
-  A result once judged stands: every later version holds the judging version's two files byte for byte, and its
-  dossier says which version judged it.
+  `tess-hunt vetting prereg` that made it. `prereg.json` gives the `signal` (its name and TIC); the `result`
+  (`replicated`, `missed`, `untested` or `pending`), the season's `status` and, for an untested or pending result, its
+  `reason`; the `predicted_sectors`, the `package` and the `vetting_run`; the day it was judged as of (`as_of`), the
+  judging date (`judged_by`) and the day the light curve's revet fetch run started (`fetched`, null for the package's
+  own light curve); and, once the season is judged, the `season` and the depths and statistics the test compared. The
+  provenance's `skipped` names each signal of the vetting run it left out because an earlier version had judged it,
+  with that version and its result. A result once judged stands: every later version holds the judging version's two
+  files byte for byte, and its dossier says which version judged it.
 
 A version's `dossier.md` names the version in its title. A section after the call's line links the version before it
 and says what changed: the sectors added, redelivered, and kept though another product was found; the windows it
@@ -348,9 +348,9 @@ predicted, the test that will judge it, when, and what a result means, and descr
 [predictions/README.md](predictions/README.md), rendered by `predictions publish` and `tess-hunt predictions index`,
 lists the packages.
 
-- `predictions/facts.toml`: each fact the packages state about archives, target lists and the state of a DDT
-  proposal, with the page or file it was read from and the date it was read. A production run takes it only from the
-  checkout its code runs from and refuses it with uncommitted changes; each package holds a copy.
+- `predictions/facts.toml`: each fact the packages state about archives, target lists, RAVEN's citation and the state
+  of a DDT proposal, with the page or file it was read from and the date it was read. A production run takes it only
+  from the checkout its code runs from and refuses it with uncommitted changes; each package holds a copy.
 - `predictions/dois.toml`, once the maintainer writes it: each package's run id with the DOI and publication date
   Zenodo gave its deposit. Without it the index shows "DOI pending".
 
