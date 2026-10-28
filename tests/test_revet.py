@@ -197,10 +197,26 @@ def test_revet_fetch_fails_a_star_it_got_no_new_sector_for(tmp_path, monkeypatch
     assert f"TIC {tf.TIC}: no sector added or redelivered" in out and "S100" in out
 
 
-def test_revet_fetch_refuses_fetch_criteria_without_timing_rules(tmp_path, monkeypatch):
+def test_revet_fetch_names_the_sectors_a_merged_star_got_no_file_for(tmp_path, monkeypatch, capsys):
+    # S100 comes; S101, listed beside it, never does.
+    served = tf.routes() | {MAST_API + "u100": tf.QLP.read_bytes()}
+    _, argv = revet_inputs(tmp_path, monkeypatch, served)
+    table = tmp_path / "products.parquet"
+    s101 = tf.late_qlp_products(key="k/qlp101", uri="u101").assign(sector=101)
+    pd.concat([pd.read_parquet(table), s101]).to_parquet(table)
+
+    assert main(argv) == 0
+    record = json.loads((only_run(tmp_path) / "merge.json").read_text())[str(tf.TIC)]
+    assert record["lc_sha256"] is not None and record["unfetched"] == ["101"]
+    out = capsys.readouterr().out
+    assert f"TIC {tf.TIC}: merged, but sectors fetched with problems and no file: S101" in out
+
+
+@pytest.mark.parametrize("without", ["[[fetch.timing_suspect]]", "[fetch]"])
+def test_revet_fetch_refuses_fetch_criteria_without_timing_rules(tmp_path, monkeypatch, without):
     _, argv = revet_inputs(tmp_path, monkeypatch, {})
     text = SEARCH.read_text()
-    rules = text[text.index("[[fetch.timing_suspect]]") : text.index("[detrend]")]
+    rules = text[text.index(without) : text.index("[detrend]")]
     path = tmp_path / "search-no-timing-rules.toml"
     path.write_text(text.replace(rules, ""))
     argv[argv.index(str(SEARCH))] = str(path)

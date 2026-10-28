@@ -1445,8 +1445,8 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
         elif role == "prereg" and "prereg" in carries and not _carried(path, role, carries):
             judged = carries["prereg"]
             raise SystemExit(
-                f"{what} run {name} judges the signal again; {_label(judged)} judged it, and decision 0040 judges a "
-                "signal once: give --prereg the run that version holds"
+                f"{what} run {name} is not the one {_label(judged)} holds, which judged the signal; decision 0040 "
+                "judges a signal once: give --prereg the run that version holds"
             )
         if [c["sha256"] for c in made["criteria"]] != criteria:
             raise SystemExit(f"{what} run {name} ran on other criteria than {run_id}")
@@ -1633,21 +1633,24 @@ def _same_signal(files: dict[str, Path], previous: Path, predictions: Path) -> N
             f"a version of {name} carries the second list's pixel check: give --second-list, the run the previous "
             "record holds"
         )
-    # A judged result stands whatever results/predictions/ holds now.
+    # A judged result stands whatever results/predictions/ holds now: `_record_runs` and `_signal_files` already tied
+    # the run to the version that judged it, so no package check applies.
     judged = _carries(previous).get("prereg")
-    if judged is not None and "prereg.json" not in files:
-        run = json.loads((judged / "provenance-prereg.json").read_text())["run_id"]
-        raise SystemExit(
-            f"a version of {name} carries {_label(judged)}'s preregistered test, which judged it once (decision "
-            f"0040): give --prereg {run}"
-        )
+    if judged is not None:
+        if "prereg.json" not in files:
+            run = json.loads((judged / "provenance-prereg.json").read_text())["run_id"]
+            raise SystemExit(
+                f"a version of {name} carries {_label(judged)}'s preregistered test, which judged it once "
+                f"(decision 0040): give --prereg {run}"
+            )
+        return
     held = [
         p.parent
         for p in sorted(predictions.glob("*/references.json"))
         if name in json.loads(p.read_text())["signals"]
     ]
     if not held:
-        if "provenance-prereg.json" in files and judged is None:
+        if "provenance-prereg.json" in files:
             raise SystemExit(
                 f"--prereg: no package under results/predictions/ predicts {name}, so its version has no "
                 "preregistered test to report"

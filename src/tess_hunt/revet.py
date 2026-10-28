@@ -108,7 +108,7 @@ def cmd_fetch(args) -> int:
         fetch._require_finished_targets(args.targets)
     criteria = load_criteria(args.criteria)
     # Without them every fresh product reads as clean, and a suspect product delivered again as a redelivery.
-    if not criteria["fetch"].get("timing_suspect"):
+    if not criteria.values.get("fetch", {}).get("timing_suspect"):
         raise SystemExit(
             f"{args.criteria.name} has no [[fetch.timing_suspect]] rules: a re-vet takes an old sector only when a "
             "timing-suspect product is delivered again clean (decision 0041)"
@@ -142,12 +142,16 @@ def cmd_fetch(args) -> int:
     run.write_json("merge.json", stars)
     failed = [int(t) for t, r in stars.items() if r["lc_sha256"] is None]
     run.finish(stars=len(stars), failed=failed)
-    for tic in failed:
-        missed = ", ".join(f"S{s}" for s in stars[str(tic)]["unfetched"]) or "none"
-        print(
-            f"TIC {tic}: no sector added or redelivered, so no light curve; sectors fetched with problems and no "
-            f"file: {missed}"
-        )
+    for tic, star in stars.items():
+        missed = ", ".join(f"S{s}" for s in star["unfetched"]) or "none"
+        if star["lc_sha256"] is None:
+            print(
+                f"TIC {tic}: no sector added or redelivered, so no light curve; sectors fetched with problems and "
+                f"no file: {missed}"
+            )
+        elif star["unfetched"]:
+            # The merge stands, but the prediction's test may find these sectors missing.
+            print(f"TIC {tic}: merged, but sectors fetched with problems and no file: {missed}")
     print(
         f"revet fetch: {len(stars) - len(failed)} merged, {len(failed)} with nothing new -> {run.path}"
     )

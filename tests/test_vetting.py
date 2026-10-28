@@ -749,10 +749,12 @@ def test_a_plot_that_raises_is_named_and_the_vet_stands(tmp_path, monkeypatch, c
     argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
     phase = plots.phase
 
-    def breaks_on_the_control(lc, *args):
+    def breaks_on_the_control(lc, eph, modshift, path):
         if lc.tic == CONTROL["tic"]:
+            # Half a file, then the failure: what is left must not read as the plot.
+            Path(path).write_bytes(b"\x89PNG")
             raise RuntimeError("plotting failed")
-        return phase(lc, *args)
+        return phase(lc, eph, modshift, path)
 
     monkeypatch.setattr(plots, "phase", breaks_on_the_control)
     assert main(argv) == 0

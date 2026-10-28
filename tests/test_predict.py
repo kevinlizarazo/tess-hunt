@@ -161,8 +161,8 @@ def test_conversions_warn_rather_than_download_once_the_leap_second_table_expire
     tmp_path, conversion
 ):
     """astropy's bundled leap-second table expires 2027-06-28, and uv.lock fixes astropy. From 150 days before then a
-    UTC conversion would try to download a newer table; these two keep to the bundled one and warn that it is
-    stale."""
+    UTC conversion would try to download a newer table; these two keep to the bundled one, and warn once it has
+    expired."""
     done = subprocess.run(
         [sys.executable, "-c", PAST_EXPIRY, conversion, str(tmp_path)],
         capture_output=True,

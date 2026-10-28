@@ -2023,7 +2023,9 @@ def test_the_fetch_date_is_known_only_for_a_light_curve_a_finished_revet_fetch_r
     assert prereg_runs(tmp_path) == {own}
 
 
-def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path, monkeypatch):
+def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(
+    tmp_path, monkeypatch, capsys
+):
     m3, repo = published_m3(tmp_path, monkeypatch)
     lc_run = revet_run(tmp_path)
     runs = revetted(tmp_path, monkeypatch, lc_run)
@@ -2069,7 +2071,8 @@ def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path
         monkeypatch,
         revet_run(tmp_path, tag="late", started="2028-01-02T00:00:00+00:00"),
     )
-    assert main(prereg_argv(late, passing_gates(package), today.isoformat())) == 0
+    gated = passing_gates(package)
+    assert main(prereg_argv(late, gated, today.isoformat())) == 0
     [late_made] = prereg_runs(tmp_path) - {made}
     result = json.loads((late_made / "signals" / NAME / "prereg.json").read_text())
     assert result["fetched"] == "2028-01-02"
@@ -2109,12 +2112,14 @@ def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path
     pd.concat([one, one.assign(name="1-2")]).to_csv(signals, index=False)
     lc_run3 = revet_run(tmp_path, tag="r3", base=lc_run / "lc", sector=66)
     runs3 = revetted(tmp_path, monkeypatch, lc_run3)
+    capsys.readouterr()
     assert main(prereg_argv(runs3, package, today.isoformat())) == 0
     [skipping] = prereg_runs(tmp_path) - {made, late_made}
     assert [p.name for p in (skipping / "signals").iterdir()] == ["1-2"]
     made3 = json.loads((skipping / "provenance.json").read_text())
     judged_in = f"judged in results/vetting/{NAME}/r2 (untested)"
     assert made3["skipped"] == made3["summary"]["skipped"] == {NAME: judged_in}
+    assert f"{NAME}: skipped, {judged_in}" in capsys.readouterr().out.splitlines()
     assert list(made3["summary"]["signals"]) == ["1-2"]
     assert f"checks_{NAME}" not in made3["inputs"] and "checks_1-2" in made3["inputs"]
     # A run with no signal left to judge is refused.
@@ -2130,11 +2135,21 @@ def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(tmp_path
     with pytest.raises(SystemExit, match="was made from"):
         main([*version_argv(runs3, 3), "--prereg", str(late_made)])
     assert published(repo) == before
+    # Nor is the run made from r3's own vetting run, which left 1-1 out.
+    production(skipping)
+    with pytest.raises(SystemExit, match=f"run {skipping.name} is not the one r2 holds"):
+        main([*version_argv(runs3, 3), "--prereg", str(skipping)])
+    assert published(repo) == before
     # With the package gone from results/predictions/, r2's result stands all the same: still carried, still needed.
     published_package.rename(tmp_path / "unpublished")
     with pytest.raises(SystemExit, match="carries r2's preregistered test"):
         main(version_argv(runs3, 3))
     assert published(repo) == before
+    # Whatever results/predictions/ holds now: another package there predicting 1-1 changes nothing.
+    other_package = repo / "results" / "predictions" / gated.name
+    other_package.mkdir()
+    for name in ("references.json", "predictions.csv", "provenance.json"):
+        shutil.copyfile(gated / name, other_package / name)
     assert main([*version_argv(runs3, 3), "--prereg", str(made)]) == 0
     assert sha256_file(r3 / "prereg.json") == judged
     assert sha256_file(r3 / "provenance-prereg.json") == sha256_file(made / "provenance.json")
