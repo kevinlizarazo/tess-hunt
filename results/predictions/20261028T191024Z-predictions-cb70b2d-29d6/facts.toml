@@ -5,7 +5,13 @@
 value = 30
 note = "Within 30 days after publication the owner can edit the uploaded files of a record; after that only in duly justified cases, such as copyright infringement or exposure of personal data."
 source = "https://help.zenodo.org/docs/deposit/manage-files/"
-read = "2026-10-27"
+read = "2026-10-28"
+
+[zenodo_edit_publish_days]
+value = 45
+note = "An edit of a record's files, opened within zenodo_edit_days of publication, can be published until this day. Word for word: \"The draft must be published within 45 days of the original publishing of the record.\""
+source = "https://help.zenodo.org/docs/deposit/manage-files/"
+read = "2026-10-28"
 
 [tess_spoc_last_sector]
 value = 85

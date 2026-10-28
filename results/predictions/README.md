@@ -13,4 +13,4 @@ never edited: a correction is a new package.
 
 | Package | Made | Signals | DOI |
 |---|---|---|---|
-| [`20261028T162309Z-predictions-4b7423f-0aa5`](20261028T162309Z-predictions-4b7423f-0aa5/README.md) | 2026-10-28 | 103312990-1, 241522065-1, 296819076-1, 399023421-1, 423100454-1 and 438857197-1 | DOI pending |
+| [`20261028T191024Z-predictions-cb70b2d-29d6`](20261028T191024Z-predictions-cb70b2d-29d6/README.md) | 2026-10-28 | 103312990-1, 241522065-1, 296819076-1, 399023421-1, 423100454-1 and 438857197-1 | DOI pending |

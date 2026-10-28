@@ -6,10 +6,11 @@ candidate signal, not a planet. TESS looks at their stars again from Sector 110 
 their transits in the sectors from 112 to 114, which start after its files lock (below).
 
 This package fixes, before those sectors are observed, the prediction each signal's held-out season test will judge,
-and the test itself. It was made on 2026-10-28 (UTC) by one run of `tess-hunt predictions run`, 20261028T162309Z-predictions-4b7423f-0aa5, from the signals'
+and the test itself. It was made on 2026-10-28 (UTC) by one run of `tess-hunt predictions run`, 20261028T191024Z-predictions-cb70b2d-29d6, from the signals'
 published vetting records and the light curves their vetting run, 20261020T174317Z-vetting-run-61b5944-2d70, read. Every number in it comes from
 those files, from that run, from the criteria file and the sector dates file that vetting run read, and from the
-`facts.toml` beside this README; the text it quotes from a review says so where it begins.
+`facts.toml` beside this README; the text it quotes from a review says so where it begins. tess-hunt's code and this
+text were written with LLM assistance.
 
 ## What is judged
 
@@ -48,9 +49,12 @@ The new season is judged by vet-v3's `[holdout]` measurement and thresholds, rea
 
 The result for each signal is the new season's status: replicated (`predicted`), missed (`missed`), or untested
 (`underpowered`, `untestable`, `no_predicted_transit_in_data`, no light curve, or a light curve fetched on or after the
-judging date below). On the unchanged vetted light curve
-this is exactly what vet-v3's check computes for that season (tess-hunt's test `test_prediction_equals_holdout_refit`).
-Judging with the published numbers keeps the result fixed if a later re-vet's training data change.
+judging date below). On the unchanged vetted light curve this is exactly what vet-v3's check computes for that season.
+Two of tess-hunt's tests show it on a synthetic three-season light curve, each season held out in turn:
+`test_prediction_equals_holdout_refit` checks that the package's refit, training depths and the counts its two
+training gates read equal the check's, and `test_prereg_equals_holdout_on_an_unchanged_light_curve` checks that the
+test's status and measurements, and so its result, equal the check's. Judging with the published numbers keeps the
+result fixed if a later re-vet's training data change.
 
 ## Which data can test it
 
@@ -103,11 +107,12 @@ inconclusive, and a missed new season is then evidence against the signal that t
 
 ## The lock
 
-Zenodo lets a record's owner edit its files for 30 days after publishing (as read on
-2026-10-27).
-Deposited by 2026-11-20, this package's files are locked by 2026-12-20, so only sectors starting on or after
-2026-12-20 are predicted. Each earlier sector in a record's windows is left out, and its signal's section names it.
-Sector dates come from tess-hunt's `benchmarks/tess_sectors.csv` (tess.mit.edu's sector pages, read 2026-10-16).
+Zenodo lets a record's owner open an edit of its files within 30 days of publishing, and the edit
+must be published within 45 days of publishing (as read on 2026-10-28), so a record's
+files are fixed 45 days after it is published. Deposited by 2026-11-05, this package's
+files are fixed by 2026-12-20, so only sectors starting on or after 2026-12-20 are predicted. Each earlier sector in
+a record's windows is left out, and its signal's section names it. Sector dates come from tess-hunt's `benchmarks/tess_sectors.csv`
+(tess.mit.edu's sector pages, read 2026-10-16).
 
 ## 103312990-1 (TIC 103312990)
 
@@ -191,7 +196,9 @@ Predicted: 13 transits in Sector 114. Left out: none. Data that can test the new
 SPOC 2-min, TESS-SPOC or QLP.
 
 Observers' windows: 12 in Sector 114, from the density-prior fit to the PDCSAP family alone, with mid-time
-sd 1342 to 1354 min. Each window's mid-time less the refit's nearest predicted mid-time: +1081 to +1091 min.
+sd 1342 to 1354 min. Each window's mid-time less the refit's nearest predicted mid-time: +1081 to +1091 min. At 3 sigma its observers' windows reach up to 4061 min either side of their mid-times, against a refit period
+of 3283 min: at least half the period either side, so the widest spans a whole orbit and the windows cannot place a
+transit by eye. The refit's predicted mid-times in `predictions.csv` are what the test judges.
 
 ## 399023421-1 (TIC 399023421)
 
@@ -221,8 +228,9 @@ SPOC 2-min or TESS-SPOC.
 Observers' windows: 21 in Sectors 112, 113 and 114, from the density-prior fit to the PDCSAP family alone, with mid-time
 sd 30 to 31 min. Each window's mid-time less the refit's nearest predicted mid-time: -41 to -40 min.
 
-tess-hunt's adversarial review of this signal found its timing-suspect QLP transits arriving later than the observers'
-windows predict. The review's finding F9, quoted word for word: "The timing-suspect QLP sectors S99 to S102 show the transit at a consistent, diluted depth, but about 30 to 50 minutes later than the density-prior ephemeris predicts there, so the S112 to S114 windows may run early by about one of their standard deviations." The refit leaves those QLP sectors out,
+tess-hunt's adversarial review of this signal was written by an AI model, claude-opus-5-5, on 2026-10-21, updated 2026-10-22. It found
+the signal's timing-suspect QLP transits arriving later than the observers' windows predict.
+The review's finding F9, quoted word for word: "The timing-suspect QLP sectors S99 to S102 show the transit at a consistent, diluted depth, but about 30 to 50 minutes later than the density-prior ephemeris predicts there, so the S112 to S114 windows may run early by about one of their standard deviations." The refit leaves those QLP sectors out,
 as every check does. It stands as published: if the new season's transits arrive late against its cores, the season
 can be missed, and a miss on drift counts as a miss.
 
@@ -287,13 +295,13 @@ sd 11 min. Each window's mid-time less the refit's nearest predicted mid-time: -
 
 ## Provenance
 
-- Code: tess-hunt commit 4b7423f3381b1ae4a2f162f23dad342146d1285f.
+- Code: tess-hunt commit cb70b2dc610969c7f5a3f3f7699ac9ddf0d59a33.
 - Criteria: `criteria/search-v2.toml` sha256 16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d; `criteria/vet-v3.toml` sha256 9b01a9067e0728ddc2eaded3e7cb2b4de98e4fb15c3353a5413706979ec1aec4.
-- The vetting run the records come from: 20261020T174317Z-vetting-run-61b5944-2d70. This package's run: 20261028T162309Z-predictions-4b7423f-0aa5; its `provenance.json` is here.
+- The vetting run the records come from: 20261020T174317Z-vetting-run-61b5944-2d70. This package's run: 20261028T191024Z-predictions-cb70b2d-29d6; its `provenance.json` is here.
 - The catalog snapshot that vetting run read, 2026-10-17T142814Z: `known.parquet` sha256 8a87504a96e483e921aeb8fba567538e77c9b3acb66944d7121fc284c40495ed, `manifest.json` sha256
   f722fdd58328b01eabfc8e4fbc1fc576a3de934f0b97e836087086a577a6ba5d.
 - Sector dates: `benchmarks/tess_sectors.csv`, sha256 2055f8a42c38bea916a78a58af778126b8d844386fe2217fa466589a5ae88092.
-- Facts about archives and the DDT proposal: `facts.toml`, sha256 0dff75d2a7c6908b2e47b58b325d4f777a063a16a25cd88c8baafca76dc31769.
+- Facts about archives and the DDT proposal: `facts.toml`, sha256 2705feda600502a0f75d4f23ae1fc6b53a7b9fbae33defcb082c78781c63b7e5.
 
 Each signal's published record, `results/vetting/<signal>/` in the tess-hunt repository, and the light curve its
 vetting run read:
@@ -325,4 +333,4 @@ vetting run read:
 
 CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). The package holds no Gaia data. It is derived from TESS
 light curves (SPOC, TESS-SPOC and QLP, from MAST) and the TESS Input Catalog. The facts in `facts.toml` come from:
-https://help.zenodo.org/docs/deposit/manage-files/ (read 2026-10-27); https://archive.stsci.edu/hlsp/tess-spoc (read 2026-10-27); https://archive.stsci.edu/hlsps/qlp/ (read 2026-10-27); https://tess.mit.edu/public/target_lists/target_lists.html (read 2026-10-27); results/ddt/241522065-1/proposal.md (read 2026-10-28); https://zenodo.org/records/19661443 (read 2026-10-27).
+https://help.zenodo.org/docs/deposit/manage-files/ (read 2026-10-28); https://archive.stsci.edu/hlsp/tess-spoc (read 2026-10-27); https://archive.stsci.edu/hlsps/qlp/ (read 2026-10-27); https://tess.mit.edu/public/target_lists/target_lists.html (read 2026-10-27); results/ddt/241522065-1/proposal.md (read 2026-10-28); https://zenodo.org/records/19661443 (read 2026-10-27).
