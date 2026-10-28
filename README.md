@@ -2,7 +2,8 @@
 
 An independent search for transiting planets in public NASA TESS light curves.
 
-**Status:** under construction. No signal this project reports is a confirmed planet; every one is a candidate until
+**Status:** the search, triage and vetting (milestones 1 to 3) are published; milestone 4, predictions for the held
+signals, is in progress. No signal this project reports is a confirmed planet; every one is a candidate until
 other observers confirm it. The known planets under `results/benchmarks/` are positive controls from the TOI catalog.
 
 M2 searched the whole sample. `targets` builds it from the TIC with a Gaia DR3 dwarf cut, `fetch` reads the light
