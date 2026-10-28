@@ -298,30 +298,56 @@ def test_package_fails_on_a_missing_value(tmp_path):
 
 
 def test_a_family_without_cadences_in_the_cores_shows_none(tmp_path):
-    prediction = predicted(planet(qlp=MIXED_QLP), write_record(tmp_path / NAME))
+    record = write_record(tmp_path / NAME)
+
+    def readme(prediction: dict) -> str:
+        signals = {NAME: prediction}
+        text = prereg.readme(
+            made(signals), signals, {NAME: record}, VET3.values, facts(), TESS_SECTORS
+        )
+        return " ".join(text.split())
+
+    said = (
+        """its signal's section shows "none" for that family's depth and error, and that family cannot test the new """
+        "season."
+    )
+    # Every family has cadences in the cores: no table shows "none", and the README doesn't explain it.
+    assert said not in readme(predicted(planet(), record))
+    prediction = predicted(planet(qlp=MIXED_QLP), record)
     prediction["reference"]["families"]["qlp"].update(
         ref=float("nan"), ref_err=float("nan"), ref_n=0
+    )
+    cfg = VET3["holdout"]
+    prediction["testable_with"] = prereg.testable_products(
+        prediction["reference"], VET3["families"], cfg["min_points"]
     )
     table = prereg._references_table(prediction)
     qlp = prediction["reference"]["families"]["qlp"]["training_cadences"]
     assert f"| QLP | 15, 16, 28 and 29 | none | none | 0 | {qlp} |" in table
-    # The README says what a family showing none means.
-    assert (
-        """shows "none" for that family's depth and error, and that family cannot test"""
-        in " ".join(prereg.README.template.split())
-    )
+    # A table shows "none": the README says what it means.
+    assert f"| QLP | 15, 16, 28 and 29 | none | none | 0 | {qlp} |" in readme(prediction)
+    assert said in readme(prediction)
+
+
+DDT = tomllib.loads(FACTS.read_text())["ddt_241522065"]
 
 
 @pytest.mark.parametrize(
-    ("state", "read"),
+    ("state", "read", "said"),
     [
-        tuple(tomllib.loads(FACTS.read_text())["ddt_241522065"][k] for k in ("value", "read")),
+        # The state names the day it was recorded, so the sentence gives that day once.
+        (DDT["value"], DDT["read"], f"{DDT['value']}."),
         # Recorded on a later day than every other fact: each sentence names its own facts' read dates.
-        ("sent to the TESS DDT program on 2026-11-08", "2026-11-08"),
-        ("not sent", "2026-11-09"),
+        (
+            "sent to the TESS DDT program on 2026-11-08",
+            "2026-11-08",
+            "sent to the TESS DDT program on 2026-11-08.",
+        ),
+        # A state without a date names the day it was recorded.
+        ("not sent", "2026-11-09", "not sent (as of 2026-11-09)."),
     ],
 )
-def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state, read):
+def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state, read, said):
     record = write_record(tmp_path / NAME)
     signals = {NAME: predicted(planet(), record)}
     stated = facts() | {
@@ -334,10 +360,11 @@ def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state, read):
     )
     # The state ends a sentence, whatever it is.
     assert (
-        f"For {NAME}, a Director's Discretionary Time (DDT) proposal asking for 2-min data on its star was {state} "
-        f"(recorded in `facts.toml` on {read}). The proposal is in tess-hunt's repository under `results/ddt/{NAME}/`. "
-        "A sent proposal is a request, which the TESS office may or may not grant." in text
+        f"For {NAME}, a Director's Discretionary Time (DDT) proposal asking for 2-min data on its star was {said} "
+        f"The proposal is in tess-hunt's repository under `results/ddt/{NAME}/`. A sent proposal is a request, which "
+        "the TESS office may or may not grant." in text
     )
+    assert (f"(as of {read})" in text) == (read not in state)
     assert "no 2-min data are in sight" not in text
     # The other facts keep their own dates.
     archives = facts()["tess_spoc_last_sector"]["read"]
@@ -422,13 +449,15 @@ def test_deposit_by_is_the_lock_less_zenodo_s_publish_limit(tmp_path):
     with pytest.raises(KeyError, match="zenodo_edit_publish_days"):
         readme(partial)
     with pytest.raises(KeyError, match="zenodo_edit_publish_days"):
-        prereg.zenodo(made(signals), signals, partial)
+        prereg.zenodo(made(signals), signals, partial, VET3["depth"]["core_fraction"])
 
 
 def test_zenodo_says_an_ai_model_wrote_the_review_the_readme_quotes(tmp_path):
     prediction = predicted(planet(), write_record(tmp_path / NAME))
     both = {NAME: prediction, "399023421-1": {**prediction, "tic": 399023421}}
-    text = " ".join(prereg.zenodo(made(both), both, facts()).split())
+    text = " ".join(
+        prereg.zenodo(made(both), both, facts(), VET3["depth"]["core_fraction"]).split()
+    )
     assert (
         "tess-hunt's code and this dataset's text were written with LLM assistance, and the adversarial review of "
         "399023421-1 that the README quotes was written by an AI model." in text
@@ -617,8 +646,11 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch, capsys):
     assert all("\n" not in p for p in description.split("\n\n"))
     flat, zflat = " ".join(readme.split()), " ".join(description.split())
     # The lock date holds only for a deposit made in time, and the README and the description say so.
-    assert "Deposited by 2026-11-05, this package's files are fixed by 2026-12-20" in flat
-    assert "Deposited by 2026-11-05, this dataset's files are fixed by 2026-12-20" in zflat
+    assert "This package was deposited by 2026-11-05, so its files are fixed by 2026-12-20" in flat
+    assert "This dataset was deposited by 2026-11-05, so its files are fixed by 2026-12-20" in zflat
+    # The core's share of each transit comes from the run's references.json.
+    assert "the central 50% of each predicted transit in the new sectors" in zflat
+    assert "neither passed nor rejected them" in zflat
     # The code and text were written with LLM assistance; this package quotes no review.
     assert "tess-hunt's code and this text were written with LLM assistance." in flat
     assert "tess-hunt's code and this dataset's text were written with LLM assistance." in zflat
@@ -636,23 +668,24 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch, capsys):
     # a re-vet runs; the deposited text states that rule.
     assert (
         "Each signal is judged once, at the first re-vet whose light curve covers every predicted sector with data "
-        "the test can use. Until then, a re-vet reports the result as pending." in flat
-    )
-    assert (
-        "The judging date is 2027-12-31. It applies to when a re-vet's light curve was downloaded, a date tess-hunt "
-        "records, not to when the data became public or when the re-vet runs." in flat
-    )
-    assert (
-        "A complete light curve fetched before that date is judged whenever the re-vet runs."
+        "the test can use. Until then, and only before the judging date, a re-vet reports the result as pending."
         in flat
     )
     assert (
-        "A light curve fetched on or after it does not count, and a season still incomplete on the judging date "
-        "stays untested. A judged result stands for every later re-vet." in flat
+        "The judging date is 2027-12-31. It applies to the date a re-vet's light curve was downloaded, which "
+        "tess-hunt records, not to when the data became public or when the re-vet runs." in flat
+    )
+    assert (
+        "A complete light curve downloaded before that date is judged whenever the re-vet runs."
+        in flat
+    )
+    assert (
+        "One downloaded on or after it does not count, and a season still incomplete on the judging date stays "
+        "untested. A judged result stands for every later re-vet." in flat
     )
     assert (
         "Each signal is judged once, on the first light curve that covers all its predicted sectors with data the "
-        "test can use. Light curves fetched on or after 2027-12-31 do not count." in zflat
+        "test can use. Light curves downloaded on or after 2027-12-31 do not count." in zflat
     )
     assert "failing that" not in flat and "not judged by" not in zflat
     for text in (readme, form):
