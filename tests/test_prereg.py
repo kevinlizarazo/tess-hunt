@@ -3,6 +3,7 @@ import json
 import math
 import re
 import shutil
+import subprocess
 import tomllib
 from dataclasses import asdict
 from pathlib import Path
@@ -46,10 +47,10 @@ def known() -> pd.DataFrame:
     return pd.DataFrame([{**base, **row}])[KNOWN_COLUMNS]
 
 
-def planet(qlp=(), seed=5):
+def planet(qlp=(), seed=5, sectors=SECTORS):
     signal = (EPH.period, EPH.t0, EPH.duration, EPH.depth)
-    lc = make_lc(sectors=SECTORS, noise_ppm=300.0, signals=[signal], seed=seed)
-    return with_products(lc, {s: "QLP" if s in qlp else "SPOC" for s in SECTORS})
+    lc = make_lc(sectors=sectors, noise_ppm=300.0, signals=[signal], seed=seed)
+    return with_products(lc, {s: "QLP" if s in qlp else "SPOC" for s in sectors})
 
 
 def windows(sectors=(110, 111, 112, 113)) -> list[dict]:
@@ -192,7 +193,19 @@ def test_observer_windows_equal_the_records():
 
 
 def facts() -> dict:
-    return tomllib.loads(FACTS.read_text())
+    """The committed facts, with the fixture's star among those on no 2-min list."""
+    found = tomllib.loads(FACTS.read_text())
+    found["off_two_minute_lists"]["value"].append(STAR["tic"])
+    return found
+
+
+def test_refuses_a_new_season_that_would_merge_with_the_vetted_ones(tmp_path):
+    # Synthetic S109 ends about 33 days before the record's first window sector, S110, starts: holdout would label
+    # them one season.
+    with pytest.raises(ValueError, match=r"starts 33\.\d days after its last vetted cadence"):
+        predicted(planet(sectors=(*SECTORS, 109)), write_record(tmp_path / NAME))
+    # Far enough from the window sectors, the same record is predicted.
+    assert predicted(planet(), tmp_path / NAME)["transits"]
 
 
 def made(signals: dict) -> dict:
@@ -225,6 +238,27 @@ def test_package_fails_on_a_missing_value(tmp_path):
     text = prereg.readme(made(signals), signals, {NAME: good}, VET3.values, facts(), TESS_SECTORS)
     assert "$" not in text and "None" not in text
     assert not re.search(r"\b(nan|null|missing)\b", text, re.IGNORECASE)
+    # The 2-min lists as facts.toml read them, and no DDT proposal beside the record.
+    words = " ".join(text.split())
+    assert f"none of the 1 stars is on {facts()['two_minute_lists']['value']}," in words
+    assert "No DDT proposal asks for 2-min data on any of them" in words
+
+    # A star facts.toml does not give as on no 2-min list raises rather than being said to be on none.
+    with pytest.raises(ValueError, match="TIC 1 as on none of the 2-min lists"):
+        prereg.readme(
+            made(signals),
+            signals,
+            {NAME: good},
+            VET3.values,
+            tomllib.loads(FACTS.read_text()),
+            TESS_SECTORS,
+        )
+
+    # A sector with no read date in the sectors file would render "nan".
+    undated = TESS_SECTORS.copy()
+    undated.loc[undated["sector"] == 112, "read_on"] = float("nan")
+    with pytest.raises(KeyError, match="sectors_read"):
+        prereg.readme(made(signals), signals, {NAME: good}, VET3.values, facts(), undated)
 
     # A null in the record, or a NaN, is no value: the README never shows "missing", "nan" or "None".
     for key, value in (("period", None), ("t0", float("nan"))):
@@ -259,6 +293,31 @@ def test_package_fails_on_a_missing_value(tmp_path):
         prereg.note("399023421-1", prereg.record_values(no_raven) | prereg.fact_values(facts()))
 
 
+def test_a_family_without_cadences_in_the_cores_shows_none(tmp_path):
+    prediction = predicted(planet(qlp=MIXED_QLP), write_record(tmp_path / NAME))
+    prediction["reference"]["families"]["qlp"].update(
+        ref=float("nan"), ref_err=float("nan"), ref_n=0
+    )
+    table = prereg._references_table(prediction)
+    qlp = prediction["reference"]["families"]["qlp"]["training_cadences"]
+    assert f"| QLP | 15, 16, 28 and 29 | none | none | 0 | {qlp} |" in table
+    # The README says what a family showing none means.
+    assert "shows none for its depth and error" in prereg.README.template
+
+
+def test_the_readme_names_a_ddt_proposal_as_a_request(tmp_path):
+    record = write_record(tmp_path / "results" / "vetting" / NAME)
+    signals = {NAME: predicted(planet(), record)}
+    (tmp_path / "results" / "ddt" / NAME).mkdir(parents=True)
+    (tmp_path / "results" / "ddt" / NAME / "proposal.md").write_text("# A proposal\n")
+    text = prereg.readme(made(signals), signals, {NAME: record}, VET3.values, facts(), TESS_SECTORS)
+    assert (
+        f"For {NAME} tess-hunt has written a DDT proposal asking for 2-min data (`results/ddt/<signal>/` in its "
+        "repository): a request, which the TESS office may or may not take."
+        in " ".join(text.split())
+    )
+
+
 def test_399023421_section_quotes_the_review_and_cites_raven():
     review = json.loads((RECORD_399 / "review.json").read_text())
     claims = {f["id"]: f["claim"] for f in review["findings"]}
@@ -284,13 +343,17 @@ def vetting_run(tmp_path, monkeypatch, production=True) -> tuple[list[str], Path
     (repo / "benchmarks").mkdir(parents=True)
     shutil.copy(ROOT / VET3["predict"]["sectors_file"], repo / "benchmarks")
     (repo / "results" / "predictions").mkdir(parents=True)
-    shutil.copy(FACTS, repo / "results" / "predictions")
+    # The committed facts, with star 1 among the stars on no 2-min list.
+    listed = FACTS.read_text().replace("value = [103312990", "value = [1, 103312990")
+    assert listed != FACTS.read_text()
+    (repo / prereg.FACTS).write_text(listed)
     monkeypatch.setattr(prereg, "repo_root", lambda: repo)
     monkeypatch.setattr(predict, "repo_root", lambda: repo)
-    # A production run needs a clean tree; this test's checkout may not be one.
+    # A production run needs a clean tree and committed facts; this test's repo is no git checkout.
     monkeypatch.setattr(
         provenance, "git_state", lambda root: {"commit": "abc1234" + "0" * 33, "dirty_paths": []}
     )
+    monkeypatch.setattr(prereg, "_uncommitted", lambda path: False)
     lc_file = data / "lc" / "1.npz"
     planet().save(lc_file)
     snap = tmp_path / "snap"
@@ -334,7 +397,6 @@ def vetting_run(tmp_path, monkeypatch, production=True) -> tuple[list[str], Path
         *("--records", NAME),
         *("--catalogs", str(snap)),
         *("--lock-start", "2026-12-20"),
-        *("--facts", str(repo / "results" / "predictions" / "facts.toml")),
         *("--criteria-search", str(SEARCH.path)),
         *("--criteria-vet", str(VET3.path)),
     ]
@@ -379,9 +441,14 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch):
     readme = (run / "README.md").read_text()
     assert made["run_id"] in readme and VET_RUN in readme and VET3.sha256 in readme
     assert sha256_file(lc) in readme and sha256_file(record / "checks.json") in readme
-    assert (run / "facts.toml").read_bytes() == FACTS.read_bytes()
+    assert (run / "facts.toml").read_bytes() == (repo / prereg.FACTS).read_bytes()
+    assert made["inputs"]["facts"]["sha256"] == sha256_file(repo / prereg.FACTS)
     zenodo = (run / "zenodo.md").read_text()
     assert "CC BY 4.0" in zenodo and made["run_id"] in zenodo
+    # The lock date holds only for a deposit made in time, and the Zenodo text says so.
+    assert "deposited by 2026-11-20, this package's files lock by 2026-12-20" in " ".join(
+        zenodo.split()
+    )
     for text in (readme, zenodo):
         assert "$" not in text and provenance.scrub(text) == text
         assert not any(n.lower() in text.lower() for n in provenance.maintainer() or ())
@@ -404,6 +471,39 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch):
     assert "[10.5281/zenodo.1](https://doi.org/10.5281/zenodo.1), published 2026-11-20" in index
     with pytest.raises(SystemExit, match="exists"):
         main(["predictions", "publish", "--run", made["run_id"]])
+
+
+def test_a_production_run_states_only_the_committed_facts(tmp_path, monkeypatch):
+    argv, repo = vetting_run(tmp_path, monkeypatch)
+    elsewhere = tmp_path / "facts.toml"
+    shutil.copy(repo / prereg.FACTS, elsewhere)
+    with pytest.raises(
+        SystemExit, match=f"states {prereg.FACTS} from this checkout, not {elsewhere}"
+    ):
+        main([*argv, "--facts", str(elsewhere), "--production"])
+    monkeypatch.setattr(prereg, "_uncommitted", lambda path: path == repo / prereg.FACTS)
+    with pytest.raises(SystemExit, match="has changes that are not committed"):
+        main([*argv, "--production"])
+    assert not runs(tmp_path)
+    # Outside production another facts file may be tried.
+    assert main([*argv, "--facts", str(elsewhere)]) == 0
+
+
+def test_uncommitted_sees_an_edit_to_a_tracked_file(tmp_path):
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-b", "main")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    path = tmp_path / "facts.toml"
+    path.write_text("[a]\nvalue = 1\n")
+    assert prereg._uncommitted(path)
+    git("add", "facts.toml")
+    git("commit", "-m", "facts")
+    assert not prereg._uncommitted(path)
+    path.write_text("[a]\nvalue = 2\n")
+    assert prereg._uncommitted(path)
 
 
 def test_publish_refuses_a_run_that_was_not_production(tmp_path, monkeypatch):
