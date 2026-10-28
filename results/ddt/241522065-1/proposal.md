@@ -4,12 +4,12 @@
 
 ## DDT Justification
 
-We ask for 2-minute cadence on TIC 241522065 (HIP 67102) in Sectors 112, 113 and 114. Our vetting holds back its planet candidate only
+I ask for 2-minute cadence on TIC 241522065 (HIP 67102) in Sectors 112, 113 and 114. My vetting holds back its planet candidate only
 because the held-out season test needs another TESS season, which these sectors would give. tess-point places the
 star in no later sector through Sector 134, and as of 2026-10-27 it is on none of
 the final 2-min and 20-s target lists for Sector 110 or the Guest Investigator priority lists for Sectors 111 to 114. Its fetched light curves are full-frame-image products (QLP and TESS-SPOC), and MAST holds QLP's only through a
 partial Sector 105 and TESS-SPOC's only through Sector 85, so without
-2-minute data these sectors may never give a testable light curve. We found the candidate in our own search on
+2-minute data these sectors may never give a testable light curve. I found the candidate in my own search on
 2026-10-14, so could not have proposed it in an earlier Guest Investigator call, and it cannot wait for a later
 one: Sector 112 starts on 2026-12-22.
 
@@ -20,7 +20,7 @@ Neptune in size, on a 17.4-day orbit around a bright star (Tmag 8.34, 6260 K, 1.
 Stassun et al. 2019). A host this bright suits follow-up by high-resolution imaging and precise radial velocities.
 
 A transit fit with the TIC density as a prior gives period 17.436716 d (sd 8.4 s), mid-time BTJD 2340.4325 (sd
-4.5 min) and duration 4.03 h; the search's depth is 505 ppm. Of our 9 vetting checks,
+4.5 min) and duration 4.03 h; the search's depth is 505 ppm. Of my 9 vetting checks,
 7 pass and the check against known objects and the held-out season test are inconclusive, the first only because the signal matches a SPOC
 threshold-crossing event from Sector 38 that never became a TOI (Martinho and Valizadegan 2025). TRICERATOPS
 (Giacalone et al. 2021) passes it as a likely planet, with a mean false-positive probability of 0.0215, 0.000148 of it
@@ -37,7 +37,7 @@ The test compares depths only between light curves of one kind, and the predicti
 TESS-SPOC's PDCSAP light curves, so only PDCSAP data, from TESS-SPOC or SPOC's 2-minute pipeline (Jenkins et
 al. 2016), can test it; a season holding any QLP sector cannot be tested, hence the whole season. A QLP redelivery of
 the old sectors could lift the hold without testing a new prediction. 2-minute data would also give the transit's
-shape at 2-minute cadence, and the cadence our rule after Giacalone et al. (2021) requires, with a contrast curve, for
+shape at 2-minute cadence, and the cadence my rule after Giacalone et al. (2021) requires, with a contrast curve, for
 a "validated planet". SPOC's 2-minute light curves of Sectors 105 to 107 reached MAST
 24 to 38 days after each sector ended.
 

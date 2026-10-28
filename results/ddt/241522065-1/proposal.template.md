@@ -4,12 +4,12 @@
 
 ## DDT Justification
 
-We ask for 2-minute cadence on TIC $tic ($hip) in Sectors $sectors. Our vetting holds back its planet candidate only
+I ask for 2-minute cadence on TIC $tic ($hip) in Sectors $sectors. My vetting holds back its planet candidate only
 because the held-out season test needs another TESS season, which these sectors would give. tess-point places the
 star in no later sector through Sector $fact_last_sector_checked, and as of $facts_read it is on none of
 $not_on_lists. Its fetched light curves are full-frame-image products ($products), and MAST holds QLP's only through a
 partial Sector $fact_qlp_last_sector and TESS-SPOC's only through Sector $fact_tess_spoc_last_sector, so without
-2-minute data these sectors may never give a testable light curve. We found the candidate in our own search on
+2-minute data these sectors may never give a testable light curve. I found the candidate in my own search on
 $search_date, so could not have proposed it in an earlier Guest Investigator call, and it cannot wait for a later
 one: Sector $first_sector starts on $first_start.
 
@@ -20,7 +20,7 @@ Neptune in size, on a $period_short-day orbit around a bright star (Tmag $tmag, 
 Stassun et al. 2019). A host this bright suits follow-up by high-resolution imaging and precise radial velocities.
 
 A transit fit with the TIC density as a prior gives period $period d (sd $period_sd_s s), mid-time BTJD $t0 (sd
-$t0_sd_min min) and duration $duration_h h; the search's depth is $depth_ppm ppm. Of our $n_checks vetting checks,
+$t0_sd_min min) and duration $duration_h h; the search's depth is $depth_ppm ppm. Of my $n_checks vetting checks,
 $n_passed pass and $inconclusive are inconclusive, the first only because the signal matches a SPOC
 threshold-crossing event from Sector $tce_sectors that never became a TOI (Martinho and Valizadegan 2025). TRICERATOPS
 (Giacalone et al. 2021) $tric_pass it as a likely planet, with a mean false-positive probability of $fpp, $nfpp of it
@@ -37,7 +37,7 @@ The test compares depths only between light curves of one kind, and the predicti
 $vetted_products's PDCSAP light curves, so only PDCSAP data, from TESS-SPOC or SPOC's 2-minute pipeline (Jenkins et
 al. 2016), can test it; a season holding any QLP sector cannot be tested, hence the whole season. A QLP redelivery of
 the old sectors could lift the hold without testing a new prediction. 2-minute data would also give the transit's
-shape at 2-minute cadence, and the cadence our rule after Giacalone et al. (2021) requires, with a contrast curve, for
+shape at 2-minute cadence, and the cadence my rule after Giacalone et al. (2021) requires, with a contrast curve, for
 a "validated planet". SPOC's 2-minute light curves of Sectors $fact_spoc_2min_latency_sectors reached MAST
 $fact_spoc_2min_latency_days days after each sector ended.
 
