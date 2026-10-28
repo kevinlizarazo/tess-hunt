@@ -1,62 +1,57 @@
-# 2-minute cadence in Sectors 112, 113 and 114 for a held planet candidate on TIC 241522065
+# 2-minute cadence in Sectors 112, 113 and 114 to test a planet candidate on TIC 241522065
 
 [proposer name] ([institution] | [contact email])
 
 ## DDT Justification
 
-We ask for 2-minute cadence on one star, TIC 241522065 (HIP 67102, HD 119555, TYC 8663-626-1, 2MASS J13451278-5318310), in Sectors 112, 113 and 114. Its planet candidate, 241522065-1, is
-held for one reason: the held-out season test needs another TESS season, and these sectors would be it. tess-point
-places the star in no later sector through Sector 134. Every sector fetched so far gave only
-full-frame-image light curves (QLP at 600 and 200 s; TESS-SPOC at 600 and 200 s), and as of 2026-10-27 MAST holds QLP light curves only through a
-partial Sector 105 and TESS-SPOC's only through Sector 85. Without 2-minute
-data these sectors may never become a light curve that can test the candidate.
-
-The candidate came out of our own search (run 20261014T205855Z-search-fe29585-cdf2, 2026-10-14 UTC) and was held on 2026-10-22,
-so we could not have proposed it in an earlier Guest Investigator call. Nor can it wait for a later call: Sector
-112 starts on 2026-12-22, Sector 114 ends on 2027-03-14, and after them, through Sector
-134, there is no TESS look at this star to ask for.
+We ask for 2-minute cadence on TIC 241522065 (HIP 67102) in Sectors 112, 113 and 114. Our vetting holds back its planet candidate only
+because the held-out season test needs another TESS season, which these sectors would give. tess-point places the
+star in no later sector through Sector 134, and as of 2026-10-27 it is on none of
+the final 2-min and 20-s target lists for Sector 110 or the Guest Investigator priority lists for Sectors 111 to 114. Its fetched light curves are full-frame-image products (QLP and TESS-SPOC), and MAST holds QLP's only through a
+partial Sector 105 and TESS-SPOC's only through Sector 85, so without
+2-minute data these sectors may never give a testable light curve. We found the candidate in our own search on
+2026-10-14, so could not have proposed it in an earlier Guest Investigator call, and it cannot wait for a later
+one: Sector 112 starts on 2026-12-22.
 
 ## Scientific Justification
 
-TIC 241522065 has Tmag 8.34, Teff 6260 K and a radius of 1.30 solar radii (TIC). The search found a 505 ppm
-dip. A transit fit with the TIC density as a prior gives period 17.436716 d (sd 9.7e-05 d), t0 BTJD 2340.4325 (sd 0.0031
-d), duration 4.03 h and a radius of 3.11 Earth radii (16th to 84th percentile 3.00 to 3.22). Of the
-9 checks in our vetting criteria, vet-v3, 7 pass and novelty and holdout are inconclusive. Novelty is
-inconclusive only because the signal matches ExoMiner vetting_catalog_FFI 241522065-1-S38, a SPOC TCE that never became a TOI; holdout is the test below.
-TRICERATOPS (Giacalone et al. 2021) gives mean FPP 0.0215 and NFPP 0.000148 over 10 runs; its outcome is
-pass, where a pass ("likely planet") needs them below 0.5 and 0.001. An
-adversarial review (2026-10-21) left no confirmed kill or hold among its 7 findings.
+If real, it is a planet of 3.11 Earth radii (3.00 to 3.22, 16th to 84th percentile), between Earth and
+Neptune in size, on a 17.4-day orbit around a bright star (Tmag 8.34, 6260 K, 1.30 solar radii;
+Stassun et al. 2019). A host this bright allows the imaging and radial velocities that would confirm it, once its
+ephemeris is tested.
 
-The held-out season test refits the ephemeris without one season and asks whether that season's transits appear
-where and as deep as the refit predicts. QLP's Sectors 99 to 104 carry suspect timestamps and have not
-been redelivered, so the star's Sectors 99, 101 and 102 are left out. That leaves 2 seasons, 2021 and 2023.
-Held out in turn, each has 1 training season where the test needs 2, so
-0 of them could be tested and the check is inconclusive. A season in Sectors 112, 113 and 114 would give each season
-2 others to train on.
+A transit fit with the TIC density as a prior gives period 17.436716 d (sd 8.4 s), mid-time BTJD 2340.4325 (sd
+4.5 min) and duration 4.03 h; the search's depth is 505 ppm. Of our 9 vetting checks,
+7 pass and the check against known objects and the held-out season test are inconclusive, the first only because the signal matches a SPOC
+threshold-crossing event from Sector 38 that never became a TOI (Martinho & Valizadegan 2025). TRICERATOPS
+(Giacalone et al. 2021) passes it as a likely planet, with a mean false-positive probability of 0.0215, 0.000148 of it
+from nearby stars (bars 0.5 and 0.001). An adversarial review by an AI model (claude-opus-5-5,
+2026-10-21) rated all 7 of its findings as notes, none arguing to reject or hold it.
 
-The new season can test the prediction only in the product family its training seasons are in, since the test
-compares depths within a family: here PDCSAP, from TESS-SPOC's full-frame light curves (stopped, above) or SPOC's
-2-minute ones. We ask for the whole season because one mixing a QLP sector with 2-minute ones would be untestable:
-QLP has no training data for this star. A QLP redelivery of the old sectors could lift the hold, but would test no
-prediction made before its data.
+The held-out season test refits the ephemeris without one season and asks whether that season's transits come where,
+and as deep as, predicted. With the star's Sectors 99, 101 and 102 left out for suspect QLP timestamps (not
+redelivered for Sectors 99 to 104), each of its 2 seasons, 2021 and 2023, has
+1 training season where the test needs 2, so it could test none. A season in
+Sectors 112, 113 and 114 would give each season 2 to train on.
 
-2-minute data would also give a light curve within 24 to 38 days of each sector's end, SPOC's
-recent latency; the transit's shape at 2-minute cadence; and one condition of our rule, after Giacalone et al.
-(2021), for TRICERATOPS's "validated planet" label. The others include a contrast curve from high-resolution imaging,
-which would also test a Hipparcos-Gaia acceleration the review notes (its finding F3).
+The test compares depths only between light curves of one kind, and the prediction's reference depths are from
+TESS-SPOC's PDCSAP light curves, so only PDCSAP data, from TESS-SPOC or SPOC's 2-minute pipeline (Jenkins et
+al. 2016), can test it; a season holding any QLP sector cannot be tested, hence the whole season. A QLP redelivery of
+the old sectors could lift the hold without testing a new prediction. 2-minute data would also give a light curve
+within 24 to 38 days of each sector's end, the transit's shape at 2-minute cadence, and the
+cadence our rule after Giacalone et al. (2021) requires, with a contrast curve, for a "validated planet".
 
-The star may hold a second candidate. Quoted word for word from the review's finding F6: "The star carries a second periodic dip at 5.581 d, found by the search (rank 2) and published by eumemic, at a period ratio of 3.124 that is no harmonic and no eclipsing-binary pair; if both are on the target this is a two-candidate system, which by itself lowers the false-positive odds."
-
-Before Sector 112 starts we will deposit publicly the prediction the test will judge, refit on the
-2021 and 2023 seasons alone, so the new season tests a prediction fixed before its data exist.
+The search also found a shallower dip (127 ppm against 505). Quoted word for word from the
+review: "The star carries a second periodic dip at 5.581 d, found by the search (rank 2) and published by eumemic, at a period ratio of 3.124 that is no harmonic and no eclipsing-binary pair; if both are on the target this is a two-candidate system, which by itself lowers the false-positive odds." The finding's evidence gives eumemic's "MES 8.9", in "tier C (MES < 10)", and
+ends: "Whether the 5.58 d dip is on the target was not tested here."
 
 ## Target Justification and Feasibility
 
-One target, TIC 241522065, Tmag 8.34; sources brighter than magnitude 7: 0. 2-minute cadence is needed
-because it is the only product that can test the new season (above). tess-point places the star in Sectors 112, 113 and 114
-(2026-12-22 to 2027-03-14), and the density-prior fit puts 5 transits in them:
+One target, Tmag 8.34; none brighter than TESS magnitude 7. 2-minute cadence is needed for the reasons
+above. The fit puts up to 5 transits in Sectors 112, 113 and 114 (2026-12-22 to 2027-03-14), each mid-time with its
+standard deviation:
 
-| Sector | Epoch | Mid (BTJD) | Mid (UTC) | sd (min) |
+| Sector | Epoch | Mid (BTJD) | Mid (UTC, seen from Earth) | sd (min) |
 |---|---|---|---|---|
 | 112 | 118 | 4397.965 | 2026-12-23 11:12 | 13.3 |
 | 112 | 119 | 4415.402 | 2027-01-09 21:40 | 13.5 |
@@ -64,18 +59,17 @@ because it is the only product that can test the new season (above). tess-point 
 | 114 | 121 | 4450.275 | 2027-02-13 18:34 | 13.8 |
 | 114 | 122 | 4467.712 | 2027-03-03 05:01 | 13.9 |
 
-Mid (UTC) is when the transit is seen from Earth; sd is the mid-time's standard deviation over the fit's posterior.
-These windows are for observers; the test judges the deposited refit. The vetted full-frame light curves (Sectors
-38, 64 and 65, at 600 and 200 s) detect the dip at 11.1 sigma over 5 transits, so the 5
-predicted transits should detect it again at 2-minute cadence.
+These windows are for observers; the test judges a refit on the 2021 and 2023 seasons alone, to be deposited publicly
+before Sector 112 starts. The vetted light curves (Sectors 38, 64 and 65) show the dip at 11.1 sigma in
+5 transits, so up to 5 new ones should show it again.
 
 ## References
 
-- Burke, C. J., et al. 2020, tess-point, ascl:2003.001
-- Caldwell, D. A., et al. 2020, RNAAS, 4, 201 (TESS-SPOC)
-- eumemic/exoplanets, https://github.com/eumemic/exoplanets (the second candidate)
-- Giacalone, S., et al. 2021, AJ, 161, 24 (TRICERATOPS)
-- Huang, C. X., et al. 2020, RNAAS, 4, 204; Kunimoto, M., et al. 2021, RNAAS, 5, 234 (QLP)
-- The candidate's record, `results/vetting/241522065-1/`, and this proposal's sources, `results/ddt/241522065-1/`, in this
-  project's repository: [repository URL]
-- Archive state and sector dates, read 2026-10-27: https://archive.stsci.edu/hlsps/qlp/; https://archive.stsci.edu/hlsp/qlp; https://archive.stsci.edu/hlsp/tess-spoc; https://archive.stsci.edu/missions/tess/download_scripts/sector/; https://tess.mit.edu/observations/sector-112/; https://tess.mit.edu/observations/sector-113/; https://tess.mit.edu/observations/sector-114/; https://github.com/tessgi/tess-point
+- Light curves: Jenkins, J. M., et al. 2016, Proc. SPIE, 9913, 99133E (SPOC); Caldwell, D. A., et al. 2020, RNAAS,
+  4, 201 (TESS-SPOC); Huang, C. X., et al. 2020, RNAAS, 4, 204, and Kunimoto, M., et al. 2021, RNAAS, 5, 234 (QLP)
+- Giacalone, S., et al. 2021, AJ, 161, 24 (TRICERATOPS); Stassun, K. G., et al. 2019, AJ, 158, 138 (TIC); Burke,
+  C. J., et al. 2020, ascl:2003.001 (tess-point)
+- Catalogues: Martinho, M., & Valizadegan, H. 2025, ExoMiner++ 2.0, Zenodo, doi:10.5281/zenodo.17707413;
+  eumemic/exoplanets, https://github.com/eumemic/exoplanets
+- The candidate's record and this proposal's sources (archive pages and target lists, read 2026-10-27):
+  `results/vetting/241522065-1/` and `results/ddt/241522065-1/facts.toml` in [repository URL]
