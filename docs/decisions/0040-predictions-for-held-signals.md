@@ -16,7 +16,10 @@
   as of a day between its vetting run's start and the day the test runs. Amended 2026-10-28 by the maintainer's
   decision, after the package's pre-release review found that Zenodo lets an edit of a record's files, opened within
   30 days of publishing, be published until day 45: the deposit deadline moved from 2026-11-20 to 2026-11-05, 45 days
-  before the same lock start, and `facts.toml` holds the 45-day limit as `zenodo_edit_publish_days`.
+  before the same lock start, and `facts.toml` holds the 45-day limit as `zenodo_edit_publish_days`. Amended again
+  2026-10-28 at the maintainer's request, before the deposit: the Zenodo deposit form's text is no longer a package
+  file, since it is the maintainer's to paste and no reader of the deposit needs it;
+  `tess-hunt predictions zenodo --run RUN_ID` prints it from a finished run's files.
 
 ## Context
 
@@ -77,29 +80,30 @@ that.
 - **The package.** `tess-hunt predictions run --vetting-run DIR --records NAME ... --catalogs SNAP --lock-start DATE
   --production` writes it into one run directory: `predictions.csv` (one row per predicted transit), `references.json`
   (per signal, the refit, the reference, the gates' inputs, the families, the products that can test it and the sectors
-  left out; and the test's criteria values), `windows.csv` (the observers' windows), `README.md`, `zenodo.md` (the
-  deposit's title, description, keywords and licence, naming no person) and a copy of `facts.toml`. It refuses a
-  record whose call is not `held`, a record whose `checks.json` is not the vetting run's file for that signal, a light
-  curve whose sha256 is not the one the vetting run recorded, a catalog snapshot, criteria or sectors file other than
-  the run's, and a window sector, predicted or left out, that starts within `season_gap_days` of the vetted light
-  curve's last cadence, which the test would merge with that light curve's last season. A production run takes only
-  `results/predictions/facts.toml` from the checkout its code runs from, and refuses it with uncommitted changes, since
-  the clean-tree check covers the code and not `results/`. `tess-hunt predictions publish --run RUN_ID` copies a
-  production run's package into `results/predictions/<run id>/` and renders `results/predictions/README.md`, the index
-  of packages, which reads an optional `results/predictions/dois.toml` (package run id to DOI and publication date)
-  and shows "DOI pending" without it (the controller's ruling PF6); `tess-hunt predictions index` renders the index
-  again. The maintainer deposits each package as one Zenodo record and records its DOI there.
-- **Where the words and numbers come from** (`docs/design.md`, section 5.5). The README and the Zenodo text are filled
-  with `substitute`: the numbers from the run, the records and the criteria file the run read; the facts (the Zenodo
-  window, the last TESS-SPOC and QLP sectors, the 2-min target lists read and the stars on none of them, RAVEN's
-  citation, and the state of 241522065-1's DDT proposal) from `results/predictions/facts.toml`, each with its source
-  and read date, and each sentence names the read dates of the facts it states; the sector dates from
+  left out; and the test's criteria values), `windows.csv` (the observers' windows), `README.md` and a copy of
+  `facts.toml`. It refuses a record whose call is not `held`, a record whose `checks.json` is not the vetting run's file
+  for that signal, a light curve whose sha256 is not the one the vetting run recorded, a catalog snapshot, criteria or
+  sectors file other than the run's, and a window sector, predicted or left out, that starts within `season_gap_days` of
+  the vetted light curve's last cadence, which the test would merge with that light curve's last season. A production
+  run takes only `results/predictions/facts.toml` from the checkout its code runs from, and refuses it with uncommitted
+  changes, since the clean-tree check covers the code and not `results/`. `tess-hunt predictions publish --run RUN_ID`
+  copies a production run's package into `results/predictions/<run id>/` and renders `results/predictions/README.md`,
+  the index of packages, which reads an optional `results/predictions/dois.toml` (package run id to DOI and publication
+  date) and shows "DOI pending" without it (the controller's ruling PF6); `tess-hunt predictions index` renders the
+  index again. `tess-hunt predictions zenodo --run RUN_ID` prints the deposit form's title, description, keywords and
+  licence, naming no person, from a finished run's own files; the text is not a package file. The maintainer deposits
+  each package as one Zenodo record and records its DOI there.
+- **Where the words and numbers come from** (`docs/design.md`, section 5.5). The README and the deposit form's text are
+  filled with `substitute`: the numbers from the run, the records and the criteria file the run read; the facts (the
+  Zenodo window, the last TESS-SPOC and QLP sectors, the 2-min target lists read and the stars on none of them, RAVEN's
+  citation, and the state of 241522065-1's DDT proposal) from `results/predictions/facts.toml`, each with its source and
+  read date, and each sentence names the read dates of the facts it states; the sector dates from
   `benchmarks/tess_sectors.csv` as vet-v3's `[predict]` reads it; the judging date from this record
-  (`prereg.JUDGED_BY`). A value missing, null or NaN raises. 399023421-1's section
-  quotes its review's F9 (the timing-suspect QLP transits arrive 30 to 50 minutes after the windows) and F4 (the RAVEN
-  row is most likely a 5:2 alias of this signal) word for word ([0037](0037-quoted-text-in-the-dossier.md)), gives
-  RAVEN's period from the record's catalogued row and cites RAVEN from `facts.toml`, read from Zenodo record 19661443,
-  the record the catalog snapshot took RAVEN's table from. The package holds no Gaia data, so it is CC BY 4.0 whole.
+  (`prereg.JUDGED_BY`). A value missing, null or NaN raises. 399023421-1's section quotes its review's F9 (the
+  timing-suspect QLP transits arrive 30 to 50 minutes after the windows) and F4 (the RAVEN row is most likely a 5:2
+  alias of this signal) word for word ([0037](0037-quoted-text-in-the-dossier.md)), gives RAVEN's period from the
+  record's catalogued row and cites RAVEN from `facts.toml`, read from Zenodo record 19661443, the record the catalog
+  snapshot took RAVEN's table from. The package holds no Gaia data, so it is CC BY 4.0 whole.
 
 ## Limitations
 
@@ -127,14 +131,14 @@ that.
 ## Evidence
 
 - [tests/test_prereg.py](../../tests/test_prereg.py): `test_prediction_equals_holdout_refit` (with each season of a
-  three-season light curve removed, the prediction and reference equal holdout's row for that season, the gates'
-  counts included), `test_prereg_equals_holdout_on_an_unchanged_light_curve` (on that light curve the result equals
-  holdout's for each season), `test_sectors_before_the_lock_are_left_out`, `test_testable_routes`,
+  three-season light curve removed, the prediction and reference equal holdout's row for that season, the gates' counts
+  included), `test_prereg_equals_holdout_on_an_unchanged_light_curve` (on that light curve the result equals holdout's
+  for each season), `test_sectors_before_the_lock_are_left_out`, `test_testable_routes`,
   `test_observer_windows_equal_the_records`, `test_package_fails_on_a_missing_value`,
-  `test_399023421_section_quotes_the_review_and_cites_raven`, `test_predictions_run_and_publish` (a production run,
-  its publication, the index with and without `dois.toml`), `test_refuses_a_light_curve_the_vetting_run_did_not_read`,
-  `test_refuses_a_record_not_held`, `test_refuses_inputs_other_than_the_vetting_runs`,
-  `test_refuses_a_new_season_that_would_merge_with_the_vetted_ones`,
+  `test_399023421_section_quotes_the_review_and_cites_raven`, `test_predictions_run_and_publish` (a production run, the
+  deposit form's text, its publication, the index with and without `dois.toml`),
+  `test_refuses_a_light_curve_the_vetting_run_did_not_read`, `test_refuses_a_record_not_held`,
+  `test_refuses_inputs_other_than_the_vetting_runs`, `test_refuses_a_new_season_that_would_merge_with_the_vetted_ones`,
   `test_a_production_run_states_only_the_committed_facts`, `test_a_family_without_cadences_in_the_cores_shows_none`,
   `test_the_ddt_proposal_s_state_comes_from_facts` (its state recorded on a later day than every other fact),
   `test_every_window_sector_is_checked_against_the_last_vetted_cadence`,

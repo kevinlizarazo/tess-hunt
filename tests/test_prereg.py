@@ -241,7 +241,10 @@ def test_package_fails_on_a_missing_value(tmp_path):
     assert not re.search(r"\b(nan|null|missing)\b", text, re.IGNORECASE)
     # The 2-min lists as facts.toml read them, and no DDT proposal beside the record.
     words = " ".join(text.split())
-    assert f"none of the 1 stars is on {facts()['two_minute_lists']['value']}," in words
+    assert (
+        f"none of the 1 stars is on {facts()['two_minute_lists']['value']}. A list can still change before its "
+        "sector." in words
+    )
     assert "No DDT proposal asks for 2-min data on any of them" in words
 
     # A star facts.toml does not give as on no 2-min list raises rather than being said to be on none.
@@ -303,7 +306,10 @@ def test_a_family_without_cadences_in_the_cores_shows_none(tmp_path):
     qlp = prediction["reference"]["families"]["qlp"]["training_cadences"]
     assert f"| QLP | 15, 16, 28 and 29 | none | none | 0 | {qlp} |" in table
     # The README says what a family showing none means.
-    assert "shows none for its depth and error" in prereg.README.template
+    assert (
+        """shows "none" for that family's depth and error, and that family cannot test"""
+        in " ".join(prereg.README.template.split())
+    )
 
 
 @pytest.mark.parametrize(
@@ -326,10 +332,11 @@ def test_the_ddt_proposal_s_state_comes_from_facts(tmp_path, state, read):
             made(signals), signals, {NAME: record}, VET3.values, stated, TESS_SECTORS
         ).split()
     )
+    # The state ends a sentence, whatever it is.
     assert (
-        f"For {NAME}, tess-hunt has a DDT proposal asking for 2-min data (`results/ddt/{NAME}/` in its repository); "
-        f"its state, as `facts.toml` records it on {read}: {state}. A sent proposal is a request, which the TESS "
-        "office may or may not take." in text
+        f"For {NAME}, a Director's Discretionary Time (DDT) proposal asking for 2-min data on its star was {state} "
+        f"(recorded in `facts.toml` on {read}). The proposal is in tess-hunt's repository under `results/ddt/{NAME}/`. "
+        "A sent proposal is a request, which the TESS office may or may not grant." in text
     )
     assert "no 2-min data are in sight" not in text
     # The other facts keep their own dates.
@@ -369,10 +376,11 @@ def test_399023421_section_quotes_the_review_and_cites_raven():
     text = prereg.note(
         "399023421-1", prereg.record_values(RECORD_399) | prereg.fact_values(facts())
     )
-    # Word for word, as the dossier quotes them (decision 0037).
+    # Word for word, as the dossier quotes them (decision 0037), each set off as a quotation.
     for finding in ("F9", "F4"):
         assert (
-            f'finding {finding}, quoted word for word: "{dossier._scrub(claims[finding])}"' in text
+            f"finding {finding}, quoted word for word:\n\n> {dossier._scrub(claims[finding])}\n"
+            in text
         )
     # The model that wrote the review, and its date, from review.json.
     assert (
@@ -406,7 +414,7 @@ def test_deposit_by_is_the_lock_less_zenodo_s_publish_limit(tmp_path):
     assert "must be published within 45 days of publishing (as read on 2026-10-28)" in readme(found)
     earlier = found | {"zenodo_edit_days": {**found["zenodo_edit_days"], "read": "2026-10-27"}}
     assert (
-        "(as read on 2026-10-27 and 2026-10-28), so a record's files are fixed 45 days"
+        "(as read on 2026-10-27 and 2026-10-28). A record's files are therefore fixed 45 days"
         in readme(earlier)
     )
     # A facts file without the limit raises, naming it, in the README and the Zenodo text alike.
@@ -422,7 +430,7 @@ def test_zenodo_says_an_ai_model_wrote_the_review_the_readme_quotes(tmp_path):
     both = {NAME: prediction, "399023421-1": {**prediction, "tic": 399023421}}
     text = " ".join(prereg.zenodo(made(both), both, facts()).split())
     assert (
-        "tess-hunt's code and the package's text were written with LLM assistance, and the adversarial review of "
+        "tess-hunt's code and this dataset's text were written with LLM assistance, and the adversarial review of "
         "399023421-1 that the README quotes was written by an AI model." in text
     )
 
@@ -443,14 +451,50 @@ def test_windows_wider_than_half_the_period_say_so(tmp_path):
         return write_record(tmp_path / name / NAME, windows=found)
 
     # The fixture's 3-sigma half-widths are a few hundred minutes, on a 3.7 d period.
-    assert "cannot place a transit by eye" not in section(narrow)
-    assert "cannot place a transit by eye" not in section(wide("under", half - 1))
+    assert "too wide to place a transit" not in section(narrow)
+    assert "too wide to place a transit" not in section(wide("under", half - 1))
     assert (
-        f"At 3 sigma its observers' windows reach up to {half:.0f} min either side of their mid-times, against a refit "
-        f"period of {2 * half:.0f} min: at least half the period either side, so the widest spans a whole orbit and "
-        "the windows cannot place a transit by eye. The refit's predicted mid-times in `predictions.csv` are what the "
-        "test judges." in section(wide("half", half))
+        f"These windows are too wide to place a transit: at 3 sigma they reach up to {half:.0f} min either side of "
+        f"their mid-times, against a refit period of {2 * half:.0f} min. Use the refit's times in `predictions.csv` "
+        "instead." in section(wide("half", half))
     )
+
+
+def test_a_signal_s_section_says_its_counts_in_sentences(tmp_path):
+    record = write_record(tmp_path / NAME, dropped_suspect=[99, 101])
+    prediction = predicted(planet(), record)
+    text = " ".join(
+        prereg._section(prediction, record, VET3.values, TESS_SECTORS, LOCK, facts()).split()
+    )
+    assert (
+        "Its vetted light curve leaves out Sectors 99 and 101, flagged for suspect timestamps."
+        in text
+    )
+    assert (
+        "The prediction is trained on the 3 seasons of its vetted light curve. All 3 seasons hold a transit in their "
+        "data, and the test needs at least 2." in text
+    )
+    # S110 and S111 start before the lock and run straight into S112.
+    assert (
+        "Sectors 110 and 111 are left out because they start before the lock on 2026-12-20. They still fall in the "
+        "new season, so the test counts their cadences, though this package lists no transit in them."
+        in text
+    )
+    assert "SPOC 2-min or TESS-SPOC data can test the new season." in text
+    two = {**prediction, "training_seasons": prediction["training_seasons"][:2]}
+    assert "Both seasons hold a transit in their data" in prereg._training(two)
+    one = {
+        **prediction,
+        "training_seasons": [
+            {**s, "holds_transits": s["season"] == 0} for s in prediction["training_seasons"]
+        ],
+    }
+    assert "1 of them holds a transit in their data" in prereg._training(one)
+    # The windows' offsets from the refit's times, as later or earlier.
+    assert prereg._offset([18.2]) == "18 min later than"
+    assert prereg._offset([-13.4, -12.1]) == "12 to 13 min earlier than"
+    assert prereg._offset([-2.0, 3.0]) == "from 2 min earlier to 3 min later than"
+    assert prereg._offset([1.0, float("nan")]) is None
 
 
 def vetting_run(tmp_path, monkeypatch, production=True) -> tuple[list[str], Path]:
@@ -526,7 +570,7 @@ def runs(tmp_path) -> list[Path]:
     return sorted((tmp_path / "data" / "runs").glob("*-predictions-*"))
 
 
-def test_predictions_run_and_publish(tmp_path, monkeypatch):
+def test_predictions_run_and_publish(tmp_path, monkeypatch, capsys):
     argv, repo = vetting_run(tmp_path, monkeypatch)
     assert main([*argv, "--production"]) == 0
     [run] = runs(tmp_path)
@@ -562,41 +606,68 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch):
     assert sha256_file(lc) in readme and sha256_file(record / "checks.json") in readme
     assert (run / "facts.toml").read_bytes() == (repo / prereg.FACTS).read_bytes()
     assert made["inputs"]["facts"]["sha256"] == sha256_file(repo / prereg.FACTS)
-    zenodo = (run / "zenodo.md").read_text()
-    assert "CC BY 4.0" in zenodo and made["run_id"] in zenodo
-    flat, zflat = " ".join(readme.split()), " ".join(zenodo.split())
-    # The lock date holds only for a deposit made in time, and the README and the Zenodo text say so.
+    # The deposit form's text is the maintainer's, not a file of the deposit.
+    assert not (run / "zenodo.md").exists() and "zenodo.md" not in readme
+    capsys.readouterr()
+    assert main(["predictions", "zenodo", "--run", made["run_id"]]) == 0
+    form = capsys.readouterr().out
+    assert "CC BY 4.0" in form and form.startswith(f"# Zenodo deposit form for {made['run_id']}\n")
+    description = form.split("## Description\n\n")[1].split("\n\n## Keywords")[0]
+    # Each paragraph is one line, as Zenodo's editor keeps line breaks.
+    assert all("\n" not in p for p in description.split("\n\n"))
+    flat, zflat = " ".join(readme.split()), " ".join(description.split())
+    # The lock date holds only for a deposit made in time, and the README and the description say so.
     assert "Deposited by 2026-11-05, this package's files are fixed by 2026-12-20" in flat
-    assert "deposited by 2026-11-05, this package's files are fixed by 2026-12-20" in zflat
+    assert "Deposited by 2026-11-05, this dataset's files are fixed by 2026-12-20" in zflat
     # The code and text were written with LLM assistance; this package quotes no review.
     assert "tess-hunt's code and this text were written with LLM assistance." in flat
-    assert "tess-hunt's code and the package's text were written with LLM assistance." in zflat
+    assert "tess-hunt's code and this dataset's text were written with LLM assistance." in zflat
     assert "AI model" not in zflat
+    assert "Each is a candidate signal, not a planet." in zflat and "They are on TIC 1 (" in zflat
+    # The run and the commit only in the closing provenance sentence.
+    assert zflat.endswith(
+        f"Made by tess-hunt commit {made['git']['commit']} in run {made['run_id']}, from the vetting records of run "
+        f"{VET_RUN}."
+    )
+    assert zflat.count(made["run_id"]) == 1 and zflat.count(VET_RUN) == 1
     # 1-1's windows are far narrower than its period.
-    assert "cannot place a transit by eye" not in flat
+    assert "too wide to place a transit" not in flat
     # The judging date cuts on when a light curve was fetched, as judge_signal applies it (decision 0041), not on when
     # a re-vet runs; the deposited text states that rule.
     assert (
-        "The judging date, 2027-12-31, applies to when a re-vet's light curve was fetched" in flat
+        "Each signal is judged once, at the first re-vet whose light curve covers every predicted sector with data "
+        "the test can use. Until then, a re-vet reports the result as pending." in flat
     )
     assert (
-        "A re-vet judged as of a day before 2027-12-31, on a light curve that lacks a predicted sector, may run but"
-        " reports the result as pending." in flat
+        "The judging date is 2027-12-31. It applies to when a re-vet's light curve was fetched, since that is what "
+        "the code can see, not to when the data became public or when the re-vet runs." in flat
     )
-    assert "one fetched on or after it completes no season" in flat
     assert (
-        "still lacks a predicted sector in a re-vet judged as of that date or later stays untested"
+        "A complete light curve fetched before that date is judged whenever the re-vet runs."
         in flat
     )
-    assert "on its complete new season in a light curve fetched before 2027-12-31" in zflat
+    assert (
+        "A light curve fetched on or after it does not count, and a season still incomplete on the judging date "
+        "stays untested. A judged result stands for every later re-vet." in flat
+    )
+    assert (
+        "Each signal is judged once, on the first light curve that covers all its predicted sectors with data the "
+        "test can use. Light curves fetched on or after 2027-12-31 do not count." in zflat
+    )
     assert "failing that" not in flat and "not judged by" not in zflat
-    for text in (readme, zenodo):
+    for text in (readme, form):
         assert "$" not in text and provenance.scrub(text) == text
         assert not any(n.lower() in text.lower() for n in provenance.maintainer() or ())
+    # Only a finished predictions run has a deposit form.
+    with pytest.raises(SystemExit, match="no run 20261101T000000Z-predictions-abc1234-9999"):
+        main(["predictions", "zenodo", "--run", "20261101T000000Z-predictions-abc1234-9999"])
+    with pytest.raises(SystemExit, match=f"run {VET_RUN} is not a predictions run"):
+        main(["predictions", "zenodo", "--run", VET_RUN])
 
     assert main(["predictions", "publish", "--run", made["run_id"]]) == 0
     package = repo / "results" / "predictions" / made["run_id"]
     assert sorted(p.name for p in package.iterdir()) == sorted(prereg.PACKAGE)
+    assert "zenodo.md" not in prereg.PACKAGE
     for name in prereg.PACKAGE:
         assert sha256_file(package / name) == sha256_file(run / name)
     index = (repo / "results" / "predictions" / "README.md").read_text()

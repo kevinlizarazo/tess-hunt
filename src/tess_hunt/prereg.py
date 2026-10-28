@@ -1,9 +1,9 @@
 """Predictions for the held signals (decision 0040): before TESS looks at a held signal's star again, the prediction
 its held-out season test will judge, and the test. With the new season held out, every other season is the M3 light
 curve, so the refit and the training depths `checks.holdout` computes for that season are fixed now. The package holds
-them, the record's observer windows beside them, and a README and Zenodo text filled with `substitute` from the run,
-the records and `facts.toml`: a value they lack, or hold as null or NaN, raises instead of rendering (docs/design.md,
-section 5.5)."""
+them, the record's observer windows beside them, and a README filled with `substitute` from the run, the records and
+`facts.toml`; the Zenodo deposit form's text is rendered the same way from a finished run's files. A value they lack,
+or hold as null or NaN, raises instead of rendering (docs/design.md, section 5.5)."""
 
 import datetime as dt
 import json
@@ -11,6 +11,7 @@ import math
 import shutil
 import subprocess
 import sys
+import textwrap
 import tomllib
 from dataclasses import asdict
 from pathlib import Path
@@ -24,7 +25,7 @@ from tess_hunt import calls, predict, vetting
 from tess_hunt.catalogs import load_known, snapshot_inputs
 from tess_hunt.checks.families import family_labels
 from tess_hunt.checks.holdout import judge, reference, refit_ephemeris, season_labels
-from tess_hunt.config import lc_dir, load_criteria
+from tess_hunt.config import lc_dir, load_criteria, runs_dir
 from tess_hunt.ddt import _number
 from tess_hunt.dossier import _scrub, _table, _words
 from tess_hunt.ephemeris import Ephemeris, in_transit
@@ -46,7 +47,6 @@ PACKAGE = (
     "provenance.json",
     "references.json",
     "windows.csv",
-    "zenodo.md",
 )
 PREDICTION_COLUMNS = [
     "signal",
@@ -65,200 +65,229 @@ FACTS = "results/predictions/facts.toml"
 ZENODO_FACTS = ("zenodo_edit_days", "zenodo_edit_publish_days")
 
 README = Template("""\
-# Predictions for $n_signals held tess-hunt signals in TESS Sectors $first_sector to $last_sector
+# Transit predictions for $n_signals held tess-hunt signals in TESS Sectors $first_sector to $last_sector
 
-tess-hunt is an independent search for transiting planets in public TESS light curves. Its vetting held these
-$n_signals signals ($signals): not passed and not killed, because the public data can't decide them. Each is a
-candidate signal, not a planet. TESS looks at their stars again from Sector $first_window on; this package predicts
-their transits in the sectors from $first_sector to $last_sector, which start after its files lock (below).
+tess-hunt is an independent search for transiting planets in public TESS light curves. Each signal is named by its
+star's TIC number and its rank on that star. tess-hunt's vetting held these $n_signals signals, neither passing nor
+killing them, because the public data cannot decide them:
+$signals.
+Each is a candidate signal, not a planet. TESS observes their stars again from Sector $first_window on. This package
+predicts their transits in Sectors $first_sector to $last_sector, which start after its files are fixed (see The lock).
 
-This package fixes, before those sectors are observed, the prediction each signal's held-out season test will judge,
-and the test itself. It was made on $made (UTC) by one run of `tess-hunt predictions run`, $run_id, from the signals'
-published vetting records and the light curves their vetting run, $vetting_run, read. Every number in it comes from
-those files, from that run, from the criteria file and the sector dates file that vetting run read, and from the
-`facts.toml` beside this README; the text it quotes from a review says so where it begins. tess-hunt's code and this
-text were written with LLM assistance.
+The package fixes the prediction for each signal's new season, and the test that will judge it, before TESS observes
+those sectors. It was made on $made (UTC). tess-hunt's code computed every number in it from the signals'
+published vetting records, the light curves they were vetted on and the other files listed under Provenance.
+tess-hunt's code and this text were written with LLM assistance.
 
 ## What is judged
 
-vet-v3, tess-hunt's vetting criteria, has a held-out season check: it refits a signal's period and epoch on every
-season but one, near the period and epoch tess-hunt's search found, and measures the left-out season's depth only in
-the central $core_percent% of each transit the refit predicts (its core). Each signal's vetted light curve is the one
-vetting run $vetting_run read for it, as its checks saw it: without the sectors flagged for suspect timestamps,
-detrended around the same catalogued transits, with the same red-noise depth errors. The new season is the one TESS's
-coming sectors make for its star. With it held out, the other seasons are exactly the vetted light curve's, so the
-prediction is fixed now:
+tess-hunt's vetting criteria, vet-v3, include a held-out season check. It refits a signal's period and epoch on every
+season but one, searching near the period and epoch tess-hunt's search found, and measures the left-out season's depth
+only in the central $core_percent% of each transit the refit predicts (the transit's core).
+
+Here the left-out season is the new one, made by the sectors TESS is about to observe for each star. The other seasons
+are the light curve the signal was vetted on, as the vetting run's checks saw it: without the sectors flagged for
+suspect timestamps, detrended around the same catalogued transits, with the same red-noise depth errors. Those seasons
+are fixed already, so the refit and the training depths are published now:
 
 - `predictions.csv`: the refit's period, t0 and core half-width, and the mid-time of each transit it predicts in the
-  sectors predicted. This is what the test judges.
-- `references.json`: the training depths the new season is compared with, in the same cores: over every training
-  cadence and for each product family, each with its error and cadence count; and what the check's two training gates
-  read (the training seasons, which of them hold a transit in their data, and `min_training_seasons`).
+  predicted sectors. This is what the test judges.
+- `references.json`: the training depths the new season is compared with, measured in the same cores over all
+  training cadences and for each product family, each with its error and cadence count. It also holds what the
+  check's two training gates read: the training seasons, which of them hold a transit in their data, and
+  `min_training_seasons`.
 
-Not judged: `windows.csv`, the transit windows of the density-prior fit in each record's `checks.json`, copied
-unchanged with their standard deviations for anyone checking by eye. They come from another fit and can differ from
-the refit; the test never reads them.
+`windows.csv` is not judged. It holds the transit windows of the density-prior fit in each signal's vetting record,
+copied unchanged with their standard deviations, for observers checking by eye. They come from a different fit and can
+differ from the refit. The test never reads them.
 
 ## The test
 
-The new season is judged by vet-v3's `[holdout]` measurement and thresholds, read from `$criteria_vet` (sha256
-$criteria_vet_sha256), with the published prediction and training depths in place of a fresh refit:
+The new season is judged with the held-out check's measurement and thresholds, read from `$criteria_vet` (listed
+with its sha256 under Provenance), using the published prediction and training depths in place of a fresh refit:
 
 - Seasons are split at gaps of more than $season_gap_days days.
-- A season is tested only if at least $min_training_seasons training seasons hold a transit in their data.
-- Its depth is measured in the cores, and needs at least $min_points cadences there.
-- It is untestable if a product family in its cores has fewer than $min_points training cadences in them. Otherwise
-  its expected depth is each family's own training depth, weighted as its cadences weight the season's depth; if that
-  is less than $min_expected_snr times the season's depth error, the season is underpowered.
-- It is replicated when its depth is at least $min_sigma times its error and, in every family with $min_points
-  cadences in the cores on both sides, within $max_depth_tension sigma of the same family's training depth. Otherwise
-  it is missed.
+- The new season is tested only if at least $min_training_seasons training seasons hold a transit in their data.
+- Its depth is measured in the predicted cores. With fewer than $min_points cadences there, it is untested.
+- If a product family present in its cores has fewer than $min_points training cadences in the cores, it is untested.
+- Its expected depth is each family's training depth, weighted as that family's cadences weight the season's depth. If
+  the expected depth is less than $min_expected_snr times the season's depth error, the dip is not expected to show,
+  and the season is untested.
+- Otherwise the season is replicated when its depth is at least $min_sigma times its error and, in every family with
+  at least $min_points cadences in the cores both in the season and in training, within $max_depth_tension sigma of
+  that family's training depth. If not, it is missed.
 
-The result for each signal is the new season's status: replicated (`predicted`), missed (`missed`), or untested
-(`underpowered`, `untestable`, `no_predicted_transit_in_data`, no light curve, or a light curve fetched on or after the
-judging date below). On the unchanged vetted light curve this is exactly what vet-v3's check computes for that season.
-Two of tess-hunt's tests show it on a synthetic three-season light curve, each season held out in turn:
-`test_prediction_equals_holdout_refit` checks that the package's refit, training depths and the counts its two
-training gates read equal the check's, and `test_prereg_equals_holdout_on_an_unchanged_light_curve` checks that the
-test's status and measurements, and so its result, equal the check's. Judging with the published numbers keeps the
-result fixed if a later re-vet's training data change.
+The result for each signal is replicated, missed or untested. The new season is also untested if no light curve the
+test can use covers it, or if the one that does was fetched on or after the judging date (see When it is judged).
+
+On the vetted light curve, unchanged, this test gives exactly the held-out check's result for that season. tess-hunt's
+test suite checks this on a synthetic three-season light curve, holding out each season in turn: the package's refit,
+training depths and result equal what the check computes. Judging with the published numbers, not a fresh refit,
+keeps the result fixed if the training data later change, for example when a sector is redelivered.
 
 ## Which data can test it
 
-Depths are compared only within a product family (tess-hunt's decision 0023), so the new season is testable only if
-every family in its cores is one with training data. tess-hunt takes one product per sector, so a season that mixes in
-a sector of a family with no training data is untestable as a whole.
+Depths are compared only within a product family.
+$families
+The new season can therefore be tested only if every family in its cores also has training data. tess-hunt takes one
+product per sector, so a season that includes a sector from a family without training data is untested as a whole.
 
 $routes
 
-A family with no training cadences in the cores shows none for its depth and error in its signal's section, and can't
-test the new season.
+Where a family has no training cadences in the cores, its signal's section shows "none" for that family's depth and
+error, and that family cannot test the new season.
 
 TESS-SPOC's full-frame light curves stop at Sector $fact_tess_spoc_last_sector, and MAST holds QLP's only through a
-partial Sector $fact_qlp_last_sector (as read on $archives_read). So for $n_need_2min of the $n_signals signals
-($need_2min) only SPOC 2-min data can test the prediction. As read on $lists_read, none of the $n_signals stars is on
-$fact_two_minute_lists, and a list can still change before its sector. $ddt_ask Each of the $n_need_2min is predicted
-anyway: anyone can check a public prediction by eye. Any other product, the project's own full-frame photometry
-included, needs a decision record saying how the test applies to it, made before it is run on these stars.
+partial Sector $fact_qlp_last_sector (as read on $archives_read). For $n_need_2min of the $n_signals signals
+($need_2min) the table allows only SPOC 2-min or TESS-SPOC data,
+so only SPOC 2-min data can test their predictions.
+
+As read on $lists_read, none of the $n_signals stars is on
+$fact_two_minute_lists.
+A list can still change before its sector.
+
+$ddt_ask
+
+All $n_need_2min are predicted anyway, since anyone can check a public prediction by eye. No other product, tess-hunt's
+own full-frame photometry included, can test a prediction unless a decision record in tess-hunt's repository says how
+the test applies to it, made before that product is run on these stars.
 
 ## When it is judged
 
-Once for each signal, on the complete season: at the first re-vet whose light curve covers every predicted sector for
-that star with data the test can use. A re-vet judged as of a day before $judged_by, on a light curve that lacks a
-predicted sector, may run but reports the result as pending. The judging date, $judged_by, applies to when a re-vet's
-light curve was fetched, since that is what the code can see, not when the data went public or when the re-vet runs.
-A light curve fetched before it that covers every predicted sector is judged whenever the re-vet runs; one fetched on
-or after it completes no season; and a season that still lacks a predicted sector in a re-vet judged as of that date
-or later stays untested. A result once judged stands for every later re-vet. A season runs from gap to gap, so a
-sector left out of the prediction (below) can still fall in the new season; its cadences stay in it, as vet-v3 counts
-them, and each signal's section says which.
+tess-hunt vets a held signal again when new data arrive (a re-vet). Each signal is judged once, at the first re-vet
+whose light curve covers every predicted sector with data the test can use. Until then, a re-vet reports the result
+as pending.
+
+The judging date is $judged_by. It applies to when a re-vet's light curve was fetched, since that is what the code can
+see, not to when the data became public or when the re-vet runs. A complete light curve fetched before that date is
+judged whenever the re-vet runs. A light curve fetched on or after it does not count, and a season still incomplete on
+the judging date stays untested. A judged result stands for every later re-vet.
+
+A season runs from gap to gap, so a sector left out of the prediction (see The lock) can still fall in the new season.
+The test then counts that sector's cadences as part of the season, and the signal's section says so.
 
 ## What a result means
 
 A replicated season shows the dip is real, periodic and where it was predicted. It does not show that the dip is on
-the target star: a signal held because another star's light could make the dip stays held until evidence on that
-comes. A transit that arrives outside the predicted
-cores because the refit's period has drifted counts as missed: the test is the prediction.
+the target star: a signal held because light from another star could cause the dip stays held until there is evidence
+on that. A transit that arrives outside the predicted cores because the refit's period has drifted counts as missed:
+the test judges the prediction as published.
 
-The held-out check as a whole fails when two or more seasons are tested and any is missed. That is a failed vet-v3
-check, and a ground for a kill under tess-hunt's decision 0028. With fewer than two seasons tested the check stays
-inconclusive, and a missed new season is then evidence against the signal that the maintainer weighs in its call
-(passed, killed or held), not a failed check.
+In vetting, the held-out check holds out each season in turn. It fails when two or more seasons are tested and any of
+them is missed, and under tess-hunt's rules for its vetting calls (a decision record in its repository) a failed check
+is grounds to kill the signal. With fewer than two seasons tested the check stays inconclusive. A missed new season is
+then not a failed check but evidence against the signal, which the maintainer weighs in deciding whether to pass, kill
+or keep holding it.
 
 ## The lock
 
 Zenodo lets a record's owner open an edit of its files within $fact_zenodo_edit_days days of publishing, and the edit
-must be published within $fact_zenodo_edit_publish_days days of publishing (as read on $zenodo_read), so a record's
-files are fixed $fact_zenodo_edit_publish_days days after it is published. Deposited by $deposit_by, this package's
-files are fixed by $lock_start, so only sectors starting on or after $lock_start are predicted. Each earlier sector in
-a record's windows is left out, and its signal's section names it. Sector dates come from tess-hunt's `$sectors_file`
-(tess.mit.edu's sector pages, read $sectors_read).
+must be published within $fact_zenodo_edit_publish_days days of publishing (as read on $zenodo_read). A record's files
+are therefore fixed $fact_zenodo_edit_publish_days days after it is published. Deposited by $deposit_by, this
+package's files are fixed by $lock_start, so it predicts only sectors that start on or after that date. A sector in a
+signal's windows that starts earlier is left out, and the signal's section names it.
+
+Sector dates are from tess.mit.edu's sector pages (read $sectors_read), as tess-hunt's
+`$sectors_file` holds them.
 
 $sections
 
 ## Provenance
 
 - Code: tess-hunt commit $commit.
-- Criteria: $criteria.
-- The vetting run the records come from: $vetting_run. This package's run: $run_id; its `provenance.json` is here.
-- The catalog snapshot that vetting run read, $catalogs: `known.parquet` sha256 $known_sha256, `manifest.json` sha256
-  $manifest_sha256.
-- Sector dates: `$sectors_file`, sha256 $sectors_sha256.
-- Facts about archives and the DDT proposal: `facts.toml`, sha256 $facts_sha256.
+- This package: run $run_id.
+  Its `provenance.json` lists the run's inputs with their sha256 and its command line.
+- Vetting records: from vetting run $vetting_run.
+- Criteria:
+$criteria
+- Catalog snapshot read by the vetting run, $catalogs:
+  - `known.parquet`, sha256 $known_sha256
+  - `manifest.json`, sha256 $manifest_sha256
+- Sector dates: `$sectors_file`, sha256
+  $sectors_sha256.
+- Facts about archives, target lists, RAVEN's citation and the DDT proposal: `facts.toml`, sha256
+  $facts_sha256.
 
-Each signal's published record, `results/vetting/<signal>/` in the tess-hunt repository, and the light curve its
-vetting run read:
+Each signal's published record, `results/vetting/<signal>/` in tess-hunt's repository, and the light curve its vetting
+run read:
 
 $hashes
 
 ## Files
 
-- `predictions.csv`: one row per predicted transit: $prediction_columns. `epoch` counts periods from the refit's t0;
-  `mid_btjd` is BJD_TDB - 2457000; `mid_utc` is the mid-time as seen from Earth; `period` and `t0` are the refit's,
-  in days and BTJD.
-- `references.json`: for each signal, the refit (`predicted`, with BLS's duration and depth), the core half-width,
-  the training depths (`reference`, as fractions of the flux, and by family), the training seasons and families, the
-  products that can test it (`testable_with`) and the sectors left out; and the test's criteria values (`test`).
-- `windows.csv`: the observers' windows: $window_columns. `epoch` counts periods from the density-prior fit's t0.
-- `facts.toml`: the facts about archives and the DDT proposal this README states, each with its source and the date it
-  was read.
+- `predictions.csv`: one row per predicted transit, with columns
+$prediction_columns.
+  `epoch` counts periods from the refit's t0, `mid_btjd` is BJD_TDB - 2457000, `mid_utc` is the mid-time in UTC as
+  seen from Earth, and `period` and `t0` are the refit's, in days and BTJD.
+- `references.json`: for each signal, the refit (`predicted`, with BLS's duration and depth), the core half-width, the
+  training depths (`reference`, as fractions of the flux, pooled and by family), the training seasons and families,
+  the products that can test it (`testable_with`) and the sectors left out; and the test's criteria values (`test`).
+- `windows.csv`: the observers' windows, with columns
+$window_columns.
+  `epoch` counts periods from the density-prior fit's t0.
+- `facts.toml`: the facts this README states about archives, target lists, RAVEN's citation and the DDT proposal,
+  each with its source and the date it was read.
 - `provenance.json`: the run's commit, criteria, inputs with their sha256, and command line.
-- `zenodo.md`: the deposit's title, description, keywords and licence.
 
 ## Licence and sources
 
 CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). The package holds no Gaia data. It is derived from TESS
 light curves (SPOC, TESS-SPOC and QLP, from MAST) and the TESS Input Catalog. The facts in `facts.toml` come from:
-$fact_sources.
+
+$fact_sources
 """)
 
 SIGNAL = Template("""\
 ## $signal (TIC $tic)
 
-The search's ephemeris, which the refit starts from: period $search_period d, t0 BTJD $search_t0, duration
-$search_duration_h h. Sectors left out of its vetted light curve for suspect timestamps: $suspect.
+The search found the signal at period $search_period d, t0 BTJD $search_t0 and duration $search_duration_h h.
+The refit starts from this ephemeris.
+$suspect
 
-The $n_seasons seasons of its vetted light curve train the prediction, and $n_with_transits of them hold a transit in
-their data, where the test needs $min_training_seasons:
+$training
 
 $seasons
 
-The refit: period $period d, t0 BTJD $t0, duration $duration_h h. Each predicted transit's core runs $core_minutes min
-either side of its mid-time. The training depths in the cores:
+The refit gives period $period d, t0 BTJD $t0 and duration $duration_h h. Each predicted transit's core runs
+$core_minutes min either side of its mid-time. The training depths in the cores are:
 
 $references
 
-Predicted: $n_transits transits in $kept. Left out: $left_out.$in_season Data that can test the new season:
-$testable.
+The package predicts $n_transits transits in $kept.$left_out
+$testable
 
-Observers' windows: $n_windows in $kept, from the density-prior fit to the $fit_family family alone, with mid-time
-sd $sd min. Each window's mid-time less the refit's nearest predicted mid-time: $offset min.$wide
+For observers, the vetting record gives $n_windows transit windows in $kept, from the density-prior fit
+to the $fit_family family alone. Their mid-times have standard deviations of $sd min
+and run $offset the refit's nearest predicted mid-times.$wide
 """)
 
 # A signal's section adds it when its observers' windows reach half its refit period either side.
-WIDE = Template("""\
- At $sigma sigma its observers' windows reach up to $widest min either side of their mid-times, against a refit period
-of $orbit min: at least half the period either side, so the widest spans a whole orbit and the windows cannot place a
-transit by eye. The refit's predicted mid-times in `predictions.csv` are what the test judges.""")
+WIDE = Template("""
+These windows are too wide to place a transit: at $sigma sigma they reach up to $widest min either side of their
+mid-times, against a refit period of $orbit min. Use the refit's times in `predictions.csv` instead.""")
 
 # Each signal whose section says more than the others, from its record (design 4.3).
 NOTES = {
     "399023421-1": Template("""\
-tess-hunt's adversarial review of this signal was written by an AI model, $review_model, on $review_date. It found
-the signal's timing-suspect QLP transits arriving later than the observers' windows predict.
-The review's finding F9, quoted word for word: "$review_F9" The refit leaves those QLP sectors out,
-as every check does. It stands as published: if the new season's transits arrive late against its cores, the season
-can be missed, and a miss on drift counts as a miss.
+tess-hunt's adversarial review of this signal was written by an AI model,
+$review_model, on $review_date. Its finding F9, quoted word for word:
 
-RAVEN ($fact_raven) lists a dip on the star at $raven_period d. The review's
-finding F4, quoted word for word: "$review_F4"
+> $review_F9
+
+The refit leaves those QLP sectors out, as every check does, and is published as it stands. If the new season's
+transits arrive late against its cores, the season can be missed, and a miss caused by drift counts as a miss.
+
+RAVEN ($fact_raven)
+lists a dip on the star at $raven_period d. The review's finding F4, quoted word for word:
+
+> $review_F4
 """),
 }
 
 ZENODO = Template("""\
-# Zenodo metadata
+# Zenodo deposit form for $run_id
 
-The deposit's fields, to paste into Zenodo's form. Creators and the link to the code are filled in at deposit.
+Creators and the link to tess-hunt's code are added in the form at deposit.
 
 ## Title
 
@@ -270,21 +299,7 @@ Dataset
 
 ## Description
 
-Predictions, fixed before TESS observes them, of where $n_signals held planet-candidate signals from tess-hunt's search
-of public TESS light curves should transit in Sectors $first_sector to $last_sector, and the test that will judge each
-one. Each prediction is the refit that tess-hunt's held-out season check (vet-v3) makes when the season these sectors
-make is held out, on the light curve the signal was vetted on, with the training depths that season will be compared
-with. The signals are $signals, on TIC $tics. Each is a candidate signal, not a planet.
-
-The package was made by run $run_id at tess-hunt commit $commit, from the vetting records of run $vetting_run. Zenodo
-lets a record's owner open an edit of its files within $fact_zenodo_edit_days days of publication and publish it
-within $fact_zenodo_edit_publish_days days (as read on $zenodo_read), so the files are fixed
-$fact_zenodo_edit_publish_days days after publication; deposited by $deposit_by, this package's files are fixed by
-$lock_start, and no sector starting earlier is predicted. Each signal is judged once, on its complete new season in a
-light curve fetched before $judged_by; data fetched on or after that date complete no season, and a season that still
-lacks a predicted sector in a re-vet judged as of that date or later stays untested. The README states the test, the
-data that can test each signal, when it is judged and what a result means. tess-hunt's code and the package's text
-were written with LLM assistance$reviewed.
+$description
 
 ## Keywords
 
@@ -299,18 +314,46 @@ were written with LLM assistance$reviewed.
 Creative Commons Attribution 4.0 International (CC BY 4.0)
 """)
 
+# Each paragraph is pasted as one line, so the line breaks here do not reach the form.
+DESCRIPTION = Template("""\
+Transit predictions for $n_signals planet-candidate signals in TESS Sectors $first_sector to $last_sector, published
+before TESS observes those sectors. The signals come from tess-hunt, an independent search for transiting planets in
+public TESS light curves, whose vetting neither passed nor killed them because the public data cannot decide them.
+They are on TIC $tics
+(tess-hunt's signals $signals). Each is a candidate signal, not a planet.
+
+For each signal the dataset gives a period and epoch refitted on the light curve the signal was vetted on, the transit
+times they predict in the new sectors, and the transit depths of the earlier seasons. The test measures the new
+season's depth in the cores of the predicted transits and compares it with those depths, using the thresholds of
+tess-hunt's held-out season check.
+
+Zenodo lets a record's owner open an edit of its files within $fact_zenodo_edit_days days of publication and publish
+it within $fact_zenodo_edit_publish_days days (as read on $zenodo_read). Deposited by $deposit_by, this dataset's
+files are fixed by $lock_start, and no sector that starts earlier is predicted. Each signal is judged once, on the
+first light curve that covers all its predicted sectors with data the test can use. Light curves fetched on or after
+$judged_by do not count. The README gives the test in full, the data that can test each signal and what a result
+means.
+
+tess-hunt's code and this dataset's text were written with LLM assistance$reviewed.
+
+Made by tess-hunt commit $commit in run $run_id, from the vetting records of run $vetting_run.
+""")
+
 INDEX = Template("""\
 # Predictions
 
-Each directory here is one package of preregistered predictions for held signals, made by one run of `tess-hunt
-predictions run` and copied unchanged from its run directory by `tess-hunt predictions publish`
-([decision 0040](../../docs/decisions/0040-predictions-for-held-signals.md)). Its `README.md` says what is predicted,
-the test that will judge it, and when. The maintainer deposits each package on Zenodo, which lets a record's owner open
-an edit of its files within $fact_zenodo_edit_days days of publishing and publish it within
-$fact_zenodo_edit_publish_days days (as read on $zenodo_read); after that the files are fixed. Published packages are
-never edited: a correction is a new package.
+Each directory here is one package of preregistered transit predictions for held signals
+([decision 0040](../../docs/decisions/0040-predictions-for-held-signals.md)). A package is made by one production
+run of `tess-hunt predictions run` and copied unchanged from its run directory by `tess-hunt predictions publish`.
+Its `README.md` says what is predicted, the test that will judge it, and when.
 
-[facts.toml](facts.toml) holds the archive facts the packages state, each with its source and the date it was read.
+The maintainer deposits each package directory as one Zenodo record, with the form text that
+`tess-hunt predictions zenodo --run RUN_ID` prints. Zenodo lets a record's owner open an edit of its files within
+$fact_zenodo_edit_days days of publishing and publish it within $fact_zenodo_edit_publish_days days
+(as read on $zenodo_read); after that the files are fixed. Published packages are never edited: a correction is a
+new package.
+
+[facts.toml](facts.toml) holds the facts the packages state, each with its source and the date it was read.
 `dois.toml`, once the maintainer writes it, holds the DOI and publication date Zenodo gave each package.
 
 $packages
@@ -657,13 +700,18 @@ def record_values(record: Path) -> dict[str, str]:
     checks = json.loads((record / "checks.json").read_text())
     eph = checks["ephemeris"]
     raven = [r for r in checks["catalogued"]["rows"] if r["source"] == "RAVEN"]
+    dropped = checks["dropped_suspect"]
     found = {
         "signal": checks["signal"]["name"],
         "tic": str(checks["tic"]),
         "search_period": _number(eph["period"], ".6f"),
         "search_t0": _number(eph["t0"], ".4f"),
         "search_duration_h": _hours(eph["duration"]),
-        "suspect": _words(checks["dropped_suspect"]) or "none",
+        "suspect": (
+            f"Its vetted light curve leaves out {_sectors_words(dropped)}, flagged for suspect timestamps."
+            if dropped
+            else "Its vetted light curve leaves out no sector for suspect timestamps."
+        ),
         "raven_period": _number(raven[0]["period"], ".3f") if len(raven) == 1 else None,
     }
     review = record / "review.json"
@@ -677,11 +725,11 @@ def record_values(record: Path) -> dict[str, str]:
 def fact_values(facts: dict) -> dict[str, str]:
     """Each fact's value and its own read date (`fact_<key>`, `fact_<key>_read`), and every source with the date it was
     read: each sentence names the dates of the facts it states, so facts read on different days render."""
-    sources = dict.fromkeys(f"{fact['source']} (read {fact['read']})" for fact in facts.values())
+    sources = dict.fromkeys(f"- {fact['source']} (read {fact['read']})" for fact in facts.values())
     return (
         {f"fact_{key}": str(fact["value"]) for key, fact in facts.items()}
         | {f"fact_{key}_read": str(fact["read"]) for key, fact in facts.items()}
-        | {"fact_sources": "; ".join(sources)}
+        | {"fact_sources": "\n".join(sources)}
     )
 
 
@@ -747,18 +795,51 @@ def _references_table(prediction: dict) -> str:
     return _table(header, rows)
 
 
-def _left_out(prediction: dict, lock_start: dt.date) -> tuple[str, str]:
-    left = prediction["left_out"]
-    if not left:
-        return "none", ""
-    text = f"{_sectors_words([s['sector'] for s in left])}, which start before the lock on {lock_start}"
-    inside = [s["sector"] for s in left if s["in_season"]]
-    if not inside:
-        return text, ""
-    return text, (
-        f" The new season still holds {_sectors_words(inside)}: the test counts their cadences as part of it, though "
-        "this package lists no transit in them."
+def _training(prediction: dict) -> str:
+    """How many seasons train the prediction, how many of them hold a transit, and how many the test needs."""
+    n = len(prediction["training_seasons"])
+    held = sum(s["holds_transits"] for s in prediction["training_seasons"])
+    if held == n:
+        holding = "Both seasons hold" if n == 2 else f"All {n} seasons hold"
+    else:
+        holding = f"{held} of them {'holds' if held == 1 else 'hold'}"
+    return (
+        f"The prediction is trained on the {n} seasons of its vetted light curve.\n{holding} a transit in their "
+        f"data, and the test needs at least {prediction['min_training_seasons']}."
     )
+
+
+def _left_out(prediction: dict, lock_start: dt.date) -> str:
+    """The sentences naming the sectors left out before the lock, and those of them still in the new season."""
+    left = [s["sector"] for s in prediction["left_out"]]
+    if not left:
+        return ""
+    one = len(left) == 1
+    text = (
+        f"\n{_sectors_words(left)} {'is' if one else 'are'} left out because {'it starts' if one else 'they start'} "
+        f"before the lock on {lock_start}."
+    )
+    inside = [s["sector"] for s in prediction["left_out"] if s["in_season"]]
+    if not inside:
+        return text
+    one = len(inside) == 1
+    subject = ("It" if one else "They") if inside == left else _sectors_words(inside)
+    return text + (
+        f"\n{subject} still {'falls' if one else 'fall'} in the new season, so the test counts "
+        f"{'its' if one else 'their'} cadences, though this package lists no transit in {'it' if one else 'them'}."
+    )
+
+
+def _offset(offsets: list[float]) -> str | None:
+    """How much later or earlier than the refit's times the windows' mid-times run, in words."""
+    if not all(math.isfinite(v) for v in offsets):
+        return None
+    low, high = min(offsets), max(offsets)
+    if low >= 0:
+        return f"{_span([low, high], '.0f')} min later than"
+    if high <= 0:
+        return f"{_span([-high, -low], '.0f')} min earlier than"
+    return f"from {_number(-low, '.0f')} min earlier to {_number(high, '.0f')} min later than"
 
 
 def _wide(windows: list[dict], period: float, sigmas: list[float]) -> str:
@@ -799,15 +880,11 @@ def _section(
     offsets = _offsets(windows, prediction["transits"])
     refit = prediction["predicted"]
     kept = sorted({t["sector"] for t in prediction["transits"]})
-    left_out, in_season = _left_out(prediction, lock_start)
+    testable = _either(prediction["testable_with"])
     found = record_values(record) | fact_values(facts)
     found |= _filled(
         {
-            "n_seasons": str(len(prediction["training_seasons"])),
-            "n_with_transits": str(
-                sum(s["holds_transits"] for s in prediction["training_seasons"])
-            ),
-            "min_training_seasons": str(prediction["min_training_seasons"]),
+            "training": _training(prediction),
             "seasons": _seasons_table(prediction),
             "period": _number(refit["period"], ".6f"),
             "t0": _number(refit["t0"], ".4f"),
@@ -816,13 +893,16 @@ def _section(
             "references": _references_table(prediction),
             "n_transits": str(len(prediction["transits"])),
             "kept": _sectors_words(kept),
-            "left_out": left_out,
-            "in_season": in_season,
-            "testable": _either(prediction["testable_with"]) or "none",
+            "left_out": _left_out(prediction, lock_start),
+            "testable": (
+                f"{testable} data can test the new season."
+                if testable
+                else "No product's data can test the new season."
+            ),
             "n_windows": str(len(windows)),
             "fit_family": crit_vet["families"]["fit"].upper(),
             "sd": _span(sd, ".0f"),
-            "offset": _span(offsets, "+.0f"),
+            "offset": _offset(offsets),
             "wide": _wide(windows, refit["period"], crit_vet["predict"]["sigma"]),
         }
     )
@@ -906,7 +986,11 @@ def readme(
             "vetting_run": provenance["vetting_run"],
             "core_percent": f"{crit_vet['depth']['core_fraction'] * 100:g}",
             "criteria_vet": criteria_vet["file"],
-            "criteria_vet_sha256": criteria_vet["sha256"],
+            "families": " ".join(
+                f"The {name.upper()} family holds {_words([PRODUCTS[p] for p in members])} light curves."
+                for name, members in crit_vet["families"].items()
+                if isinstance(members, list)
+            ),
             "season_gap_days": f"{cfg['season_gap_days']:g}",
             "min_training_seasons": str(cfg["min_training_seasons"]),
             "min_points": str(cfg["min_points"]),
@@ -930,8 +1014,8 @@ def readme(
                 _section(p, records[name], crit_vet, sectors, lock_start, facts)
                 for name, p in predictions.items()
             ),
-            "criteria": "; ".join(
-                f"`{c['file']}` sha256 {c['sha256']}" for c in provenance["criteria"]
+            "criteria": "\n".join(
+                f"  - `{c['file']}`, sha256 {c['sha256']}" for c in provenance["criteria"]
             ),
             "catalogs": provenance["catalogs"],
             "known_sha256": inputs["known"]["sha256"],
@@ -939,14 +1023,15 @@ def readme(
             "sectors_sha256": inputs["tess_sectors"]["sha256"],
             "facts_sha256": inputs["facts"]["sha256"],
             "hashes": _hashes_table(provenance, predictions),
-            "prediction_columns": ", ".join(f"`{c}`" for c in PREDICTION_COLUMNS),
-            "window_columns": ", ".join(f"`{c}`" for c in _window_columns(crit_vet)),
+            "prediction_columns": _columns(PREDICTION_COLUMNS),
+            "window_columns": _columns(_window_columns(crit_vet)),
         }
     )
     return README.substitute(found)
 
 
 def zenodo(provenance: dict, predictions: dict[str, dict], facts: dict) -> str:
+    """The Zenodo deposit form's text for a package: its title, resource type, description, keywords and licence."""
     kept = _kept_sectors(predictions)
     # A signal's note is where the README quotes its review.
     quoted = [name for name in predictions if name in NOTES]
@@ -970,7 +1055,10 @@ def zenodo(provenance: dict, predictions: dict[str, dict], facts: dict) -> str:
         "deposit_by": _deposit_by(dt.date.fromisoformat(provenance["lock_start"]), facts),
         "judged_by": JUDGED_BY.isoformat(),
     }
-    return ZENODO.substitute(_filled(found))
+    description = DESCRIPTION.substitute(_filled(found))
+    # Zenodo's description editor keeps line breaks, so each paragraph is pasted as one line.
+    description = "\n\n".join(" ".join(p.split()) for p in description.split("\n\n"))
+    return ZENODO.substitute(_filled(found | {"description": description}))
 
 
 def _deposit_by(lock_start: dt.date, facts: dict) -> str:
@@ -992,16 +1080,30 @@ def _ddt_ask(need: list[str], predictions: dict[str, dict], facts: dict) -> str:
     }
     rest = [n for n in need if n not in states]
     if not states:
-        return "No DDT proposal asks for 2-min data on any of them, so for these no 2-min data are in sight."
+        return "No DDT proposal asks for 2-min data on any of them, so no 2-min data are in sight for them."
+    # The state reads as the end of a sentence: "sent to the TESS DDT program on <date>", "not sent".
     texts = [
-        f"For {n}, tess-hunt has a DDT proposal asking for 2-min data (`results/ddt/{n}/` in its repository); its "
-        f"state, as `facts.toml` records it on {state['read']}: {state['value']}."
+        f"For {n}, a Director's Discretionary Time (DDT) proposal asking for 2-min data on its star was\n"
+        f"{state['value']} (recorded in `facts.toml` on {state['read']}).\n"
+        f"The proposal is in tess-hunt's repository under `results/ddt/{n}/`."
         for n, state in states.items()
     ]
-    texts.append("A sent proposal is a request, which the TESS office may or may not take.")
+    texts.append("A sent proposal is a request, which the TESS office may or may not grant.")
     if rest:
-        texts.append(f"For {_words(rest)} no 2-min data are in sight.")
-    return " ".join(texts)
+        texts.append(f"For {_words(rest)}, no 2-min data are in sight.")
+    return "\n".join(texts)
+
+
+def _columns(names: list[str]) -> str:
+    """A CSV's column names as the README's Files list shows them, wrapped under their item."""
+    return textwrap.fill(
+        ", ".join(f"`{c}`" for c in names),
+        118,
+        initial_indent="  ",
+        subsequent_indent="  ",
+        break_on_hyphens=False,
+        break_long_words=False,
+    )
 
 
 def _window_columns(crit_vet: dict) -> list[str]:
@@ -1136,7 +1238,6 @@ def cmd_run(args) -> int:
     }
     # Rendered before anything is written beside the provenance: a missing value leaves no partial package.
     text = readme(run.provenance, predictions, records, crit_vet.values, facts, sectors)
-    metadata = zenodo(run.provenance, predictions, facts)
     rows = [
         {
             "signal": name,
@@ -1180,7 +1281,6 @@ def cmd_run(args) -> int:
     )
     shutil.copyfile(facts_file, run.path / "facts.toml")
     (run.path / "README.md").write_text(text)
-    (run.path / "zenodo.md").write_text(metadata)
     summary = {
         name: {
             "sectors": sorted({t["sector"] for t in p["transits"]}),
@@ -1275,6 +1375,29 @@ def cmd_index(args) -> int:
     return 0
 
 
+def deposit_form(run: Path) -> str:
+    """The Zenodo deposit form's text for the package a finished predictions run made, from the run's own files."""
+    made = json.loads((run / "provenance.json").read_text())
+    if made.get("stage") != "predictions":
+        raise SystemExit(f"run {run.name} is not a predictions run")
+    if made.get("ended_at") is None:
+        raise SystemExit(f"run {run.name} has not finished")
+    rows = pd.read_csv(run / "predictions.csv")
+    predictions = {
+        name: {"tic": int(group["tic"].iloc[0]), "transits": group[["sector"]].to_dict("records")}
+        for name, group in rows.groupby("signal", sort=False)
+    }
+    return zenodo(made, predictions, tomllib.loads((run / "facts.toml").read_text()))
+
+
+def cmd_zenodo(args) -> int:
+    run = runs_dir() / args.run
+    if not (run / "provenance.json").is_file():
+        raise SystemExit(f"no run {args.run} under the data directory")
+    print(deposit_form(run), end="")
+    return 0
+
+
 def add_parser(sub) -> None:
     p = sub.add_parser(
         "predictions", help="preregistered predictions for held signals (decision 0040)"
@@ -1316,3 +1439,8 @@ def add_parser(sub) -> None:
         "index", help="render results/predictions/README.md again, with dois.toml's DOIs"
     )
     i.set_defaults(func=cmd_index)
+    z = modes.add_parser(
+        "zenodo", help="print the Zenodo deposit form's text for a finished predictions run"
+    )
+    z.add_argument("--run", required=True, help="the run id")
+    z.set_defaults(func=cmd_zenodo)

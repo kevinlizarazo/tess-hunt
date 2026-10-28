@@ -325,8 +325,9 @@ from a run directory and writes its own.
   can see, not when the re-vet runs: a light curve fetched before it that covers every predicted sector is judged
   whenever the re-vet runs, one fetched on or after it completes no season, and a season still missing a sector in a
   re-vet judged as of that date or later stays untested. A result once judged stands, and every later version carries it
-  ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt predictions run` makes a package in one production run, and
-  `tess-hunt predictions publish` copies it to `results/predictions/<run id>/`.
+  ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt predictions run` makes a package in one production run,
+  `tess-hunt predictions publish` copies it to `results/predictions/<run id>/`, and `tess-hunt predictions zenodo`
+  prints the Zenodo deposit form's text from the run; that text is not a package file.
 - **The DDT ask for a held signal** ([0039](decisions/0039-ddt-for-held-signals.md)): a held signal may go to it, on
   the maintainer's call each time, when 2-min data would supply its deciding evidence: the transit's shape, or a
   season no public light curve will otherwise cover. A hold on blending does not go. `tess-hunt ddt render` fills the

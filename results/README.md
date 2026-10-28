@@ -346,7 +346,8 @@ production run of `tess-hunt predictions run` and copied unchanged by `tess-hunt
 ([decision 0040](../docs/decisions/0040-predictions-for-held-signals.md)). The package's own `README.md` says what is
 predicted, the test that will judge it, when, and what a result means, and describes each of its files.
 [predictions/README.md](predictions/README.md), rendered by `predictions publish` and `tess-hunt predictions index`,
-lists the packages.
+lists the packages. The Zenodo deposit form's text (title, description, keywords and licence) is not a package
+file: `tess-hunt predictions zenodo --run RUN_ID` prints it from the run's files for the maintainer to paste.
 
 - `predictions/facts.toml`: each fact the packages state about archives, target lists, RAVEN's citation and the state
   of a DDT proposal, with the page or file it was read from and the date it was read. A production run takes it only
