@@ -476,7 +476,8 @@ def cmd_run(args) -> int:
     load_v2_catalog(args.catalogs)
     signals = _read_signals(args.signals)
     stars = _stars(signals, args.targets)
-    no_lc = [str(t) for t in stars if not (lc_dir() / f"{t}.npz").exists()]
+    lcs = args.lc_dir or lc_dir()
+    no_lc = [str(t) for t in stars if not (lcs / f"{t}.npz").exists()]
     if no_lc:
         raise SystemExit(f"no light curve for TIC {', '.join(no_lc)}; fetch first")
     triage = (
@@ -502,7 +503,7 @@ def cmd_run(args) -> int:
     for name, path in snapshot_inputs(args.catalogs).items():
         run.record_input(name, path)
     for tic in sorted(stars):
-        run.record_input(f"light_curve_{tic}", lc_dir() / f"{tic}.npz")
+        run.record_input(f"light_curve_{tic}", lcs / f"{tic}.npz")
     run.record_input("tess_sectors", repo_root() / sectors_file)
     if triage:
         run.record_input("triage_provenance", triage["provenance"])
@@ -517,7 +518,7 @@ def cmd_run(args) -> int:
                 float(s["period"]), float(s["t0"]), float(s["duration"]), float(s["depth"])
             ),
             "star": stars[int(s["tic"])],
-            "lc": lc_dir() / f"{int(s['tic'])}.npz",
+            "lc": lcs / f"{int(s['tic'])}.npz",
             "catalogs": args.catalogs,
             "crit_search": crit_search.values,
             "crit_vet": crit_vet.values,
@@ -1439,6 +1440,12 @@ def add_parser(sub) -> None:
         "--include-suspect",
         action="store_true",
         help="evidence only: keep timing-suspect sectors in; no windows, never used for a call",
+    )
+    r.add_argument(
+        "--lc-dir",
+        type=Path,
+        help="the light curves to vet, <tic>.npz each (a re-vet's: a revet fetch run's lc/); "
+        "by default the shared cache",
     )
     r.add_argument("--criteria-search", type=Path, default=Path("criteria/search-v2.toml"))
     r.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))

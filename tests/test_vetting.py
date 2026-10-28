@@ -12,6 +12,7 @@ from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.fit import NAMES, FitResult
+from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -418,6 +419,28 @@ def test_evidence_only_run_is_marked(tmp_path, monkeypatch):
     provenance = json.loads((evidence_run / "provenance.json").read_text())
     assert provenance["evidence_only"] is True and provenance["summary"]["evidence_only"] is True
     assert "advances" not in provenance["summary"]["signals"]["1-1"]
+
+
+def test_vetting_run_reads_lc_dir(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch, signals=SIGNALS[:1], fit=fake_fit)
+    # A re-vet's light curves, with the shared cache gone: a read of it anywhere would fail.
+    shared = tmp_path / "data" / "lc"
+    revet = tmp_path / "revet-run" / "lc"
+    revet.parent.mkdir()
+    shared.rename(revet)
+    lc = LightCurve.load(revet / "1.npz")
+    lc.sources["64"]["s3_key"] = "qlp/s0064_v02"
+    lc.save(revet / "1.npz")
+
+    assert main([*argv, "--lc-dir", str(revet)]) == 0
+    assert main([*argv, "--lc-dir", str(revet), "--include-suspect"]) == 0
+    assert not shared.exists()
+    runs = list((tmp_path / "data" / "runs").iterdir())
+    assert len(runs) == 2
+    for run in runs:
+        provenance = json.loads((run / "provenance.json").read_text())
+        assert provenance["inputs"]["light_curve_1"]["sha256"] == sha256_file(revet / "1.npz")
+        assert read(run, "1-1")["sources"]["64"]["s3_key"] == "qlp/s0064_v02"
 
 
 def triage_run(tmp_path: Path) -> Path:

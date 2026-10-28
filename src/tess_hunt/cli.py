@@ -10,6 +10,7 @@ from tess_hunt import (
     ddt,
     fetch,
     prereg,
+    revet,
     search,
     targets,
     triage,
@@ -17,7 +18,19 @@ from tess_hunt import (
     vetting,
 )
 
-COMMANDS: list = [catalogs, targets, fetch, search, benchmark, vet, triage, vetting, ddt, prereg]
+COMMANDS: list = [
+    catalogs,
+    targets,
+    fetch,
+    search,
+    benchmark,
+    vet,
+    triage,
+    vetting,
+    ddt,
+    prereg,
+    revet,
+]
 
 
 def build_parser() -> argparse.ArgumentParser:
