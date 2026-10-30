@@ -8,6 +8,7 @@ import re
 import tomllib
 from pathlib import Path
 
+from tess_hunt.claims import listing_id
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
 from tess_hunt.provenance import repo_root
@@ -33,6 +34,9 @@ KEYS = {
     "sentences",
     "hits_read",
 }
+# The forms each kind of listing is written in: the snapshot's TOI-185.01 and CTOI-17361.01, ExoFOP's TOI 185.01 and
+# TIC 17361.01. listing_id reads them all and drops the kind, and a TOI and a CTOI can share a number.
+FORMS = {"TOI": ("TOI-", "TOI "), "CTOI": ("CTOI-", "TIC ")}
 
 
 class CallError(ValueError):
@@ -160,6 +164,35 @@ def pixels(signal_dir: Path, checks: dict) -> dict | None:
     return checks["pixels"]
 
 
+def novelty(signal_dir: Path, checks: dict) -> dict:
+    """The novelty check the bars read (decision 0042): where claims.json excepts at least one listing made after the
+    signal's claim, the check as `vetting claims` ran it again without them; otherwise the vetting run's."""
+    found = _json(signal_dir / "claims.json")
+    if found is not None and found["excepted"]:
+        return found["novelty"]
+    return next(c for c in checks["checks"] if c["check"] == "novelty")
+
+
+def _listing(kind: str, name: str | None) -> str | None:
+    """The listing `name` writes in one of `kind`'s forms, as the snapshot names it; None for any other name."""
+    number = listing_id(name) if name and name.startswith(FORMS[kind]) else None
+    return None if number is None else f"{kind}-{number}"
+
+
+def excepted_listings(signal_dir: Path) -> set[str]:
+    """The TOIs and CTOIs claims.json excepts under decision 0042, as the snapshot names them (TOI-185.01,
+    CTOI-17361.01)."""
+    found = _json(signal_dir / "claims.json")
+    if found is None:
+        return set()
+    return {_listing(r["source"], r["name"]) for r in found["excepted"]} - {None}
+
+
+def _judged(signal_dir: Path, checks: dict) -> list[dict]:
+    """checks.json's checks as the bars read them, novelty as decision 0042 leaves it."""
+    return [novelty(signal_dir, checks) if c["check"] == "novelty" else c for c in checks["checks"]]
+
+
 def _names(signal_dir: Path) -> set[str]:
     """What a call may rest on: the checks in the record and the review's findings."""
     checks = _json(signal_dir / "checks.json")
@@ -235,8 +268,8 @@ def load(path: Path) -> dict:
     return call
 
 
-def _failures(checks: dict, triceratops: dict | None, pixel: dict | None) -> set[str]:
-    failed = {c["check"] for c in checks["checks"] if c["outcome"] == "fail"}
+def _failures(judged: list[dict], triceratops: dict | None, pixel: dict | None) -> set[str]:
+    failed = {c["check"] for c in judged if c["outcome"] == "fail"}
     # A pixel fail kills a signal as it would have in triage (M3 design, section 4.10).
     for name, record in (("triceratops", triceratops), ("pixels", pixel)):
         if record is not None and record["outcome"] == "fail":
@@ -267,7 +300,8 @@ def _match_rule(signal_dir: Path) -> tuple[tuple[float, ...], float, float]:
 
 
 def _exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[str]:
-    """Bar 2: ExoFOP shows nothing at the period (Ruling Q), matched on period alone at the novelty harmonics."""
+    """Bar 2: ExoFOP shows nothing at the period (Ruling Q), matched on period alone at the novelty harmonics. A row of
+    a listing decision 0042 excepts belongs to that listing and is passed over."""
     planets = literature["search"]["exofop"].get("planets")
     if planets is None:
         return [
@@ -278,9 +312,13 @@ def _exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> l
     except CallError as exc:
         return [str(exc)]
     eph = Ephemeris(**checks["ephemeris"])
+    excepted = excepted_listings(signal_dir)
     out = []
     for p in planets:
-        if p["period"] is None:
+        # A TOI's rows name it in `toi` and its star's listing in `name`; a CTOI never made a TOI has its row under its
+        # own name with no TOI (pin P2).
+        listing = _listing("TOI", p["toi"]) if p["toi"] else _listing("CTOI", p["name"])
+        if p["period"] is None or listing in excepted:
             continue
         ratio = ephemeris_match(
             eph, Ephemeris(p["period"], float("nan"), float("nan")), harmonics, sigma_p, sigma_t
@@ -300,7 +338,7 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
     promotion = call["promotion"]
     if promotion is not None and kind != "second":
         out.append(f"promotion is for second-list rows; {signal_name(signal_dir)} is a {kind}")
-    for c in checks["checks"]:
+    for c in _judged(signal_dir, checks):
         if c["outcome"] == "pass":
             continue
         # Bar 2: a promoted second-list row's novelty stays inconclusive as known_to_spoc (decision 0013).
@@ -389,7 +427,7 @@ def problems(signal_dir: Path) -> list[str]:
     if call["outcome"] == "killed":
         found = set(confirmed(review)) if review else set()
         tric = _json(signal_dir / "triceratops.json")
-        grounds = _failures(checks, tric, pixels(signal_dir, checks)) | found
+        grounds = _failures(_judged(signal_dir, checks), tric, pixels(signal_dir, checks)) | found
         if not grounds & set(call["rests_on"]):
             listed = ", ".join(sorted(grounds)) or "none in this record"
             out.append(

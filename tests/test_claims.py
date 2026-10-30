@@ -158,6 +158,22 @@ def test_a_neighbours_toi_is_kept():
 
 
 @pytest.mark.parametrize(
+    "other",
+    [
+        # A planet confirmed by others after the claim is an archive row.
+        row("archive", "Later b", kind="planet"),
+        row("eumemic", "eumemic-allsky f1d17f0 1", kind="community"),
+    ],
+)
+def test_a_row_from_any_other_source_on_the_star_stays_known(other):
+    found = sort(known(row("TOI", "TOI-7001.01"), other), exofop([toi("TOI 7001.01")]))
+    assert [r["name"] for r in found["excepted"]] == ["TOI-7001.01"]
+    assert found["kept"] == []
+    assert found["novelty"]["outcome"] == "fail"
+    assert [m["name"] for m in found["novelty"]["evidence"]["matches"]] == [other["name"]]
+
+
+@pytest.mark.parametrize(
     ("tfop", "reason"),
     [
         ("FP", "disposition FP, not PC"),

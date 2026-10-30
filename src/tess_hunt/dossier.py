@@ -175,6 +175,7 @@ DECISIONS = {
     "0039": "0039-ddt-for-held-signals.md",
     "0040": "0040-predictions-for-held-signals.md",
     "0041": "0041-revets-as-versions.md",
+    "0042": "0042-listings-after-our-claim.md",
 }
 # Each novelty evidence list of catalog rows a signal matched.
 NOVELTY_MATCHES = ("matches", "period_matches", "objects", "tce_matches", "tce_period_matches")
@@ -255,6 +256,7 @@ class Record:
                 "titles",
                 "merge",
                 "prereg",
+                "claims",
             )
         }
         # A version's dossier says what changed since the record before it, from that record's checks alone.
@@ -265,6 +267,7 @@ class Record:
             self.before_provenance = json.loads((previous / "provenance-checks.json").read_text())
         self.merge = _json(path / "merge.json")
         self.prereg = _json(path / "prereg.json")
+        self.claims = _json(path / "claims.json")
         self.pixels = calls.pixels(path, self.checks)
         self.triceratops = _json(path / "triceratops.json")
         self.literature = _json(path / "literature.json")
@@ -347,6 +350,7 @@ def _runs(r: Record) -> str:
         ("titles", "titles"),
         ("merge", "revet fetch"),
         ("prereg", "preregistered test"),
+        ("claims", "claims"),
     ):
         p = r.provenance[role]
         if p is not None:
@@ -816,6 +820,24 @@ def _vetted_by(r: Record, vetting_run: str) -> str:
     return "an earlier version"
 
 
+def _excepted(r: Record) -> str:
+    """Decision 0042 after novelty's own result: each listing claims.json excepts, then novelty run again without
+    them. Nothing when it excepts none."""
+    found = r.claims
+    if found is None or not found["excepted"]:
+        return ""
+    claim, rerun = found["claim"], found["novelty"]
+    # Each sentence opens on the decision.
+    cite = r.decision("0042").replace("[decision", "[Decision", 1)
+    said = [
+        f" {cite}: {row['name']} was first listed on ExoFOP on {row['first_listed']}, after this signal was made "
+        f"public on {claim['date']} ({claim['record']})."
+        for row in found["excepted"]
+    ]
+    them = "it" if len(found["excepted"]) == 1 else "them"
+    return "".join(said) + f" Without {them}, novelty is {rerun['outcome']}: {rerun['reason']}."
+
+
 def _real_new(r: Record) -> str:
     novelty = r.check("novelty")
     tce = novelty["evidence"].get("tce_matches") or []
@@ -830,7 +852,8 @@ def _real_new(r: Record) -> str:
             f" SPOC TCE or ExoMiner rows at the period: {', '.join(t['name'] for t in tce)}."
             if tce
             else ""
-        ),
+        )
+        + _excepted(r),
     ]
     if r.literature is None:
         items.append(f"Literature: {r.absent('literature', 'literature')}")

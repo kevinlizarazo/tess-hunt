@@ -242,6 +242,7 @@ def flags(runs: dict[str, Path], *roles: str) -> list[str]:
         "literature": "--literature",
         "titles": "--titles",
         "lc_run": "--lc-run",
+        "claims": "--claims",
     }
     return [a for role in roles for a in (flag[role], str(runs[role]))]
 
@@ -1008,6 +1009,250 @@ def test_publish_refuses_runs_that_do_not_belong_together(tmp_path, monkeypatch,
     with pytest.raises(SystemExit, match=message):
         main(["vetting", "publish", "--name", NAME, *argv(tmp_path, runs), *flags(runs, "titles")])
     assert published(repo) == before
+
+
+CLAIM = {"date": "2026-10-28", "record": "https://doi.org/10.5281/zenodo.23745923"}
+# Novelty as `vetting claims` runs it again without the rows decision 0042 excepts.
+RERUN = {"check": "novelty", "outcome": "pass", "reason": "no known object matches", "evidence": {}}
+
+
+def later_listing(
+    source: str = "TOI", name: str = "TOI-7001.01", first: str = "2027-03-01"
+) -> dict:
+    """A listing on 1-1's star at its period, made after its claim with every disposition PC, as claims.json lists a
+    row decision 0042 excepts."""
+    return {
+        "source": source,
+        "name": name,
+        "tic": 1,
+        "period": 5.0,
+        "first_listed": first,
+        "dispositions": ["PC"],
+    }
+
+
+def claims_record(run: Path, lit: Path, excepted: list[dict], novelty: dict | None) -> dict:
+    return {
+        "signal": {"name": NAME, "tic": 1},
+        "vetting_run": run.name,
+        "literature_run": lit.name,
+        "claim": CLAIM,
+        "exofop_status": "ok",
+        "excepted": excepted,
+        "kept": [],
+        "novelty": novelty,
+    }
+
+
+def claims_run(tmp_path: Path, run: Path, lit: Path, record: dict, tag: str = "a") -> Path:
+    """A finished claims run made from `run` and the literature run `lit`, holding 1-1's `record`."""
+    path = made_run(tmp_path, "vetting-claims", run, {NAME: {"claims.json": record}}, tag=tag)
+    written = path / "signals" / NAME / "claims.json"
+    read = lit / "signals" / NAME / "literature.json"
+
+    def made_from(p):
+        p["literature_run"] = lit.name
+        p["inputs"][f"literature_{NAME}"] = {"file": read.name, "sha256": sha256_file(read)}
+        p["summary"] = {"signals": {NAME: {"tic": 1, "sha256": sha256_file(written)}}}
+
+    edit_json(path / "provenance.json", made_from)
+    return path
+
+
+def claimed_pass(tmp_path, monkeypatch) -> tuple[dict[str, Path], Path, list[str]]:
+    """1-1's production runs, a passed call on it whose novelty failed on a TOI listed after its claim, the claims run
+    that excepts the TOI, and the publish arguments without --claims."""
+    run, suspect = vetting_runs(tmp_path, monkeypatch)
+
+    def judged(checks):
+        # Every other check passed, as a pass needs; novelty failed on the later TOI.
+        for c in checks["checks"]:
+            if c["check"] == "holdout":
+                c.update(outcome="pass", reason="every held-out season predicted")
+            if c["check"] == "novelty":
+                match = {"source": "TOI", "name": "TOI-7001.01", "period": 5.0, "ratio": 1.0}
+                c.update(
+                    outcome="fail", reason="matches TOI TOI-7001.01", evidence={"matches": [match]}
+                )
+
+    edit_json(run / "signals" / NAME / "checks.json", judged)
+    complete = {**literature_record(run, monkeypatch), "outcome": "pass", "reason": "complete"}
+    tric = made_run(
+        tmp_path,
+        "vetting-triceratops",
+        run,
+        {NAME: {"triceratops.json": triceratops_record(run), "probs.csv": "ID,prob\n1,0.98\n"}},
+    )
+    lit = made_run(tmp_path, "vetting-literature", run, {NAME: {"literature.json": complete}})
+    runs = {
+        "run": run,
+        "suspect": suspect,
+        "triceratops": tric,
+        "literature": lit,
+        "titles": titles_run(tmp_path, lit),
+        "claims": claims_run(tmp_path, run, lit, claims_record(run, lit, [later_listing()], RERUN)),
+    }
+    production(*runs.values())
+    repo = tmp_path / "repo"
+    monkeypatch.setattr(vetting, "repo_root", lambda: repo)
+    signal = repo / "results" / "vetting" / NAME
+    signal.mkdir(parents=True)
+    (signal / "call.toml").write_text(tc.edit(tc.PASSED, '"44926986-1"', f'"{NAME}"'))
+    (signal / "review.json").write_text(json.dumps(REVIEW))
+    return runs, repo, publish_argv(runs, "run", "triceratops", "literature", "suspect", "titles")
+
+
+def test_publish_carries_the_claims_record(tmp_path, monkeypatch):
+    runs, repo, argv = claimed_pass(tmp_path, monkeypatch)
+    before = published(repo)
+    # Without the claims run, novelty's fail on the later TOI stands, and the pass is refused.
+    with pytest.raises(SystemExit, match="novelty is fail: matches TOI TOI-7001.01"):
+        main(argv)
+    assert published(repo) == before
+    assert main([*argv, *flags(runs, "claims")]) == 0
+    signal = repo / "results" / "vetting" / NAME
+    files = published(repo)
+    made = runs["claims"] / "signals" / NAME / "claims.json"
+    assert files[f"{NAME}/claims.json"] == sha256_file(made)
+    assert files[f"{NAME}/provenance-claims.json"] == sha256_file(
+        runs["claims"] / "provenance.json"
+    )
+    assert calls.problems(signal) == []
+    text = (signal / "dossier.md").read_text()
+    assert text == dossier.render(signal) and "Call: **passed** on 2026-10-28." in text
+    assert f"claims {runs['claims'].name} (commit abc1234, production)" in text
+    assert "Decision 0042" in section(text, "Real and new?")
+    # The same runs again change nothing; another claims run would overwrite the record.
+    assert main([*argv, *flags(runs, "claims")]) == 0
+    assert published(repo) == files
+    other = claims_run(
+        tmp_path,
+        runs["run"],
+        runs["literature"],
+        claims_record(runs["run"], runs["literature"], [later_listing(first="2027-03-02")], RERUN),
+        tag="b",
+    )
+    production(other)
+    with pytest.raises(SystemExit, match="another claims.json, provenance-claims.json"):
+        main([*argv, "--claims", str(other)])
+    assert published(repo) == files
+
+
+def claims_from_another_vetting_run(tmp_path, runs) -> Path:
+    record = claims_record(runs["suspect"], runs["literature"], [later_listing()], RERUN)
+    made = claims_run(tmp_path, runs["suspect"], runs["literature"], record, tag="c")
+    production(made)
+    return made
+
+
+def claims_from_another_literature_run(tmp_path, runs) -> Path:
+    same = json.loads((runs["literature"] / "signals" / NAME / "literature.json").read_text())
+    other = made_run(
+        tmp_path, "vetting-literature", runs["run"], {NAME: {"literature.json": same}}, tag="d"
+    )
+    record = claims_record(runs["run"], other, [later_listing()], RERUN)
+    made = claims_run(tmp_path, runs["run"], other, record, tag="d")
+    production(other, made)
+    return made
+
+
+def claims_edited_after_its_run(tmp_path, runs) -> Path:
+    edit_json(
+        runs["claims"] / "signals" / NAME / "claims.json",
+        lambda c: c["excepted"].append(later_listing("CTOI", "CTOI-1.01")),
+    )
+    return runs["claims"]
+
+
+def claims_read_another_literature_record(tmp_path, runs) -> Path:
+    edit_json(
+        runs["claims"] / "provenance.json",
+        lambda p: p["inputs"][f"literature_{NAME}"].update(sha256="0" * 64),
+    )
+    return runs["claims"]
+
+
+def claims_on_other_criteria(tmp_path, runs) -> Path:
+    edit_json(
+        runs["claims"] / "provenance.json", lambda p: p["criteria"][1].update(sha256="0" * 64)
+    )
+    return runs["claims"]
+
+
+def claims_not_production(tmp_path, runs) -> Path:
+    edit_json(runs["claims"] / "provenance.json", lambda p: p.update(production=False))
+    return runs["claims"]
+
+
+def claims_unfinished(tmp_path, runs) -> Path:
+    edit_json(runs["claims"] / "provenance.json", lambda p: p.update(ended_at=None))
+    return runs["claims"]
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        (claims_from_another_vetting_run, "claims run .* was made from .*-vetting-run-.*, not"),
+        (claims_from_another_literature_run, "was made from literature run .*-d, not .*-a"),
+        (claims_edited_after_its_run, "claims.json for 1-1 is not the file it wrote"),
+        (claims_read_another_literature_record, "read another literature.json for 1-1"),
+        (claims_on_other_criteria, "claims run .* ran on other criteria"),
+        (claims_not_production, "is not a production claims run"),
+        (claims_unfinished, "is not a finished claims run"),
+    ],
+)
+def test_publish_refuses_a_claims_run_that_does_not_belong(tmp_path, monkeypatch, change, message):
+    runs, repo, argv = claimed_pass(tmp_path, monkeypatch)
+    claims = change(tmp_path, runs)
+    before = published(repo)
+    with pytest.raises(SystemExit, match=message):
+        main([*argv, "--claims", str(claims)])
+    assert published(repo) == before
+
+
+def test_a_draft_with_claims_needs_the_literature_run_they_read(tmp_path, monkeypatch):
+    runs, _, _ = claimed_pass(tmp_path, monkeypatch)
+    out = tmp_path / "drafts"
+    with pytest.raises(SystemExit, match="was made from literature run .*-a, not none"):
+        main(["vetting", "dossier", *flags(runs, "run", "claims"), "--out", str(out)])
+    assert not out.exists()
+
+
+def test_the_dossier_names_each_excepted_listing(tmp_path, monkeypatch):
+    signal, runs = draft(tmp_path, monkeypatch, review=REVIEW, call=HELD)
+    before = dossier.render(signal)
+    path = signal / "claims.json"
+    cite = "[Decision 0042](../../../docs/decisions/0042-listings-after-our-claim.md)"
+
+    def novelty_line(text: str) -> str:
+        [line] = [x for x in section(text, "Real and new?").splitlines() if "Novelty, against" in x]
+        return line
+
+    old = novelty_line(before)
+    toi = later_listing()
+    path.write_text(json.dumps(claims_record(runs["run"], runs["literature"], [toi], RERUN)))
+    text = dossier.render(signal)
+    assert novelty_line(text) == (
+        f"{old} {cite}: TOI-7001.01 was first listed on ExoFOP on 2027-03-01, after this signal was made public on "
+        "2026-10-28 (https://doi.org/10.5281/zenodo.23745923). Without it, novelty is pass: no known object matches."
+    )
+    # The sentence is all that changes.
+    assert text.replace(novelty_line(text), old) == before
+    # One sentence per listing, and the rerun's outcome once.
+    ctoi = later_listing("CTOI", "CTOI-1.01", first="2027-02-01")
+    path.write_text(json.dumps(claims_record(runs["run"], runs["literature"], [toi, ctoi], RERUN)))
+    line = novelty_line(dossier.render(signal))
+    assert line.count(f"{cite}: ") == 2
+    assert (
+        f"{cite}: CTOI-1.01 was first listed on ExoFOP on 2027-02-01, after this signal was made public on "
+        "2026-10-28 (https://doi.org/10.5281/zenodo.23745923). Without them, novelty is pass: no known object "
+        "matches."
+    ) in line
+    # A claims.json that excepts nothing renders as a record without one.
+    path.write_text(json.dumps(claims_record(runs["run"], runs["literature"], [], None)))
+    assert dossier.render(signal) == before
+    path.unlink()
+    assert dossier.render(signal) == before
 
 
 def test_readme_lists_every_call(tmp_path):

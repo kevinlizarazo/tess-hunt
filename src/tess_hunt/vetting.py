@@ -1444,6 +1444,7 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
         ("checks-with-suspect", args.evidence_only, "vetting-run", "evidence-only vetting"),
         ("second-list", args.second_list, "vetting-second-list", "second-list"),
         ("prereg", args.prereg, "vetting-prereg", "preregistered test"),
+        ("claims", args.claims, "vetting-claims", "claims"),
     )
     for role, path, stage, what in given:
         if path is None:
@@ -1463,6 +1464,18 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
             )
         if [c["sha256"] for c in made["criteria"]] != criteria:
             raise SystemExit(f"{what} run {name} ran on other criteria than {run_id}")
+        # Decision 0042's first-listed dates come from the ExoFOP record of the literature run it read, which must be
+        # the record's own.
+        if role == "claims":
+            literature = (
+                args.literature.resolve().name
+                if args.literature is not None
+                else "none: give --literature"
+            )
+            if made["literature_run"] != literature:
+                raise SystemExit(
+                    f"claims run {name} was made from literature run {made['literature_run']}, not {literature}"
+                )
         runs[role] = path
     return runs
 
@@ -1490,6 +1503,7 @@ def _signal_files(
         # named apart from the vetting run's plots/ so every file there keeps its source.
         ("second-list", ("pixels.json", "pixels.png"), "second-list"),
         ("prereg", ("prereg.json",), "preregistered test"),
+        ("claims", ("claims.json",), "claims"),
     ):
         path = runs.get(role)
         # The second list judges only second-list rows; any other signal's pixel check is triage's, and its record
@@ -1527,6 +1541,22 @@ def _signal_files(
             raise SystemExit(
                 f"{what} run {path.resolve().name}'s files for {name} are not the ones {_label(kept)} holds"
             )
+        # claims.json must be the file `vetting claims` wrote, from the literature record this record holds: its
+        # exception rests on that record's dates.
+        if role == "claims":
+            run_id = path.resolve().name
+            written = made_from["summary"].get("signals", {}).get(name, {}).get("sha256")
+            if sha256_file(found["claims.json"]) != written:
+                raise SystemExit(
+                    f"claims run {run_id}'s claims.json for {name} is not the file it wrote"
+                )
+            literature = runs["literature"] / "signals" / name / "literature.json"
+            dated = inputs.get(f"literature_{name}", {}).get("sha256")
+            if not literature.is_file() or dated != sha256_file(literature):
+                raise SystemExit(
+                    f"claims run {run_id} read another literature.json for {name} than literature run "
+                    f"{runs['literature'].resolve().name} holds"
+                )
         files.update(found)
     suspect = runs.get("checks-with-suspect")
     if suspect is not None:
@@ -2182,4 +2212,9 @@ def _record_arguments(p, required: bool) -> None:
     )
     p.add_argument(
         "--prereg", type=Path, help="with --version: a vetting prereg run made from --run"
+    )
+    p.add_argument(
+        "--claims",
+        type=Path,
+        help="a vetting claims run made from --run and --literature (decision 0042)",
     )
