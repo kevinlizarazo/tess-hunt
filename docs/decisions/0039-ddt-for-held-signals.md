@@ -12,9 +12,10 @@
   keywords drop project terms. Sent 2026-10-28: the maintainer sent 241522065-1's proposal to the TESS DDT program,
   as `ddt_241522065` in [results/predictions/facts.toml](../../results/predictions/facts.toml) records. Noted
   2026-10-29: the sent proposal's Figure 1, the record's `plots/folds.png`, is folded on the search's
-  ephemeris (P 17.436664 d, t0 BTJD 2340.4470) with the search's 3.00 h duration shaded, not on the fitted period its
-  caption names. The fold's period differs from the fit's by 4.5 s, so the figure still shows the transit, offset by
-  about 21 min. A future proposal captions a figure from the ephemeris its plot used.
+  ephemeris (P 17.436664 d, t0 BTJD 2340.4470) with the search's 3.00 h duration shaded, not on the fitted ephemeris
+  its caption names (P 17.436716 d, t0 BTJD 2340.4325, duration 4.03 h). The periods differ by 4.5 s, but the
+  mid-times differ by about 21 min, so the figure shows the transit about 21 min early against its zero. A future
+  proposal captions a figure from the ephemeris its plot used.
 
 ## Context
 

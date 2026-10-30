@@ -21,7 +21,7 @@ new package.
 ## Credits
 
 The packages are derived from TESS light curves from MAST and from stellar parameters in the TESS Input Catalog.
-Reuse of a package must carry the TESS acknowledgement, and QLP's for a package trained on QLP light curves, and cite
-the light-curve products it used, with their sectors, and the TIC's papers, all as
-[ACKNOWLEDGEMENTS.md](../../ACKNOWLEDGEMENTS.md) gives them. Each deposited package's Zenodo record carries them in
+Reuse of a package must carry the acknowledgements and citations in [ACKNOWLEDGEMENTS.md](../../ACKNOWLEDGEMENTS.md)
+that apply to it: the TESS acknowledgement, QLP's if the package was trained on QLP light curves, the light-curve
+products it used with their sectors, and the TIC's papers. Each deposited package's Zenodo record carries them in
 its description.

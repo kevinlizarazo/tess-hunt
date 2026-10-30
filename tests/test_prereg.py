@@ -1055,12 +1055,12 @@ def test_credits_name_the_products_and_sectors_the_deposited_package_trained_on(
     assert credited == " ".join(
         [
             "Acknowledgements. This dataset includes data collected with the TESS mission, obtained from the MAST data",
-            "archive at the Space Telescope Science Institute (STScI). Funding for US Institutions for the TESS mission",
-            "is provided by the NASA Explorer Program. STScI is operated by the Association of Universities for",
-            "Research in Astronomy, Inc., under NASA contract NAS5\u201326555. We acknowledge the use of TESS High Level",
-            "Science Products (HLSP) produced by the Quick-Look Pipeline (QLP) at the TESS Science Office at MIT, which",
-            "are publicly available from the Mikulski Archive for Space Telescopes (MAST). Funding for the TESS mission",
-            "is provided by NASA's Science Mission directorate. The predictions were trained on TESS-SPOC",
+            "archive at the Space Telescope Science Institute (STScI). Funding for US Institutions for the TESS",
+            "mission is provided by the NASA Explorer Program. STScI is operated by the Association of Universities",
+            "for Research in Astronomy, Inc., under NASA contract NAS5–26555. We acknowledge the use of TESS High",
+            "Level Science Products (HLSP) produced by the Quick-Look Pipeline (QLP) at the TESS Science Office at",
+            "MIT, which are publicly available from the Mikulski Archive for Space Telescopes (MAST). Funding for the",
+            "TESS mission is provided by NASA's Science Mission directorate. The predictions were trained on TESS-SPOC",
             "full-frame-image light curves from Sectors 9 to 12, 36 to 39, 64 and 65 (doi:10.17909/t9-wpz1-8s54;",
             "Caldwell et al. 2020, RNAAS 4, 201), QLP light curves from Sectors 65 and 90 (doi:10.17909/t9-r086-e880;",
             "Huang et al. 2020a, RNAAS 4, 204; Huang et al. 2020b, RNAAS 4, 206; Kunimoto et al. 2021, RNAAS 5, 234;",

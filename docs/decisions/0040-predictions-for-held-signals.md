@@ -3,28 +3,28 @@
 - Date: 2026-10-27
 - Status: Accepted. Made in the M4 design and approved by the maintainer with it on 2026-10-27. Six choices the M4
   build's controller made on 2026-10-27, stated in full under Decision, are the controller's, with no acceptance by the
-  maintainer recorded: the package records what the held-out check's two training gates read; the index of
-  packages reads an optional `dois.toml`; the archive facts the package states come from a committed
+  maintainer recorded: the package records what the held-out check's two training gates read; the index of packages
+  reads an optional `dois.toml`; the archive facts the package states come from a committed
   `results/predictions/facts.toml`, the sector dates from `benchmarks/tess_sectors.csv`, and the judging date is this
   record's rule, one constant in `prereg.py`; RAVEN's citation is a fact in that file, read from its Zenodo record,
-  because the record's literature search holds no RAVEN paper; the 2-min target lists the controller read on
-  2026-10-27 are a fact there too; and so is the state of 241522065-1's DDT proposal (`ddt_241522065`), which renders
-  the maintainer's decision to send it or not, set with its date before the production run. How a re-vet applies
-  "When it is judged" is [0041](0041-revets-as-versions.md)'s, by the controller's rulings of 2026-10-28: a result that
-  is not pending stands, and every later re-vet carries it; a light curve fetched on or after the judging date
-  completes no season, since the code sees when data were fetched, not when they were public; and a result is judged
-  as of a day between its vetting run's start and the day the test runs. Amended 2026-10-28 by the maintainer's
-  decision, after the package's pre-release review found that Zenodo lets an edit of a record's files, opened within
-  30 days of publishing, be published until day 45: the deposit deadline moved from 2026-11-20 to 2026-11-05, 45 days
-  before the same lock start, and `facts.toml` holds the 45-day limit as `zenodo_edit_publish_days`. Amended again
-  2026-10-28 at the maintainer's request, before the deposit: the Zenodo deposit form's text is no longer a package
-  file, since it is the maintainer's to paste and no reader of the deposit needs it;
-  `tess-hunt predictions zenodo --run RUN_ID` prints it from a finished run's files. Deposited 2026-10-28: Zenodo published the package
+  because the record's literature search holds no RAVEN paper; the 2-min target lists the controller read on 2026-10-27
+  are a fact there too; and so is the state of 241522065-1's DDT proposal (`ddt_241522065`), which renders the
+  maintainer's decision to send it or not, set with its date before the production run. How a re-vet applies "When it is
+  judged" is [0041](0041-revets-as-versions.md)'s, by the controller's rulings of 2026-10-28: a result that is not
+  pending stands, and every later re-vet carries it; a light curve fetched on or after the judging date completes no
+  season, since the code sees when data were fetched, not when they were public; and a result is judged as of a day
+  between its vetting run's start and the day the test runs. Amended 2026-10-28 by the maintainer's decision, after the
+  package's pre-release review found that Zenodo lets an edit of a record's files, opened within 30 days of publishing,
+  be published until day 45: the deposit deadline moved from 2026-11-20 to 2026-11-05, 45 days before the same lock
+  start, and `facts.toml` holds the 45-day limit as `zenodo_edit_publish_days`. Amended again 2026-10-28 at the
+  maintainer's request, before the deposit: the Zenodo deposit form's text is no longer a package file, since it is the
+  maintainer's to paste and no reader of the deposit needs it; `tess-hunt predictions zenodo --run RUN_ID` prints it
+  from a finished run's files. Deposited 2026-10-28: Zenodo published the package
   `20261028T204003Z-predictions-98bf417-0ef5` that day, version DOI 10.5281/zenodo.23745923, as
-  [results/predictions/dois.toml](../../results/predictions/dois.toml) records. Noted
-  2026-10-29: `mid_utc` in `predictions.csv` and `windows.csv` is truncated to the minute, as the dossiers' windows
-  tables give it, and `mid_btjd` is the value the test uses. Amended 2026-10-29 after the M4 milestone review, with the
-  maintainer's go-ahead: a package's README and its Zenodo description carry the acknowledgements and citations
+  [results/predictions/dois.toml](../../results/predictions/dois.toml) records. Noted 2026-10-29: `mid_utc` in
+  `predictions.csv` and `windows.csv` is truncated to the minute, as the dossiers' windows tables give it; the test uses
+  `mid_btjd` in `predictions.csv`, and `windows.csv` is not judged. Amended 2026-10-29 after the M4 milestone review,
+  with the maintainer's go-ahead: a package's README and its Zenodo description carry the acknowledgements and citations
   ACKNOWLEDGEMENTS.md asks of a data release, for the products and sectors the package trained on. The deposited
   package's files predate this and are unchanged; the maintainer adds the same credits to its Zenodo description by a
   metadata-only edit, which leaves its files and DOI as they are, and the index of packages says what reuse of any
