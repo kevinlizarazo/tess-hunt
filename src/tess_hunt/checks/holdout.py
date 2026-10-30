@@ -19,7 +19,7 @@ def season_labels(time: np.ndarray, gap_days: float) -> np.ndarray:
 
 
 def refit_ephemeris(lc: LightCurve, eph: Ephemeris, cfg: dict) -> Ephemeris:
-    """Best period and epoch near `eph` from these cadences alone."""
+    """Best period and epoch from these cadences alone, searching periods near `eph`'s; BLS scans every epoch."""
     baseline = float(lc.time.max() - lc.time.min())
     # BLS period resolution is about P * duration / baseline; search that many resolutions either side.
     half_width = cfg["refit_resolutions"] * eph.period * eph.duration / max(baseline, eph.period)

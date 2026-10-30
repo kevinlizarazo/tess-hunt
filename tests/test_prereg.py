@@ -87,6 +87,8 @@ def checks_json(name=NAME, **change) -> dict:
         "catalogued": {"rows": []},
         "windows": windows(),
         "windows_reason": None,
+        # The products of the light curve the record was vetted on, as `planet()` gives them.
+        "sources": {str(s): {"provenance": "SPOC"} for s in SECTORS},
         **change,
     }
 
@@ -419,6 +421,9 @@ def test_399023421_section_quotes_the_review_and_cites_raven():
     assert "9.825 d" in text
 
 
+TRAINED = {"SPOC 2-min": list(SECTORS)}
+
+
 def test_deposit_by_is_the_lock_less_zenodo_s_publish_limit(tmp_path):
     found = facts()
     days = found["zenodo_edit_publish_days"]["value"]
@@ -449,14 +454,14 @@ def test_deposit_by_is_the_lock_less_zenodo_s_publish_limit(tmp_path):
     with pytest.raises(KeyError, match="zenodo_edit_publish_days"):
         readme(partial)
     with pytest.raises(KeyError, match="zenodo_edit_publish_days"):
-        prereg.zenodo(made(signals), signals, partial, VET3["depth"]["core_fraction"])
+        prereg.zenodo(made(signals), signals, partial, VET3["depth"]["core_fraction"], TRAINED)
 
 
 def test_zenodo_says_an_ai_model_wrote_the_review_the_readme_quotes(tmp_path):
     prediction = predicted(planet(), write_record(tmp_path / NAME))
     both = {NAME: prediction, "399023421-1": {**prediction, "tic": 399023421}}
     text = " ".join(
-        prereg.zenodo(made(both), both, facts(), VET3["depth"]["core_fraction"]).split()
+        prereg.zenodo(made(both), both, facts(), VET3["depth"]["core_fraction"], TRAINED).split()
     )
     assert (
         "tess-hunt's code and this dataset's text were written with LLM assistance, and the adversarial review of "
@@ -656,14 +661,34 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch, capsys):
     assert "tess-hunt's code and this dataset's text were written with LLM assistance." in zflat
     assert "AI model" not in zflat
     assert "Each is a candidate signal, not a planet." in zflat and "They are on TIC 1 (" in zflat
-    # The run and the commit only in the closing provenance sentence.
-    assert zflat.endswith(
+    # The run and the commit only in the provenance sentence, before the acknowledgements.
+    *_, provenance_said, credited = description.split("\n\n")
+    assert provenance_said == (
         f"Made by tess-hunt commit {made['git']['commit']} in run {made['run_id']}, from the vetting records of run "
         f"{VET_RUN}."
     )
     assert zflat.count(made["run_id"]) == 1 and zflat.count(VET_RUN) == 1
+    # The credits for the products and sectors the package trained on, from the record's sources.
+    trained = (
+        "SPOC 2-minute light curves from Sectors 1 to 3, 14 to 16 and 28 to 30 (doi:10.17909/t9-nmc8-f686; "
+        "Jenkins et al. 2016, Proc. SPIE 9913, 99133E)"
+    )
+    assert credited.startswith(
+        "Acknowledgements. This dataset includes data collected with the TESS mission"
+    )
+    assert f"The predictions were trained on {trained}, with stellar parameters" in credited
+    assert (
+        "## Acknowledgements\n\nThis package includes data collected with the TESS mission"
+        in readme
+    )
+    assert f"The predictions were trained on {trained}, with stellar parameters" in flat
+    assert "Reuse of this package should carry these acknowledgements and citations." in flat
+    # No QLP light curve trained it, so QLP's acknowledgement is not asked for.
+    assert "Quick-Look Pipeline" not in readme + form
     # 1-1's windows are far narrower than its period.
     assert "too wide to place a transit" not in flat
+    # The refit searches periods near the search's; BLS scans every epoch.
+    assert "searching periods near the one tess-hunt's search found" in flat
     # The judging date cuts on when a light curve was fetched, as judge_signal applies it (decision 0041), not on when
     # a re-vet runs; the deposited text states that rule.
     assert (
@@ -999,6 +1024,56 @@ def test_prereg_equals_holdout_on_an_unchanged_light_curve(tmp_path):
         assert found["result"] == prereg.RESULTS.get(row["status"], "untested")
         results.append(found["result"])
     assert "replicated" in results
+
+
+DEPOSITED = ROOT / "results" / "predictions" / "20261028T204003Z-predictions-98bf417-0ef5"
+
+
+def test_credits_name_the_products_and_sectors_the_deposited_package_trained_on():
+    """The six signals' training sectors, under the products their records' sources name; the credits for them are the
+    paragraph the deposited record's description was given."""
+    signals = json.loads((DEPOSITED / "references.json").read_text())["signals"]
+    records = {name: ROOT / "results" / "vetting" / name for name in signals}
+    trained = prereg.trained_products(signals, records)
+    assert trained == {
+        "TESS-SPOC": [9, 10, 11, 12, 36, 37, 38, 39, 64, 65],
+        "QLP": [65, 90],
+        "SPOC 2-min": [12],
+    }
+    form = prereg.deposit_form(DEPOSITED)
+    description = form.split("## Description\n\n")[1].split("\n\n## Keywords")[0]
+    credited = description.split("\n\n")[-1]
+    assert credited == " ".join(
+        [
+            "Acknowledgements. This dataset includes data collected with the TESS mission, obtained from the MAST data",
+            "archive at the Space Telescope Science Institute (STScI). Funding for US Institutions for the TESS mission",
+            "is provided by the NASA Explorer Program. STScI is operated by the Association of Universities for",
+            "Research in Astronomy, Inc., under NASA contract NAS5\u201326555. We acknowledge the use of TESS High Level",
+            "Science Products (HLSP) produced by the Quick-Look Pipeline (QLP) at the TESS Science Office at MIT, which",
+            "are publicly available from the Mikulski Archive for Space Telescopes (MAST). Funding for the TESS mission",
+            "is provided by NASA's Science Mission directorate. The predictions were trained on TESS-SPOC",
+            "full-frame-image light curves from Sectors 9 to 12, 36 to 39, 64 and 65 (doi:10.17909/t9-wpz1-8s54;",
+            "Caldwell et al. 2020, RNAAS 4, 201), QLP light curves from Sectors 65 and 90 (doi:10.17909/t9-r086-e880;",
+            "Huang et al. 2020a, RNAAS 4, 204; Huang et al. 2020b, RNAAS 4, 206; Kunimoto et al. 2021, RNAAS 5, 234;",
+            "Kunimoto et al. 2022, RNAAS 6, 236) and SPOC 2-minute light curves from Sector 12",
+            "(doi:10.17909/t9-nmc8-f686; Jenkins et al. 2016, Proc. SPIE 9913, 99133E), with stellar parameters from",
+            "the TESS Input Catalog v8.2 (Stassun et al. 2019, AJ 158, 138; Paegert et al. 2021, arXiv:2108.04778).",
+            "Reuse of this dataset should carry these acknowledgements and citations.",
+        ]
+    )
+
+
+def test_credits_are_the_ones_acknowledgements_asks_for():
+    """Every acknowledgement, DOI and paper a package's credits give, as ACKNOWLEDGEMENTS.md gives it."""
+    asked = " ".join((ROOT / "ACKNOWLEDGEMENTS.md").read_text().split())
+    assert f"This paper {prereg.TESS_CREDIT}" in asked
+    assert prereg.QLP_CREDIT in asked
+    for _, doi, papers in prereg.CREDITED.values():
+        assert doi in asked
+        for who, where in papers:
+            assert f"{who} ({where})" in asked, who
+    for who, where in prereg.TIC_PAPERS:
+        assert f"{who} ({where})" in asked, who
 
 
 def test_every_fact_names_its_source_and_read_date():

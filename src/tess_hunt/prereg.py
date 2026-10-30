@@ -82,7 +82,7 @@ tess-hunt's code and this text were written with LLM assistance.
 ## What is judged
 
 tess-hunt's vetting criteria, vet-v3, include a held-out season check. It refits a signal's period and epoch on every
-season but one, searching near the period and epoch tess-hunt's search found, and measures the left-out season's depth
+season but one, searching periods near the one tess-hunt's search found, and measures the left-out season's depth
 only in the central $core_percent% of each transit the refit predicts (the transit's core).
 
 Here the left-out season is the new one, made by the sectors TESS is about to observe for each star. The other seasons
@@ -235,6 +235,10 @@ It is derived from TESS light curves (SPOC, TESS-SPOC and QLP, from MAST) and th
 `facts.toml` come from:
 
 $fact_sources
+
+## Acknowledgements
+
+$credits
 """)
 
 NO_CADENCES = """
@@ -270,6 +274,44 @@ and run $offset the refit's nearest predicted mid-times.$wide
 WIDE = Template("""
 These windows are too wide to place a transit: at $sigma sigma they reach up to $widest min either side of their
 mid-times, against a refit period of $orbit min. Use the refit's times in `predictions.csv` instead.""")
+
+# What a data release built on the project's results must carry (ACKNOWLEDGEMENTS.md, which test_prereg checks these
+# against): MAST's acknowledgement for TESS data, QLP's own, and each light-curve product's DOI and papers, in the
+# order the deposited package's Zenodo description lists them, and the TIC's papers.
+TESS_CREDIT = (
+    "includes data collected with the TESS mission, obtained from the MAST data archive at the Space Telescope "
+    "Science Institute (STScI). Funding for US Institutions for the TESS mission is provided by the NASA Explorer "
+    "Program. STScI is operated by the Association of Universities for Research in Astronomy, Inc., under NASA "
+    "contract NAS5\u201326555."
+)
+QLP_CREDIT = (
+    "We acknowledge the use of TESS High Level Science Products (HLSP) produced by the Quick-Look Pipeline (QLP) at "
+    "the TESS Science Office at MIT, which are publicly available from the Mikulski Archive for Space Telescopes "
+    "(MAST). Funding for the TESS mission is provided by NASA's Science Mission directorate."
+)
+CREDITED = {
+    "TESS-SPOC": (
+        "TESS-SPOC full-frame-image light curves",
+        "10.17909/t9-wpz1-8s54",
+        (("Caldwell et al. 2020", "RNAAS 4, 201"),),
+    ),
+    "QLP": (
+        "QLP light curves",
+        "10.17909/t9-r086-e880",
+        (
+            ("Huang et al. 2020a", "RNAAS 4, 204"),
+            ("Huang et al. 2020b", "RNAAS 4, 206"),
+            ("Kunimoto et al. 2021", "RNAAS 5, 234"),
+            ("Kunimoto et al. 2022", "RNAAS 6, 236"),
+        ),
+    ),
+    "SPOC 2-min": (
+        "SPOC 2-minute light curves",
+        "10.17909/t9-nmc8-f686",
+        (("Jenkins et al. 2016", "Proc. SPIE 9913, 99133E"),),
+    ),
+}
+TIC_PAPERS = (("Stassun et al. 2019", "AJ 158, 138"), ("Paegert et al. 2021", "arXiv:2108.04778"))
 
 # Each signal whose section says more than the others, from its record (design 4.3).
 NOTES = {
@@ -343,6 +385,8 @@ means.
 tess-hunt's code and this dataset's text were written with LLM assistance$reviewed.
 
 Made by tess-hunt commit $commit in run $run_id, from the vetting records of run $vetting_run.
+
+Acknowledgements. $credits
 """)
 
 INDEX = Template("""\
@@ -360,9 +404,17 @@ $fact_zenodo_edit_days days of publishing and publish it within $fact_zenodo_edi
 new package.
 
 [facts.toml](facts.toml) holds the facts the packages state, each with its source and the date it was read.
-`dois.toml`, once the maintainer writes it, holds the DOI and publication date Zenodo gave each package.
+`dois.toml` holds the DOI and publication date Zenodo gave each deposited package.
 
 $packages
+
+## Credits
+
+The packages are derived from TESS light curves from MAST and from stellar parameters in the TESS Input Catalog.
+Reuse of a package must carry the TESS acknowledgement, and QLP's for a package trained on QLP light curves, and cite
+the light-curve products it used, with their sectors, and the TIC's papers, all as
+[ACKNOWLEDGEMENTS.md](../../ACKNOWLEDGEMENTS.md) gives them. Each deposited package's Zenodo record carries them in
+its description.
 """)
 
 
@@ -678,6 +730,55 @@ def judge_signal(
         **row,
         "result": RESULTS.get(status, "untested"),
     }
+
+
+def trained_products(signals: dict[str, dict], records: dict[str, Path]) -> dict[str, list[int]]:
+    """The products the predictions were trained on, each with its sectors: every sector of each signal's training
+    seasons, under the product its record's `sources` names, in `CREDITED`'s order."""
+    found = {}
+    for name, p in signals.items():
+        sources = json.loads((records[name] / "checks.json").read_text())["sources"]
+        for season in p["training_seasons"]:
+            for sector in season["sectors"]:
+                product = PRODUCTS[sources[str(sector)]["provenance"]]
+                found.setdefault(product, set()).add(sector)
+    return {product: sorted(found[product]) for product in CREDITED if product in found}
+
+
+def _sector_runs(sectors: list[int]) -> str:
+    """Sectors as a reader lists them, three or more in a row as a range: "Sectors 9 to 12, 64 and 65"."""
+    runs = []
+    for sector in sorted(sectors):
+        if runs and sector == runs[-1][-1] + 1:
+            runs[-1].append(sector)
+        else:
+            runs.append([sector])
+    items = [
+        item
+        for run in runs
+        for item in ([f"{run[0]} to {run[-1]}"] if len(run) >= 3 else [str(s) for s in run])
+    ]
+    return f"Sector {items[0]}" if len(sectors) == 1 else f"Sectors {_words(items)}"
+
+
+def credits(trained: dict[str, list[int]], what: str) -> str:
+    """The acknowledgements and citations ACKNOWLEDGEMENTS.md asks of a data release, for the products and sectors
+    `trained` gives (`trained_products`); `what` names the release ("package", "dataset")."""
+    used = []
+    for product, sectors in trained.items():
+        name, doi, papers = CREDITED[product]
+        cited = "; ".join(f"{who}, {where}" for who, where in papers)
+        used.append(f"{name} from {_sector_runs(sectors)} (doi:{doi}; {cited})")
+    tic = "; ".join(f"{who}, {where}" for who, where in TIC_PAPERS)
+    text = [f"This {what} {TESS_CREDIT}"]
+    if "QLP" in trained:
+        text.append(QLP_CREDIT)
+    text.append(
+        f"The predictions were trained on {_words(used)}, with stellar parameters from the TESS Input Catalog v8.2 "
+        f"({tic})."
+    )
+    text.append(f"Reuse of this {what} should carry these acknowledgements and citations.")
+    return " ".join(text)
 
 
 def observer_windows(checks: dict, lock_start: dt.date, sectors: pd.DataFrame) -> list[dict]:
@@ -1066,16 +1167,27 @@ def readme(
             "hashes": _hashes_table(provenance, predictions),
             "prediction_columns": _columns(PREDICTION_COLUMNS),
             "window_columns": _columns(_window_columns(crit_vet)),
+            "credits": textwrap.fill(
+                credits(trained_products(predictions, records), "package"),
+                120,
+                break_on_hyphens=False,
+                break_long_words=False,
+            ),
         }
     )
     return README.substitute(found)
 
 
 def zenodo(
-    provenance: dict, predictions: dict[str, dict], facts: dict, core_fraction: float
+    provenance: dict,
+    predictions: dict[str, dict],
+    facts: dict,
+    core_fraction: float,
+    trained: dict[str, list[int]],
 ) -> str:
     """The Zenodo deposit form's text for a package: its title, resource type, description, keywords and licence.
-    `core_fraction` is the test's, as the package's references.json holds it."""
+    `core_fraction` is the test's, as the package's references.json holds it, and `trained` the products and sectors
+    it was trained on (`trained_products`)."""
     kept = _kept_sectors(predictions)
     # A signal's note is where the README quotes its review.
     quoted = [name for name in predictions if name in NOTES]
@@ -1099,6 +1211,7 @@ def zenodo(
         "deposit_by": _deposit_by(dt.date.fromisoformat(provenance["lock_start"]), facts),
         "judged_by": JUDGED_BY.isoformat(),
         "core_percent": f"{core_fraction * 100:g}",
+        "credits": credits(trained, "dataset"),
     }
     description = DESCRIPTION.substitute(_filled(found))
     # Zenodo's description editor keeps line breaks, so each paragraph is pasted as one line.
@@ -1427,7 +1540,8 @@ def cmd_index(args) -> int:
 
 
 def deposit_form(run: Path) -> str:
-    """The Zenodo deposit form's text for the package a finished predictions run made, from the run's own files."""
+    """The Zenodo deposit form's text for the package a finished predictions run made, from the run's own files and
+    the published records it read."""
     made = json.loads((run / "provenance.json").read_text())
     if made.get("stage") != "predictions":
         raise SystemExit(f"run {run.name} is not a predictions run")
@@ -1439,8 +1553,16 @@ def deposit_form(run: Path) -> str:
         for name, group in rows.groupby("signal", sort=False)
     }
     facts = tomllib.loads((run / "facts.toml").read_text())
-    core = json.loads((run / "references.json").read_text())["test"]["core_fraction"]
-    return zenodo(made, predictions, facts, core)
+    references = json.loads((run / "references.json").read_text())
+    records = {name: _records() / name for name in references["signals"]}
+    # The credits name each training sector's product from the records the run read.
+    for name, record in records.items():
+        if sha256_file(record / "checks.json") != made["inputs"][f"checks_{name}"]["sha256"]:
+            raise SystemExit(
+                f"results/vetting/{name}/checks.json is not the record run {run.name} read"
+            )
+    trained = trained_products(references["signals"], records)
+    return zenodo(made, predictions, facts, references["test"]["core_fraction"], trained)
 
 
 def cmd_zenodo(args) -> int:

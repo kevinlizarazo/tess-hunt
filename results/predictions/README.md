@@ -12,8 +12,16 @@ The maintainer deposits each package directory as one Zenodo record, with the fo
 new package.
 
 [facts.toml](facts.toml) holds the facts the packages state, each with its source and the date it was read.
-`dois.toml`, once the maintainer writes it, holds the DOI and publication date Zenodo gave each package.
+`dois.toml` holds the DOI and publication date Zenodo gave each deposited package.
 
 | Package | Made | Signals | DOI |
 |---|---|---|---|
 | [`20261028T204003Z-predictions-98bf417-0ef5`](20261028T204003Z-predictions-98bf417-0ef5/README.md) | 2026-10-28 | 103312990-1, 241522065-1, 296819076-1, 399023421-1, 423100454-1 and 438857197-1 | [10.5281/zenodo.23745923](https://doi.org/10.5281/zenodo.23745923), published 2026-10-28 |
+
+## Credits
+
+The packages are derived from TESS light curves from MAST and from stellar parameters in the TESS Input Catalog.
+Reuse of a package must carry the TESS acknowledgement, and QLP's for a package trained on QLP light curves, and cite
+the light-curve products it used, with their sectors, and the TIC's papers, all as
+[ACKNOWLEDGEMENTS.md](../../ACKNOWLEDGEMENTS.md) gives them. Each deposited package's Zenodo record carries them in
+its description.
