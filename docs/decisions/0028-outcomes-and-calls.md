@@ -17,22 +17,32 @@
   never judged allowed in, the README listing only published calls that stand, and the timing-suspect marks in the
   centroid table. Rulings C (the TRICERATOPS, literature and second-list runs refuse vet criteria other than the
   vetting run's: one run, one criteria file) and M ([0026](0026-triceratops.md)), which this record also cites, are
-  the controller's: no acceptance of them by the maintainer is recorded. Added on 2026-10-28, with no acceptance by
-  the maintainer recorded: the build choices the acceptance of 2026-10-22 did not name, each stated under Decision (a
-  call names the signal its directory holds, and its `criteria` the vet criteria version the checks ran under;
-  `[answers]` names no finding but a confirmed one; `vetting dossier` takes `--evidence-only` and `--signals` and
-  keeps drafts out of `results/`; the dossier's Literature hits section; and, in Ruling U's build, the second list's
-  own centroid plot, `pixels.png`, shown in place of the vetting run's `plots/centroids.png`); and five changes the M4
-  build made for the M3 build's deferred minors: `vetting dossier` refuses an `--out` anywhere in the repository;
-  `calls.problems` refuses a `review.json` written for another signal; a plot that raises leaves the vet standing,
-  with its error in `checks.json`'s `plot_errors`, and the dossier names it where the plot would be; a record holds a
-  second-list run's provenance only for a second-list row; and a `publish` whose copy fails partway removes the files
-  it copied. Three more, by the controller's ruling of the same day, change what a dossier rendered after M4 shows,
-  the published dossiers staying as they were published: page one's Triage row names the triage run the vetting run
-  read and the criteria file it judged under, which `vetting run` now records as input `triage_criteria` (a record
-  made before says its vetting run recorded none); a finding rated kill or hold that no refuter ran on is headed
-  "confirmed, no refuter ran on it" and says "No refuter ran on it." where the refuters' verdicts would be; and the
-  windows table leaves out the 1-sigma half-width, which is the sd.
+  the controller's: no acceptance of them by the maintainer is recorded. Added on 2026-10-28, none with an acceptance
+  by the maintainer recorded, each stated under Decision:
+  - A call names the signal its directory holds, and its `criteria` the vet criteria version its checks ran under.
+  - `[answers]` answers confirmed findings only.
+  - `vetting dossier` takes `--evidence-only` and `--signals`, and its drafts never sit in the repository: it refuses
+    an `--out` anywhere in it.
+  - The dossier lists the literature search's hits (Literature hits).
+  - A second-list row's dossier shows the second list's own centroid plot, `pixels.png`, in place of the vetting run's
+    `plots/centroids.png` (Ruling U's build).
+  - A record's `review.json` is its own signal's: `calls.problems` refuses one written for another signal.
+  - A plot that fails to draw does not stop the vet: `checks.json` keeps the error in `plot_errors`, and the dossier
+    names it where the plot would be.
+  - A record holds a second-list run's provenance only for a second-list row.
+  - A record never keeps part of a failed publish: `publish` removes the files it copied before the failure.
+  - By the controller's ruling of the same day, three changes to what a dossier rendered from then on shows; the
+    published dossiers keep the text they were published with. Page one's Triage row names the triage run the
+    vetting run read and the criteria file it judged under, which `vetting run` records as input `triage_criteria` (a
+    record made before says its vetting run recorded none). A finding rated kill or hold that no refuter ran on is
+    headed "confirmed, no refuter ran on it" and says "No refuter ran on it." where the refuters' verdicts would be.
+    The windows table leaves out the 1-sigma half-width, which is the sd.
+
+  Noted 2026-10-29: the DDT rule for held signals in the DDT note under Decision was widened on 2026-10-27 by
+  [0039](0039-ddt-for-held-signals.md): a held signal may also go to the ask, on the maintainer's call, when 2-min
+  data would supply a season no public light curve will otherwise cover. A hold on blending still does not go. A
+  published dossier keeps the DDT note it was published with, so the M3 dossiers state the rule as it stood before
+  0039.
 
 ## Context
 

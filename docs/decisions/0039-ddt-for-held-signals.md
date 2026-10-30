@@ -4,11 +4,17 @@
 - Status: Accepted. Made in the M4 design and approved by the maintainer with it on 2026-10-27; each ask stays the
   maintainer's call. The proposal's form follows rulings the M4 build's controller made on 2026-10-27, stated in full
   under Decision and put to the maintainer with the proposal: the target list in the TESS office's own shape, its
-  proposer and creator lines left as the template's placeholders, the proposal as plain Markdown for want of a LaTeX
-  tool, and the template's two questions answered from the record and `facts.toml` alone. Amended 2026-10-28 at the
-  maintainer's request that it read as a proposal of its kind: it is written in the first person singular, states
-  the record's values in plain words, quotes no review text, shows the record's folded-transit plot, and says the
-  code and text were written with LLM assistance; the target list's subject and keywords drop project terms.
+  proposer and creator lines left as the template's placeholders, the proposal as plain Markdown that the maintainer
+  pastes into the office's template, and the template's two questions answered from the record and `facts.toml`
+  alone. Amended 2026-10-28 at the maintainer's request that it read as a proposal of its kind: it is written in the
+  first person singular, states the record's values in plain words, quotes no review text, shows the record's
+  folded-transit plot, and says the code and text were written with LLM assistance; the target list's subject and
+  keywords drop project terms. Sent 2026-10-28: the maintainer sent 241522065-1's proposal to the TESS DDT program,
+  as `ddt_241522065` in [results/predictions/facts.toml](../../results/predictions/facts.toml) records. Noted
+  2026-10-29: the sent proposal's Figure 1, the record's `plots/folds.png`, is folded on the search's
+  ephemeris (P 17.436664 d, t0 BTJD 2340.4470) with the search's 3.00 h duration shaded, not on the fitted period its
+  caption names. The fold's period differs from the fit's by 4.5 s, so the figure still shows the transit, offset by
+  about 21 min. A future proposal captions a figure from the ephemeris its plot used.
 
 ## Context
 
@@ -70,8 +76,8 @@ TESS-SPOC's light curves on MAST only through S85, only SPOC 2-min data can.
   quoted word for word and says so ([0037](0037-quoted-text-in-the-dossier.md)). It leaves out Gaia DR3 data, the
   star's DR3 source id included, so `results/ddt/` stays CC BY 4.0 whole.
 - **The proposal's form** (the controller's rulings of 2026-10-27, above). It follows the DDT template's sections (DDT
-  Justification, Scientific Justification, Target Justification and Feasibility, References) as plain Markdown, since
-  no LaTeX or pandoc is installed; the maintainer pastes it into the template. Its author line is a placeholder. The
+  Justification, Scientific Justification, Target Justification and Feasibility, References) as plain Markdown, which
+  the maintainer pastes into the office's template. Its author line is a placeholder. The
   template asks why the targets can't wait for the next Guest Investigator call and why they weren't in the previous
   one: the proposal answers from the record (the date of the search that found the signal) and from `facts.toml` (the
   sectors are the star's last through S134, and the star is on none of the 2-min or 20-s target lists ahead), and

@@ -8,7 +8,11 @@
   epoch), which the M3 build's controller made after that approval, were accepted by the maintainer on 2026-10-22.
   Rulings J (the cadence group), K (the contrast curves), M (a possible host TRICERATOPS gave no depth is evidence,
   not a blocker) and O (each sector's aperture pixels kept in the record), which the controller also made during the
-  build, are the controller's: no acceptance of them by the maintainer is recorded.
+  build, are the controller's: no acceptance of them by the maintainer is recorded. Noted 2026-10-29: the DDT rule for
+  held signals under The DDT ask below was widened on 2026-10-27 by [0039](0039-ddt-for-held-signals.md): a held
+  signal may also go to the ask, on the maintainer's call, when 2-min data would supply a season no public light curve
+  will otherwise cover. A hold on blending still does not go. A published dossier keeps the DDT note it was published
+  with, so the M3 dossiers state the rule as it stood before 0039.
 
 ## Context
 

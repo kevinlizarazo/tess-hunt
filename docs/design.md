@@ -334,8 +334,8 @@ from a run directory and writes its own.
   the maintainer's call each time, when 2-min data would supply its deciding evidence: the transit's shape, or a
   season no public light curve will otherwise cover. A hold on blending does not go. `tess-hunt ddt render` fills the
   proposal from the published record and a dated `facts.toml`. Only 241522065-1 qualifies now; its proposal for S112
-  to S114 is committed under [results/ddt/241522065-1/](../results/ddt/241522065-1/), and sending it is the
-  maintainer's decision.
+  to S114 is committed under [results/ddt/241522065-1/](../results/ddt/241522065-1/), and the maintainer sent it to
+  the TESS DDT program on 2026-10-28.
 - For a candidate the maintainer passes:
   - **Preregistration:** predicted transit windows with uncertainties for TESS's upcoming sectors, plus the pass/fail
     rule, deposited on Zenodo before the data exists.

@@ -3,8 +3,8 @@
 - Date: 2026-10-27
 - Status: Accepted. Made in the M4 design and approved by the maintainer with it on 2026-10-27. Six choices the M4
   build's controller made on 2026-10-27, stated in full under Decision, are the controller's, with no acceptance by the
-  maintainer recorded: the package records what the held-out check's two training gates read (PF5); the index of
-  packages reads an optional `dois.toml` (PF6); the archive facts the package states come from a committed
+  maintainer recorded: the package records what the held-out check's two training gates read; the index of
+  packages reads an optional `dois.toml`; the archive facts the package states come from a committed
   `results/predictions/facts.toml`, the sector dates from `benchmarks/tess_sectors.csv`, and the judging date is this
   record's rule, one constant in `prereg.py`; RAVEN's citation is a fact in that file, read from its Zenodo record,
   because the record's literature search holds no RAVEN paper; the 2-min target lists the controller read on
@@ -19,7 +19,16 @@
   before the same lock start, and `facts.toml` holds the 45-day limit as `zenodo_edit_publish_days`. Amended again
   2026-10-28 at the maintainer's request, before the deposit: the Zenodo deposit form's text is no longer a package
   file, since it is the maintainer's to paste and no reader of the deposit needs it;
-  `tess-hunt predictions zenodo --run RUN_ID` prints it from a finished run's files.
+  `tess-hunt predictions zenodo --run RUN_ID` prints it from a finished run's files. Deposited 2026-10-28: Zenodo published the package
+  `20261028T204003Z-predictions-98bf417-0ef5` that day, version DOI 10.5281/zenodo.23745923, as
+  [results/predictions/dois.toml](../../results/predictions/dois.toml) records. Noted
+  2026-10-29: `mid_utc` in `predictions.csv` and `windows.csv` is truncated to the minute, as the dossiers' windows
+  tables give it, and `mid_btjd` is the value the test uses. Amended 2026-10-29 after the M4 milestone review, with the
+  maintainer's go-ahead: a package's README and its Zenodo description carry the acknowledgements and citations
+  ACKNOWLEDGEMENTS.md asks of a data release, for the products and sectors the package trained on. The deposited
+  package's files predate this and are unchanged; the maintainer adds the same credits to its Zenodo description by a
+  metadata-only edit, which leaves its files and DOI as they are, and the index of packages says what reuse of any
+  package must carry.
 
 ## Context
 
@@ -48,7 +57,7 @@ that.
   `vet.prepare` makes it), the core half-width, and each predicted transit's mid-time in the predicted sectors; and the
   reference, `holdout.reference` over every M3 cadence: the training depth, error and cadence count in those cores,
   pooled and per product family. Beside them the package records what the check's two training gates read: the M3
-  seasons, which of them hold a transit in their data, and `min_training_seasons` (the controller's ruling PF5, so a
+  seasons, which of them hold a transit in their data, and `min_training_seasons` (the controller's ruling, so a
   re-vet can apply the gates from the package alone).
 - **What is not judged.** The density-prior fit's windows from each record's `checks.json`, copied unchanged with
   their standard deviations, for anyone checking by eye. The package says they are not what is judged.
@@ -89,7 +98,7 @@ that.
   changes, since the clean-tree check covers the code and not `results/`. `tess-hunt predictions publish --run RUN_ID`
   copies a production run's package into `results/predictions/<run id>/` and renders `results/predictions/README.md`,
   the index of packages, which reads an optional `results/predictions/dois.toml` (package run id to DOI and publication
-  date) and shows "DOI pending" without it (the controller's ruling PF6); `tess-hunt predictions index` renders the
+  date) and shows "DOI pending" without it (the controller's ruling); `tess-hunt predictions index` renders the
   index again. `tess-hunt predictions zenodo --run RUN_ID` prints the deposit form's title, description, keywords and
   licence, naming no person, from a finished run's own files; the text is not a package file. The maintainer deposits
   each package as one Zenodo record and records its DOI there.
@@ -103,7 +112,11 @@ that.
   timing-suspect QLP transits arrive 30 to 50 minutes after the windows) and F4 (the RAVEN row is most likely a 5:2
   alias of this signal) word for word ([0037](0037-quoted-text-in-the-dossier.md)), gives RAVEN's period from the
   record's catalogued row and cites RAVEN from `facts.toml`, read from Zenodo record 19661443, the record the catalog
-  snapshot took RAVEN's table from. The package holds no Gaia data, so it is CC BY 4.0 whole.
+  snapshot took RAVEN's table from. The package holds no Gaia data, so it is CC BY 4.0 whole. The README's
+  Acknowledgements and the deposit form's last paragraph give the credits ACKNOWLEDGEMENTS.md asks of a data release
+  (2026-10-29): MAST's text for TESS data, QLP's own when QLP light curves trained the package, each light-curve
+  product with the sectors of the training seasons its records' `sources` name and its DOI and papers, and the TIC's
+  papers. The DOIs and papers are the template's, and a test checks each against ACKNOWLEDGEMENTS.md.
 
 ## Limitations
 
@@ -143,11 +156,11 @@ that.
   `test_the_ddt_proposal_s_state_comes_from_facts` (its state recorded on a later day than every other fact),
   `test_every_window_sector_is_checked_against_the_last_vetted_cadence`,
   `test_publish_refuses_a_run_that_was_not_production`, `test_the_committed_index_is_its_render`,
-  `test_deposit_by_is_the_lock_less_zenodo_s_publish_limit`.
-- The M4 build's check of the prediction on the M3 light curves of 423100454-1, 399023421-1, 438857197-1 and
-  103312990-1 (the last with QLP S90 in training), each season with a refit removed in turn, against the season rows of
-  their published `checks.json`.
-- [results/predictions/](../../results/predictions/): `facts.toml`, the index and, once published, the package.
+  `test_deposit_by_is_the_lock_less_zenodo_s_publish_limit`,
+  `test_credits_name_the_products_and_sectors_the_deposited_package_trained_on` (the six signals' training sectors by
+  product, and the credits the deposited record's description is given),
+  `test_credits_are_the_ones_acknowledgements_asks_for`.
+- [results/predictions/](../../results/predictions/): `facts.toml`, `dois.toml`, the index and the package.
 - The six calls: [103312990-1](../../results/vetting/103312990-1/call.toml),
   [241522065-1](../../results/vetting/241522065-1/call.toml),
   [296819076-1](../../results/vetting/296819076-1/call.toml),

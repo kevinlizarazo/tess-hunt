@@ -191,13 +191,11 @@ Each directory under `vetting/` is one signal's record, named `<tic>-<rank>` as 
 ([decision 0028](../docs/decisions/0028-outcomes-and-calls.md)); `vetting/README.md` lists every published call that
 stands on its record. A re-vet adds a version beside the record ([Versions](#versions)). Published files are never
 edited, and a correction is a new run. The one exception is decision 0038's: `tess-hunt vetting trim` trimmed the
-literature records published before it and scrubbed the home directory from their reviews. In M3 only `dossier.md` and
-`vetting/README.md` were rendered again from the files beside them, and `vetting/README.md` still is at every
-publish. From M4 on a dossier is rendered once, when its record is published, so a later change to the render code
-shows only in later versions. The M3 dossiers keep the text they were published with, without what M4 changed in the
-held signals' DDT note ([decision 0039](../docs/decisions/0039-ddt-for-held-signals.md)), on page one (a Triage row),
-for review findings no refuter ran on, and in the windows table (decision 0028's Status lists these). A passed signal
-is a planet candidate, not a confirmed planet.
+literature records published before it and scrubbed the home directory from their reviews. `vetting/README.md` is
+rendered again at every publish. A dossier is rendered once, when its record is published, so the M3 dossiers keep the
+text they were published with; decision 0028's Status lists what later renders change, and
+[decision 0039](../docs/decisions/0039-ddt-for-held-signals.md) the held signals' DDT note. A passed signal is a planet
+candidate, not a confirmed planet.
 
 - `call.toml`: the maintainer's call: `outcome` (passed, killed or held), `date`, `reasons` in his words, `rests_on`
   (the checks and review findings it rests on), `criteria`, and as the outcome needs, `deciding_evidence` (what would
@@ -356,8 +354,8 @@ file: `tess-hunt predictions zenodo --run RUN_ID` prints it from the run's files
 - `predictions/facts.toml`: each fact the packages state about archives, target lists, RAVEN's citation and the state
   of a DDT proposal, with the page or file it was read from and the date it was read. A production run takes it only
   from the checkout its code runs from and refuses it with uncommitted changes; each package holds a copy.
-- `predictions/dois.toml`, once the maintainer writes it: each package's run id with the DOI and publication date
-  Zenodo gave its deposit. Without it the index shows "DOI pending".
+- `predictions/dois.toml`: each deposited package's run id with the DOI and publication date Zenodo gave its
+  deposit. The index shows "DOI pending" for a package it does not list.
 
 The packages hold no Gaia data, so they are CC BY 4.0 whole.
 
