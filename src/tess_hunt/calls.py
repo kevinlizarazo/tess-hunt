@@ -4,6 +4,7 @@ the maintainer's, quoted in the dossier, not rendered from the runs (decision 00
 
 import datetime as dt
 import json
+import re
 import tomllib
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
 from tess_hunt.provenance import repo_root
 
+# A re-vet's record sits beside the M3 record as results/vetting/<name>/r<N>/, from r2 on: the M3 record is the first
+# (decision 0041).
+VERSION = re.compile(r"r([2-9]|[1-9][0-9]+)")
 OUTCOMES = ("passed", "killed", "held")
 SENTENCES = ("not_a_binary", "not_another_star", "not_an_artefact_or_known")
 LENSES = ("on_star", "planet", "real_new")
@@ -45,6 +49,17 @@ def _strings(value) -> bool:
 
 def _json(path: Path) -> dict | None:
     return json.loads(path.read_text()) if path.is_file() else None
+
+
+def version(signal_dir: Path) -> int | None:
+    """The version a record's directory holds, None for the M3 record."""
+    found = VERSION.fullmatch(signal_dir.name)
+    return int(found.group(1)) if found else None
+
+
+def signal_name(signal_dir: Path) -> str:
+    """The signal a record's directory holds: its own name, or for a version its parent's."""
+    return signal_dir.parent.name if version(signal_dir) else signal_dir.name
 
 
 def load_review(path: Path) -> dict:
@@ -149,7 +164,7 @@ def _names(signal_dir: Path) -> set[str]:
     """What a call may rest on: the checks in the record and the review's findings."""
     checks = _json(signal_dir / "checks.json")
     if checks is None:
-        raise CallError(f"no checks.json beside the call in {signal_dir.name}")
+        raise CallError(f"no checks.json beside the call in {signal_name(signal_dir)}")
     names = {c["check"] for c in checks["checks"]} | {"neighbours"}
     if pixels(signal_dir, checks) is not None:
         names.add("pixels")
@@ -284,7 +299,7 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
     kind = checks["signal"]["kind"]
     promotion = call["promotion"]
     if promotion is not None and kind != "second":
-        out.append(f"promotion is for second-list rows; {signal_dir.name} is a {kind}")
+        out.append(f"promotion is for second-list rows; {signal_name(signal_dir)} is a {kind}")
     for c in checks["checks"]:
         if c["outcome"] == "pass":
             continue
@@ -347,7 +362,7 @@ def problems(signal_dir: Path) -> list[str]:
     it."""
     path = signal_dir / "call.toml"
     if not path.is_file():
-        return [f"no call.toml in {signal_dir.name}"]
+        return [f"no call.toml in {signal_name(signal_dir)}"]
     try:
         call = load(path)
         review = (
@@ -359,8 +374,11 @@ def problems(signal_dir: Path) -> list[str]:
         return [str(exc)]
     checks = _json(signal_dir / "checks.json")
     out = []
-    if call["signal"] != signal_dir.name:
-        out.append(f"call.toml is for {call['signal']}, not {signal_dir.name}")
+    name = signal_name(signal_dir)
+    if call["signal"] != name:
+        out.append(f"call.toml is for {call['signal']}, not {name}")
+    if review is not None and review["signal"] != name:
+        out.append(f"review.json is for {review['signal']}, not {name}")
     if checks["evidence_only"]:
         out.append("checks.json is an evidence-only vet, which never makes a call")
     if checks["criteria_version"] not in call["criteria"]:

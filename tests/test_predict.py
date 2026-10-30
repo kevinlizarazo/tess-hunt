@@ -1,9 +1,14 @@
+import json
+import socket
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 from astropy.time import Time
+from astropy.utils import iers
 
 from tess_hunt import predict
 from tess_hunt.config import load_criteria
@@ -88,6 +93,90 @@ def test_upcoming_sectors_leave_out_observed_sectors_and_a_star_off_the_cameras(
     found.update({1: [35, 62, 110, 111, 111, 113], 2: [-1]})
     assert predict.upcoming_sectors(1, 0.0, 0.0, 110) == [110, 111, 113]
     assert predict.upcoming_sectors(2, 0.0, 0.0, 110) == []
+
+
+def test_mid_utc_is_when_the_transit_is_seen_from_earth(monkeypatch):
+    # Offline: no socket opens, and an IERS lookup would read only astropy's bundled table, which ends before these
+    # dates and raises. A table another test loaded is dropped first, so none hides a lookup.
+    def refuse(*args, **kwargs):
+        raise OSError("no network in this test")
+
+    monkeypatch.setattr(socket.socket, "connect", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+    monkeypatch.setattr(iers.conf, "auto_download", False)
+    monkeypatch.setattr(iers.IERS_Auto, "iers_table", None)
+    # The milestone review's times from Earth, from Earth's barycentric position. Read as TDB without the light's
+    # travel time, 423100454-1's epoch 197 was 15:27.
+    stars = {
+        "423100454-1": (240.065424623734, -55.5634985842455),
+        "241522065-1": (206.303246517049, -53.3085956790006),
+        "103312990-1": (156.829227880851, -47.5203964706134),
+    }
+    for name, btjd, seen in (
+        ("423100454-1", 4426.14466314464, "2027-01-20 15:31"),
+        ("423100454-1", 4440.330851772605, "2027-02-03 19:58"),
+        ("241522065-1", 4397.964907870579, "2026-12-23 11:12"),
+        ("241522065-1", 4415.401623187308, "2027-01-09 21:40"),
+        ("241522065-1", 4432.83834174134, "2027-01-27 08:07"),
+        ("103312990-1", 4344.562970275405, "2026-10-31 01:33"),
+        ("103312990-1", 4352.086115150675, "2026-11-07 14:06"),
+        ("103312990-1", 4359.609270087955, "2026-11-15 02:39"),
+    ):
+        assert predict.seen_utc(btjd, *stars[name]) == seen, (name, btjd)
+
+
+# Run in a process of its own: astropy checks its leap-second table once per process, at the first UTC conversion.
+PAST_EXPIRY = """
+import json, socket, sys, warnings
+from astropy.config import set_temp_cache
+from astropy.time import Time
+from astropy.utils import iers
+
+attempts = []
+
+def refuse(*args, **kwargs):
+    attempts.append(repr(args[:2]))
+    raise OSError("no network in this test")
+
+socket.socket.connect = refuse
+socket.create_connection = refuse
+socket.getaddrinfo = refuse
+# After the bundled table's expiry, so no table astropy holds is current.
+iers.LeapSeconds._today = staticmethod(lambda: Time("2027-08-01", scale="tai", format="iso", out_subfmt="date"))
+from tess_hunt import predict
+
+conversion, cache = sys.argv[1], sys.argv[2]
+with set_temp_cache(cache), warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    if conversion == "btjd":
+        value = predict.btjd("2026-12-22T00:00:00")
+    else:
+        value = predict.seen_utc(4397.2124043992535, 156.829227880851, -47.5203964706134)
+print(json.dumps({"value": value, "attempts": attempts, "warned": [str(w.message) for w in caught]}))
+"""
+
+
+@pytest.mark.parametrize("conversion", ["btjd", "seen_utc"])
+def test_conversions_warn_rather_than_download_once_the_leap_second_table_expires(
+    tmp_path, conversion
+):
+    """astropy's bundled leap-second table expires 2027-06-28, and uv.lock fixes astropy. From 150 days before then a
+    UTC conversion would try to download a newer table; these two keep to the bundled one, and warn once it has
+    expired."""
+    done = subprocess.run(
+        [sys.executable, "-c", PAST_EXPIRY, conversion, str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=ROOT,
+        timeout=300,
+    )
+    found = json.loads(done.stdout.splitlines()[-1])
+    assert found["attempts"] == [], "a download was tried"
+    assert "leap-second file is expired." in found["warned"]
+    # S112's start, and 103312990-1's epoch 379 as the M4 dry-run package gives it.
+    expected = {"btjd": btjd("2026-12-22T00:00:00"), "seen_utc": "2026-12-22 17:05"}
+    assert found["value"] == expected[conversion]
 
 
 @pytest.mark.network

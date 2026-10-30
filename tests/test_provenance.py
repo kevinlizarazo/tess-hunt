@@ -64,6 +64,14 @@ def test_production_refuses_untracked_source(repo, tmp_path):
         start(repo, tmp_path, production=True)
 
 
+def test_production_refuses_changed_benchmarks(repo, tmp_path):
+    # vet-v3 reads benchmarks/tess_sectors.csv as [predict] sectors_file.
+    (repo / "benchmarks").mkdir()
+    (repo / "benchmarks" / "tess_sectors.csv").write_text("sector\n110\n")
+    with pytest.raises(DirtyTreeError, match="benchmarks/tess_sectors.csv"):
+        start(repo, tmp_path, production=True)
+
+
 def test_production_refuses_criteria_outside_criteria_dir(repo, tmp_path):
     (repo / "other.toml").write_text("[a]\nx = 1\n")
     git(repo, "add", ".")

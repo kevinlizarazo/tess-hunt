@@ -1,0 +1,2272 @@
+{
+  "mixed_family": {
+    "advances": false,
+    "checks": [
+      {
+        "check": "novelty",
+        "evidence": {
+          "catalog_rows": 3,
+          "nearby_rows": 0,
+          "neighbour_arcmin": 2.5,
+          "tce_matches": [],
+          "tce_period_matches": []
+        },
+        "outcome": "pass",
+        "reason": "no known object matches"
+      },
+      {
+        "check": "odd_even",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.0018425859472090966,
+                "depth_odd": 0.0018140052371817816,
+                "err_even": 2.971568960404674e-05,
+                "err_odd": 3.042111628097779e-05,
+                "n_even": 45,
+                "n_odd": 43,
+                "sigma": 0.6720750555778008
+              },
+              "outcome": "pass",
+              "reason": "odd and even depths agree within 0.7 sigma"
+            },
+            "qlp": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.0010653816885203282,
+                "depth_odd": 0.0010656221718311487,
+                "err_even": 4.577531445083715e-05,
+                "err_odd": 4.11371032951917e-05,
+                "n_even": 22,
+                "n_odd": 27,
+                "sigma": 0.003907514121290625
+              },
+              "outcome": "pass",
+              "reason": "odd and even depths agree within 0.0 sigma"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: odd and even depths agree within 0.7 sigma; qlp: odd and even depths agree within 0.0 sigma"
+      },
+      {
+        "check": "secondary",
+        "evidence": {
+          "depth": 6.210113316584831e-06,
+          "err": 1.2518264927099773e-05,
+          "n": 261,
+          "sigma": 0.49608419000152826
+        },
+        "outcome": "pass",
+        "reason": "no dip at phase 0.5 (0.5 sigma)"
+      },
+      {
+        "check": "sector_depth",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "sector_depth",
+              "evidence": {
+                "chi2": 4.169058969528548,
+                "dof": 5,
+                "mean_depth": 0.0018286308082269749,
+                "p_value": 0.5253413901782638,
+                "sectors": [
+                  {
+                    "depth": 0.0018656935845621225,
+                    "err": 4.965233222293249e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 1
+                  },
+                  {
+                    "depth": 0.001836056584319623,
+                    "err": 5.8421695288797e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 2
+                  },
+                  {
+                    "depth": 0.0017701927257839367,
+                    "err": 5.059454629775651e-05,
+                    "n": 15,
+                    "provenance": "SPOC",
+                    "sector": 14
+                  },
+                  {
+                    "depth": 0.001785192405522107,
+                    "err": 5.4165652983198715e-05,
+                    "n": 13,
+                    "provenance": "SPOC",
+                    "sector": 15
+                  },
+                  {
+                    "depth": 0.001822362921785614,
+                    "err": 4.7345733828561476e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 28
+                  },
+                  {
+                    "depth": 0.0018975739032692784,
+                    "err": 5.4487683881891745e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 29
+                  }
+                ]
+              },
+              "outcome": "pass",
+              "reason": "depths agree across 6 sectors (p = 0.53)"
+            },
+            "qlp": {
+              "check": "sector_depth",
+              "evidence": {
+                "chi2": 0.3329409032431948,
+                "dof": 2,
+                "mean_depth": 0.001065514727481207,
+                "p_value": 0.8466478336363984,
+                "sectors": [
+                  {
+                    "depth": 0.0010450013485268084,
+                    "err": 5.146924356949233e-05,
+                    "n": 18,
+                    "provenance": "QLP",
+                    "sector": 3
+                  },
+                  {
+                    "depth": 0.0010660977289113083,
+                    "err": 5.236614484895567e-05,
+                    "n": 15,
+                    "provenance": "QLP",
+                    "sector": 16
+                  },
+                  {
+                    "depth": 0.0010886153260082354,
+                    "err": 5.5384217338217265e-05,
+                    "n": 16,
+                    "provenance": "QLP",
+                    "sector": 30
+                  }
+                ]
+              },
+              "outcome": "pass",
+              "reason": "depths agree across 3 sectors (p = 0.85)"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: depths agree across 6 sectors (p = 0.53); qlp: depths agree across 3 sectors (p = 0.85)"
+      },
+      {
+        "check": "holdout",
+        "evidence": {
+          "seasons": [
+            {
+              "depth": 0.00157061504440692,
+              "end": 1406.258333333237,
+              "err": 3.0484127056213784e-05,
+              "expected_depth": 0.0015585991329830282,
+              "expected_snr": 51.12821928962956,
+              "family_depths": [
+                {
+                  "depth": 0.0018532641656470172,
+                  "err": 3.7834016258751456e-05,
+                  "family": "pdcsap",
+                  "n": 30,
+                  "ref": 0.0018189756162669823,
+                  "ref_err": 2.4520942905311774e-05,
+                  "ref_n": 64,
+                  "tension": 0.760525180797674,
+                  "training_cadences": 4590
+                },
+                {
+                  "depth": 0.00104752275493869,
+                  "err": 5.146924356949233e-05,
+                  "family": "qlp",
+                  "n": 18,
+                  "ref": 0.001076726307172482,
+                  "ref_err": 3.8050694523232826e-05,
+                  "ref_n": 31,
+                  "tension": 0.4562532431869993,
+                  "training_cadences": 2298
+                }
+              ],
+              "n": 48,
+              "predicted_period": 4.999982502736751,
+              "predicted_t0": 1686.1034583333314,
+              "ref": 0.001601177459538694,
+              "ref_err": 2.061174624390415e-05,
+              "ref_n": 95,
+              "season": 0,
+              "sigma": 51.52238873400086,
+              "start": 1325.5208333333314,
+              "status": "predicted",
+              "tension": 0.760525180797674,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 0.001540620336566878,
+              "end": 1762.458333333237,
+              "err": 3.020383949615892e-05,
+              "expected_depth": 0.0015868419365992303,
+              "expected_snr": 52.53775556584559,
+              "family_depths": [
+                {
+                  "depth": 0.0017771818441658649,
+                  "err": 3.697380855361959e-05,
+                  "family": "pdcsap",
+                  "n": 28,
+                  "ref": 0.0018597078375923726,
+                  "ref_err": 2.5980240683116275e-05,
+                  "ref_n": 60,
+                  "tension": 1.8262453578792481,
+                  "training_cadences": 4591
+                },
+                {
+                  "depth": 0.0010660977289113083,
+                  "err": 5.236614484895567e-05,
+                  "family": "qlp",
+                  "n": 15,
+                  "ref": 0.001039495750849162,
+                  "ref_err": 3.314544507668048e-05,
+                  "ref_n": 44,
+                  "tension": 0.42924098393044546,
+                  "training_cadences": 2295
+                }
+              ],
+              "n": 43,
+              "predicted_period": 5.000059410767059,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.0015475613644082564,
+              "ref_err": 2.0447489265932374e-05,
+              "ref_n": 104,
+              "season": 1,
+              "sigma": 51.0074335669411,
+              "start": 1681.7208333333315,
+              "status": "predicted",
+              "tension": 1.8262453578792481,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 0.001629498671137819,
+              "end": 2146.0791666668592,
+              "err": 3.0029377076188308e-05,
+              "expected_depth": 0.0015912215972922017,
+              "expected_snr": 52.988831345221456,
+              "family_depths": [
+                {
+                  "depth": 0.0018547194097294772,
+                  "err": 3.5738671747629224e-05,
+                  "family": "pdcsap",
+                  "n": 30,
+                  "ref": 0.0018143482575544434,
+                  "ref_err": 2.6443314780349702e-05,
+                  "ref_n": 58,
+                  "tension": 0.9080767660293184,
+                  "training_cadences": 4585
+                },
+                {
+                  "depth": 0.0010886153260082354,
+                  "err": 5.5384217338217265e-05,
+                  "family": "qlp",
+                  "n": 16,
+                  "ref": 0.0010553673276325615,
+                  "ref_err": 3.670724525272943e-05,
+                  "ref_n": 33,
+                  "tension": 0.5003896816450455,
+                  "training_cadences": 2291
+                }
+              ],
+              "n": 46,
+              "predicted_period": 4.999981404663139,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.0015550410008265958,
+              "ref_err": 2.145574983429796e-05,
+              "ref_n": 91,
+              "season": 2,
+              "sigma": 54.26348561955101,
+              "start": 2065.300000000004,
+              "status": "predicted",
+              "tension": 0.9080767660293184,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            }
+          ]
+        },
+        "outcome": "pass",
+        "reason": "3 held-out seasons predicted"
+      },
+      {
+        "check": "signal_present",
+        "evidence": {
+          "depth": 0.0015802052396747257,
+          "err": 1.7457558294855512e-05,
+          "n": 137,
+          "snr": 90.51696766439493
+        },
+        "outcome": "pass",
+        "reason": "combined depth is 90.5 sigma"
+      },
+      {
+        "check": "shape",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "density",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "radius",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      }
+    ],
+    "criteria_version": "vet-v3",
+    "dropped_suspect": [],
+    "ephemeris": {
+      "depth": 0.0017,
+      "duration": 0.13,
+      "period": 5.0,
+      "t0": 1326.1
+    },
+    "evidence_only": false,
+    "families": {
+      "pdcsap": [
+        1,
+        2,
+        14,
+        15,
+        28,
+        29
+      ],
+      "qlp": [
+        3,
+        16,
+        30
+      ]
+    },
+    "fit": null,
+    "fit_prior": null,
+    "fit_prior_reason": "no fit: not fitted in this test",
+    "masked": [],
+    "red_noise": {
+      "1": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "14": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "15": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "16": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      },
+      "2": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 42
+      },
+      "28": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 42
+      },
+      "29": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      },
+      "3": {
+        "beta": 1.1180288630356507,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      },
+      "30": {
+        "beta": 1.0187609931211583,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      }
+    },
+    "tic": 1
+  },
+  "planet_three_seasons": {
+    "advances": false,
+    "checks": [
+      {
+        "check": "novelty",
+        "evidence": {
+          "catalog_rows": 4,
+          "nearby_rows": 1,
+          "neighbour_arcmin": 2.5,
+          "tce_matches": [],
+          "tce_period_matches": []
+        },
+        "outcome": "pass",
+        "reason": "no known object matches"
+      },
+      {
+        "check": "odd_even",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.001650348077791297,
+                "depth_odd": 0.0017342939601676655,
+                "err_even": 3.055971859429458e-05,
+                "err_odd": 3.126415233258486e-05,
+                "n_even": 45,
+                "n_odd": 43,
+                "sigma": 1.9201272569816452
+              },
+              "outcome": "pass",
+              "reason": "odd and even depths agree within 1.9 sigma"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: odd and even depths agree within 1.9 sigma"
+      },
+      {
+        "check": "secondary",
+        "evidence": {
+          "depth": 6.736222228576061e-06,
+          "err": 1.4944041783170234e-05,
+          "n": 185,
+          "sigma": 0.45076307509808344
+        },
+        "outcome": "pass",
+        "reason": "no dip at phase 0.5 (0.5 sigma)"
+      },
+      {
+        "check": "sector_depth",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "sector_depth",
+              "evidence": {
+                "chi2": 4.948196725143415,
+                "dof": 5,
+                "mean_depth": 0.001691364646714798,
+                "p_value": 0.4222350298086245,
+                "sectors": [
+                  {
+                    "depth": 0.0016546662486170982,
+                    "err": 5.122421725088414e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 1
+                  },
+                  {
+                    "depth": 0.0016698560362667925,
+                    "err": 5.7842757779147665e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 2
+                  },
+                  {
+                    "depth": 0.0017113699475229671,
+                    "err": 5.2259748049434566e-05,
+                    "n": 15,
+                    "provenance": "SPOC",
+                    "sector": 14
+                  },
+                  {
+                    "depth": 0.001721975161262712,
+                    "err": 5.490022633499909e-05,
+                    "n": 13,
+                    "provenance": "SPOC",
+                    "sector": 15
+                  },
+                  {
+                    "depth": 0.001634127011632125,
+                    "err": 4.878273630092556e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 28
+                  },
+                  {
+                    "depth": 0.0017826197300426783,
+                    "err": 5.815179367479117e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 29
+                  }
+                ]
+              },
+              "outcome": "pass",
+              "reason": "depths agree across 6 sectors (p = 0.42)"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: depths agree across 6 sectors (p = 0.42)"
+      },
+      {
+        "check": "holdout",
+        "evidence": {
+          "seasons": [
+            {
+              "depth": 0.001703760971556112,
+              "end": 1378.7333333332376,
+              "err": 3.834845609719679e-05,
+              "expected_depth": 0.0017170243561606124,
+              "expected_snr": 44.774275965861484,
+              "family_depths": [
+                {
+                  "depth": 0.001703760971556112,
+                  "err": 3.834845609719679e-05,
+                  "family": "pdcsap",
+                  "n": 30,
+                  "ref": 0.0017170243561606124,
+                  "ref_err": 2.6838105683641217e-05,
+                  "ref_n": 57,
+                  "tension": 0.2833637392178151,
+                  "training_cadences": 4440
+                }
+              ],
+              "n": 30,
+              "predicted_period": 4.999832649947554,
+              "predicted_t0": 1686.1132083333314,
+              "ref": 0.0017170243561606124,
+              "ref_err": 2.6838105683641217e-05,
+              "ref_n": 57,
+              "season": 0,
+              "sigma": 44.42841107443317,
+              "start": 1325.5208333333314,
+              "status": "predicted",
+              "tension": 0.2833637392178151,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 0.0017164113948973103,
+              "end": 1735.058333333237,
+              "err": 3.785227974595526e-05,
+              "expected_depth": 0.0016788416870434641,
+              "expected_snr": 44.352459041066304,
+              "family_depths": [
+                {
+                  "depth": 0.0017164113948973103,
+                  "err": 3.785227974595526e-05,
+                  "family": "pdcsap",
+                  "n": 28,
+                  "ref": 0.0016788416870434641,
+                  "ref_err": 2.6765160828130468e-05,
+                  "ref_n": 60,
+                  "tension": 0.810405803845562,
+                  "training_cadences": 4441
+                }
+              ],
+              "n": 28,
+              "predicted_period": 4.999979512287374,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.0016788416870434641,
+              "ref_err": 2.6765160828130468e-05,
+              "ref_n": 60,
+              "season": 1,
+              "sigma": 45.34499391891235,
+              "start": 1681.7208333333315,
+              "status": "predicted",
+              "tension": 0.810405803845562,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 0.0016954623073346387,
+              "end": 2118.679166666859,
+              "err": 3.737367182213865e-05,
+              "expected_depth": 0.001689235637443054,
+              "expected_snr": 45.198546331816914,
+              "family_depths": [
+                {
+                  "depth": 0.0016954623073346387,
+                  "err": 3.737367182213865e-05,
+                  "family": "pdcsap",
+                  "n": 30,
+                  "ref": 0.001689235637443054,
+                  "ref_err": 2.6939315163609624e-05,
+                  "ref_n": 58,
+                  "tension": 0.13515438675562033,
+                  "training_cadences": 4431
+                }
+              ],
+              "n": 30,
+              "predicted_period": 4.999980160546959,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.001689235637443054,
+              "ref_err": 2.6939315163609624e-05,
+              "ref_n": 58,
+              "season": 2,
+              "sigma": 45.36515211572858,
+              "start": 2065.300000000004,
+              "status": "predicted",
+              "tension": 0.13515438675562033,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            }
+          ]
+        },
+        "outcome": "pass",
+        "reason": "3 held-out seasons predicted"
+      },
+      {
+        "check": "signal_present",
+        "evidence": {
+          "depth": 0.0016913646467148213,
+          "err": 2.185378283436125e-05,
+          "n": 88,
+          "snr": 77.39459385747378
+        },
+        "outcome": "pass",
+        "reason": "combined depth is 77.4 sigma"
+      },
+      {
+        "check": "shape",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "density",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "radius",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      }
+    ],
+    "criteria_version": "vet-v3",
+    "dropped_suspect": [
+      100
+    ],
+    "ephemeris": {
+      "depth": 0.0017,
+      "duration": 0.13,
+      "period": 5.0,
+      "t0": 1326.1
+    },
+    "evidence_only": false,
+    "families": {
+      "pdcsap": [
+        1,
+        2,
+        14,
+        15,
+        28,
+        29
+      ]
+    },
+    "fit": null,
+    "fit_prior": null,
+    "fit_prior_reason": "no fit: not fitted in this test",
+    "masked": [
+      {
+        "depth": null,
+        "duration": 0.06,
+        "period": 3.7,
+        "t0": 1327.0
+      }
+    ],
+    "red_noise": {
+      "1": {
+        "beta": 1.0931130409443826,
+        "cadences_per_bin": 4.0,
+        "n_bins": 38
+      },
+      "14": {
+        "beta": 1.017278328248203,
+        "cadences_per_bin": 4.0,
+        "n_bins": 37
+      },
+      "15": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 36
+      },
+      "2": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "28": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "29": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      }
+    },
+    "tic": 1
+  },
+  "planet_three_seasons_evidence_only": {
+    "advances": false,
+    "checks": [
+      {
+        "check": "novelty",
+        "evidence": {
+          "catalog_rows": 4,
+          "nearby_rows": 1,
+          "neighbour_arcmin": 2.5,
+          "tce_matches": [],
+          "tce_period_matches": []
+        },
+        "outcome": "pass",
+        "reason": "no known object matches"
+      },
+      {
+        "check": "odd_even",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.001650348077791297,
+                "depth_odd": 0.0017342939601676655,
+                "err_even": 3.055971859429458e-05,
+                "err_odd": 3.126415233258486e-05,
+                "n_even": 45,
+                "n_odd": 43,
+                "sigma": 1.9201272569816452
+              },
+              "outcome": "pass",
+              "reason": "odd and even depths agree within 1.9 sigma"
+            },
+            "qlp": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.0046029267025109455,
+                "depth_odd": 0.0016076273001046637,
+                "err_even": 8.349473106396948e-05,
+                "err_odd": 8.349473106396948e-05,
+                "n_even": 6,
+                "n_odd": 6,
+                "sigma": 25.36682844696862
+              },
+              "outcome": "fail",
+              "reason": "odd and even depths differ by 25.4 sigma"
+            }
+          }
+        },
+        "outcome": "fail",
+        "reason": "qlp: odd and even depths differ by 25.4 sigma"
+      },
+      {
+        "check": "secondary",
+        "evidence": {
+          "depth": 1.1597508138949664e-05,
+          "err": 1.3506241762335473e-05,
+          "n": 227,
+          "sigma": 0.8586776649660863
+        },
+        "outcome": "pass",
+        "reason": "no dip at phase 0.5 (0.9 sigma)"
+      },
+      {
+        "check": "sector_depth",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "sector_depth",
+              "evidence": {
+                "chi2": 4.948196725143415,
+                "dof": 5,
+                "mean_depth": 0.001691364646714798,
+                "p_value": 0.4222350298086245,
+                "sectors": [
+                  {
+                    "depth": 0.0016546662486170982,
+                    "err": 5.122421725088414e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 1
+                  },
+                  {
+                    "depth": 0.0016698560362667925,
+                    "err": 5.7842757779147665e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 2
+                  },
+                  {
+                    "depth": 0.0017113699475229671,
+                    "err": 5.2259748049434566e-05,
+                    "n": 15,
+                    "provenance": "SPOC",
+                    "sector": 14
+                  },
+                  {
+                    "depth": 0.001721975161262712,
+                    "err": 5.490022633499909e-05,
+                    "n": 13,
+                    "provenance": "SPOC",
+                    "sector": 15
+                  },
+                  {
+                    "depth": 0.001634127011632125,
+                    "err": 4.878273630092556e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 28
+                  },
+                  {
+                    "depth": 0.0017826197300426783,
+                    "err": 5.815179367479117e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 29
+                  }
+                ]
+              },
+              "outcome": "pass",
+              "reason": "depths agree across 6 sectors (p = 0.42)"
+            },
+            "qlp": {
+              "check": "sector_depth",
+              "evidence": {
+                "sectors": [
+                  {
+                    "depth": 0.0031052770013078046,
+                    "err": 5.90396905286799e-05,
+                    "n": 12,
+                    "provenance": "QLP",
+                    "sector": 100
+                  }
+                ]
+              },
+              "outcome": "inconclusive",
+              "reason": "fewer than two sectors with in-transit data"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: depths agree across 6 sectors (p = 0.42)"
+      },
+      {
+        "check": "holdout",
+        "evidence": {
+          "seasons": [
+            {
+              "depth": 0.0016939559090876077,
+              "end": 1378.7333333332376,
+              "err": 3.834845609719679e-05,
+              "expected_depth": 0.0016876138461382473,
+              "expected_snr": 44.00734782805531,
+              "family_depths": [
+                {
+                  "depth": 0.0016939559090876077,
+                  "err": 3.834845609719679e-05,
+                  "family": "pdcsap",
+                  "n": 30,
+                  "ref": 0.0016876138461382473,
+                  "ref_err": 2.6838105683641217e-05,
+                  "ref_n": 57,
+                  "tension": 0.1354941235041736,
+                  "training_cadences": 4440
+                }
+              ],
+              "n": 30,
+              "predicted_period": 4.999972716111136,
+              "predicted_t0": 1686.1132083333314,
+              "ref": 0.0019303926151119644,
+              "ref_err": 2.443221822081615e-05,
+              "ref_n": 69,
+              "season": 0,
+              "sigma": 44.17272770497359,
+              "start": 1325.5208333333314,
+              "status": "predicted",
+              "tension": 0.1354941235041736,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.0017164113948973103,
+              "end": 1735.058333333237,
+              "err": 3.785227974595526e-05,
+              "expected_depth": 0.0016788416870434641,
+              "expected_snr": 44.352459041066304,
+              "family_depths": [
+                {
+                  "depth": 0.0017164113948973103,
+                  "err": 3.785227974595526e-05,
+                  "family": "pdcsap",
+                  "n": 28,
+                  "ref": 0.0016788416870434641,
+                  "ref_err": 2.6765160828130468e-05,
+                  "ref_n": 60,
+                  "tension": 0.810405803845562,
+                  "training_cadences": 4441
+                }
+              ],
+              "n": 28,
+              "predicted_period": 4.999997033110487,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.001922022699387238,
+              "ref_err": 2.43771462191875e-05,
+              "ref_n": 72,
+              "season": 1,
+              "sigma": 45.34499391891235,
+              "start": 1681.7208333333315,
+              "status": "predicted",
+              "tension": 0.810405803845562,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.0016954623073346387,
+              "end": 2118.679166666859,
+              "err": 3.737367182213865e-05,
+              "expected_depth": 0.001689235637443054,
+              "expected_snr": 45.198546331816914,
+              "family_depths": [
+                {
+                  "depth": 0.0016954623073346387,
+                  "err": 3.737367182213865e-05,
+                  "family": "pdcsap",
+                  "n": 30,
+                  "ref": 0.001689235637443054,
+                  "ref_err": 2.6939315163609624e-05,
+                  "ref_n": 58,
+                  "tension": 0.13515438675562033,
+                  "training_cadences": 4431
+                }
+              ],
+              "n": 30,
+              "predicted_period": 4.999997033110487,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.0019332533414625486,
+              "ref_err": 2.4508502197433497e-05,
+              "ref_n": 70,
+              "season": 2,
+              "sigma": 45.36515211572858,
+              "start": 2065.300000000004,
+              "status": "predicted",
+              "tension": 0.13515438675562033,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.002209274247657156,
+              "end": 4064.0791666668592,
+              "err": 5.466013217580298e-05,
+              "expected_depth": null,
+              "family_depths": [
+                {
+                  "depth": 0.002209274247657156,
+                  "err": 5.466013217580298e-05,
+                  "family": "qlp",
+                  "n": 14,
+                  "ref": null,
+                  "ref_err": null,
+                  "ref_n": 0,
+                  "training_cadences": 0
+                }
+              ],
+              "n": 14,
+              "predicted_period": 5.0001126824194415,
+              "predicted_t0": 1326.0912083333315,
+              "reason": "no training cadences in the held-out season's qlp family",
+              "ref": 0.001675165391882505,
+              "ref_err": 2.185378283436125e-05,
+              "ref_n": 88,
+              "season": 3,
+              "start": 4038.1000000000035,
+              "status": "untestable",
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            }
+          ]
+        },
+        "outcome": "pass",
+        "reason": "3 held-out seasons predicted"
+      },
+      {
+        "check": "signal_present",
+        "evidence": {
+          "depth": 0.0018617458808918297,
+          "err": 2.0494801086222748e-05,
+          "n": 100,
+          "snr": 90.83990974390836
+        },
+        "outcome": "pass",
+        "reason": "combined depth is 90.8 sigma"
+      },
+      {
+        "check": "shape",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "density",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "radius",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      }
+    ],
+    "criteria_version": "vet-v3",
+    "dropped_suspect": [],
+    "ephemeris": {
+      "depth": 0.0017,
+      "duration": 0.13,
+      "period": 5.0,
+      "t0": 1326.1
+    },
+    "evidence_only": true,
+    "families": {
+      "pdcsap": [
+        1,
+        2,
+        14,
+        15,
+        28,
+        29
+      ],
+      "qlp": [
+        100
+      ]
+    },
+    "fit": null,
+    "fit_prior": null,
+    "fit_prior_reason": "no fit: not fitted in this test",
+    "masked": [
+      {
+        "depth": null,
+        "duration": 0.06,
+        "period": 3.7,
+        "t0": 1327.0
+      }
+    ],
+    "red_noise": {
+      "1": {
+        "beta": 1.0931130409443826,
+        "cadences_per_bin": 4.0,
+        "n_bins": 38
+      },
+      "100": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "14": {
+        "beta": 1.017278328248203,
+        "cadences_per_bin": 4.0,
+        "n_bins": 37
+      },
+      "15": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 36
+      },
+      "2": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "28": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "29": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      }
+    },
+    "tic": 1
+  },
+  "planet_three_seasons_vet_v1": {
+    "advances": false,
+    "checks": [
+      {
+        "check": "novelty",
+        "evidence": {
+          "catalog_rows": 4,
+          "nearby_rows": 1,
+          "neighbour_arcmin": 2.5,
+          "tce_matches": [],
+          "tce_period_matches": []
+        },
+        "outcome": "pass",
+        "reason": "no known object matches"
+      },
+      {
+        "check": "odd_even",
+        "evidence": {
+          "depth_even": 0.0019991538447343693,
+          "depth_odd": 0.0017187180613089659,
+          "err_even": 2.8697902969164196e-05,
+          "err_odd": 2.9278880679516763e-05,
+          "n_even": 51,
+          "n_odd": 49,
+          "sigma": 6.840258327267383
+        },
+        "outcome": "fail",
+        "reason": "odd and even depths differ by 6.8 sigma"
+      },
+      {
+        "check": "secondary",
+        "evidence": {
+          "depth": 1.1597508138949664e-05,
+          "err": 1.3506241762335473e-05,
+          "n": 227,
+          "sigma": 0.8586776649660863
+        },
+        "outcome": "pass",
+        "reason": "no dip at phase 0.5 (0.9 sigma)"
+      },
+      {
+        "check": "sector_depth",
+        "evidence": {
+          "chi2": 509.3666927625683,
+          "dof": 6,
+          "mean_depth": 0.0018617458808922718,
+          "p_value": 8.068811409109381e-107,
+          "sectors": [
+            {
+              "depth": 0.0016546662486170982,
+              "err": 5.122421725088414e-05,
+              "n": 18,
+              "provenance": "SPOC",
+              "sector": 1
+            },
+            {
+              "depth": 0.0016698560362667925,
+              "err": 5.7842757779147665e-05,
+              "n": 12,
+              "provenance": "SPOC",
+              "sector": 2
+            },
+            {
+              "depth": 0.0017113699475229671,
+              "err": 5.2259748049434566e-05,
+              "n": 15,
+              "provenance": "SPOC",
+              "sector": 14
+            },
+            {
+              "depth": 0.001721975161262712,
+              "err": 5.490022633499909e-05,
+              "n": 13,
+              "provenance": "SPOC",
+              "sector": 15
+            },
+            {
+              "depth": 0.001634127011632125,
+              "err": 4.878273630092556e-05,
+              "n": 18,
+              "provenance": "SPOC",
+              "sector": 28
+            },
+            {
+              "depth": 0.0017826197300426783,
+              "err": 5.815179367479117e-05,
+              "n": 12,
+              "provenance": "SPOC",
+              "sector": 29
+            },
+            {
+              "depth": 0.0031052770013078046,
+              "err": 5.90396905286799e-05,
+              "n": 12,
+              "provenance": "QLP",
+              "sector": 100
+            }
+          ]
+        },
+        "outcome": "fail",
+        "reason": "depths disagree across sectors (p = 8.1e-107)"
+      },
+      {
+        "check": "holdout",
+        "evidence": {
+          "seasons": [
+            {
+              "depth": 0.0016939559090876077,
+              "end": 1378.7333333332376,
+              "err": 3.834845609719679e-05,
+              "expected_snr": 50.33820945018626,
+              "n": 30,
+              "predicted_period": 4.999972716111136,
+              "predicted_t0": 1686.1132083333314,
+              "ref": 0.0019303926151119644,
+              "ref_err": 2.443221822081615e-05,
+              "ref_n": 69,
+              "season": 0,
+              "sigma": 44.17272770497359,
+              "start": 1325.5208333333314,
+              "status": "missed",
+              "tension": 5.199818873275347,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.0017164113948973103,
+              "end": 1735.058333333237,
+              "err": 3.785227974595526e-05,
+              "expected_snr": 50.776933708797756,
+              "n": 28,
+              "predicted_period": 4.999997033110487,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.001922022699387238,
+              "ref_err": 2.43771462191875e-05,
+              "ref_n": 72,
+              "season": 1,
+              "sigma": 45.34499391891235,
+              "start": 1681.7208333333315,
+              "status": "missed",
+              "tension": 4.566839961702067,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.0016954623073346387,
+              "end": 2118.679166666859,
+              "err": 3.737367182213865e-05,
+              "expected_snr": 51.72768013437116,
+              "n": 30,
+              "predicted_period": 4.999997033110487,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.0019332533414625486,
+              "ref_err": 2.4508502197433497e-05,
+              "ref_n": 70,
+              "season": 2,
+              "sigma": 45.36515211572858,
+              "start": 2065.300000000004,
+              "status": "missed",
+              "tension": 5.320551419141961,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.002209274247657156,
+              "end": 4064.0791666668592,
+              "err": 5.466013217580298e-05,
+              "expected_snr": 30.646932694832916,
+              "n": 14,
+              "predicted_period": 5.0001126824194415,
+              "predicted_t0": 1326.0912083333315,
+              "ref": 0.001675165391882505,
+              "ref_err": 2.185378283436125e-05,
+              "ref_n": 88,
+              "season": 3,
+              "sigma": 40.41838465650766,
+              "start": 4038.1000000000035,
+              "status": "missed",
+              "tension": 9.073153106733763,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            }
+          ]
+        },
+        "outcome": "fail",
+        "reason": "transits missing where predicted in season(s) [0, 1, 2, 3]"
+      },
+      {
+        "check": "shape",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "density",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      }
+    ],
+    "ephemeris": {
+      "depth": 0.0017,
+      "duration": 0.13,
+      "period": 5.0,
+      "t0": 1326.1
+    },
+    "fit": null,
+    "masked": [
+      {
+        "depth": null,
+        "duration": 0.06,
+        "period": 3.7,
+        "t0": 1327.0
+      }
+    ],
+    "red_noise": {
+      "1": {
+        "beta": 1.0931130409443826,
+        "cadences_per_bin": 4.0,
+        "n_bins": 38
+      },
+      "100": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "14": {
+        "beta": 1.017278328248203,
+        "cadences_per_bin": 4.0,
+        "n_bins": 37
+      },
+      "15": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 36
+      },
+      "2": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "28": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "29": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      }
+    },
+    "tic": 1
+  },
+  "planet_three_seasons_vet_v2": {
+    "advances": false,
+    "checks": [
+      {
+        "check": "novelty",
+        "evidence": {
+          "catalog_rows": 4,
+          "nearby_rows": 1,
+          "neighbour_arcmin": 2.5,
+          "tce_matches": [],
+          "tce_period_matches": []
+        },
+        "outcome": "pass",
+        "reason": "no known object matches"
+      },
+      {
+        "check": "odd_even",
+        "evidence": {
+          "depth_even": 0.0019991538447343693,
+          "depth_odd": 0.0017187180613089659,
+          "err_even": 2.8697902969164196e-05,
+          "err_odd": 2.9278880679516763e-05,
+          "n_even": 51,
+          "n_odd": 49,
+          "sigma": 6.840258327267383
+        },
+        "outcome": "fail",
+        "reason": "odd and even depths differ by 6.8 sigma"
+      },
+      {
+        "check": "secondary",
+        "evidence": {
+          "depth": 1.1597508138949664e-05,
+          "err": 1.3506241762335473e-05,
+          "n": 227,
+          "sigma": 0.8586776649660863
+        },
+        "outcome": "pass",
+        "reason": "no dip at phase 0.5 (0.9 sigma)"
+      },
+      {
+        "check": "sector_depth",
+        "evidence": {
+          "chi2": 509.3666927625683,
+          "dof": 6,
+          "mean_depth": 0.0018617458808922718,
+          "p_value": 8.068811409109381e-107,
+          "sectors": [
+            {
+              "depth": 0.0016546662486170982,
+              "err": 5.122421725088414e-05,
+              "n": 18,
+              "provenance": "SPOC",
+              "sector": 1
+            },
+            {
+              "depth": 0.0016698560362667925,
+              "err": 5.7842757779147665e-05,
+              "n": 12,
+              "provenance": "SPOC",
+              "sector": 2
+            },
+            {
+              "depth": 0.0017113699475229671,
+              "err": 5.2259748049434566e-05,
+              "n": 15,
+              "provenance": "SPOC",
+              "sector": 14
+            },
+            {
+              "depth": 0.001721975161262712,
+              "err": 5.490022633499909e-05,
+              "n": 13,
+              "provenance": "SPOC",
+              "sector": 15
+            },
+            {
+              "depth": 0.001634127011632125,
+              "err": 4.878273630092556e-05,
+              "n": 18,
+              "provenance": "SPOC",
+              "sector": 28
+            },
+            {
+              "depth": 0.0017826197300426783,
+              "err": 5.815179367479117e-05,
+              "n": 12,
+              "provenance": "SPOC",
+              "sector": 29
+            },
+            {
+              "depth": 0.0031052770013078046,
+              "err": 5.90396905286799e-05,
+              "n": 12,
+              "provenance": "QLP",
+              "sector": 100
+            }
+          ]
+        },
+        "outcome": "fail",
+        "reason": "depths disagree across sectors (p = 8.1e-107)"
+      },
+      {
+        "check": "holdout",
+        "evidence": {
+          "seasons": [
+            {
+              "depth": 0.0016939559090876077,
+              "end": 1378.7333333332376,
+              "err": 3.834845609719679e-05,
+              "expected_snr": 50.33820945018626,
+              "n": 30,
+              "predicted_period": 4.999972716111136,
+              "predicted_t0": 1686.1132083333314,
+              "ref": 0.0019303926151119644,
+              "ref_err": 2.443221822081615e-05,
+              "ref_n": 69,
+              "season": 0,
+              "sigma": 44.17272770497359,
+              "start": 1325.5208333333314,
+              "status": "missed",
+              "tension": 5.199818873275347,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.0017164113948973103,
+              "end": 1735.058333333237,
+              "err": 3.785227974595526e-05,
+              "expected_snr": 50.776933708797756,
+              "n": 28,
+              "predicted_period": 4.999997033110487,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.001922022699387238,
+              "ref_err": 2.43771462191875e-05,
+              "ref_n": 72,
+              "season": 1,
+              "sigma": 45.34499391891235,
+              "start": 1681.7208333333315,
+              "status": "missed",
+              "tension": 4.566839961702067,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.0016954623073346387,
+              "end": 2118.679166666859,
+              "err": 3.737367182213865e-05,
+              "expected_snr": 51.72768013437116,
+              "n": 30,
+              "predicted_period": 4.999997033110487,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.0019332533414625486,
+              "ref_err": 2.4508502197433497e-05,
+              "ref_n": 70,
+              "season": 2,
+              "sigma": 45.36515211572858,
+              "start": 2065.300000000004,
+              "status": "missed",
+              "tension": 5.320551419141961,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            },
+            {
+              "depth": 0.002209274247657156,
+              "end": 4064.0791666668592,
+              "err": 5.466013217580298e-05,
+              "expected_snr": 30.646932694832916,
+              "n": 14,
+              "predicted_period": 5.0001126824194415,
+              "predicted_t0": 1326.0912083333315,
+              "ref": 0.001675165391882505,
+              "ref_err": 2.185378283436125e-05,
+              "ref_n": 88,
+              "season": 3,
+              "sigma": 40.41838465650766,
+              "start": 4038.1000000000035,
+              "status": "missed",
+              "tension": 9.073153106733763,
+              "training_seasons": 3,
+              "training_seasons_with_transits": 3
+            }
+          ]
+        },
+        "outcome": "fail",
+        "reason": "transits missing where predicted in season(s) [0, 1, 2, 3]"
+      },
+      {
+        "check": "signal_present",
+        "evidence": {
+          "depth": 0.0018617458808918297,
+          "err": 2.0494801086222748e-05,
+          "n": 100,
+          "snr": 90.83990974390836
+        },
+        "outcome": "pass",
+        "reason": "combined depth is 90.8 sigma"
+      },
+      {
+        "check": "shape",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "density",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "radius",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      }
+    ],
+    "ephemeris": {
+      "depth": 0.0017,
+      "duration": 0.13,
+      "period": 5.0,
+      "t0": 1326.1
+    },
+    "fit": null,
+    "masked": [
+      {
+        "depth": null,
+        "duration": 0.06,
+        "period": 3.7,
+        "t0": 1327.0
+      }
+    ],
+    "red_noise": {
+      "1": {
+        "beta": 1.0931130409443826,
+        "cadences_per_bin": 4.0,
+        "n_bins": 38
+      },
+      "100": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "14": {
+        "beta": 1.017278328248203,
+        "cadences_per_bin": 4.0,
+        "n_bins": 37
+      },
+      "15": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 36
+      },
+      "2": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "28": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 39
+      },
+      "29": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      }
+    },
+    "tic": 1
+  },
+  "underpowered_season": {
+    "advances": false,
+    "checks": [
+      {
+        "check": "novelty",
+        "evidence": {
+          "catalog_rows": 3,
+          "nearby_rows": 0,
+          "neighbour_arcmin": 2.5,
+          "tce_matches": [],
+          "tce_period_matches": []
+        },
+        "outcome": "pass",
+        "reason": "no known object matches"
+      },
+      {
+        "check": "odd_even",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.00013212596267198062,
+                "depth_odd": 5.9821707504958965e-05,
+                "err_even": 4.3992522102443224e-05,
+                "err_odd": 4.508587483719541e-05,
+                "n_even": 45,
+                "n_odd": 43,
+                "sigma": 1.1478199011467791
+              },
+              "outcome": "pass",
+              "reason": "odd and even depths agree within 1.1 sigma"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: odd and even depths agree within 1.1 sigma"
+      },
+      {
+        "check": "secondary",
+        "evidence": {
+          "depth": -2.7201313612668088e-06,
+          "err": 2.1590401272898337e-05,
+          "n": 185,
+          "sigma": -0.12598799470583685
+        },
+        "outcome": "pass",
+        "reason": "no dip at phase 0.5 (-0.1 sigma)"
+      },
+      {
+        "check": "sector_depth",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "sector_depth",
+              "evidence": {
+                "chi2": 2.7710606796766153,
+                "dof": 5,
+                "mean_depth": 9.686116748290566e-05,
+                "p_value": 0.7352304026029992,
+                "sectors": [
+                  {
+                    "depth": 9.084062931530301e-05,
+                    "err": 7.517207283353733e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 1
+                  },
+                  {
+                    "depth": 0.00011042412551898195,
+                    "err": 8.520296715990606e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 2
+                  },
+                  {
+                    "depth": 0.00015771363464545107,
+                    "err": 7.309406370395235e-05,
+                    "n": 15,
+                    "provenance": "SPOC",
+                    "sector": 14
+                  },
+                  {
+                    "depth": 2.280551017141974e-05,
+                    "err": 7.789629360752072e-05,
+                    "n": 13,
+                    "provenance": "SPOC",
+                    "sector": 15
+                  },
+                  {
+                    "depth": 0.0001430739809087367,
+                    "err": 6.92161305816039e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 28
+                  },
+                  {
+                    "depth": 2.4552495667462537e-05,
+                    "err": 8.663472456370448e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 29
+                  }
+                ]
+              },
+              "outcome": "pass",
+              "reason": "depths agree across 6 sectors (p = 0.74)"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: depths agree across 6 sectors (p = 0.74)"
+      },
+      {
+        "check": "holdout",
+        "evidence": {
+          "seasons": [
+            {
+              "depth": 3.959947624632143e-05,
+              "end": 1378.8583333332372,
+              "err": 6.554482660858716e-05,
+              "expected_depth": 0.00011245492998823714,
+              "expected_snr": 1.715694980166508,
+              "family_depths": [
+                {
+                  "depth": 3.959947624632143e-05,
+                  "err": 6.554482660858716e-05,
+                  "family": "pdcsap",
+                  "n": 22,
+                  "ref": 0.00011245492998823714,
+                  "ref_err": 4.4048265730006036e-05,
+                  "ref_n": 43,
+                  "tension": 0.9225629105999911,
+                  "training_cadences": 4593
+                }
+              ],
+              "n": 22,
+              "predicted_period": 4.998493849527987,
+              "predicted_t0": 1686.2155833333316,
+              "ref": 0.00011245492998823714,
+              "ref_err": 4.4048265730006036e-05,
+              "ref_n": 43,
+              "season": 0,
+              "start": 1325.5208333333314,
+              "status": "underpowered",
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 0.00010056717884576738,
+              "end": 1735.058333333237,
+              "err": 6.00511707388315e-05,
+              "expected_depth": 7.523749408588909e-05,
+              "expected_snr": 1.2528897132264818,
+              "family_depths": [
+                {
+                  "depth": 0.00010056717884576738,
+                  "err": 6.00511707388315e-05,
+                  "family": "pdcsap",
+                  "n": 22,
+                  "ref": 7.523749408588909e-05,
+                  "ref_err": 4.403365496168309e-05,
+                  "ref_n": 47,
+                  "tension": 0.34015343688794125,
+                  "training_cadences": 4595
+                }
+              ],
+              "n": 22,
+              "predicted_period": 4.997992204162683,
+              "predicted_t0": 1329.6060833333315,
+              "ref": 7.523749408588909e-05,
+              "ref_err": 4.403365496168309e-05,
+              "ref_n": 47,
+              "season": 1,
+              "start": 1681.7208333333315,
+              "status": "underpowered",
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 6.442601378753299e-05,
+              "end": 2118.679166666859,
+              "err": 6.186468794453549e-05,
+              "expected_depth": 9.588833286700016e-05,
+              "expected_snr": 1.549968747162653,
+              "family_depths": [
+                {
+                  "depth": 6.442601378753299e-05,
+                  "err": 6.186468794453549e-05,
+                  "family": "pdcsap",
+                  "n": 23,
+                  "ref": 9.588833286700016e-05,
+                  "ref_err": 4.2927431664956e-05,
+                  "ref_n": 47,
+                  "tension": 0.4178294511408922,
+                  "training_cadences": 4588
+                }
+              ],
+              "n": 23,
+              "predicted_period": 4.997956536336721,
+              "predicted_t0": 1329.6060833333315,
+              "ref": 9.588833286700016e-05,
+              "ref_err": 4.2927431664956e-05,
+              "ref_n": 47,
+              "season": 2,
+              "start": 2065.300000000004,
+              "status": "underpowered",
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            }
+          ]
+        },
+        "outcome": "inconclusive",
+        "reason": "0 season(s) could be tested; need 2"
+      },
+      {
+        "check": "signal_present",
+        "evidence": {
+          "depth": 9.686116748275353e-05,
+          "err": 3.148685293299176e-05,
+          "n": 88,
+          "snr": 3.0762416202370892
+        },
+        "outcome": "inconclusive",
+        "reason": "combined depth is 3.1 sigma, below 7"
+      },
+      {
+        "check": "shape",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "density",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "radius",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      }
+    ],
+    "criteria_version": "vet-v3",
+    "dropped_suspect": [],
+    "ephemeris": {
+      "depth": 6e-05,
+      "duration": 0.13,
+      "period": 5.0,
+      "t0": 1326.1
+    },
+    "evidence_only": false,
+    "families": {
+      "pdcsap": [
+        1,
+        2,
+        14,
+        15,
+        28,
+        29
+      ]
+    },
+    "fit": null,
+    "fit_prior": null,
+    "fit_prior_reason": "no fit: not fitted in this test",
+    "masked": [],
+    "red_noise": {
+      "1": {
+        "beta": 1.0436364985756443,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "14": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "15": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "2": {
+        "beta": 1.0592163198240387,
+        "cadences_per_bin": 4.0,
+        "n_bins": 42
+      },
+      "28": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "29": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 42
+      }
+    },
+    "tic": 1
+  },
+  "untestable_family": {
+    "advances": false,
+    "checks": [
+      {
+        "check": "novelty",
+        "evidence": {
+          "catalog_rows": 3,
+          "nearby_rows": 0,
+          "neighbour_arcmin": 2.5,
+          "tce_matches": [],
+          "tce_period_matches": []
+        },
+        "outcome": "pass",
+        "reason": "no known object matches"
+      },
+      {
+        "check": "odd_even",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.001778038320068287,
+                "depth_odd": 0.0016982085689566384,
+                "err_even": 5.476215649094243e-05,
+                "err_odd": 5.67717519531167e-05,
+                "n_even": 30,
+                "n_odd": 28,
+                "sigma": 1.0120509300595966
+              },
+              "outcome": "pass",
+              "reason": "odd and even depths agree within 1.0 sigma"
+            },
+            "qlp": {
+              "check": "odd_even",
+              "evidence": {
+                "depth_even": 0.0017865098221803155,
+                "depth_odd": 0.0016996592260608567,
+                "err_even": 7.860564547374091e-05,
+                "err_odd": 7.860564547374091e-05,
+                "n_even": 15,
+                "n_odd": 15,
+                "sigma": 0.7812752518733393
+              },
+              "outcome": "pass",
+              "reason": "odd and even depths agree within 0.8 sigma"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: odd and even depths agree within 1.0 sigma; qlp: odd and even depths agree within 0.8 sigma"
+      },
+      {
+        "check": "secondary",
+        "evidence": {
+          "depth": -2.526528502411196e-06,
+          "err": 2.2037746836894363e-05,
+          "n": 185,
+          "sigma": -0.11464549988301996
+        },
+        "outcome": "pass",
+        "reason": "no dip at phase 0.5 (-0.1 sigma)"
+      },
+      {
+        "check": "sector_depth",
+        "evidence": {
+          "families": {
+            "pdcsap": {
+              "check": "sector_depth",
+              "evidence": {
+                "chi2": 1.7034455165205482,
+                "dof": 3,
+                "mean_depth": 0.0017395613340654597,
+                "p_value": 0.6361680502887672,
+                "sectors": [
+                  {
+                    "depth": 0.00173601476049845,
+                    "err": 7.51230346970891e-05,
+                    "n": 18,
+                    "provenance": "SPOC",
+                    "sector": 1
+                  },
+                  {
+                    "depth": 0.0017599815417267406,
+                    "err": 8.536982983665099e-05,
+                    "n": 12,
+                    "provenance": "SPOC",
+                    "sector": 2
+                  },
+                  {
+                    "depth": 0.001798932788759977,
+                    "err": 7.554626331493814e-05,
+                    "n": 15,
+                    "provenance": "SPOC",
+                    "sector": 14
+                  },
+                  {
+                    "depth": 0.0016579498096609413,
+                    "err": 8.055629876051786e-05,
+                    "n": 13,
+                    "provenance": "SPOC",
+                    "sector": 15
+                  }
+                ]
+              },
+              "outcome": "pass",
+              "reason": "depths agree across 4 sectors (p = 0.64)"
+            },
+            "qlp": {
+              "check": "sector_depth",
+              "evidence": {
+                "chi2": 1.305992294769323,
+                "dof": 1,
+                "mean_depth": 0.001743084524120502,
+                "p_value": 0.25312155618417975,
+                "sectors": [
+                  {
+                    "depth": 0.0017946408053898244,
+                    "err": 7.158698345952432e-05,
+                    "n": 18,
+                    "provenance": "QLP",
+                    "sector": 28
+                  },
+                  {
+                    "depth": 0.0016648251246125234,
+                    "err": 8.819856636106887e-05,
+                    "n": 12,
+                    "provenance": "QLP",
+                    "sector": 29
+                  }
+                ]
+              },
+              "outcome": "pass",
+              "reason": "depths agree across 2 sectors (p = 0.25)"
+            }
+          }
+        },
+        "outcome": "pass",
+        "reason": "pdcsap: depths agree across 4 sectors (p = 0.64); qlp: depths agree across 2 sectors (p = 0.25)"
+      },
+      {
+        "check": "holdout",
+        "evidence": {
+          "seasons": [
+            {
+              "depth": 0.001746474184941893,
+              "end": 1378.8583333332372,
+              "err": 5.639666897549727e-05,
+              "expected_depth": 0.0017329614230409127,
+              "expected_snr": 30.72808118851549,
+              "family_depths": [
+                {
+                  "depth": 0.001746474184941893,
+                  "err": 5.639666897549727e-05,
+                  "family": "pdcsap",
+                  "n": 30,
+                  "ref": 0.001732961423040913,
+                  "ref_err": 5.510536706423117e-05,
+                  "ref_n": 28,
+                  "tension": 0.1713748954868134,
+                  "training_cadences": 2294
+                }
+              ],
+              "n": 30,
+              "predicted_period": 4.999962811099456,
+              "predicted_t0": 1686.1034583333314,
+              "ref": 0.0017379793298499813,
+              "ref_err": 3.913300960855453e-05,
+              "ref_n": 58,
+              "season": 0,
+              "sigma": 30.967683316556972,
+              "start": 1325.5208333333314,
+              "status": "predicted",
+              "tension": 0.1713748954868134,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 0.001732961423040913,
+              "end": 1735.058333333237,
+              "err": 5.510536706423117e-05,
+              "expected_depth": 0.001746474184941893,
+              "expected_snr": 31.69335906802311,
+              "family_depths": [
+                {
+                  "depth": 0.001732961423040913,
+                  "err": 5.510536706423117e-05,
+                  "family": "pdcsap",
+                  "n": 28,
+                  "ref": 0.001746474184941893,
+                  "ref_err": 5.639666897549727e-05,
+                  "ref_n": 30,
+                  "tension": 0.1713748954868134,
+                  "training_cadences": 2296
+                }
+              ],
+              "n": 28,
+              "predicted_period": 5.0,
+              "predicted_t0": 1326.1009583333314,
+              "ref": 0.001744754713155272,
+              "ref_err": 3.958750631880476e-05,
+              "ref_n": 60,
+              "season": 1,
+              "sigma": 31.448142265724535,
+              "start": 1681.7208333333315,
+              "status": "predicted",
+              "tension": 0.1713748954868134,
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            },
+            {
+              "depth": 0.001755611438478244,
+              "end": 2118.679166666859,
+              "err": 5.558258495402785e-05,
+              "expected_depth": null,
+              "family_depths": [
+                {
+                  "depth": 0.001755611438478244,
+                  "err": 5.558258495402785e-05,
+                  "family": "qlp",
+                  "n": 30,
+                  "ref": null,
+                  "ref_err": null,
+                  "ref_n": 0,
+                  "training_cadences": 0
+                }
+              ],
+              "n": 30,
+              "predicted_period": 5.0001190367182495,
+              "predicted_t0": 1326.0912083333315,
+              "reason": "no training cadences in the held-out season's qlp family",
+              "ref": 0.0016935672269219326,
+              "ref_err": 3.9413992682737026e-05,
+              "ref_n": 58,
+              "season": 2,
+              "start": 2065.300000000004,
+              "status": "untestable",
+              "training_seasons": 2,
+              "training_seasons_with_transits": 2
+            }
+          ]
+        },
+        "outcome": "pass",
+        "reason": "2 held-out seasons predicted"
+      },
+      {
+        "check": "signal_present",
+        "evidence": {
+          "depth": 0.001740740157772147,
+          "err": 3.215104811078098e-05,
+          "n": 88,
+          "snr": 54.14256330848627
+        },
+        "outcome": "pass",
+        "reason": "combined depth is 54.1 sigma"
+      },
+      {
+        "check": "shape",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "density",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      },
+      {
+        "check": "radius",
+        "evidence": {},
+        "outcome": "inconclusive",
+        "reason": "no fit: not fitted in this test"
+      }
+    ],
+    "criteria_version": "vet-v3",
+    "dropped_suspect": [],
+    "ephemeris": {
+      "depth": 0.0017,
+      "duration": 0.13,
+      "period": 5.0,
+      "t0": 1326.1
+    },
+    "evidence_only": false,
+    "families": {
+      "pdcsap": [
+        1,
+        2,
+        14,
+        15
+      ],
+      "qlp": [
+        28,
+        29
+      ]
+    },
+    "fit": null,
+    "fit_prior": null,
+    "fit_prior_reason": "no fit: not fitted in this test",
+    "masked": [],
+    "red_noise": {
+      "1": {
+        "beta": 1.0106975140548637,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "14": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "15": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 40
+      },
+      "2": {
+        "beta": 1.0313723316154695,
+        "cadences_per_bin": 4.0,
+        "n_bins": 42
+      },
+      "28": {
+        "beta": 1.003138043822119,
+        "cadences_per_bin": 4.0,
+        "n_bins": 41
+      },
+      "29": {
+        "beta": 1.0,
+        "cadences_per_bin": 4.0,
+        "n_bins": 42
+      }
+    },
+    "tic": 1
+  }
+}

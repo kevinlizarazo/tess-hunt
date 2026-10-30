@@ -19,6 +19,22 @@ contract NAS5–26555.
 | QLP light curves (CC BY 4.0) | 10.17909/t9-r086-e880 | Huang et al. 2020a, 2020b; Kunimoto et al. 2021, 2022 |
 | Calibrated FFIs (pixel vetting, through TESScut) | 10.17909/0cp4-2j79 | Brasseur et al. 2019 |
 
+The light-curve papers in full:
+
+- Jenkins et al. 2016 (Proc. SPIE 9913, 99133E)
+- Caldwell et al. 2020 (RNAAS 4, 201)
+- Huang et al. 2020a (RNAAS 4, 204)
+- Huang et al. 2020b (RNAAS 4, 206)
+- Kunimoto et al. 2021 (RNAAS 5, 234)
+- Kunimoto et al. 2022 (RNAAS 6, 236)
+
+QLP's page at MAST (https://archive.stsci.edu/hlsp/qlp, read 2026-10-29) asks users of its light curves for this
+acknowledgement:
+
+We acknowledge the use of TESS High Level Science Products (HLSP) produced by the Quick-Look Pipeline (QLP) at the
+TESS Science Office at MIT, which are publicly available from the Mikulski Archive for Space Telescopes (MAST).
+Funding for the TESS mission is provided by NASA's Science Mission directorate.
+
 QLP asks users of Sector 27 and later data to consider offering a QLP team member co-authorship (invited, not
 required).
 
@@ -282,3 +298,10 @@ SpiceyPy (Annex et al. 2020), the SPICE toolkit (Acton 1996; Acton et al. 2017) 
   (https://matplotlib.org/stable/users/project/citing.html, read 2026-10-26 from its source in the matplotlib
   repository, `doc/project/citing.rst`) gives: J. D. Hunter, "Matplotlib: A 2D Graphics Environment", Computing in
   Science & Engineering, vol. 9, no. 3, pp. 90-95, 2007 (doi:10.1109/MCSE.2007.55).
+
+## This project's deposits
+
+- The preregistered transit predictions for six held signals
+  ([package](results/predictions/20261028T204003Z-predictions-98bf417-0ef5/)) are deposited on Zenodo, published
+  2026-10-28: doi:10.5281/zenodo.23745923 (this version, which pins the deposited files; all versions:
+  doi:10.5281/zenodo.23745922). Cite the version DOI for the predictions.

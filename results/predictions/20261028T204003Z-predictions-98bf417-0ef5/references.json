@@ -1,0 +1,465 @@
+{
+  "judged_by": "2027-12-31",
+  "lock_start": "2026-12-20",
+  "signals": {
+    "103312990-1": {
+      "core_half_width_days": 0.026562499999999985,
+      "left_out": [
+        {
+          "in_season": true,
+          "reason": "starts 2026-10-31, before the lock on 2026-12-20: the deposit's files can still be edited until then",
+          "sector": 110,
+          "start_utc": "2026-10-31"
+        },
+        {
+          "in_season": true,
+          "reason": "starts 2026-11-26, before the lock on 2026-12-20: the deposit's files can still be edited until then",
+          "sector": 111,
+          "start_utc": "2026-11-26"
+        }
+      ],
+      "min_training_seasons": 2,
+      "predicted": {
+        "depth": 0.00034633224304568333,
+        "duration": 0.10624999999999994,
+        "period": 7.523134559796469,
+        "t0": 1545.9444062363912
+      },
+      "reference": {
+        "families": {
+          "pdcsap": {
+            "ref": 0.0003426596513108615,
+            "ref_err": 5.1123391316920184e-05,
+            "ref_n": 36,
+            "training_cadences": 4576
+          },
+          "qlp": {
+            "ref": 0.0004189435554696752,
+            "ref_err": 8.31649668067116e-05,
+            "ref_n": 89,
+            "training_cadences": 10283
+          }
+        },
+        "ref": 0.000363580472942715,
+        "ref_err": 4.3552524223410767e-05,
+        "ref_n": 125
+      },
+      "signal": "103312990-1",
+      "testable_with": [
+        "SPOC 2-min",
+        "TESS-SPOC",
+        "QLP"
+      ],
+      "tic": 103312990,
+      "training_families": {
+        "pdcsap": [
+          9,
+          10,
+          36
+        ],
+        "qlp": [
+          90
+        ]
+      },
+      "training_seasons": [
+        {
+          "end": 1595.1391484846442,
+          "holds_transits": true,
+          "season": 0,
+          "sectors": [
+            9,
+            10
+          ],
+          "start": 1544.9725312363912,
+          "transit_cadences": 20
+        },
+        {
+          "end": 2305.4794659959052,
+          "holds_transits": true,
+          "season": 1,
+          "sectors": [
+            36
+          ],
+          "start": 2282.632110406546,
+          "transit_cadences": 36
+        },
+        {
+          "end": 3774.431045477034,
+          "holds_transits": true,
+          "season": 2,
+          "sectors": [
+            90
+          ],
+          "start": 3747.9032935309338,
+          "transit_cadences": 139
+        }
+      ]
+    },
+    "241522065-1": {
+      "core_half_width_days": 0.03984375,
+      "left_out": [],
+      "min_training_seasons": 2,
+      "predicted": {
+        "depth": 0.00045907347802224223,
+        "duration": 0.159375,
+        "period": 17.43680692631834,
+        "t0": 2340.4301680973317
+      },
+      "reference": {
+        "families": {
+          "pdcsap": {
+            "ref": 0.0004643682498872703,
+            "ref_err": 3.890041662234043e-05,
+            "ref_n": 126,
+            "training_cadences": 25431
+          }
+        },
+        "ref": 0.0004643682498872703,
+        "ref_err": 3.890041662234043e-05,
+        "ref_n": 126
+      },
+      "signal": "241522065-1",
+      "testable_with": [
+        "SPOC 2-min",
+        "TESS-SPOC"
+      ],
+      "tic": 241522065,
+      "training_families": {
+        "pdcsap": [
+          38,
+          64,
+          65
+        ]
+      },
+      "training_seasons": [
+        {
+          "end": 2360.0426749535654,
+          "holds_transits": true,
+          "season": 0,
+          "sectors": [
+            38
+          ],
+          "start": 2334.369230597332,
+          "transit_cadences": 36
+        },
+        {
+          "end": 3095.938053792922,
+          "holds_transits": true,
+          "season": 1,
+          "sectors": [
+            64,
+            65
+          ],
+          "start": 3041.620668750845,
+          "transit_cadences": 143
+        }
+      ]
+    },
+    "296819076-1": {
+      "core_half_width_days": 0.026562499999999985,
+      "left_out": [],
+      "min_training_seasons": 2,
+      "predicted": {
+        "depth": 0.0005128580309283355,
+        "duration": 0.10624999999999994,
+        "period": 2.279709550532925,
+        "t0": 1601.0220257941928
+      },
+      "reference": {
+        "families": {
+          "pdcsap": {
+            "ref": 0.0006292518453138163,
+            "ref_err": 7.688247736601545e-05,
+            "ref_n": 39,
+            "training_cadences": 1812
+          },
+          "qlp": {
+            "ref": 0.0004698279306880604,
+            "ref_err": 0.00016602847460930916,
+            "ref_n": 174,
+            "training_cadences": 9354
+          }
+        },
+        "ref": 0.0006011023993452991,
+        "ref_err": 6.976550932279357e-05,
+        "ref_n": 213
+      },
+      "signal": "296819076-1",
+      "testable_with": [
+        "SPOC 2-min",
+        "TESS-SPOC",
+        "QLP"
+      ],
+      "tic": 296819076,
+      "training_families": {
+        "pdcsap": [
+          11,
+          12
+        ],
+        "qlp": [
+          65
+        ]
+      },
+      "training_seasons": [
+        {
+          "end": 1652.348183888271,
+          "holds_transits": true,
+          "season": 0,
+          "sectors": [
+            11,
+            12
+          ],
+          "start": 1599.6189007941928,
+          "transit_cadences": 65
+        },
+        {
+          "end": 3094.067852766886,
+          "holds_transits": true,
+          "season": 1,
+          "sectors": [
+            65
+          ],
+          "start": 3069.313020823141,
+          "transit_cadences": 300
+        }
+      ]
+    },
+    "399023421-1": {
+      "core_half_width_days": 0.03046875,
+      "left_out": [],
+      "min_training_seasons": 2,
+      "predicted": {
+        "depth": 0.0003459713597855354,
+        "duration": 0.121875,
+        "period": 3.926887985007447,
+        "t0": 1600.8793671905548
+      },
+      "reference": {
+        "families": {
+          "pdcsap": {
+            "ref": 0.00036323761642742536,
+            "ref_err": 4.343652526065792e-05,
+            "ref_n": 295,
+            "training_cadences": 17954
+          }
+        },
+        "ref": 0.00036323761642742536,
+        "ref_err": 4.343652526065792e-05,
+        "ref_n": 295
+      },
+      "signal": "399023421-1",
+      "testable_with": [
+        "SPOC 2-min",
+        "TESS-SPOC"
+      ],
+      "tic": 399023421,
+      "training_families": {
+        "pdcsap": [
+          11,
+          37,
+          38,
+          64
+        ]
+      },
+      "training_seasons": [
+        {
+          "end": 1623.3484513422607,
+          "holds_transits": true,
+          "season": 0,
+          "sectors": [
+            11
+          ],
+          "start": 1600.0778046905548,
+          "transit_cadences": 30
+        },
+        {
+          "end": 2360.0424316855897,
+          "holds_transits": true,
+          "season": 1,
+          "sectors": [
+            37,
+            38
+          ],
+          "start": 2308.743739726116,
+          "transit_cadences": 198
+        },
+        {
+          "end": 3067.530922734511,
+          "holds_transits": true,
+          "season": 2,
+          "sectors": [
+            64
+          ],
+          "start": 3041.620826734819,
+          "transit_cadences": 375
+        }
+      ]
+    },
+    "423100454-1": {
+      "core_half_width_days": 0.045703125000000004,
+      "left_out": [],
+      "min_training_seasons": 2,
+      "predicted": {
+        "depth": 0.0005119343669394202,
+        "duration": 0.18281250000000002,
+        "period": 14.186119237196367,
+        "t0": 1631.4717855330794
+      },
+      "reference": {
+        "families": {
+          "pdcsap": {
+            "ref": 0.0005821911899787091,
+            "ref_err": 4.281783487435258e-05,
+            "ref_n": 236,
+            "training_cadences": 32056
+          }
+        },
+        "ref": 0.0005821911899787091,
+        "ref_err": 4.281783487435258e-05,
+        "ref_n": 236
+      },
+      "signal": "423100454-1",
+      "testable_with": [
+        "SPOC 2-min",
+        "TESS-SPOC"
+      ],
+      "tic": 423100454,
+      "training_families": {
+        "pdcsap": [
+          12,
+          39,
+          65
+        ]
+      },
+      "training_seasons": [
+        {
+          "end": 1652.3946811700566,
+          "holds_transits": true,
+          "season": 0,
+          "sectors": [
+            12
+          ],
+          "start": 1625.4600667830794,
+          "transit_cadences": 267
+        },
+        {
+          "end": 2389.209488138219,
+          "holds_transits": true,
+          "season": 1,
+          "sectors": [
+            39
+          ],
+          "start": 2362.2862188155996,
+          "transit_cadences": 54
+        },
+        {
+          "end": 3096.091479742609,
+          "holds_transits": true,
+          "season": 2,
+          "sectors": [
+            65
+          ],
+          "start": 3069.2460634031945,
+          "transit_cadences": 162
+        }
+      ]
+    },
+    "438857197-1": {
+      "core_half_width_days": 0.010156249999999983,
+      "left_out": [],
+      "min_training_seasons": 2,
+      "predicted": {
+        "depth": 0.0008644586633396409,
+        "duration": 0.04062499999999993,
+        "period": 3.6591714935124267,
+        "t0": 1603.5358955656664
+      },
+      "reference": {
+        "families": {
+          "pdcsap": {
+            "ref": 0.001032044715413627,
+            "ref_err": 8.49449244727892e-05,
+            "ref_n": 82,
+            "training_cadences": 15100
+          }
+        },
+        "ref": 0.001032044715413627,
+        "ref_err": 8.49449244727892e-05,
+        "ref_n": 82
+      },
+      "signal": "438857197-1",
+      "testable_with": [
+        "SPOC 2-min",
+        "TESS-SPOC"
+      ],
+      "tic": 438857197,
+      "training_families": {
+        "pdcsap": [
+          11,
+          38,
+          64
+        ]
+      },
+      "training_seasons": [
+        {
+          "end": 1623.348736165384,
+          "holds_transits": true,
+          "season": 0,
+          "sectors": [
+            11
+          ],
+          "start": 1600.0780830656663,
+          "transit_cadences": 8
+        },
+        {
+          "end": 2360.0427123945956,
+          "holds_transits": true,
+          "season": 1,
+          "sectors": [
+            38
+          ],
+          "start": 2334.376423600771,
+          "transit_cadences": 36
+        },
+        {
+          "end": 3067.533526153494,
+          "holds_transits": true,
+          "season": 2,
+          "sectors": [
+            64
+          ],
+          "start": 3041.621070811648,
+          "transit_cadences": 125
+        }
+      ]
+    }
+  },
+  "test": {
+    "core_fraction": 0.5,
+    "families": {
+      "fit": "pdcsap",
+      "pdcsap": [
+        "SPOC",
+        "TESS-SPOC"
+      ],
+      "qlp": [
+        "QLP"
+      ]
+    },
+    "holdout": {
+      "max_depth_tension": 3.0,
+      "min_expected_snr": 4.0,
+      "min_points": 5,
+      "min_sigma": 2.0,
+      "min_training_seasons": 2,
+      "refit_duration_factors": [
+        0.75,
+        1.0,
+        1.25
+      ],
+      "refit_points": 801,
+      "refit_resolutions": 5.0,
+      "season_gap_days": 60.0
+    }
+  }
+}

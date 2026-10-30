@@ -12,6 +12,7 @@ from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.fit import NAMES, FitResult
+from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -174,17 +175,23 @@ def setup(tmp_path, monkeypatch, signals=SIGNALS, suspect=(), fit=None):
     if fit is not None:
         monkeypatch.setattr(vet, "fit_transit", fit)
     monkeypatch.chdir(ROOT)
-    argv = [
+    v2_snapshot(tmp_path / "snap")
+    return run_argv(tmp_path), depths
+
+
+def run_argv(tmp_path: Path) -> list[str]:
+    """`vetting run`'s arguments for the files `setup` wrote."""
+    return [
         "vetting",
         "run",
-        *("--signals", str(signals_csv)),
-        *("--targets", str(targets), "--targets", str(controls)),
-        *("--catalogs", str(v2_snapshot(tmp_path / "snap"))),
+        *("--signals", str(tmp_path / "signals.csv")),
+        *("--targets", str(tmp_path / "targets.parquet")),
+        *("--targets", str(tmp_path / "controls.parquet")),
+        *("--catalogs", str(tmp_path / "snap")),
         *("--criteria-search", str(SEARCH)),
         *("--criteria-vet", str(VET3)),
         *("--workers", "1"),
     ]
-    return argv, depths
 
 
 def only_run(tmp_path) -> Path:
@@ -306,11 +313,24 @@ def test_vetting_run_refuses_a_v1_snapshot(tmp_path, monkeypatch):
         (lambda rows: rows[:1] + [{**rows[1], "kind": "planet"}], "unknown kind"),
         (lambda rows: rows[:1] + [{**rows[1], "name": "1-1"}], "more than once: 1-1"),
         (lambda rows: rows[:1] + [{**rows[1], "t0": 2459326.1}], "BTJD"),
+        (lambda rows: rows[:1] + [{**rows[1], "name": "../TOI-9.01"}], "names are letters"),
+        (lambda rows: rows[:1] + [{**rows[1], "period": NAN}], "positive numbers of days"),
+        (lambda rows: rows[:1] + [{**rows[1], "period": -5.0}], "positive numbers of days"),
+        (lambda rows: rows[:1] + [{**rows[1], "duration": 0.0}], "positive numbers of days"),
+        (lambda rows: rows[:1] + [{**rows[1], "tic": NAN}], "no TIC number for TOI-9.01"),
     ],
 )
 def test_vetting_run_refuses_a_signal_list_it_cannot_vet(tmp_path, monkeypatch, change, message):
     argv, _ = setup(tmp_path, monkeypatch, signals=change(SIGNALS))
     with pytest.raises(SystemExit, match=message):
+        main(argv)
+    assert no_run(tmp_path)
+
+
+def test_vetting_run_refuses_a_star_it_has_no_light_curve_for(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch)
+    (tmp_path / "data" / "lc" / "2.npz").unlink()
+    with pytest.raises(SystemExit, match="no light curve for TIC 2; fetch first"):
         main(argv)
     assert no_run(tmp_path)
 
@@ -420,6 +440,48 @@ def test_evidence_only_run_is_marked(tmp_path, monkeypatch):
     assert "advances" not in provenance["summary"]["signals"]["1-1"]
 
 
+REVET_RUN = "20261201T000000Z-revet-fetch-abc1234-0001"
+
+
+def test_vetting_run_reads_lc_dir(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch, signals=SIGNALS[:1], fit=fake_fit)
+    # A re-vet's light curves, in its revet fetch run, with the shared cache gone: a read of it anywhere would fail.
+    shared = tmp_path / "data" / "lc"
+    revet = tmp_path / "data" / "runs" / REVET_RUN / "lc"
+    revet.parent.mkdir(parents=True)
+    (revet.parent / "provenance.json").write_text(json.dumps({"stage": "revet-fetch"}))
+    shared.rename(revet)
+    lc = LightCurve.load(revet / "1.npz")
+    lc.sources["64"]["s3_key"] = "qlp/s0064_v02"
+    lc.save(revet / "1.npz")
+
+    assert main([*argv, "--lc-dir", str(revet)]) == 0
+    assert main([*argv, "--lc-dir", str(revet), "--include-suspect"]) == 0
+    assert not shared.exists()
+    runs = list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
+    assert len(runs) == 2
+    for run in runs:
+        provenance = json.loads((run / "provenance.json").read_text())
+        assert provenance["inputs"]["light_curve_1"]["sha256"] == sha256_file(revet / "1.npz")
+        assert read(run, "1-1")["sources"]["64"]["s3_key"] == "qlp/s0064_v02"
+        # Where it read them, scrubbed as provenance is, and the revet fetch run that made them; and the snapshot.
+        assert provenance["lc_dir"] == f"$TESS_HUNT_DATA/runs/{REVET_RUN}/lc"
+        assert provenance["revet_run"] == REVET_RUN
+        assert provenance["catalogs"] == "snap"
+        assert vetting._light_curves(provenance) == revet
+
+
+def test_vetting_run_records_the_shared_cache(tmp_path, monkeypatch):
+    argv, _ = setup(tmp_path, monkeypatch, signals=SIGNALS[:1], fit=fake_fit)
+    assert main(argv) == 0
+    provenance = json.loads((only_run(tmp_path) / "provenance.json").read_text())
+    assert provenance["lc_dir"] == "$TESS_HUNT_DATA/lc" and provenance["revet_run"] is None
+    assert vetting._light_curves(provenance) == tmp_path / "data" / "lc"
+    # A run made before decision 0041 recorded neither, and read the shared cache.
+    old = {k: v for k, v in provenance.items() if k not in ("lc_dir", "revet_run")}
+    assert vetting._light_curves(old) == tmp_path / "data" / "lc"
+
+
 def triage_run(tmp_path: Path) -> Path:
     runs = tmp_path / "data" / "runs"
     search = runs / SEARCH_RUN
@@ -519,6 +581,8 @@ def test_modshift_and_pixels_come_from_the_triage_run(tmp_path, monkeypatch):
     assert provenance["triage_run"] == TRIAGE_RUN and provenance["search_run"] == SEARCH_RUN
     inputs = provenance["inputs"]
     assert inputs["triage_provenance"]["sha256"] == sha256_file(triage / "provenance.json")
+    # The criteria file triage judged with, which the dossier names on page one.
+    assert inputs["triage_criteria"] == {"file": "triage-v1.toml", "sha256": TRIAGE.sha256}
     assert inputs["triage_evidence_1-1"]["sha256"] == sha256_file(triage / "evidence" / "1-1.json")
     assert inputs["search_signals"]["sha256"] == sha256_file(
         tmp_path / "data" / "runs" / SEARCH_RUN / "signals.parquet"
@@ -537,18 +601,58 @@ def test_triage_evidence_for_another_star_is_refused(tmp_path, monkeypatch):
     assert not list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
 
 
-def other_search_criteria(tmp_path: Path) -> list[str]:
+def production(tmp_path: Path, triage: Path) -> list[str]:
+    # The triage run fixture is not a production run.
+    return ["--triage-run", str(triage), "--production"]
+
+
+def other_search_criteria(tmp_path: Path, triage: Path) -> list[str]:
     path = tmp_path / "search-other.toml"
     path.write_text(SEARCH.read_text() + "# not the file triage ran with\n")
-    return ["--criteria-search", str(path)]
+    return ["--triage-run", str(triage), "--criteria-search", str(path)]
+
+
+def edited_triage(change):
+    """The triage run with its provenance changed by `change`."""
+
+    def edit(tmp_path: Path, triage: Path) -> list[str]:
+        path = triage / "provenance.json"
+        provenance = json.loads(path.read_text())
+        change(provenance)
+        path.write_text(json.dumps(provenance))
+        return ["--triage-run", str(triage)]
+
+    return edit
+
+
+def changed_search_signals(tmp_path: Path, triage: Path) -> list[str]:
+    path = triage.parent / SEARCH_RUN / "signals.parquet"
+    found = pd.read_parquet(path)
+    pd.concat([found, found.iloc[:1]]).to_parquet(path)
+    return ["--triage-run", str(triage)]
+
+
+def renamed_triage(tmp_path: Path, triage: Path) -> list[str]:
+    # Its provenance still names TRIAGE_RUN, so the directory is not the run the vetting run would record.
+    renamed = triage.parent / "20261015T000000Z-triage-abc-9"
+    triage.rename(renamed)
+    return ["--triage-run", str(renamed)]
 
 
 @pytest.mark.parametrize(
     "extra, message",
     [
-        # The triage run fixture is not a production run.
-        (lambda tmp_path: ["--production"], "not a production triage run"),
+        (production, "not a production triage run"),
         (other_search_criteria, "is not the criteria/search-v2.toml that"),
+        (edited_triage(lambda p: p.update(ended_at=None)), "is not a finished triage run"),
+        (changed_search_signals, "signals.parquet is not the file"),
+        (
+            edited_triage(lambda p: p["criteria"][1].update(sha256="0" * 64)),
+            "triage-v1.toml changed since .* its pixel limit is unknown",
+        ),
+        (edited_triage(lambda p: p.pop("criteria")), "names no search and triage criteria"),
+        (edited_triage(lambda p: p["criteria"].pop()), "names no search and triage criteria"),
+        (renamed_triage, f"provenance is run {TRIAGE_RUN}'s"),
     ],
 )
 def test_vetting_run_refuses_triage_evidence_its_checks_cannot_stand_beside(
@@ -557,7 +661,7 @@ def test_vetting_run_refuses_triage_evidence_its_checks_cannot_stand_beside(
     argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
     triage = triage_run(tmp_path)
     with pytest.raises(SystemExit, match=message):
-        main([*argv, "--triage-run", str(triage), *extra(tmp_path)])
+        main([*argv, *extra(tmp_path, triage)])
     assert not list((tmp_path / "data" / "runs").glob("*-vetting-run-*"))
 
 
@@ -620,20 +724,54 @@ def test_every_catalogued_row_on_the_star_is_listed_with_the_transits_it_overlap
 
 def test_a_signal_that_raises_is_recorded_and_the_others_are_vetted(tmp_path, monkeypatch):
     argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
-    phase = plots.phase
+    draw = vetting._plots
 
     def breaks_on_the_control(lc, *args):
         if lc.tic == CONTROL["tic"]:
-            raise RuntimeError("plotting failed")
-        return phase(lc, *args)
+            raise RuntimeError("detrending for the plots failed")
+        return draw(lc, *args)
 
     # The control's directory already holds its samples and neighbours.csv when this raises.
-    monkeypatch.setattr(plots, "phase", breaks_on_the_control)
+    monkeypatch.setattr(vetting, "_plots", breaks_on_the_control)
     assert main(argv) == 1
     run = only_run(tmp_path)
     assert [p.name for p in (run / "signals").iterdir()] == ["1-1"]
     assert (run / "signals" / "1-1" / "checks.json").is_file()
     provenance = json.loads((run / "provenance.json").read_text())
     assert provenance["ended_at"] is not None
-    assert provenance["summary"]["errors"] == {"TOI-9.01": "raised RuntimeError: plotting failed"}
+    assert provenance["summary"]["errors"] == {
+        "TOI-9.01": "raised RuntimeError: detrending for the plots failed"
+    }
     assert list(provenance["summary"]["signals"]) == ["1-1"]
+
+
+def test_a_plot_that_raises_is_named_and_the_vet_stands(tmp_path, monkeypatch, capsys):
+    argv, _ = setup(tmp_path, monkeypatch, fit=fake_fit)
+    phase = plots.phase
+
+    def breaks_on_the_control(lc, eph, modshift, path):
+        if lc.tic == CONTROL["tic"]:
+            # Half a file, then the failure: what is left must not read as the plot.
+            Path(path).write_bytes(b"\x89PNG")
+            raise RuntimeError("plotting failed")
+        return phase(lc, eph, modshift, path)
+
+    monkeypatch.setattr(plots, "phase", breaks_on_the_control)
+    assert main(argv) == 0
+    run = only_run(tmp_path)
+    control = run / "signals" / "TOI-9.01"
+    assert read(run, "TOI-9.01")["plot_errors"] == {
+        "phase.png": "raised RuntimeError: plotting failed"
+    }
+    assert {p.name for p in (control / "plots").iterdir()} == PLOTS - {"phase.png"}
+    assert read(run, "1-1")["plot_errors"] == {}
+    assert {p.name for p in (run / "signals" / "1-1" / "plots").iterdir()} == PLOTS
+    summary = json.loads((run / "provenance.json").read_text())["summary"]
+    assert summary["errors"] == {}
+    assert summary["signals"]["TOI-9.01"]["plot_errors"] == {
+        "phase.png": "raised RuntimeError: plotting failed"
+    }
+    assert (
+        "TOI-9.01: phase.png not drawn, raised RuntimeError: plotting failed"
+        in capsys.readouterr().out
+    )

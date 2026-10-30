@@ -1,0 +1,236 @@
+"""`tess-hunt revet`: the light curves a re-vet reads (decision 0041). Each keeps every sector of M2's light curve as
+M2 fetched it, adds the sectors only the new fetch has, and takes a changed old sector only when it replaces a
+timing-suspect product, or, for a sector an earlier re-vet added, when the new fetch has a better product for it. The
+earlier light curves are read, never written: every finished run keeps the file it hashed."""
+
+import hashlib
+import io
+import json
+import sys
+import tempfile
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import requests
+
+from tess_hunt import fetch
+from tess_hunt.config import load_criteria
+from tess_hunt.lightcurve import LightCurve
+from tess_hunt.mast import PREFERENCE
+from tess_hunt.provenance import sha256_file, start_run
+
+# What merge.json says of each sector's product, enough to tell two products apart and find either again.
+PRODUCT = ("provenance", "s3_key", "sha256", "timing_suspect")
+# The statuses of a sector taken from the new fetch.
+TAKEN = ("added", "redelivered", "upgraded")
+
+
+def _product(info: dict | None) -> dict | None:
+    return None if info is None else {k: info.get(k) for k in PRODUCT}
+
+
+def _rank(info: dict) -> tuple:
+    """Where a product comes in fetch's product order (`mast.rank`): by provenance, then cadence."""
+    return PREFERENCE[info["provenance"]], info["cadence_s"]
+
+
+def _status(base: dict | None, fresh: dict | None, m2: bool) -> str:
+    if base is None:
+        return "added"
+    if fresh is None or (base["s3_key"], base["sha256"]) == (fresh["s3_key"], fresh["sha256"]):
+        return "kept"
+    # A source written before fetch flagged timing can't show it was suspect, so a missing flag keeps the old file. Only
+    # the same product delivered again replaces it: another product over a suspect sector (TESS-SPOC reaching past S85
+    # over a QLP one) is a better product appearing later, which decision 0041 does not take for M2's sectors.
+    if (
+        base.get("timing_suspect") is True
+        and fresh.get("timing_suspect") is False
+        and base.get("provenance") == fresh.get("provenance")
+    ):
+        return "redelivered"
+    if m2:
+        return "kept_m2"
+    # A sector an earlier re-vet added is not in the light curve M3 vetted, so a better product replaces it. Kept as
+    # first fetched, a predicted sector fetched as QLP could never reach the preregistered test, even after SPOC 2-min
+    # data land.
+    if fresh.get("timing_suspect") is False and _rank(fresh) < _rank(base):
+        return "upgraded"
+    return "kept_earlier"
+
+
+def merge(base: LightCurve, fresh: LightCurve, m2: list[str]) -> tuple[LightCurve, dict]:
+    """`base` with the sectors only `fresh` has added, and a sector of both taken from `fresh` only when it is the
+    same product delivered again, replacing a timing-suspect file with one that is not, or, for a sector not in `m2`
+    (the sectors of M2's light curve, so one an earlier re-vet added), when `fresh` has a product that comes earlier in
+    fetch's product order and is not timing-suspect. The record gives each sector's status (`kept`, `added`,
+    `redelivered`, `upgraded`, and `kept_m2` or `kept_earlier` when `fresh` had another file and it was not taken)
+    and both products."""
+    parts, sources, record = [], {}, {}
+    for key in sorted(base.sources.keys() | fresh.sources.keys(), key=int):
+        old, new = base.sources.get(key), fresh.sources.get(key)
+        status = _status(old, new, key in m2)
+        lc = fresh if status in TAKEN else base
+        parts.append(lc.select(lc.sector == int(key)))
+        sources[key] = lc.sources[key]
+        record[key] = {"status": status, "base": _product(old), "fresh": _product(new)}
+    time, flux, err, sector = (
+        np.concatenate([getattr(p, name) for p in parts])
+        for name in ("time", "flux", "flux_err", "sector")
+    )
+    order = np.argsort(time, kind="stable")
+    merged = LightCurve(base.tic, time[order], flux[order], err[order], sector[order], sources)
+    return merged, record
+
+
+def _earlier(base_dir: Path) -> dict | None:
+    """The merge record of the revet fetch run whose `lc/` is `base_dir`, by TIC, or None when no revet fetch run
+    wrote `base_dir` (M2's light curves, in the shared cache)."""
+    made = base_dir.parent / "provenance.json"
+    run = json.loads(made.read_text()) if made.is_file() else {}
+    if run.get("stage") != "revet-fetch":
+        return None
+    if run.get("ended_at") is None:
+        raise SystemExit(
+            f"--base-lc-dir is the lc/ of revet fetch run {base_dir.parent.name}, which never finished"
+        )
+    return json.loads((base_dir.parent / "merge.json").read_text())
+
+
+def _revet_star(
+    tic: int,
+    products: pd.DataFrame,
+    base: Path,
+    recorded: str,
+    earlier: dict | None,
+    out_dir: Path,
+    cfg_fetch: dict,
+    session,
+) -> dict:
+    """`earlier` is the merge record, for this star, of the revet fetch run that wrote `base`; None for M2's own."""
+    # The merge reads the bytes the run recorded as its input, read once before the fetch: a base rewritten while
+    # the run fetched would otherwise be merged unrecorded.
+    blob = base.read_bytes()
+    if hashlib.sha256(blob).hexdigest() != recorded:
+        raise SystemExit(
+            f"the light curve for TIC {tic} in --base-lc-dir changed after this run recorded it; a re-vet merges "
+            "onto the file the run records"
+        )
+    old = LightCurve.load(io.BytesIO(blob))
+    # M2's sectors are the base's own on M2's light curve; on a re-vet's, those its revet fetch run recorded.
+    if earlier is None:
+        m2 = sorted(old.sources, key=int)
+    elif earlier["lc_sha256"] == recorded:
+        m2 = earlier["m2_sectors"]
+    else:
+        raise SystemExit(
+            f"the light curve for TIC {tic} in --base-lc-dir is not the one its revet fetch run wrote, so which of its "
+            "sectors are M2's is unknown"
+        )
+    record = {"base_sha256": recorded, "m2_sectors": m2, "lc_sha256": None, "sectors": None}
+    with tempfile.TemporaryDirectory() as tmp:
+        entry = fetch.fetch_star(tic, products, Path(tmp), cfg_fetch, session=session)
+        fresh = LightCurve.load(Path(tmp) / f"{tic}.npz") if entry["status"] == "ok" else None
+    got = fresh.sources if fresh is not None else {}
+    record["fetch"] = {"status": entry["status"], "problems": entry["problems"]}
+    record["unfetched"] = sorted((s for s in entry["problems"] if s not in got), key=int)
+    # Nothing fetched is no re-vet: the old light curve alone would read as one with no new data.
+    if fresh is None:
+        return record
+    merged, record["sectors"] = merge(old, fresh, m2)
+    # Nor is a fetch that brought no sector the merge takes: the merged file would be the old one again.
+    if not any(s["status"] in TAKEN for s in record["sectors"].values()):
+        return record
+    target = out_dir / f"{tic}.npz"
+    merged.save(target)
+    record["lc_sha256"] = sha256_file(target)
+    return record
+
+
+def cmd_fetch(args) -> int:
+    if args.production:
+        fetch._require_finished_targets(args.targets)
+    criteria = load_criteria(args.criteria)
+    # Without them every fresh product reads as clean, and a suspect product delivered again as a redelivery.
+    if not criteria.values.get("fetch", {}).get("timing_suspect"):
+        raise SystemExit(
+            f"{args.criteria.name} has no [[fetch.timing_suspect]] rules: a re-vet takes an old sector only when a "
+            "timing-suspect product is delivered again clean (decision 0041)"
+        )
+    tics = [int(t) for t in pd.read_parquet(args.targets)["tic"]]
+    # Checked before the run starts, so a refusal leaves no unfinished run directory.
+    no_base = [str(t) for t in tics if not (args.base_lc_dir / f"{t}.npz").is_file()]
+    if no_base:
+        raise SystemExit(
+            f"no light curve for TIC {', '.join(no_base)} in --base-lc-dir; a re-vet keeps the earlier one"
+        )
+    earlier = _earlier(args.base_lc_dir)
+    unknown = [
+        str(t)
+        for t in tics
+        if earlier is not None and "m2_sectors" not in (earlier.get(str(t)) or {})
+    ]
+    if unknown:
+        raise SystemExit(
+            f"revet fetch run {args.base_lc_dir.parent.name} records no M2 sectors for TIC {', '.join(unknown)}: a "
+            "re-vet onto its light curves could not tell M2's sectors from those a re-vet added"
+        )
+    products = pd.read_parquet(args.products)
+    run = start_run("revet-fetch", [criteria], args.production, sys.argv)
+    run.record_input("targets", args.targets)
+    run.record_input("products", args.products)
+    for tic in tics:
+        run.record_input(f"base_light_curve_{tic}", args.base_lc_dir / f"{tic}.npz")
+    session = requests.Session()
+    stars = {
+        str(tic): _revet_star(
+            tic,
+            products,
+            args.base_lc_dir / f"{tic}.npz",
+            run.provenance["inputs"][f"base_light_curve_{tic}"]["sha256"],
+            None if earlier is None else earlier[str(tic)],
+            run.path / "lc",
+            criteria["fetch"],
+            session,
+        )
+        for tic in tics
+    }
+    run.write_json("merge.json", stars)
+    failed = [int(t) for t, r in stars.items() if r["lc_sha256"] is None]
+    run.finish(stars=len(stars), failed=failed)
+    for tic, star in stars.items():
+        missed = ", ".join(f"S{s}" for s in star["unfetched"]) or "none"
+        if star["lc_sha256"] is None:
+            print(
+                f"TIC {tic}: no sector added, redelivered or upgraded, so no light curve; sectors fetched with "
+                f"problems and no file: {missed}"
+            )
+        elif star["unfetched"]:
+            # The merge stands, but the prediction's test may find these sectors missing.
+            print(f"TIC {tic}: merged, but sectors fetched with problems and no file: {missed}")
+    print(
+        f"revet fetch: {len(stars) - len(failed)} merged, {len(failed)} with nothing new -> {run.path}"
+    )
+    return 1 if failed else 0
+
+
+def add_parser(sub) -> None:
+    p = sub.add_parser(
+        "revet", help="light curves for a re-vet, keeping the earlier fetch's sectors"
+    )
+    modes = p.add_subparsers(dest="mode", required=True)
+    f = modes.add_parser(
+        "fetch",
+        help="fetch each star again and merge it with its earlier light curve into this run's lc/",
+    )
+    f.add_argument("--targets", type=Path, required=True, help="a targets run's targets table")
+    f.add_argument("--products", type=Path, required=True, help="products table from that run")
+    f.add_argument(
+        "--base-lc-dir",
+        type=Path,
+        required=True,
+        help="the light curves the earlier runs read, <tic>.npz each; never written",
+    )
+    f.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
+    f.add_argument("--production", action="store_true")
+    f.set_defaults(func=cmd_fetch)

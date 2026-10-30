@@ -17,7 +17,32 @@
   never judged allowed in, the README listing only published calls that stand, and the timing-suspect marks in the
   centroid table. Rulings C (the TRICERATOPS, literature and second-list runs refuse vet criteria other than the
   vetting run's: one run, one criteria file) and M ([0026](0026-triceratops.md)), which this record also cites, are
-  the controller's: no acceptance of them by the maintainer is recorded.
+  the controller's: no acceptance of them by the maintainer is recorded. Added on 2026-10-28, none with an acceptance
+  by the maintainer recorded, each stated under Decision:
+  - A call names the signal its directory holds, and its `criteria` the vet criteria version its checks ran under.
+  - `[answers]` answers confirmed findings only.
+  - `vetting dossier` takes `--evidence-only` and `--signals`, and its drafts never sit in the repository: it refuses
+    an `--out` anywhere in it.
+  - The dossier lists the literature search's hits (Literature hits).
+  - A second-list row's dossier shows the second list's own centroid plot, `pixels.png`, in place of the vetting run's
+    `plots/centroids.png` (Ruling U's build).
+  - A record's `review.json` is its own signal's: `calls.problems` refuses one written for another signal.
+  - A plot that fails to draw does not stop the vet: `checks.json` keeps the error in `plot_errors`, and the dossier
+    names it where the plot would be.
+  - A record holds a second-list run's provenance only for a second-list row.
+  - A record never keeps part of a failed publish: `publish` removes the files it copied before the failure.
+  - By the controller's ruling of the same day, three changes to what a dossier rendered from then on shows; the
+    published dossiers keep the text they were published with. Page one's Triage row names the triage run the
+    vetting run read and the criteria file it judged under, which `vetting run` records as input `triage_criteria` (a
+    record made before says its vetting run recorded none). A finding rated kill or hold that no refuter ran on is
+    headed "confirmed, no refuter ran on it" and says "No refuter ran on it." where the refuters' verdicts would be.
+    The windows table leaves out the 1-sigma half-width, which is the sd.
+
+  Noted 2026-10-29: the DDT rule for held signals in the DDT note under Decision was widened on 2026-10-27 by
+  [0039](0039-ddt-for-held-signals.md): a held signal may also go to the ask, on the maintainer's call, when 2-min
+  data would supply a season no public light curve will otherwise cover. A hold on blending still does not go. A
+  published dossier keeps the DDT note it was published with, so the M3 dossiers state the rule as it stood before
+  0039.
 
 ## Context
 
@@ -205,3 +230,20 @@ hand. The M3 design (sections 4.7 to 4.10) settles both; this record states the 
   `test_every_catalogued_row_on_the_star_is_listed_with_the_transits_it_overlaps`.
 - [tests/test_literature.py](../../tests/test_literature.py): `test_exofop_record_keeps_comments_and_imaging` (the
   planet parameters with their periods; a page without them is a failed read).
+- Added on 2026-10-28. [tests/test_secondlist.py](../../tests/test_secondlist.py): the three second-list tests the
+  list above leaves out, `test_a_missing_value_renders_as_missing`,
+  `test_a_row_without_leo_vetter_metrics_is_inconclusive` and `test_second_list_refuses_inputs_it_cannot_stand_on`
+  (since that date also a changed triage criteria file, a targets file the vetting run did not read, a changed
+  `stars.parquet`, a changed light curve and a triage run that is not production);
+  `test_the_dossier_shows_the_second_lists_pixel_check` (no second-list run in another signal's record, and a
+  second-list run that drew no `pixels.png`). [tests/test_calls.py](../../tests/test_calls.py):
+  `test_a_pass_on_an_evidence_only_vet_is_refused`, `test_a_pass_on_criteria_changed_since_the_vetting_run_is_refused`,
+  `test_a_review_of_another_signal_is_refused`. [tests/test_dossier.py](../../tests/test_dossier.py):
+  `test_a_pass_the_record_supports_is_published`, `test_publish_renders_the_readme_before_it_copies_anything`,
+  `test_a_copy_that_fails_partway_leaves_no_new_file`, `test_a_draft_call_that_breaks_the_schema_is_not_rendered`,
+  `test_a_plot_the_vetting_run_could_not_draw_is_named_with_its_error`, `test_dossier_draft_says_what_it_lacks` (an
+  `--out` anywhere in the repository), `test_a_finding_no_refuter_ran_on_says_so`,
+  `test_page_one_names_the_triage_run_and_its_criteria`, `test_page_one_answers_the_three_questions` (the windows
+  table without the 1-sigma column), `test_seen_utc_matches_the_dossier` (each published windows table less that
+  column). [tests/test_vetting.py](../../tests/test_vetting.py): `test_a_plot_that_raises_is_named_and_the_vet_stands`,
+  `test_modshift_and_pixels_come_from_the_triage_run` (the triage criteria file recorded).

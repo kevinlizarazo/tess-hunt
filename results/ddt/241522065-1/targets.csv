@@ -1,0 +1,15 @@
+# DDT PI: <proposer name>
+# Cadence: 2m
+# Subject: Transiting planet candidate on TIC 241522065
+# DDT: <to be supplied by TESS team>
+#
+# Original filename: targets.csv
+# Created by: Name
+# Created on: date
+# Number of targets: 1
+# 
+# Column 1: TIC ID
+# Column 2: Priority (floating point: 0=low, 1=high)
+# Column 3: Keywords (separated by semi-colon)
+# tic,priority,keywords
+241522065,1.0,planet candidate;transit;sub-Neptune

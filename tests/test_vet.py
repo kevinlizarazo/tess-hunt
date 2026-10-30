@@ -1,3 +1,5 @@
+import json
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -14,12 +16,14 @@ from synthetic import (
 
 from tess_hunt import vet
 from tess_hunt.catalogs import KNOWN_COLUMNS, load_known
+from tess_hunt.checks.holdout import holdout
 from tess_hunt.checks.photometry import box_depth
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria, runs_dir
 from tess_hunt.detrend import detrend
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match, in_transit
-from tess_hunt.fit import fit_transit
+from tess_hunt.fit import NAMES, FitResult, fit_transit
+from tess_hunt.serialize import jsonable
 from tess_hunt.transit import a_rs_from_density, light_curve
 from tess_hunt.vet import other_known_transits, vet_signal, with_v1_code_values
 
@@ -436,6 +440,9 @@ def test_density_prior_units_and_fallback():
         (np.log10(2.0 * 1.408), 0.2 / (2.0 * np.log(10)))
     )
     assert vet.density_prior({"rho": 1.0}, 0.07)[1] == 0.07
+    # A TIC error of zero or below is no error: the default stands in, as for a missing one.
+    for e_rho in (0.0, -0.1):
+        assert vet.density_prior({"rho": 1.0, "e_rho": e_rho}, 0.07)[1] == 0.07, e_rho
     for rho in (nan, None, 0.0, -1.0):
         assert vet.density_prior({"rho": rho, "e_rho": 0.1}, 0.1) is None, rho
 
@@ -446,6 +453,50 @@ def quick_planet():
         cadences={1: 30.0, 2: 30.0, 64: 30.0},
         noise_ppm=dict.fromkeys((1, 2, 64), 200.0),
     )
+
+
+def test_vet_writes_the_density_prior_fits_samples_under_vet_v3(tmp_path, monkeypatch):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    lc = with_products(quick_planet(), dict.fromkeys((1, 2, 64), "SPOC"))
+    lc.tic = 1
+    lc.save(tmp_path / "data" / "lc" / "1.npz")
+    targets = tmp_path / "targets.parquet"
+    pd.DataFrame([STAR]).to_parquet(targets)
+    fits = []
+
+    def fit(lc, eph, cfg, rho_prior=None, seed=None):
+        # Each fit's own samples, so the two files can be told apart.
+        rng = np.random.default_rng(len(fits))
+        values = {
+            "t0": eph.t0 + rng.normal(0.0, 1e-3, 400),
+            "period": eph.period + rng.normal(0.0, 1e-5, 400),
+            "rp_rs": np.full(400, 0.04),
+            "b": np.full(400, 0.3),
+            "log_rho": np.full(400, 0.15),
+            "q1": np.full(400, 0.36),
+            "q2": np.full(400, 0.36),
+        }
+        fits.append(FitResult(np.column_stack([values[n] for n in NAMES]), 0.3, rho_prior))
+        return fits[-1]
+
+    monkeypatch.setattr(vet, "fit_transit", fit)
+    args = [
+        "vet",
+        *("--tic", "1", "--period", "5.0", "--t0", "1326.1", "--duration", "0.13"),
+        *("--depth", "0.0017", "--targets", str(targets)),
+        *("--catalogs", str(write_catalog_snapshot(tmp_path / "snap"))),
+        *("--criteria-search", str(ROOT / "criteria" / "search-v2.toml")),
+        *("--criteria-vet", str(ROOT / "criteria" / "vet-v3.toml")),
+    ]
+    assert main(args) == 0
+    [run] = runs_dir().iterdir()
+    flat, prior = fits
+    assert flat.rho_prior is None
+    assert prior.rho_prior == vet.density_prior(STAR, VET3["density"]["default_log_rho_error"])
+    for name, made in (("fit_samples.npz", flat), ("fit_prior_samples.npz", prior)):
+        with np.load(run / name) as z:
+            assert np.array_equal(z["samples"], made.samples), name
+    assert json.loads((run / "checks.json").read_text())["fit_prior"] is not None
 
 
 @pytest.mark.slow
@@ -520,3 +571,136 @@ def test_prior_fit_needs_fit_data_and_a_tic_density_inside_the_fit_range(tmp_pat
     v2 = prior_fit(lc, STAR, FAST_VET)
     assert not {"fit_prior", "fit_prior_reason"} & set(v2)
     assert len(fitted) == 5, "vet-v2 fits once"
+
+
+SNAPSHOTS = ROOT / "tests" / "fixtures" / "m4-refactor"
+EPH = Ephemeris(5.0, 1326.1, 0.13, 0.0017)
+# A catalogued planet on the star at another period, which vet masks.
+OTHER_TOI = {
+    "TIC ID": 1,
+    "TOI": 7777.02,
+    "RA": "02:00:00",
+    "Dec": "-40:00:00",
+    "Period (days)": 3.7,
+    "Epoch (BJD)": 2458327.0,
+    "Duration (hours)": 1.44,
+}
+
+
+def planet_with_a_suspect_sector():
+    """test_suspect_sectors_never_reach_a_check's star."""
+    lc = make_lc(
+        sectors=(*SECTORS, 100), noise_ppm=200.0, signals=[(5.0, 1326.1, 0.13, 0.0017)], seed=21
+    )
+    s100 = lc.sector == 100
+    lc.flux[s100] += box(lc.time[s100], 10.0, 1326.1, 0.13, 0.003)
+    return with_products(lc, {**dict.fromkeys(SECTORS, "SPOC"), 100: "QLP"}, suspect={100})
+
+
+def diluted_qlp_planet():
+    """test_diluted_qlp_does_not_fail_a_planet's star."""
+    qlp = (3, 16, 30)
+    lc = make_lc(sectors=sorted((*SECTORS, *qlp)), noise_ppm=200.0, seed=22)
+    model = light_curve(
+        lc.time,
+        lc.exposure_days(),
+        1326.1,
+        5.0,
+        0.04,
+        a_rs_from_density(1.41, 5.0),
+        0.3,
+        0.36,
+        0.24,
+    )
+    lc.flux *= 1.0 - np.where(np.isin(lc.sector, qlp), 0.6, 1.0) * (1.0 - model)
+    return with_products(lc, {**dict.fromkeys(SECTORS, "SPOC"), **dict.fromkeys(qlp, "QLP")})
+
+
+def planet(depth, qlp=()):
+    lc = make_lc(sectors=SECTORS, noise_ppm=300.0, signals=[(5.0, 1326.1, 0.13, depth)], seed=24)
+    return with_products(lc, {s: "QLP" if s in qlp else "SPOC" for s in SECTORS})
+
+
+# Each case: the light curve, the ephemeris, the star's catalog rows, the criteria, include_suspect.
+VET_CASES = {
+    "planet_three_seasons": (planet_with_a_suspect_sector, EPH, [OTHER_TOI], SEARCH, VET3, False),
+    "planet_three_seasons_evidence_only": (
+        planet_with_a_suspect_sector,
+        EPH,
+        [OTHER_TOI],
+        SEARCH,
+        VET3,
+        True,
+    ),
+    "planet_three_seasons_vet_v2": (
+        planet_with_a_suspect_sector,
+        EPH,
+        [OTHER_TOI],
+        SEARCH,
+        VET,
+        False,
+    ),
+    "planet_three_seasons_vet_v1": (
+        planet_with_a_suspect_sector,
+        EPH,
+        [OTHER_TOI],
+        SEARCH_V1,
+        VET_V1,
+        False,
+    ),
+    "mixed_family": (diluted_qlp_planet, EPH, [], SEARCH, VET3, False),
+    # The last season all QLP, which no training season holds.
+    "untestable_family": (lambda: planet(0.0017, qlp=(28, 29)), EPH, [], SEARCH, VET3, False),
+    "underpowered_season": (
+        lambda: planet(60e-6),
+        Ephemeris(5.0, 1326.1, 0.13, 60e-6),
+        [],
+        SEARCH,
+        VET3,
+        False,
+    ),
+}
+
+
+def vet_case(case: str, path: Path) -> dict:
+    make, eph, rows, crit_search, crit_vet, include_suspect = VET_CASES[case]
+    known = load_known(write_catalog_snapshot(path, toi_rows=rows))
+    report, _, _ = vet.vet_with_fits(
+        make(), STAR, eph, known, crit_search, crit_vet, 1, include_suspect
+    )
+    return report
+
+
+@pytest.mark.parametrize("case", list(VET_CASES))
+def test_vet_report_is_unchanged(case, tmp_path, monkeypatch):
+    # Pinned before M4 lifted vet's light-curve preparation out of vet_with_fits. The fit is stopped
+    # before sampling, whose last digits can differ between machines; the depth checks read the light
+    # curve it would fit.
+    watch_the_fit(monkeypatch, sample=False)
+    expected = json.loads((SNAPSHOTS / "vet.json").read_text())[case]
+    report = vet_case(case, tmp_path / "snap")
+    assert json.dumps(jsonable(report), sort_keys=True) == json.dumps(expected, sort_keys=True)
+
+
+def test_prepare_matches_vet(tmp_path, monkeypatch):
+    watch_the_fit(monkeypatch, sample=False)
+    given = []
+
+    def spy(lc, *args):
+        given.append(lc)
+        return holdout(lc, *args)
+
+    monkeypatch.setattr(vet, "holdout", spy)
+    known = load_known(write_catalog_snapshot(tmp_path / "snap", toi_rows=[OTHER_TOI]))
+    report, _, _ = vet.vet_with_fits(
+        planet_with_a_suspect_sector(), STAR, EPH, known, SEARCH, VET3, 1
+    )
+    prepared = vet.prepare(planet_with_a_suspect_sector(), STAR, EPH, known, SEARCH, VET3)
+    [noisy] = given
+    for name in ("time", "flux", "flux_err", "sector"):
+        assert np.array_equal(getattr(prepared.noisy, name), getattr(noisy, name)), name
+    assert prepared.noisy.sources == noisy.sources
+    assert 100 not in prepared.good.sector
+    assert prepared.dropped == report["dropped_suspect"] == [100]
+    assert [asdict(k) for k in prepared.others] == report["masked"] and prepared.others
+    assert prepared.betas == report["red_noise"]

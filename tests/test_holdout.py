@@ -1,12 +1,22 @@
+import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 from synthetic import box, make_lc, with_products
 
 from tess_hunt.checks import Outcome
-from tess_hunt.checks.holdout import holdout, season_labels
+from tess_hunt.checks.families import family_labels
+from tess_hunt.checks.holdout import (
+    holdout,
+    judge,
+    reference,
+    refit_ephemeris,
+    season_labels,
+)
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, in_transit, phase_days
+from tess_hunt.serialize import jsonable
 
 CFG = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v2.toml")["holdout"]
 FAMILIES = load_criteria(Path(__file__).resolve().parents[1] / "criteria" / "vet-v3.toml")[
@@ -213,3 +223,86 @@ def test_a_season_without_cadences_in_predicted_transits_is_not_tested():
     statuses = [s["status"] for s in result.evidence["seasons"]]
     assert statuses == ["predicted"] * 3 + ["no_predicted_transit_in_data"], statuses
     assert result.outcome is Outcome.PASS
+
+
+SNAPSHOTS = Path(__file__).parent / "fixtures" / "m4-refactor"
+
+# The light curves above, pinned before M4 lifted the reference and the judgement out of holdout.
+HOLDOUT_CASES = {
+    "planet_three_seasons": lambda: make_lc(
+        sectors=SECTORS, noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 1500e-6)], seed=1
+    ),
+    "mixed_family": lambda: planet_with_qlp(qlp_sectors=MIXED_QLP),
+    "untestable_family": lambda: planet_with_qlp(qlp_sectors=(28, 29, 30)),
+    "underpowered_season": lambda: planet_with_qlp(
+        qlp_sectors=(3, 16, 28, 29, 30),
+        noise_ppm={s: 300.0 for s in SECTORS}
+        | {3: 600.0, 16: 600.0, 28: 2000.0, 29: 2000.0, 30: 2000.0},
+        seed=27,
+    ),
+    "training_transit_in_a_gap": lambda: last_season_with_one_transit(in_gap=True),
+    "training_transit_with_few_core_cadences": lambda: last_season_with_one_transit(in_gap=False),
+}
+
+
+def as_json(value) -> str:
+    return json.dumps(jsonable(value), sort_keys=True)
+
+
+@pytest.mark.parametrize("split", ["pooled", "by_family"])
+@pytest.mark.parametrize("case", list(HOLDOUT_CASES))
+def test_holdout_evidence_is_unchanged(case, split):
+    result = holdout(
+        HOLDOUT_CASES[case](), EPH, CFG, 0.5, FAMILIES if split == "by_family" else None
+    )
+    expected = json.loads((SNAPSHOTS / "holdout.json").read_text())[case][split]
+    assert as_json(result.to_dict()) == as_json(expected)
+
+
+# The season row's fields holdout sets before it judges.
+GATE_FIELDS = {
+    "season",
+    "start",
+    "end",
+    "training_seasons",
+    "training_seasons_with_transits",
+    "predicted_period",
+    "predicted_t0",
+}
+
+
+@pytest.mark.parametrize("split", ["pooled", "by_family"])
+@pytest.mark.parametrize("case", ["planet_three_seasons", "mixed_family"])
+def test_judge_with_reference_equals_holdout_row(case, split):
+    lc = HOLDOUT_CASES[case]()
+    cfg_families = FAMILIES if split == "by_family" else None
+    families = family_labels(lc, FAMILIES) if cfg_families else None
+    labels = season_labels(lc.time, CFG["season_gap_days"])
+    seasons = holdout(lc, EPH, CFG, 0.5, cfg_families).evidence["seasons"]
+    tested = [s for s in seasons if s["status"] in ("predicted", "missed")]
+    assert len(tested) == 3, seasons
+    for row in tested:
+        test = labels == row["season"]
+        predicted = refit_ephemeris(lc.select(~test), EPH, CFG)
+        assert (predicted.period, predicted.t0) == (row["predicted_period"], row["predicted_t0"])
+        trained = reference(lc, families, ~test, predicted, 0.5)
+        judged = judge(lc, families, test, predicted, trained, CFG, 0.5)
+        assert set(row) - set(judged) == GATE_FIELDS
+        assert as_json(judged) == as_json({name: row[name] for name in judged})
+
+
+def test_judge_untestable_when_a_family_has_no_reference():
+    # 241522065-1's new season: QLP beside 2-min sectors, with no QLP among the training seasons.
+    lc = planet_with_qlp(qlp_sectors=(30,))
+    families = family_labels(lc, FAMILIES)
+    test = season_labels(lc.time, CFG["season_gap_days"]) == 2
+    predicted = refit_ephemeris(lc.select(~test), EPH, CFG)
+    trained = reference(lc, families, ~test, predicted, 0.5)
+    assert set(trained["families"]) == {"pdcsap"}
+    row = judge(lc, families, test, predicted, trained, CFG, 0.5)
+    assert row["status"] == "untestable", row
+    assert row["reason"] == "no training cadences in the held-out season's qlp family"
+    qlp = next(r for r in row["family_depths"] if r["family"] == "qlp")
+    assert (qlp["training_cadences"], qlp["ref_n"]) == (0, 0) and np.isnan(qlp["ref"]), qlp
+    season = holdout(lc, EPH, CFG, 0.5, FAMILIES).evidence["seasons"][2]
+    assert as_json(row) == as_json({name: season[name] for name in row})

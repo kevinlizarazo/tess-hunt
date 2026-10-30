@@ -8,19 +8,14 @@ import re
 from pathlib import Path
 from string import Template
 
-import astropy.units as u
-import numpy as np
-from astropy.constants import c
-from astropy.coordinates import get_body_barycentric
-from astropy.time import Time, TimeDelta
-
 from tess_hunt import calls
+from tess_hunt.predict import seen_utc
 from tess_hunt.provenance import scrub, unname
 
 PAGE = Template("""\
 # $title
 
-$status
+$status$changes
 
 ## Signal and star
 
@@ -177,7 +172,12 @@ DECISIONS = {
     "0028": "0028-outcomes-and-calls.md",
     "0037": "0037-quoted-text-in-the-dossier.md",
     "0038": "0038-literature-trim-and-username-scrub.md",
+    "0039": "0039-ddt-for-held-signals.md",
+    "0040": "0040-predictions-for-held-signals.md",
+    "0041": "0041-revets-as-versions.md",
 }
+# Each novelty evidence list of catalog rows a signal matched.
+NOVELTY_MATCHES = ("matches", "period_matches", "objects", "tce_matches", "tce_period_matches")
 # The products that publish CROWDSAP; QLP publishes none.
 CROWDSAP = ("SPOC", "TESS-SPOC")
 # Whose pixel check the centroid table shows, keyed by whether the signal is a second-list row: its name, its owner
@@ -218,8 +218,9 @@ def _scrub(text: str) -> str:
     return MACHINE_DIRS.sub("", unname(scrub(text)))
 
 
-def _decision(number: str) -> str:
-    return f"[decision {number}](../../../docs/decisions/{DECISIONS[number]})"
+def _decision(number: str, vetting: str = "../") -> str:
+    """A link to a decision record from a dossier `vetting` below results/vetting/."""
+    return f"[decision {number}]({vetting}../../docs/decisions/{DECISIONS[number]})"
 
 
 def _list(items: list[str]) -> str:
@@ -238,7 +239,10 @@ class Record:
 
     def __init__(self, path: Path):
         self.path = path
-        self.name = path.name
+        self.name = calls.signal_name(path)
+        self.version = calls.version(path)
+        # The relative path from the dossier to results/vetting/: a version sits a level deeper.
+        self.vetting = "../../" if self.version else "../"
         self.checks = json.loads((path / "checks.json").read_text())
         self.provenance = {
             role: _json(path / f"provenance-{role}.json")
@@ -249,8 +253,18 @@ class Record:
                 "checks-with-suspect",
                 "second-list",
                 "titles",
+                "merge",
+                "prereg",
             )
         }
+        # A version's dossier says what changed since the record before it, from that record's checks alone.
+        self.before = self.before_provenance = None
+        if self.version:
+            previous = path.parent if self.version == 2 else path.parent / f"r{self.version - 1}"
+            self.before = json.loads((previous / "checks.json").read_text())
+            self.before_provenance = json.loads((previous / "provenance-checks.json").read_text())
+        self.merge = _json(path / "merge.json")
+        self.prereg = _json(path / "prereg.json")
         self.pixels = calls.pixels(path, self.checks)
         self.triceratops = _json(path / "triceratops.json")
         self.literature = _json(path / "literature.json")
@@ -260,6 +274,9 @@ class Record:
         self.call = calls.load(path / "call.toml") if (path / "call.toml").is_file() else None
         notes = path / "review-notes.toml"
         self.notes = calls.load_notes(notes, self.review) if self.review and notes.is_file() else {}
+
+    def decision(self, number: str) -> str:
+        return _decision(number, self.vetting)
 
     def check(self, name: str) -> dict:
         return next(c for c in self.checks["checks"] if c["check"] == name)
@@ -290,14 +307,19 @@ class Record:
 
 
 def _title(r: Record) -> str:
-    return f"{r.name}: TIC {r.checks['star']['tic']}"
+    version = f" r{r.version}" if r.version else ""
+    return f"{r.name}{version}: TIC {r.checks['star']['tic']}"
 
 
 def _status(r: Record) -> str:
     source = (
-        f"Rendered from the files in this directory ({_decision('0028')}); the review and the call are quoted, not "
-        f"rendered ({_decision('0037')})."
+        f"Rendered from the files in this directory ({r.decision('0028')}); the review and the call are quoted, not "
+        f"rendered ({r.decision('0037')})."
     )
+    if r.version:
+        source += (
+            " What changed since the record before it is read from that record's `checks.json`."
+        )
     if r.call is None:
         return f"Draft: no call yet. {source}"
     return f"Call: **{r.call['outcome']}** on {r.call['date']}. {source}"
@@ -323,12 +345,26 @@ def _runs(r: Record) -> str:
         ("checks-with-suspect", "evidence-only vetting"),
         ("second-list", "second list"),
         ("titles", "titles"),
+        ("merge", "revet fetch"),
+        ("prereg", "preregistered test"),
     ):
         p = r.provenance[role]
         if p is not None:
             kind = "production" if p["production"] else "not production"
             out.append(f"{label} {p['run_id']} (commit {p['git']['commit'][:7]}, {kind})")
     return "; ".join(out)
+
+
+def _triage(r: Record) -> str:
+    """The triage run whose ModShift and pixel evidence the vetting run read, and the criteria it judged under."""
+    made = r.provenance["checks"]
+    if made["triage_run"] is None:
+        return "none: the vetting run read no triage run"
+    # A vetting run made before M4's deferred minors recorded no triage criteria file.
+    used = made["inputs"].get("triage_criteria")
+    if used is None:
+        return f"triage run {made['triage_run']} (the vetting run recorded no criteria file for it)"
+    return f"triage run {made['triage_run']}, under {Path(used['file']).stem}"
 
 
 def _crowdsap(r: Record) -> str:
@@ -373,6 +409,7 @@ def _star(r: Record) -> str:
         ["CROWDSAP", _crowdsap(r)],
         ["Sectors vetted", f"{families}; left out as timing-suspect: {dropped}"],
         ["Criteria", criteria],
+        ["Triage", _triage(r)],
         ["Runs", _runs(r)],
     ]
     return _table(["", ""], rows)
@@ -584,7 +621,7 @@ def _triceratops_on_star(r: Record) -> str:
             lines.append(
                 f"It gave zero depth to {listed}: its apertures take too little of "
                 f"{'that star' if len(zero) == 1 else 'each one'}'s light to make the dip. "
-                f"Evidence for the review, not a blocker ({_decision('0026')})."
+                f"Evidence for the review, not a blocker ({r.decision('0026')})."
             )
     return " ".join(lines)
 
@@ -634,7 +671,7 @@ def _others(r: Record) -> str:
 
 def _radius(r: Record) -> str:
     check = r.check("radius")
-    flat = check["evidence"].get("rp_rearth") if check["outcome"] != "inconclusive" else None
+    flat = check["evidence"]["rp_rearth"] if check["outcome"] != "inconclusive" else None
     text = (
         f"Radius: {r.said('radius')}. Rp is {_f(flat, '.2f')} Earth radii from the flat-prior fit"
     )
@@ -677,7 +714,7 @@ def _fit_prior(r: Record) -> str:
 
 def _planet(r: Record) -> str:
     shape = r.check("shape")
-    b = shape["evidence"].get("b_median") if shape["outcome"] != "inconclusive" else None
+    b = shape["evidence"]["b_median"] if shape["outcome"] != "inconclusive" else None
     items = [
         f"Odd and even transits: {r.said('odd_even')}.",
         f"Secondary at phase 0.5: {r.said('secondary')}.",
@@ -736,6 +773,49 @@ def _exofop(r: Record) -> str:
     return "\n\n".join(lines)
 
 
+def _prereg(r: Record) -> str:
+    """The preregistered test of the new season (decision 0040), from prereg.json, for the line beside vet-v3's own
+    held-out result."""
+    p = r.prereg
+    head = (
+        f"The preregistered test of the new season ({r.decision('0040')}), package {p['package']}, as of "
+        f"{p['as_of']}: "
+    )
+    if p["result"] == "pending":
+        said = f"pending: {p['reason']}."
+    elif p["result"] == "untested":
+        said = f"untested ({p['status']}): {p['reason']}."
+    else:
+        tension = f"tension {p['tension']:.2f} sigma" if "tension" in p else p["tension_skipped"]
+        said = (
+            f"{p['result']} ({p['status']}): depth {_ppm(p['depth'])} ppm (error {_ppm(p['err'])} ppm, {p['n']} "
+            f"cadences in the cores), {p['sigma']:.2f} sigma, expected SNR {p['expected_snr']:.2f}, {tension}."
+        )
+    made = r.provenance["prereg"]
+    if made is not None and made["vetting_run"] != r.provenance["checks"]["run_id"]:
+        said += (
+            f" Carried unchanged from {_vetted_by(r, made['vetting_run'])}, which judged it (vetting run "
+            f"{made['vetting_run']}): decision 0040 judges a signal once."
+        )
+    return (
+        head
+        + said
+        + " It judges only the new season, against the prediction published before that season; vet-v3's held-out "
+        "check above holds out each season in turn and refits on the rest."
+    )
+
+
+def _vetted_by(r: Record, vetting_run: str) -> str:
+    """The record beside this one that `vetting_run` vetted, by name."""
+    signal = r.path.parent if r.version else r.path
+    versions = sorted((p for p in signal.glob("r*") if calls.version(p)), key=calls.version)
+    for path in (signal, *versions):
+        made = _json(path / "provenance-checks.json")
+        if made is not None and made["run_id"] == vetting_run:
+            return "the M3 record" if path == signal else path.name
+    return "an earlier version"
+
+
 def _real_new(r: Record) -> str:
     novelty = r.check("novelty")
     tce = novelty["evidence"].get("tce_matches") or []
@@ -743,6 +823,7 @@ def _real_new(r: Record) -> str:
     items = [
         f"Signal present: {r.said('signal_present')}.",
         f"Held-out seasons: {r.said('holdout')}.",
+        *([_prereg(r)] if r.prereg is not None else []),
         f"Sector depths: {r.said('sector_depth')}.",
         f"Novelty, against the catalog snapshot: {r.said('novelty')}."
         + (
@@ -763,23 +844,6 @@ def _real_new(r: Record) -> str:
             f"{lit['reason']}.{note} The hits are listed below."
         )
     return _list(items) + "\n\n" + _exofop(r)
-
-
-def _utc(btjd: float, star: dict) -> str:
-    """The mid-time as seen from Earth, in UTC: BJD_TDB less the light's travel time between the geocentre and the
-    barycentre toward the star, which runs to about 8 minutes either way. The travel time is taken at the geocentric
-    time, found by one iteration from the barycentric one. Earth's position comes from ERFA's built-in ephemeris, so
-    nothing here needs IERS tables or the network."""
-    ra, dec = np.radians(star["ra"]), np.radians(star["dec"])
-    toward = np.array([np.cos(dec) * np.cos(ra), np.cos(dec) * np.sin(ra), np.sin(dec)])
-
-    def delay(t: Time) -> TimeDelta:
-        earth = get_body_barycentric("earth", t, ephemeris="builtin").xyz.to_value(u.m)
-        return TimeDelta(earth @ toward / c.value, format="sec")
-
-    bjd = Time(btjd + 2457000.0, format="jd", scale="tdb")
-    seen = bjd - delay(bjd - delay(bjd))
-    return seen.utc.strftime("%Y-%m-%d %H:%M")
 
 
 def _two_minute(r: Record) -> str:
@@ -804,7 +868,7 @@ def _two_minute(r: Record) -> str:
 def _ddt(r: Record) -> str:
     upcoming = r.checks["upcoming_sectors"]
     rule = (
-        f"2-min data and the DDT ask ({_decision('0026')}): which stars get 2-min data in a sector is decided per "
+        f"2-min data and the DDT ask ({r.decision('0026')}): which stars get 2-min data in a sector is decided per "
         "cycle, so tess-point can't say whether these sectors will have it. " + _two_minute(r)
     )
     if not upcoming:
@@ -815,8 +879,8 @@ def _ddt(r: Record) -> str:
     if r.call is None:
         return rule + (
             " If passed, M4 makes the DDT ask for 2-min data when the next look is full-frame images only. If held on "
-            "the transit's shape, it may on the maintainer's call; held on blending, or killed, it does not, since "
-            "2-min data come from the same pixels."
+            "the transit's shape, it may on the maintainer's call; held on blending it does not, since 2-min data "
+            "come from the same pixels; killed, it does not."
         )
     outcome = r.call["outcome"]
     if outcome == "passed":
@@ -826,9 +890,10 @@ def _ddt(r: Record) -> str:
         )
     if outcome == "held":
         return rule + (
-            " Held: the DDT ask applies only on the maintainer's call and only when the deciding evidence is the "
-            "transit's shape; a hold on blending does not go, since 2-min data come from the same pixels. Deciding "
-            f"evidence: {r.call['deciding_evidence']}"
+            " Held: the DDT ask applies only on the maintainer's call and only when 2-min data would supply its "
+            "deciding evidence: the transit's shape, or a season no public light curve will otherwise cover; a hold "
+            "on blending does not go, since 2-min data come from the same pixels "
+            f"({r.decision('0039')}). Deciding evidence: {r.call['deciding_evidence']}"
         )
     return rule + " Killed: no DDT ask."
 
@@ -848,13 +913,14 @@ def _looks(r: Record) -> str:
         parts.append(f"No predicted windows: {c['windows_reason']}.")
     elif upcoming:
         dated = [w for w in windows if "epoch" in w]
-        sigmas = list(dated[0]["half_width_minutes"]) if dated else []
+        # A 1-sigma half-width is the sd column again.
+        sigmas = [s for s in (dated[0]["half_width_minutes"] if dated else []) if float(s) != 1]
         rows = [
             [
                 w["sector"],
                 w["epoch"],
                 f"{w['mid_btjd']:.3f}",
-                _utc(w["mid_btjd"], c["star"]),
+                seen_utc(w["mid_btjd"], c["star"]["ra"], c["star"]["dec"]),
                 f"{w['sd_minutes']:.1f}",
                 *(f"{w['half_width_minutes'][s]:.1f}" for s in sigmas),
             ]
@@ -885,16 +951,33 @@ def _looks(r: Record) -> str:
 
 
 def _plots(r: Record) -> str:
-    found = [
-        (f"plots/{name}", caption)
-        for name, caption in PLOTS.items()
-        if (r.path / "plots" / name).is_file() and not (r.second and name == "centroids.png")
-    ]
-    if r.second and (r.path / SECOND_LIST_CENTROIDS[0]).is_file():
-        found.append(SECOND_LIST_CENTROIDS)
-    if not found:
+    # Before `vetting run` caught each plot's failure, one that raised discarded the vet, so a record that names no
+    # failed plot drew every one.
+    failed = r.checks.get("plot_errors", {})
+    shown = []
+    for name, caption in PLOTS.items():
+        # A second-list row's centroid plot is the second list's, below.
+        if r.second and name == "centroids.png":
+            continue
+        if (r.path / "plots" / name).is_file():
+            shown.append(f"{caption}:\n\n![{caption}](plots/{name})")
+        elif name in failed:
+            shown.append(f"{caption}: not drawn ({failed[name]}).")
+    if r.second:
+        name, caption = SECOND_LIST_CENTROIDS
+        if (r.path / name).is_file():
+            shown.append(f"{caption}:\n\n![{caption}]({name})")
+        elif r.pixels is None:
+            shown.append(f"Centroids: no plot ({r.no_pixels()}).")
+        else:
+            # A second-list run made before the second list drew its own plot.
+            run = r.provenance["second-list"]["run_id"]
+            shown.append(
+                f"Centroids: no plot (second-list run {run} drew none beside its pixels.json)."
+            )
+    if not shown:
         return "No plots in this record."
-    return "\n\n".join(f"{caption}:\n\n![{caption}]({path})" for path, caption in found)
+    return "\n\n".join(shown)
 
 
 def _catalogued(r: Record) -> str:
@@ -918,7 +1001,7 @@ def _catalogued(r: Record) -> str:
         )
     note = (
         "Every catalogued row on the star in the snapshot. vet-v3 masks only the kinds the search masks "
-        f"({_decision('0021')}); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from "
+        f"({r.decision('0021')}); the rest stay unmasked. A row overlaps a transit of ours, numbered by epoch from "
         "the signal's t0, "
         f"when its mask window ({cat['mask_width_durations']:g} of its durations, or of "
         f"{cat['fallback_duration_days']:g} d where the catalog gives none) meets it. {len(ours)} transits of "
@@ -949,10 +1032,10 @@ def _hits(r: Record) -> str:
     text = f"{len(hits)} paper(s) from the searches that answered, one row per paper. " + (
         "Titles come only from open sources: the search's own arXiv, OpenAlex and Zenodo hits, else OpenAlex's "
         "record for the paper's DOI; a paper none of them titles has a blank title "
-        f"({_decision('0038')})."
+        f"({r.decision('0038')})."
         if "trim" in r.literature
         else "Titles as the searches gave them, ADS's among them; a published record keeps only open sources' "
-        f"titles ({_decision('0038')})."
+        f"titles ({r.decision('0038')})."
     )
     broad = r.literature["evidence"]["too_broad"]
     if broad:
@@ -975,22 +1058,25 @@ def _suspect(r: Record) -> str:
     ]
     added = _words(r.checks["dropped_suspect"]) or "none"
     return (
-        f"The same vet with the timing-suspect sectors kept in ({_decision('0022')}). It is shown for comparison and "
+        f"The same vet with the timing-suspect sectors kept in ({r.decision('0022')}). It is shown for comparison and "
         "never "
         f"used for the call. Sectors it adds: {added}.\n\n"
         + _table(["Check", "Without them", "With them", "Reason with them"], rows)
     )
 
 
-def render_review(review: dict, notes: dict[str, list[dict]] | None = None) -> str:
+def render_review(
+    review: dict, notes: dict[str, list[dict]] | None = None, vetting: str = "../"
+) -> str:
     """The review's findings, each with its lens, rating and both refuters' verdicts (M3 design, section 4.8), and
-    beside a finding any note added on it under decision 0037 (review-notes.toml), marked as no part of the review."""
+    beside a finding any note added on it under decision 0037 (review-notes.toml), marked as no part of the review.
+    Its links lead from a dossier `vetting` below results/vetting/."""
     confirmed = set(calls.confirmed(review))
     notes = notes or {}
     parts = [
         f"Quoted from `review.json`, as the reviewer and the refuters wrote it: its numbers, paths and run names are "
-        f"theirs, not rendered from the runs ({_decision('0037')}). [The vetting README](../README.md) says what its "
-        "paths and run names stand for.",
+        f"theirs, not rendered from the runs ({_decision('0037', vetting)}). [The vetting README]({vetting}README.md) "
+        "says what its paths and run names stand for.",
         f"Reviewer {review['model']}, {review['date']}. {review['summary']}",
         "A finding rated kill or hold is confirmed when no refuter refuted it; a note gets no refuters.",
     ]
@@ -998,6 +1084,9 @@ def render_review(review: dict, notes: dict[str, list[dict]] | None = None) -> s
         head = f"### {f['id']} ({LENSES[f['lens']]}, {f['rating']})"
         if f["rating"] != "note":
             head += ": confirmed" if f["id"] in confirmed else ": refuted"
+            # Confirmed only because nothing refuted it: the reader should not take it for tested.
+            if not f["refuters"]:
+                head += ", no refuter ran on it"
         verdicts = [
             f"Refuter {i}: {'refuted' if v['refuted'] else 'did not refute'}. {v['reason']}"
             for i, v in enumerate(f["refuters"], 1)
@@ -1006,10 +1095,10 @@ def render_review(review: dict, notes: dict[str, list[dict]] | None = None) -> s
         if verdicts:
             body += "\n\n" + _list(verdicts)
         elif f["rating"] != "note":
-            body += "\n\nNo refuter has answered yet."
+            body += "\n\nNo refuter ran on it."
         for note in notes.get(f["id"], []):
             body += (
-                f"\n\n**Note added on {note['date']} under {_decision('0037')}, not part of the review or the "
+                f"\n\n**Note added on {note['date']} under {_decision('0037', vetting)}, not part of the review or the "
                 f"call:** {note['text']}"
             )
         parts.append(f"{head}\n\n{body}")
@@ -1025,7 +1114,7 @@ def _call(r: Record) -> str:
     findings = {f["id"] for f in r.review["findings"]} if r.review else set()
     rests = ", ".join(f"{n} (finding)" if n in findings else n for n in call["rests_on"])
     lines = [
-        f"Quoted from `call.toml`, the maintainer's words, not rendered from the runs ({_decision('0037')}).",
+        f"Quoted from `call.toml`, the maintainer's words, not rendered from the runs ({r.decision('0037')}).",
         f"Outcome: **{call['outcome']}**, {call['date']}.",
         f"Reasons: {call['reasons']}",
         f"Rests on: {rests or 'nothing named'}.",
@@ -1056,6 +1145,159 @@ def _call(r: Record) -> str:
     return "\n\n".join(lines)
 
 
+def _sectors(sectors: list) -> str:
+    return _words([f"S{s}" for s in sectors])
+
+
+def _file(product: dict) -> str:
+    return Path(product["s3_key"]).name
+
+
+def _light_curve_changes(r: Record) -> str:
+    """What the revet fetch run's merge record says changed in the light curve (decision 0041)."""
+    sectors = r.merge[str(r.checks["tic"])]["sectors"]
+
+    def listed(statuses: tuple[str, ...], said) -> str:
+        found = [
+            said(int(s), x)
+            for s, x in sorted(sectors.items(), key=lambda item: int(item[0]))
+            if x["status"] in statuses
+        ]
+        return _words(found) or "none"
+
+    added = listed(("added",), lambda s, x: f"S{s} ({x['fresh']['provenance']})")
+    redelivered = listed(
+        ("redelivered",),
+        lambda s, x: (
+            f"S{s} ({x['base']['provenance']}, {_file(x['base'])} replaced by {_file(x['fresh'])})"
+        ),
+    )
+    upgraded = listed(
+        ("upgraded",),
+        lambda s, x: f"S{s} ({x['base']['provenance']} replaced by {x['fresh']['provenance']})",
+    )
+    kept = listed(
+        ("kept_m2", "kept_earlier"),
+        lambda s, x: f"S{s} ({x['base']['provenance']} kept, {x['fresh']['provenance']} not taken)",
+    )
+    # Only a sector an earlier re-vet added can be upgraded, so r2's dossier never has this sentence.
+    better = (
+        f" Replaced by a better product (sectors an earlier re-vet added): {upgraded}."
+        if upgraded != "none"
+        else ""
+    )
+    return (
+        f"The light curve, from revet fetch run {r.provenance['merge']['run_id']} (`merge.json`), keeps every sector of "
+        f"the earlier one as it was fetched, but for these. Sectors added: {added}. Redelivered (a timing-suspect "
+        f"product replaced by the same product's newer delivery): {redelivered}.{better} Kept as first fetched though "
+        f"the new fetch found another product: {kept}."
+    )
+
+
+def _post_dictions(r: Record) -> str | None:
+    """Windows in sectors the light curve already holds: vet-v3 predicts from a fixed first sector, so a re-vet's
+    windows there were not predictions."""
+    held = {int(s) for s in r.checks["sources"]}
+    post = sorted({w["sector"] for w in r.checks["windows"] or [] if "epoch" in w} & held)
+    if not post:
+        return None
+    return (
+        f"The windows for {_sectors(post)} under Next TESS looks are post-dictions, not predictions: this light curve "
+        f"already holds {'that sector' if len(post) == 1 else 'those sectors'}."
+    )
+
+
+def _carried_pixels(r: Record, earlier: str) -> str | None:
+    second = r.provenance["second-list"]
+    if second is None or second["vetting_run"] == r.provenance["checks"]["run_id"]:
+        return None
+    return (
+        f"The second list's pixel check is carried from {earlier}: second-list run {second['run_id']}, made from "
+        f"vetting run {second['vetting_run']}, is not run again on a re-vet ({r.decision('0041')})."
+    )
+
+
+def _diff(before: list[str], now: list[str]) -> str:
+    new = [x for x in dict.fromkeys(now) if x not in before]
+    gone = [x for x in dict.fromkeys(before) if x not in now]
+    parts = [
+        f"{label}: {'; '.join(items)}" for label, items in (("new", new), ("gone", gone)) if items
+    ]
+    return "; ".join(parts) or "the same"
+
+
+def _masked(checks: dict) -> list[str]:
+    return [f"{m['period']:.5f} d (t0 BTJD {m['t0']:.4f})" for m in checks["masked"]]
+
+
+def _rows(checks: dict) -> list[str]:
+    return [
+        f"{x['source']} {x['kind']} {x['name']} at {_f(x['period'], '.5f')} d"
+        for x in checks["catalogued"]["rows"]
+    ]
+
+
+def _novelty_matches(checks: dict) -> list[str]:
+    evidence = next(c for c in checks["checks"] if c["check"] == "novelty")["evidence"]
+    return [
+        f"{m['source']} {m['name']} at "
+        + ("no period" if m.get("period") is None else f"{m['period']:.6g} d")
+        + (f", ratio {m['ratio']:g}" if m.get("ratio") is not None else "")
+        for key in NOVELTY_MATCHES
+        for m in evidence.get(key) or []
+    ]
+
+
+def _snapshot(provenance: dict) -> str:
+    """The catalog snapshot a vetting run read: recorded since decision 0041, in the arguments before it."""
+    if "catalogs" in provenance:
+        return provenance["catalogs"]
+    argv = provenance["argv"]
+    return Path(argv[argv.index("--catalogs") + 1]).name
+
+
+def _snapshot_changes(r: Record, earlier: str) -> str:
+    """The masked rows, catalogued rows and novelty matches that differ between the two versions' checks: what a
+    fresh catalog snapshot changed, read without the snapshots."""
+    before, now = r.before, r.checks
+    old, new = (next(c for c in x["checks"] if c["check"] == "novelty") for x in (before, now))
+    said = [f"{c['outcome']} ({c['reason']})" for c in (old, new)]
+    novelty = (
+        f"{said[1]} in both"
+        if said[0] == said[1]
+        else f"{said[0]} in {earlier}, {said[1]} in this version"
+    )
+    return (
+        f"Against {earlier}'s `checks.json`, which vetted with catalog snapshot `{_snapshot(r.before_provenance)}` "
+        f"(this version: `{_snapshot(r.provenance['checks'])}`):\n\n"
+        + _list(
+            [
+                f"Masked rows: {_diff(_masked(before), _masked(now))}.",
+                f"Catalogued rows on the star: {_diff(_rows(before), _rows(now))}.",
+                f"Novelty: {novelty}.",
+                f"Its matches: {_diff(_novelty_matches(before), _novelty_matches(now))}.",
+            ]
+        )
+    )
+
+
+def _changes(r: Record) -> str:
+    """A version's record (decision 0041): the version before it, linked, and what changed since it."""
+    if r.version is None:
+        return ""
+    earlier = "the M3 record" if r.version == 2 else f"r{r.version - 1}"
+    link = "../dossier.md" if r.version == 2 else f"../r{r.version - 1}/dossier.md"
+    parts = [
+        f"Version {r.version} of this signal's record, a re-vet on newer data ({r.decision('0041')}). "
+        f"[{earlier[0].upper()}{earlier[1:]}]({link}) stays as it was published.",
+        _light_curve_changes(r),
+        _post_dictions(r),
+        _carried_pixels(r, earlier),
+        _snapshot_changes(r, earlier),
+    ]
+    return f"\n\n## Changes since {earlier}\n\n" + "\n\n".join(p for p in parts if p)
+
+
 def render(signal_dir: Path) -> str:
     """The dossier for the signal whose record is in `signal_dir`: page one (the signal and the star, every check,
     the three questions, the next TESS looks), then the plots, the catalogued rows, the literature hits, the
@@ -1064,6 +1306,7 @@ def render(signal_dir: Path) -> str:
     return PAGE.substitute(
         title=_title(r),
         status=_status(r),
+        changes=_changes(r),
         star=_star(r),
         checks=_checks(r),
         on_star=_on_star(r),
@@ -1074,7 +1317,9 @@ def render(signal_dir: Path) -> str:
         catalogued=_catalogued(r),
         hits=_hits(r),
         suspect=_suspect(r),
-        review="No review yet." if r.review is None else _scrub(render_review(r.review, r.notes)),
+        review="No review yet."
+        if r.review is None
+        else _scrub(render_review(r.review, r.notes, r.vetting)),
         call=_scrub(_call(r)),
     )
 
@@ -1087,32 +1332,60 @@ def _not_listed(path: Path) -> list[str]:
     return calls.problems(path)
 
 
+def _key(path: Path) -> str:
+    """A record's path under results/vetting/: the signal's name, and for a version its directory under it."""
+    return f"{path.parent.name}/{path.name}" if calls.version(path) else path.name
+
+
 def listed(
     vetting_root: Path, staged: Path | None = None
 ) -> tuple[list[Path], dict[str, list[str]]]:
-    """The signal directories the README lists (a published record whose call stands), and why each other
-    directory holding a call is left out. `staged` stands in for the directory of its name, so `vetting publish`
-    renders the README before it copies anything."""
-    dirs = {call.parent.name: call.parent for call in vetting_root.glob("*/call.toml")}
+    """The record directories whose call stands (a published record: the M3 record or a version of it), by signal
+    and version, and why each other directory holding a call is left out, by its path under `vetting_root`. `staged`
+    stands in for the directory of its path, so `vetting publish` renders the README before it copies anything."""
+    found = [
+        call.parent
+        for call in (*vetting_root.glob("*/call.toml"), *vetting_root.glob("*/r*/call.toml"))
+        if call.parent.parent == vetting_root or calls.version(call.parent)
+    ]
+    dirs = {_key(path): path for path in found}
     if staged is not None:
-        dirs[staged.name] = staged
+        dirs[_key(staged)] = staged
     shown, left = [], {}
-    for name in sorted(dirs):
-        why = _not_listed(dirs[name])
+    for key in sorted(
+        dirs, key=lambda k: (calls.signal_name(dirs[k]), calls.version(dirs[k]) or 1)
+    ):
+        why = _not_listed(dirs[key])
         if why:
-            left[name] = why
+            left[key] = why
         else:
-            shown.append(dirs[name])
+            shown.append(dirs[key])
     return shown, left
 
 
+def _published(path: Path) -> bool:
+    return (path / "checks.json").is_file() and (path / "dossier.md").is_file()
+
+
 def readme(vetting_root: Path, staged: Path | None = None) -> str:
-    """results/vetting/README.md: one row per published signal whose call stands, from the call files."""
+    """results/vetting/README.md: one row per published signal, its latest version whose call stands, from the call
+    files, with links to the versions before it (decision 0041)."""
+    latest = {calls.signal_name(path): path for path in listed(vetting_root, staged)[0]}
     rows = []
-    for path in listed(vetting_root, staged)[0]:
+    for name, path in latest.items():
         call = calls.load(path / "call.toml")
-        rows.append(
-            f"| [{path.name}]({path.name}/dossier.md) | {call['outcome']} | {call['date']} | "
-            f"{_cell(call['reasons'])} |"
-        )
+        version = calls.version(path)
+        cell = f"[{name}]({name}/dossier.md)"
+        if version:
+            earlier = [("M3 record", name)] if _published(vetting_root / name) else []
+            earlier += [
+                (f"r{n}", f"{name}/r{n}")
+                for n in range(2, version)
+                if _published(vetting_root / name / f"r{n}")
+            ]
+            links = ", ".join(f"[{label}]({where}/dossier.md)" for label, where in earlier)
+            cell = f"[{name} r{version}]({name}/r{version}/dossier.md)" + (
+                f" (earlier: {links})" if links else ""
+            )
+        rows.append(f"| {cell} | {call['outcome']} | {call['date']} | {_cell(call['reasons'])} |")
     return README.substitute(rows="\n".join(rows))

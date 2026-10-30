@@ -4,3 +4,5 @@ criteria/*.toml text eol=lf
 *.fits binary
 *.npz binary
 *.parquet binary
+# The DDT target list keeps the TESS office template's CRLF line ends, byte for byte as `ddt render` writes it.
+results/ddt/*/targets.csv -text

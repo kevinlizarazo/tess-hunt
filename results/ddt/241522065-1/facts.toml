@@ -1,0 +1,69 @@
+# Facts about archives, dates and target lists that the DDT proposal for 241522065-1 states. Each names the page it
+# was read from and the date it was read; the proposal renders each `value`, and `read` as the one date all were read.
+
+[qlp_last_sector]
+value = 105
+note = "S105 is partial; MAST holds nothing for S106 or later."
+source = "https://archive.stsci.edu/hlsps/qlp/"
+read = "2026-10-27"
+
+[qlp_suspect_sectors]
+value = "99 to 104"
+note = "A barycentric timing error; MAST's QLP page (updated 2026-08-12) still marks them as not redelivered, and the download scripts name v01."
+source = "https://archive.stsci.edu/hlsp/qlp"
+read = "2026-10-27"
+
+[tess_spoc_last_sector]
+value = 85
+source = "https://archive.stsci.edu/hlsp/tess-spoc"
+read = "2026-10-27"
+
+[spoc_2min_latency_days]
+value = "24 to 38"
+note = "Sectors 105 to 107: from a sector's end to its 2-min light-curve download script on MAST."
+source = "https://archive.stsci.edu/missions/tess/download_scripts/sector/"
+read = "2026-10-27"
+
+[spoc_2min_latency_sectors]
+value = "105 to 107"
+note = "The sectors spoc_2min_latency_days was measured on; their 2-min light-curve download scripts were Last-Modified 2026-08-18, 2026-09-10 and 2026-10-02."
+source = "https://archive.stsci.edu/missions/tess/download_scripts/sector/"
+read = "2026-10-27"
+
+[s112_start]
+value = "2026-12-22"
+source = "https://tess.mit.edu/observations/sector-112/"
+read = "2026-10-27"
+
+[s113_start]
+value = "2027-01-17"
+source = "https://tess.mit.edu/observations/sector-113/"
+read = "2026-10-27"
+
+[s114_start]
+value = "2027-02-13"
+source = "https://tess.mit.edu/observations/sector-114/"
+read = "2026-10-27"
+
+[s114_end]
+value = "2027-03-14"
+source = "https://tess.mit.edu/observations/sector-114/"
+read = "2026-10-27"
+
+[last_sector_checked]
+value = 134
+note = "tess-point 0.9.5.post1 places TIC 241522065 in S112, S113 and S114 and in no later sector through S134."
+source = "https://github.com/tessgi/tess-point"
+read = "2026-10-27"
+
+[two_minute_lists]
+value = "the final 2-min and 20-s target lists for Sector 110 or the Guest Investigator priority lists for Sectors 111 to 114"
+note = "Read from the target-list page: S110's final lists 2m/all_targets_S110_v1.csv and 20s/all_targets_20s_S110_v1.csv, and the GI priority-sorted lists 2m/GI_S111.pri to 2m/GI_S114.pri and 20s/GI-20s_S111.pri to 20s/GI-20s_S114.pri (Last-Modified 2026-10-27 04:06 UTC). A sector's final list comes out shortly before it, so a later list can still add a star."
+source = "https://tess.mit.edu/public/target_lists/target_lists.html"
+read = "2026-10-27"
+
+[off_two_minute_lists]
+value = [103312990, 241522065, 296819076, 399023421, 423100454, 438857197]
+note = "The TICs on none of the lists two_minute_lists names."
+source = "https://tess.mit.edu/public/target_lists/target_lists.html"
+read = "2026-10-27"

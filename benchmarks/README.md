@@ -77,8 +77,9 @@ No `tess-hunt` stage reads the file; only the pixel tests do.
 
 ## TESS sector dates
 
-`tess_sectors.csv` gives the start and end of the sectors TESS has yet to observe, S110 to S114. `predict.windows` places a signal's next transits in them (`[predict]` in `criteria/vet-v3.toml`, decision
-0024). It is an input, not a criterion.
+`tess_sectors.csv` gives the start and end of the sectors TESS has yet to observe, S110 to S114. `predict.windows`
+places a signal's next transits in them (`[predict]` in `criteria/vet-v3.toml`, decision 0024). It is an input, not a
+criterion, and a production run refuses to start while anything under `benchmarks/` has uncommitted changes.
 
 Each row's dates are from the sector's page at tess.mit.edu (`source`), read on 2026-10-16 (`read_on`). The pages
 give days only ("Observations extend from October 31 through November 26, 2026"), so each start and end is 00:00 UTC

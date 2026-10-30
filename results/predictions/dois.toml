@@ -1,0 +1,7 @@
+# The DOI and publication date Zenodo gave each deposited package, by its run id. `doi` is the version DOI, which pins
+# the deposited files; `concept` resolves to the record's latest version.
+
+["20261028T204003Z-predictions-98bf417-0ef5"]
+doi = "10.5281/zenodo.23745923"
+concept = "10.5281/zenodo.23745922"
+published = 2026-10-28

@@ -242,6 +242,29 @@ def test_a_pass_the_evidence_does_not_support_is_refused(tmp_path, change, messa
     assert any(re.search(message, p) for p in found), found
 
 
+def test_a_pass_on_an_evidence_only_vet_is_refused(tmp_path):
+    path = signal_dir(tmp_path)
+    checks = json.loads((path / "checks.json").read_text())
+    (path / "checks.json").write_text(json.dumps({**checks, "evidence_only": True}))
+    assert calls.problems(path) == ["checks.json is an evidence-only vet, which never makes a call"]
+
+
+def test_a_pass_on_criteria_changed_since_the_vetting_run_is_refused(tmp_path):
+    # Bar 2 matches ExoFOP's rows at the period tolerance of the criteria the vetting run recorded.
+    path = signal_dir(tmp_path)
+    made = json.loads((path / "provenance-checks.json").read_text())
+    made["criteria"][0]["sha256"] = "0" * 64
+    (path / "provenance-checks.json").write_text(json.dumps(made))
+    assert calls.problems(path) == [
+        "criteria/search-v2.toml changed since the vetting run; its period tolerance is unknown"
+    ]
+
+
+def test_a_review_of_another_signal_is_refused(tmp_path):
+    found = calls.problems(signal_dir(tmp_path, review={**REVIEW, "signal": "44926986-2"}))
+    assert found == [f"review.json is for 44926986-2, not {NAME}"]
+
+
 def test_a_planet_elsewhere_on_exofop_does_not_stand_in_the_way(tmp_path):
     elsewhere = {**PLANET_AT_THE_PERIOD, "period": 3.3}
     no_period = {**PLANET_AT_THE_PERIOD, "name": "TIC 44926986.02", "toi": None, "period": None}
@@ -382,6 +405,34 @@ def test_a_review_file_that_breaks_the_schema_is_refused(tmp_path):
     review = {**REVIEW, "findings": [finding]}
     found = calls.problems(signal_dir(tmp_path, review=review))
     assert any("Hold" in p for p in found), found
+
+
+def test_a_version_is_judged_as_an_m3_record(tmp_path):
+    """A re-vet's record, results/vetting/<name>/r<N>/, is the signal's record (decision 0041): its call names the
+    signal, and the bar reads the files in the version's directory."""
+    m3 = signal_dir(tmp_path, call=HELD)
+    assert calls.problems(signal_dir(m3, name="r2")) == []
+    assert (
+        calls.problems(signal_dir(m3, name="r3", call=KILLED, outcomes={"odd_even": "fail"})) == []
+    )
+    assert calls.version(m3 / "r2") == 2 and calls.version(m3) is None
+    assert calls.signal_name(m3 / "r2") == NAME
+    # A call naming the version's directory, not the signal, is refused.
+    [problem] = calls.problems(signal_dir(m3, name="r4", call=edit(PASSED, f'"{NAME}"', '"r4"')))
+    assert problem == f"call.toml is for r4, not {NAME}"
+    # The version's own files decide: a pass on a version whose literature search is inconclusive is refused,
+    # whatever the M3 record holds.
+    found = calls.problems(signal_dir(m3, name="r5", literature="inconclusive"))
+    assert any("the literature search is inconclusive" in p for p in found)
+    # r1 is not a version: the M3 record is the first.
+    assert calls.version(tmp_path / "r1") is None and calls.version(tmp_path / "r12") == 12
+    # A version's refusals name the signal, not its directory.
+    assert calls.problems(signal_dir(m3, name="r6", call=None)) == [f"no call.toml in {NAME}"]
+    found = calls.problems(signal_dir(m3, name="r7", call=PROMOTED, **SPOC))
+    assert f"promotion is for second-list rows; {NAME} is a candidate" in found
+    (m3 / "r8").mkdir()
+    (m3 / "r8" / "call.toml").write_text(HELD)
+    assert calls.problems(m3 / "r8") == [f"no checks.json beside the call in {NAME}"]
 
 
 def test_no_call_is_a_problem(tmp_path):

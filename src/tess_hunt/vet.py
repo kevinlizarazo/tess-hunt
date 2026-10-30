@@ -2,7 +2,7 @@
 
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -97,6 +97,50 @@ def other_known_transits(
     ]
 
 
+@dataclass(frozen=True)
+class Prepared:
+    """The light curve vet's checks read, and the steps that made it."""
+
+    good: LightCurve
+    others: list[Ephemeris]
+    dropped: list[int]
+    flat: LightCurve
+    betas: dict
+    noisy: LightCurve
+
+
+def prepare(
+    lc: LightCurve,
+    star: Mapping,
+    eph: Ephemeris,
+    known: pd.DataFrame,
+    crit_search: dict,
+    crit_vet: dict,
+    include_suspect: bool = False,
+) -> Prepared:
+    """vet_with_fits's first steps: the star's other known transits to mask, the light curve without
+    vet-v3's timing-suspect sectors, detrended, and with red-noise depth errors. `crit_vet` is in
+    vet-v2's layout, which with_v1_code_values gives vet-v1."""
+    v3 = crit_vet.get("families") is not None
+    harmonics = tuple(crit_vet["novelty"]["harmonics"])
+    mask_sources = tuple(crit_vet["masks"]["sources"]) if v3 else None
+    others = other_known_transits(
+        eph, known, int(star["tic"]), harmonics, crit_search, mask_sources
+    )
+    good, dropped = lc, []
+    if v3 and crit_vet["timing"]["exclude_timing_suspect"] and not include_suspect:
+        good = good_timestamps(lc)
+        dropped = sorted(set(np.unique(lc.sector).tolist()) - set(np.unique(good.sector).tolist()))
+    flat = detrend(good, crit_search["detrend"], others)
+    core = crit_vet["depth"]["core_fraction"]
+    # Detrended errors are each sector's white scatter, but a bright star's residuals stay
+    # correlated over a transit, so depth errors would come out too small. The depth checks get
+    # errors scaled by each sector's time-averaging beta at the core timescale (Pont et al. 2006;
+    # Winn et al. 2008; docs/decisions/0006-red-noise-depth-errors.md). The fit keeps white errors.
+    betas = red_noise_beta(flat, eph, core * eph.duration, crit_vet["red_noise"])
+    return Prepared(good, others, dropped, flat, betas, with_red_noise(flat, betas))
+
+
 def density_prior(star: Mapping, default_dex: float) -> tuple[float, float] | None:
     """The TIC density as fit_transit's prior, (log10 rho in g/cm^3, sigma in dex), or None without
     one. `rho` and `e_rho` are solar units."""
@@ -172,21 +216,9 @@ def vet_with_fits(
     v3 = families is not None
     harmonics = tuple(crit_vet["novelty"]["harmonics"])
     match = crit_search["match"]
-    mask_sources = tuple(crit_vet["masks"]["sources"]) if v3 else None
-    others = other_known_transits(eph, known, tic, harmonics, crit_search, mask_sources)
-    dropped = []
-    if v3 and crit_vet["timing"]["exclude_timing_suspect"] and not include_suspect:
-        good = good_timestamps(lc)
-        dropped = sorted(set(np.unique(lc.sector).tolist()) - set(np.unique(good.sector).tolist()))
-        lc = good
-    flat = detrend(lc, crit_search["detrend"], others)
+    prepared = prepare(lc, star, eph, known, crit_search, crit_vet, include_suspect)
+    flat, noisy = prepared.flat, prepared.noisy
     core = crit_vet["depth"]["core_fraction"]
-    # Detrended errors are each sector's white scatter, but a bright star's residuals stay
-    # correlated over a transit, so depth errors would come out too small. The depth checks get
-    # errors scaled by each sector's time-averaging beta at the core timescale (Pont et al. 2006;
-    # Winn et al. 2008; docs/decisions/0006-red-noise-depth-errors.md). The fit keeps white errors.
-    betas = red_noise_beta(flat, eph, core * eph.duration, crit_vet["red_noise"])
-    noisy = with_red_noise(flat, betas)
 
     def depths_compared(check: str, run: Callable[[LightCurve], CheckResult]) -> CheckResult:
         # QLP depths are diluted on crowded stars, so vet-v3 compares depths only within one product
@@ -298,8 +330,8 @@ def vet_with_fits(
     report = {
         "tic": tic,
         "ephemeris": asdict(eph),
-        "masked": [asdict(k) for k in others],
-        "red_noise": betas,
+        "masked": [asdict(k) for k in prepared.others],
+        "red_noise": prepared.betas,
         "checks": [r.to_dict() for r in results],
         "fit": fit.summary() if fit else None,
         "advances": all(r.outcome is Outcome.PASS for r in results),
@@ -309,7 +341,7 @@ def vet_with_fits(
             criteria_version="vet-v3",
             evidence_only=include_suspect,
             families={name: np.unique(part.sector).tolist() for name, part in parts.items()},
-            dropped_suspect=dropped,
+            dropped_suspect=prepared.dropped,
             fit_prior=(
                 prior_fit_summary(fit_prior, _number(star.get("rad")))
                 if fit_prior is not None

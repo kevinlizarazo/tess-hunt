@@ -1,0 +1,215 @@
+{
+  "argv": [
+    "tess-hunt",
+    "predictions",
+    "run",
+    "--vetting-run",
+    "$TESS_HUNT_DATA/runs/20261020T174317Z-vetting-run-61b5944-2d70",
+    "--records",
+    "103312990-1",
+    "241522065-1",
+    "296819076-1",
+    "399023421-1",
+    "423100454-1",
+    "438857197-1",
+    "--catalogs",
+    "$TESS_HUNT_DATA/catalogs/2026-10-17T142814Z",
+    "--lock-start",
+    "2026-12-20",
+    "--production"
+  ],
+  "catalogs": "2026-10-17T142814Z",
+  "criteria": [
+    {
+      "file": "criteria/search-v2.toml",
+      "sha256": "16d5906d2ea2a9e685fe05ab02758254e358e41113e9517721368a54a978890d"
+    },
+    {
+      "file": "criteria/vet-v3.toml",
+      "sha256": "9b01a9067e0728ddc2eaded3e7cb2b4de98e4fb15c3353a5413706979ec1aec4"
+    }
+  ],
+  "ended_at": "2026-10-28T20:40:06.418951+00:00",
+  "git": {
+    "commit": "98bf4175cbaa320fe034cd473f83e0c72c0cc00f",
+    "dirty_paths": []
+  },
+  "inputs": {
+    "call_103312990-1": {
+      "file": "call.toml",
+      "sha256": "fef9730231c4c1860c98b62b363dd113d592a67df7f30b5aef6103932c07cc4f"
+    },
+    "call_241522065-1": {
+      "file": "call.toml",
+      "sha256": "589488d05b8c9bfb893ca51eb69d19aaa908ccf2a735d79510dcb694addc06c8"
+    },
+    "call_296819076-1": {
+      "file": "call.toml",
+      "sha256": "8ae2e1c8914457df1c1ecd1e8bfd69780c083415fa002d535c53467e7afefcff"
+    },
+    "call_399023421-1": {
+      "file": "call.toml",
+      "sha256": "2a6cf9e8399a60fecda3e59bc6c08099ec97ccd9d425fe224412c5891944581b"
+    },
+    "call_423100454-1": {
+      "file": "call.toml",
+      "sha256": "cdc8ca6837ed3234857aea34b215948d8be7d87b27ea5ec411a331d0c0a7566c"
+    },
+    "call_438857197-1": {
+      "file": "call.toml",
+      "sha256": "f891214bfc8e7bffc568ea8bb6f9313ef7263607890486f4ada0ba87959e90c9"
+    },
+    "catalog_manifest": {
+      "file": "manifest.json",
+      "sha256": "f722fdd58328b01eabfc8e4fbc1fc576a3de934f0b97e836087086a577a6ba5d"
+    },
+    "checks_103312990-1": {
+      "file": "checks.json",
+      "sha256": "a513d03f99c0aa8d42a2118a1eff7c5beecdc255304a244ad6a01e2b803332e9"
+    },
+    "checks_241522065-1": {
+      "file": "checks.json",
+      "sha256": "fbb69b34ebb0a4132b6f566812ab2a512eaed9bf762327317df4b0b5102b7c06"
+    },
+    "checks_296819076-1": {
+      "file": "checks.json",
+      "sha256": "cd5b60f9ce9de318c2d7cece5d31f850068af6d5813a7f34798aace81e4cecf4"
+    },
+    "checks_399023421-1": {
+      "file": "checks.json",
+      "sha256": "39d96c5d2dfc4d5c6cfa0683d4147faba664a479968f7ef1fd20b97004d59928"
+    },
+    "checks_423100454-1": {
+      "file": "checks.json",
+      "sha256": "a28085c111c611893252bf81e382c3655c6a61dae554c6dc63c15b6915f2c8be"
+    },
+    "checks_438857197-1": {
+      "file": "checks.json",
+      "sha256": "a51cf18a913c2245ddffb8f1dceb2be60c2ff1d9acff95f1b6745861e4e69813"
+    },
+    "ddt_proposal_241522065-1": {
+      "file": "proposal.md",
+      "sha256": "a16c10e612106670ab4fb8df23c1160e72b7c2ccda9caad13047524497308b81"
+    },
+    "facts": {
+      "file": "facts.toml",
+      "sha256": "5acec57e1f66b2dc2e593deca22af711f33f297c055a5702caaf8e1b03678d90"
+    },
+    "known": {
+      "file": "known.parquet",
+      "sha256": "8a87504a96e483e921aeb8fba567538e77c9b3acb66944d7121fc284c40495ed"
+    },
+    "light_curve_103312990": {
+      "file": "103312990.npz",
+      "sha256": "955172c695e312119374aac16c67cf7a0649c1ce087b527b5b8de21c0d058398"
+    },
+    "light_curve_241522065": {
+      "file": "241522065.npz",
+      "sha256": "010beb2551a15c870c0dca8032e6fb7f951fbd6c602caae706d49977e4513362"
+    },
+    "light_curve_296819076": {
+      "file": "296819076.npz",
+      "sha256": "4bb3d64ea85517cc22bab6b7d11fc62e6f81ed3029f0a191b6c09974a005bb6b"
+    },
+    "light_curve_399023421": {
+      "file": "399023421.npz",
+      "sha256": "45aea53680b1f0d294ac53898ad27e692f320e14e61e7e29470c5cea839c98af"
+    },
+    "light_curve_423100454": {
+      "file": "423100454.npz",
+      "sha256": "7fb744d3030a0096b401f11b63fe27a5413acc1ed435a1288e761e5d50bff03f"
+    },
+    "light_curve_438857197": {
+      "file": "438857197.npz",
+      "sha256": "7d9651a8982fbed7c8bcd1ccaa8e7594eaaedfbee106d87a727649c827889e18"
+    },
+    "review_103312990-1": {
+      "file": "review.json",
+      "sha256": "290a512101d50e7c4170a1ab3e10555e08a9b8366e8c6b5453f9257edb4c6724"
+    },
+    "review_241522065-1": {
+      "file": "review.json",
+      "sha256": "ad2aeccacaffc3763f477addba7bbf90fbf1439d9345373c7aff3958eacec3db"
+    },
+    "review_296819076-1": {
+      "file": "review.json",
+      "sha256": "ddd94110c548acf79ddaae7cefabc8c848e42150f6077380f9e8e2c2775bc621"
+    },
+    "review_399023421-1": {
+      "file": "review.json",
+      "sha256": "25cd0c223680c12ea58adf1e3cc87ba2041b0ed3b4fff38b97f575a23a9d7510"
+    },
+    "review_423100454-1": {
+      "file": "review.json",
+      "sha256": "d1f7db9a1f81a089ee5f53b11d01286878b298e988a33d9edcfafa469116e420"
+    },
+    "review_438857197-1": {
+      "file": "review.json",
+      "sha256": "8aa3e8c86048359decb1957ca9b40581cae432358d039d61403069472dd3f3ee"
+    },
+    "tess_sectors": {
+      "file": "tess_sectors.csv",
+      "sha256": "2055f8a42c38bea916a78a58af778126b8d844386fe2217fa466589a5ae88092"
+    },
+    "vetting_provenance": {
+      "file": "provenance.json",
+      "sha256": "74972b74b62d47d332b8f3ce517d1bf8daacf026d06cf20527605de7b46cbb0f"
+    }
+  },
+  "judged_by": "2027-12-31",
+  "lock_start": "2026-12-20",
+  "production": true,
+  "python": "3.12.14",
+  "run_id": "20261028T204003Z-predictions-98bf417-0ef5",
+  "stage": "predictions",
+  "started_at": "2026-10-28T20:40:03.160607+00:00",
+  "summary": {
+    "lock_start": "2026-12-20",
+    "signals": {
+      "103312990-1": {
+        "sectors": [
+          112,
+          113
+        ],
+        "transits": 7
+      },
+      "241522065-1": {
+        "sectors": [
+          112,
+          113,
+          114
+        ],
+        "transits": 5
+      },
+      "296819076-1": {
+        "sectors": [
+          114
+        ],
+        "transits": 13
+      },
+      "399023421-1": {
+        "sectors": [
+          112,
+          113,
+          114
+        ],
+        "transits": 21
+      },
+      "423100454-1": {
+        "sectors": [
+          113
+        ],
+        "transits": 2
+      },
+      "438857197-1": {
+        "sectors": [
+          112,
+          114
+        ],
+        "transits": 15
+      }
+    }
+  },
+  "uv_lock_sha256": "a010156a71a8275a4a13c3aab785b32fe1688e82446eac717fa595e46caa037a",
+  "vetting_run": "20261020T174317Z-vetting-run-61b5944-2d70"
+}

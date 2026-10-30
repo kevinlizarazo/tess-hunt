@@ -17,8 +17,9 @@ from typing import Any
 from tess_hunt.config import Criteria, data_dir, runs_dir
 from tess_hunt.serialize import jsonable
 
-# A production run must be reproducible from its commit, so these may not differ from it.
-GUARDED_PATHS = ("src", "criteria", "pyproject.toml", "uv.lock")
+# A production run must be reproducible from its commit, so these may not differ from it. benchmarks/ holds
+# tess_sectors.csv, which vet-v3 reads as [predict] sectors_file.
+GUARDED_PATHS = ("src", "criteria", "benchmarks", "pyproject.toml", "uv.lock")
 
 
 class DirtyTreeError(RuntimeError):
