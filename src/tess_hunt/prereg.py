@@ -761,7 +761,7 @@ def _sector_runs(sectors: list[int]) -> str:
     return f"Sector {items[0]}" if len(sectors) == 1 else f"Sectors {_words(items)}"
 
 
-def credits(trained: dict[str, list[int]], what: str) -> str:
+def acknowledgements(trained: dict[str, list[int]], what: str) -> str:
     """The acknowledgements and citations ACKNOWLEDGEMENTS.md asks of a data release, for the products and sectors
     `trained` gives (`trained_products`); `what` names the release ("package", "dataset")."""
     used = []
@@ -1168,7 +1168,7 @@ def readme(
             "prediction_columns": _columns(PREDICTION_COLUMNS),
             "window_columns": _columns(_window_columns(crit_vet)),
             "credits": textwrap.fill(
-                credits(trained_products(predictions, records), "package"),
+                acknowledgements(trained_products(predictions, records), "package"),
                 120,
                 break_on_hyphens=False,
                 break_long_words=False,
@@ -1211,7 +1211,7 @@ def zenodo(
         "deposit_by": _deposit_by(dt.date.fromisoformat(provenance["lock_start"]), facts),
         "judged_by": JUDGED_BY.isoformat(),
         "core_percent": f"{core_fraction * 100:g}",
-        "credits": credits(trained, "dataset"),
+        "credits": acknowledgements(trained, "dataset"),
     }
     description = DESCRIPTION.substitute(_filled(found))
     # Zenodo's description editor keeps line breaks, so each paragraph is pasted as one line.

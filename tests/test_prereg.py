@@ -685,6 +685,15 @@ def test_predictions_run_and_publish(tmp_path, monkeypatch, capsys):
     assert "Reuse of this package should carry these acknowledgements and citations." in flat
     # No QLP light curve trained it, so QLP's acknowledgement is not asked for.
     assert "Quick-Look Pipeline" not in readme + form
+    # The credits name each training sector's product from the record the run read, and no other.
+    record_checks = repo / "results" / "vetting" / NAME / "checks.json"
+    read = record_checks.read_text()
+    record_checks.write_text(read + "\n")
+    with pytest.raises(
+        SystemExit, match=f"results/vetting/{NAME}/checks.json is not the record run"
+    ):
+        main(["predictions", "zenodo", "--run", made["run_id"]])
+    record_checks.write_text(read)
     # 1-1's windows are far narrower than its period.
     assert "too wide to place a transit" not in flat
     # The refit searches periods near the search's; BLS scans every epoch.
