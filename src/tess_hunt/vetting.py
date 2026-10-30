@@ -18,6 +18,7 @@ import requests
 
 from tess_hunt import (
     calls,
+    claims,
     dossier,
     gaia,
     literature,
@@ -2093,6 +2094,7 @@ def add_parser(sub) -> None:
     pr.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))
     pr.add_argument("--production", action="store_true")
     pr.set_defaults(func=cmd_prereg)
+    claims.add_parser(modes)
     d = modes.add_parser(
         "dossier", help="render draft dossiers for the maintainer, outside the repository"
     )

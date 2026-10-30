@@ -1,0 +1,28 @@
+# Each held signal's public claim: the day it was first public, and the public record a reader can check that day
+# against. Decision 0042 reads this file: a TOI or CTOI on the signal's own star that ExoFOP first listed after this
+# day, with every disposition PC or empty, does not make the signal known. A signal with no entry gets no exception.
+# This file changes only with a decision record.
+
+["103312990-1"]
+date = 2026-10-28
+record = "https://doi.org/10.5281/zenodo.23745923"
+
+["241522065-1"]
+date = 2026-10-28
+record = "https://doi.org/10.5281/zenodo.23745923"
+
+["296819076-1"]
+date = 2026-10-28
+record = "https://doi.org/10.5281/zenodo.23745923"
+
+["399023421-1"]
+date = 2026-10-28
+record = "https://doi.org/10.5281/zenodo.23745923"
+
+["423100454-1"]
+date = 2026-10-28
+record = "https://doi.org/10.5281/zenodo.23745923"
+
+["438857197-1"]
+date = 2026-10-28
+record = "https://doi.org/10.5281/zenodo.23745923"
