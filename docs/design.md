@@ -139,7 +139,9 @@ from a run directory and writes its own.
   run hashed. Each sector of the earlier light curve is kept byte for byte, and a sector only the new fetch has is
   added.
   A sector both have is taken from the new fetch only when the same product comes again clean over a timing-suspect
-  file (a QLP S99-S104 redelivery); a better product appearing later for an old sector is not taken.
+  file (a QLP S99-S104 redelivery); a better product appearing later for one of M2's sectors is not taken. A sector an
+  earlier re-vet added does take a better product when a later fetch finds one, so a predicted sector first fetched
+  as QLP can still be tested once SPOC 2-min or TESS-SPOC data land.
 - Reads the public bucket `s3://stpubdata` (us-east-1) anonymously. It is free to read and download [T15][T17].
   - SPOC 2-min: `tess/public/tid/sNNNN/...`
   - TESS-SPOC: `mast/hlsp/tess-spoc/sNNNN/...`

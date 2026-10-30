@@ -828,6 +828,7 @@ def package(path: Path, prediction: dict, sectors, name: str = NAME) -> Path:
     in `sectors`."""
     path.mkdir(parents=True)
     references = {
+        "judged_by": prereg.JUDGED_BY.isoformat(),
         "test": {
             "holdout": VET3["holdout"],
             "core_fraction": VET3["depth"]["core_fraction"],
@@ -875,6 +876,7 @@ def test_prereg_results(tmp_path):
     assert found["season"]["sectors"] == list(NEW) and found["predicted_sectors"] == list(NEW)
     assert found["sigma"] >= VET3["holdout"]["min_sigma"]
     assert found["as_of"] == LATE.isoformat() and found["judged_by"] == "2027-12-31"
+    assert found["untestable_products"] == {}
 
     # No dip in the new season: missed.
     flat = with_products(
@@ -898,6 +900,8 @@ def test_prereg_results(tmp_path):
     assert (found["result"], found["status"]) == ("pending", "pending")
     assert "S29 (QLP, which can't test it) and S30 (no data)" in found["reason"]
     assert "2027-12-31" in found["reason"]
+    # Said plainly, so a version can wait for a better product.
+    assert found["untestable_products"] == {"29": "QLP"}
     found = judged(partial, whole, prereg.JUDGED_BY)
     assert (found["result"], found["status"]) == ("untested", "no_light_curve")
     assert "S29 (QLP, which can't test it) and S30 (no data)" in found["reason"]
@@ -937,6 +941,14 @@ def test_prereg_results(tmp_path):
     other = {**VET3.values, "holdout": {**VET3["holdout"], "min_sigma": 3.0}}
     with pytest.raises(ValueError, match=r"not the test the package froze"):
         judged(planet(), whole, LATE, crit_vet=other)
+    # Nor is another judging date than the one the package froze.
+    dated = package(tmp_path / "dated", prediction, NEW)
+    references = json.loads((dated / "references.json").read_text())
+    (dated / "references.json").write_text(json.dumps({**references, "judged_by": "2027-01-01"}))
+    with pytest.raises(
+        ValueError, match="froze the judging date 2027-01-01, but prereg.JUDGED_BY is 2027-12-31"
+    ):
+        judged(planet(), dated, EARLY)
     with pytest.raises(ValueError, match="predicts no 9-9"):
         prereg.judge_signal(
             whole,
@@ -945,6 +957,22 @@ def test_prereg_results(tmp_path):
             VET3.values,
             LATE,
         )
+
+
+def test_the_judged_season_holds_no_training_sector(tmp_path):
+    """Sectors between the training seasons and the predicted ones (here every other sector from S18 to S26, each gap
+    under season_gap_days) chain them into one season, which would judge training cadences."""
+    prediction = predicted(planet(sectors=TRAINING), write_record(tmp_path / NAME))
+    whole = package(tmp_path / "package", prediction, NEW)
+    bridged = planet(sectors=(*TRAINING, 18, 20, 22, 24, 26, *NEW))
+    with pytest.raises(
+        ValueError, match=r"judged season holds the training sector\(s\) 14, 15 and 16"
+    ):
+        judged(bridged, whole, LATE)
+    # Bridged to nothing, the same season is judged.
+    assert (
+        judged(planet(sectors=(*TRAINING, 22, 24, 26, *NEW)), whole, LATE)["result"] == "replicated"
+    )
 
 
 def test_prereg_equals_holdout_on_an_unchanged_light_curve(tmp_path):

@@ -1422,9 +1422,10 @@ def revet_run(
     base: Path | None = None,
     sector: int = 65,
     started: str = "2026-12-01T00:00:00+00:00",
+    product: str = "SPOC",
 ) -> Path:
-    """A finished production revet fetch run, started at `started`, that merged a new SPOC sector onto each star's
-    light curve in `base`, the shared cache by default."""
+    """A finished production revet fetch run, started at `started`, that merged a new sector of `product` onto each
+    star's light curve in `base`, the shared cache by default."""
     base = base or tmp_path / "data" / "lc"
     run_id = f"20261201T000000Z-revet-fetch-abc1234-{tag}"
     path = tmp_path / "data" / "runs" / run_id
@@ -1434,13 +1435,22 @@ def revet_run(
             rp_rs=0.04, sectors=(sector,), cadences={sector: 30.0}, noise_ppm={sector: 200.0}
         )
         fresh.tic = tic
-        with_products(fresh, {sector: "SPOC"})
-        # Fetched SPOC sources carry CROWDSAP; the synthetic ones don't.
-        fresh.sources[str(sector)]["crowdsap"] = 0.95
-        merged, sectors = revet.merge(LightCurve.load(base / f"{tic}.npz"), fresh)
+        with_products(fresh, {sector: product})
+        # Fetched SPOC sources carry CROWDSAP; the synthetic ones don't, and QLP publishes none.
+        if product != "QLP":
+            fresh.sources[str(sector)]["crowdsap"] = 0.95
+        # M2's sectors: the base's own, or those the revet fetch run that wrote the base recorded.
+        earlier = base.parent / "merge.json"
+        m2 = (
+            json.loads(earlier.read_text())[str(tic)]["m2_sectors"]
+            if earlier.is_file()
+            else sorted(LightCurve.load(base / f"{tic}.npz").sources, key=int)
+        )
+        merged, sectors = revet.merge(LightCurve.load(base / f"{tic}.npz"), fresh, m2)
         merged.save(path / "lc" / f"{tic}.npz")
         stars[str(tic)] = {
             "base_sha256": sha256_file(base / f"{tic}.npz"),
+            "m2_sectors": m2,
             "lc_sha256": sha256_file(path / "lc" / f"{tic}.npz"),
             "sectors": sectors,
             "fetch": {"status": "ok", "problems": {}},
@@ -1648,6 +1658,14 @@ def test_version_refuses_a_light_curve_not_from_its_lc_run(tmp_path, monkeypatch
     ):
         main(version_argv({**runs, "lc_run": twin}))
     assert published(repo) == before
+    # The revet fetch run took other sectors as M2's than the M3 record's light curve holds, so it could have taken a
+    # better product over one of M2's.
+    lc_run = revet_run(tmp_path, tag="f")
+    runs = revetted(tmp_path, monkeypatch, lc_run)
+    edit_json(lc_run / "merge.json", lambda m: m["1"].update(m2_sectors=m["1"]["m2_sectors"][1:]))
+    with pytest.raises(SystemExit, match="took TIC 1's M2 sectors as"):
+        main(version_argv(runs))
+    assert published(repo) == before
 
 
 def test_version_keeps_the_previous_records_triage_run(tmp_path, monkeypatch):
@@ -1670,7 +1688,7 @@ def test_an_interrupted_version_is_finished(tmp_path, monkeypatch):
     write_text = Path.write_text
 
     def crashes(path, *args, **kwargs):
-        if path == version / "dossier.md":
+        if path.parent == version and path.name.startswith("dossier.md"):
             raise RuntimeError("the machine went down")
         return write_text(path, *args, **kwargs)
 
@@ -1712,6 +1730,64 @@ def test_an_interrupted_version_is_finished(tmp_path, monkeypatch):
     )
     with pytest.raises(SystemExit, match="is already published"):
         main(version_argv(runs))
+
+
+def test_a_killed_version_publish_leaves_each_file_absent_or_whole(tmp_path, monkeypatch):
+    """A kill runs no rollback: what the record's directory holds at that moment is what the retry finds."""
+    _, repo = published_m3(tmp_path, monkeypatch)
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
+    version = called(repo / "results" / "vetting" / NAME / "r2")
+    left = {}
+
+    def killed(path: Path, data):
+        """Write half of `data` to `path`, keep what the directory holds then, and stop."""
+        path.write_bytes(data[: len(data) // 2])
+        left.clear()
+        left.update(
+            {f.relative_to(version): f.read_bytes() for f in version.rglob("*") if f.is_file()}
+        )
+        raise RuntimeError("killed")
+
+    def as_killed() -> None:
+        # The kill's state in place of what the rollback tidied.
+        for name, data in left.items():
+            (version / name).parent.mkdir(parents=True, exist_ok=True)
+            (version / name).write_bytes(data)
+
+    copyfile, write_text = shutil.copyfile, Path.write_text
+
+    def copy_killed(source, target, *args, **kwargs):
+        if Path(target).parent == version and Path(target).name.startswith("checks.json"):
+            killed(Path(target), Path(source).read_bytes())
+        return copyfile(source, target, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "copyfile", copy_killed)
+    with pytest.raises(RuntimeError, match="killed"):
+        main(version_argv(runs))
+    monkeypatch.setattr(shutil, "copyfile", copyfile)
+    # Killed halfway through checks.json: no part-copied checks.json under its own name.
+    assert Path("checks.json") not in left
+    as_killed()
+
+    def write_killed(path, data, *args, **kwargs):
+        if path.parent == version and path.name.startswith("dossier.md"):
+            killed(path, data.encode())
+        return write_text(path, data, *args, **kwargs)
+
+    # The retry is killed halfway through dossier.md: no part-written dossier.md marks the record published.
+    monkeypatch.setattr(Path, "write_text", write_killed)
+    with pytest.raises(RuntimeError, match="killed"):
+        main(version_argv(runs))
+    monkeypatch.setattr(Path, "write_text", write_text)
+    assert Path("dossier.md") not in left
+    as_killed()
+    # The same runs finish it, and nothing temporary is left in the record.
+    assert main(version_argv(runs)) == 0
+    assert sha256_file(version / "checks.json") == sha256_file(
+        runs["run"] / "signals" / NAME / "checks.json"
+    )
+    assert (version / "dossier.md").read_text() == dossier.render(version)
+    assert not [f for f in version.rglob("*") if f.name.endswith(".part")]
 
 
 def test_a_version_is_drafted_beside_its_previous_record(tmp_path, monkeypatch):
@@ -1859,6 +1935,7 @@ def test_dossier_says_what_changed(tmp_path, monkeypatch):
         "hlsp_qlp_v01_llc.fits replaced by hlsp_qlp_v02_llc.fits)." in changes
     )
     assert "S2 (SPOC kept, TESS-SPOC not taken)" in changes
+    assert "better product" not in changes
     # A window in a sector the light curve already holds was not a prediction.
     assert "The windows for S110 under Next TESS looks are post-dictions" in changes
     # What a fresh snapshot changed, read from the two checks.json files alone.
@@ -1909,6 +1986,22 @@ def test_dossier_says_what_changed(tmp_path, monkeypatch):
     # The M3 record renders as it did.
     assert dossier.render(signal) == m3_text
     assert "Changes since" not in m3_text and "preregistered test" not in m3_text
+    # A later version can take a better product for a sector an earlier re-vet added, or keep it as first fetched.
+    merge = json.loads((version / "merge.json").read_text())
+    qlp = {**merge["1"]["sectors"]["110"]["fresh"], "provenance": "QLP"}
+    spoc = merge["1"]["sectors"]["110"]["fresh"]
+    merge["1"]["sectors"] |= {
+        "110": {"status": "upgraded", "base": qlp, "fresh": spoc},
+        "111": {"status": "kept_earlier", "base": spoc, "fresh": qlp},
+    }
+    (version / "merge.json").write_text(json.dumps(merge))
+    changes = " ".join(section(dossier.render(version), "Changes since the M3 record").split())
+    assert "Sectors added: S65 (SPOC)." in changes
+    assert (
+        "Replaced by a better product (sectors an earlier re-vet added): S110 (QLP replaced by SPOC). Kept as first "
+        "fetched though the new fetch found another product: S2 (SPOC kept, TESS-SPOC not taken) and S111 (SPOC "
+        "kept, QLP not taken)." in changes
+    )
 
 
 def predictions_package(tmp_path: Path, vetting_run: Path, record: Path) -> Path:
@@ -1933,6 +2026,7 @@ def predictions_package(tmp_path: Path, vetting_run: Path, record: Path) -> Path
     path = tmp_path / "data" / "runs" / PACKAGE
     path.mkdir(parents=True)
     references = {
+        "judged_by": prereg.JUDGED_BY.isoformat(),
         "test": {
             "holdout": crit_vet["holdout"],
             "core_fraction": crit_vet["depth"]["core_fraction"],
@@ -2023,6 +2117,24 @@ def test_the_fetch_date_is_known_only_for_a_light_curve_a_finished_revet_fetch_r
     with pytest.raises(SystemExit, match="so when it was fetched is unknown"):
         main(prereg_argv(runs, package, today))
     assert prereg_runs(tmp_path) == {own}
+
+
+def test_vetting_prereg_names_a_predicted_sector_whose_product_the_test_cant_use(
+    tmp_path, monkeypatch, capsys
+):
+    m3, repo = published_m3(tmp_path, monkeypatch)
+    package = predictions_package(tmp_path, m3["run"], repo / "results" / "vetting" / NAME)
+    first = int(pd.read_csv(package / "predictions.csv")["sector"].min())
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path, sector=first, product="QLP"))
+    capsys.readouterr()
+    assert main(prereg_argv(runs, package, dt.datetime.now(dt.UTC).date().isoformat())) == 0
+    [made] = prereg_runs(tmp_path)
+    result = json.loads((made / "signals" / NAME / "prereg.json").read_text())
+    assert result["untestable_products"] == {str(first): "QLP"}
+    assert (
+        f"{NAME}: S{first} holds QLP, which the package's test can't use (only SPOC 2-min or TESS-SPOC data can test "
+        "it); a later re-vet replaces it once fetch finds a better product"
+    ) in capsys.readouterr().out.splitlines()
 
 
 def test_a_version_of_a_predicted_signal_carries_the_preregistered_test(

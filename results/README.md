@@ -293,30 +293,34 @@ holds, as above, from runs made from its own vetting run, and these:
   for byte, since a re-vet carries the pixel check rather than rerunning it. That provenance names the M3 vetting run,
   not the version's; the dossier says the check was carried.
 - `merge.json` and `provenance-merge.json`: what the revet fetch run that wrote the vetting run's light curve did, and
-  that run's `provenance.json`, whose summary counts the stars and lists those that `failed` (no sector added or
-  redelivered, so no light curve). `merge.json` holds every star of that run, by TIC: `base_sha256`, the sha256 of the
-  light curve it merged onto (for the version's star, the one the previous record's vetting run read); `lc_sha256`,
-  the merged light curve's, null for a star that failed; `fetch`, the fetch's status and problems; `unfetched`, the
-  sectors fetched with problems that got no file; and `sectors`, each sector's status with both products (provenance,
-  S3 key, sha256 and timing flag): `kept` (the earlier file), `added` (a sector only the new fetch has),
-  `redelivered` (the same product again, clean, over a timing-suspect file) or `kept_m2` (another file found and not
-  taken). `sectors` is null for a star whose fetch got nothing.
+  that run's `provenance.json`, whose summary counts the stars and lists those that `failed` (no sector added,
+  redelivered or upgraded, so no light curve). `merge.json` holds every star of that run, by TIC: `base_sha256`, the
+  sha256 of the light curve it merged onto (for the version's star, the one the previous record's vetting run read);
+  `m2_sectors`, the sectors of the light curve M2 fetched, which the M3 record was vetted on; `lc_sha256`, the merged
+  light curve's, null for a star that failed; `fetch`, the fetch's status and problems; `unfetched`, the sectors
+  fetched with problems that got no file; and `sectors`, each sector's status with both products (provenance, S3 key,
+  sha256 and timing flag): `kept` (the earlier file), `added` (a sector only the new fetch has), `redelivered` (the
+  same product again, clean, over a timing-suspect file), `upgraded` (a better product over a sector an earlier re-vet
+  added), or `kept_m2` and `kept_earlier` (another file found and not taken, over one of M2's sectors or one an
+  earlier re-vet added). `sectors` is null for a star whose fetch got nothing.
 - For a signal a package under `predictions/` predicts, `prereg.json` and `provenance-prereg.json`: the preregistered
   test of its new season ([decision 0040](../docs/decisions/0040-predictions-for-held-signals.md)) and the run of
   `tess-hunt vetting prereg` that made it. `prereg.json` gives the `signal` (its name and TIC); the `result`
   (`replicated`, `missed`, `untested` or `pending`), the season's `status` and, for an untested or pending result, its
   `reason`; the `predicted_sectors`, the `package` and the `vetting_run`; the day it was judged as of (`as_of`), the
   judging date (`judged_by`) and the day the light curve's revet fetch run started (`fetched`, null for the package's
-  own light curve); and, once the season is judged, the `season` and the depths and statistics the test compared. The
-  provenance's `skipped` names each signal of the vetting run it left out because an earlier version had judged it,
-  with that version and its result. A result once judged stands: every later version holds the judging version's two
-  files byte for byte, and its dossier says which version judged it.
+  own light curve); each predicted sector whose product the package's test can't use, with that product
+  (`untestable_products`, which a later re-vet can replace with a better one); and, once the season is judged, the
+  `season` and the depths and statistics the test compared. The provenance's `skipped` names each signal of the vetting
+  run it left out because an earlier version had judged it, with that version and its result. A result once judged
+  stands: every later version holds the judging version's two files byte for byte, and its dossier says which version
+  judged it.
 
-A version's `dossier.md` names the version in its title. A section after the call's line links the version before it
-and says what changed: the sectors added, redelivered, and kept though another product was found; the windows it
-lists for sectors its light curve already holds, which are post-dictions; a carried pixel check; and the masked rows,
-catalogued rows and novelty matches that differ from the previous record's, with both catalog snapshots named. It
-gives the preregistered test's result beside vet-v3's own held-out result.
+A version's `dossier.md` names the version in its title. A section after the call's line links the version before it and
+says what changed: the sectors added, redelivered, replaced by a better product, and kept though another product was
+found; the windows it lists for sectors its light curve already holds, which are post-dictions; a carried pixel check;
+and the masked rows, catalogued rows and novelty matches that differ from the previous record's, with both catalog
+snapshots named. It gives the preregistered test's result beside vet-v3's own held-out result.
 
 ## DDT proposals
 

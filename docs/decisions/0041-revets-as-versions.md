@@ -12,6 +12,12 @@
   judging date completes no season; `vetting prereg` leaves out a signal an earlier version judged and judges the rest
   of its run (2026-10-28); and a fetch date holds only for the light curve its revet fetch run wrote, so `publish`
   takes only that run as `--lc-run` (2026-10-28).
+  Amended 2026-10-29, on the M4 milestone review's findings, with the maintainer's go-ahead for the fixes: a sector an
+  earlier re-vet added takes a better product when a later fetch has one, so a predicted sector first fetched as QLP
+  can still be tested once SPOC 2-min or TESS-SPOC data land; `vetting prereg` names a predicted sector whose product
+  the package's test can't use; the test refuses a package whose judging date is not the code's and a judged season
+  that holds a training sector; and a published file is written under a temporary name and renamed, so a killed
+  publish leaves each file absent or whole.
 
 ## Context
 
@@ -28,12 +34,12 @@ judged by that prediction, not by a fresh refit.
 
 - **Never overwrite a light curve a run read.** `tess-hunt revet fetch` fetches each star again and writes the merged
   light curve into its own run's `lc/`, with `merge.json`: per star, per sector, its status, both products and the
-  sha256 of the light curve it merged onto, and the sectors it fetched with problems and got no file for
-  (`unfetched`). It merges onto the bytes it recorded as input `base_light_curve_<tic>`, read once before the fetch,
-  and refuses a file that changed after it recorded it. A star whose fetch got nothing, or added or redelivered no
-  sector, gets no light curve and fails the run, which names its `unfetched` sectors. It refuses fetch criteria with no
-  `[[fetch.timing_suspect]]` rules, under which every product would read as clean and a suspect product delivered
-  again as a redelivery. `vetting run --lc-dir DIR` vets `DIR/<tic>.npz`, records each file's sha256 as input
+  sha256 of the light curve it merged onto, and the sectors it fetched with problems and got no file for (`unfetched`).
+  It merges onto the bytes it recorded as input `base_light_curve_<tic>`, read once before the fetch, and refuses a file
+  that changed after it recorded it. A star whose fetch got nothing, or added, redelivered or upgraded no sector, gets
+  no light curve and fails the run, which names its `unfetched` sectors. It refuses fetch criteria with no
+  `[[fetch.timing_suspect]]` rules, under which every product would read as clean and a suspect product delivered again
+  as a redelivery. `vetting run --lc-dir DIR` vets `DIR/<tic>.npz`, records each file's sha256 as input
   `light_curve_<tic>` as before, and records the directory (`lc_dir`, scrubbed as provenance is), the revet fetch run
   whose `lc/` it is (`revet_run`) and the catalog snapshot's name (`catalogs`). `vetting triceratops`, `vetting
   second-list` and `vetting prereg` read the light curves from `lc_dir` and refuse a file whose sha256 is not the one
@@ -45,6 +51,16 @@ judged by that prediction, not by a fresh refit.
   ruling). Any other change is not taken (`kept_m2`): a better product appearing later, say TESS-SPOC reaching past
   S85 over a QLP sector, or a suspect product replaced by another suspect one. A source fetched before fetch flagged
   timing can't show it was suspect, so it is kept.
+- **A sector a re-vet added takes a better product later** (2026-10-29). Such a sector is not in the light curve the
+  M3 record was vetted on, so the rule above does not hold it. When a later fetch has a product for it that comes
+  earlier in fetch's product order (SPOC 2-min, then TESS-SPOC, then QLP, the shorter cadence first within each) and
+  is not timing-suspect, that product replaces it (`upgraded`); otherwise it is kept as the earlier re-vet fetched it
+  (`kept`, or `kept_earlier` when the new fetch found another file), and a redelivery is taken as above. Without this,
+  a predicted sector a re-vet took as QLP would stay QLP in every later version and never reach the preregistered
+  test. `merge.json` gives each star's M2 sectors (`m2_sectors`): the base's own sectors when the base is the light
+  curve M2 fetched, or those the revet fetch run that wrote the base recorded. `revet fetch` refuses a base from a
+  revet fetch run that recorded none, and `publish` refuses a version whose `m2_sectors` are not the sectors of the M3
+  record's `checks.json`.
 - **Same signal, same rules.** A version vets the previous record's signal at the same ephemeris, on the same star,
   as the same kind, under the same criteria files (their sha256), with the same triage run, and `publish` refuses any
   other. Its evidence-only twin must have read the same light curve and catalog snapshot as its vetting run. vet-v3's
@@ -74,9 +90,10 @@ judged by that prediction, not by a fresh refit.
   vetting run's light curve is not the revet fetch run's file for the star; when `--lc-run` is not the revet fetch run
   the vetting run read its light curves from (its `revet_run`), whose start is the fetch date the preregistered test
   read (the controller's ruling); and when the revet fetch run merged onto another light curve than the one the
-  previous record's vetting run read (the controller's ruling). An interrupted
-  publish, which left files but no `dossier.md`, is finished by the same runs, since a file the same run made again is
-  no change and any other is refused. Nothing outside `r<N>` changes but
+  previous record's vetting run read (the controller's ruling). Each file, `dossier.md` included, is written to a
+  temporary name beside it and renamed onto its own, so even a killed publish leaves each file absent or whole
+  (2026-10-29). An interrupted publish, which left files but no `dossier.md`, is finished by the same runs, since a
+  file the same run made again is no change and any other is refused. Nothing outside `r<N>` changes but
   `results/vetting/README.md`, which has one row per signal: its latest version whose call stands, with links to the
   versions before it. With no version published it is the M3 README unchanged. `calls.problems` judges a version as it
   judges an M3 record, from the files in its directory; its call names the signal, not `r<N>`.
@@ -103,7 +120,13 @@ judged by that prediction, not by a fresh refit.
   revet fetch run wrote (the vetting run's `revet_run`, whose `merge.json` gives that light curve's sha256 for the
   star) is refused, since when it was fetched is unknown. `--as-of` lies between the day the vetting run started and
   the day the test runs (the controller's ruling), so no result can be backdated to pending. It refuses criteria other
-  than the package's test and a package made on other criteria than the vetting run.
+  than the package's test and a package made on other criteria than the vetting run. It also refuses a package whose
+  `references.json` froze another judging date than `prereg.JUDGED_BY`, so the two can never disagree silently, and a
+  judged season that holds a sector of the package's training seasons: sectors between the training seasons and the
+  predicted ones (a timing-suspect sector redelivered clean, or one M2 never fetched) could chain them into one
+  season, and the test would then judge training cadences (both 2026-10-29). Each predicted sector whose product is
+  not among the package's `testable_with` is named in `prereg.json` (`untestable_products`) and in the run's output,
+  so the maintainer can wait for a better product, which a later re-vet takes for that sector.
 - **A result once judged stands** (decision 0040, "once per signal"; the controller's ruling). The earliest version
   whose `prereg.json` is not pending judged the signal. Every later version carries that version's `prereg.json` and
   `provenance-prereg.json` byte for byte, as a second-list row's version carries its pixel check: `--prereg` names the
@@ -120,12 +143,14 @@ judged by that prediction, not by a fresh refit.
   1. `tess-hunt targets tics --from CSV`, the star's TIC in a `tic` column: its targets and products tables.
   2. `tess-hunt revet fetch --targets TARGETS --products PRODUCTS --base-lc-dir DIR`, with `DIR` the directory of the
      light curve the previous record's vetting run read (the shared cache for r2 while it holds that file, the
-     previous version's revet fetch run's `lc/` after).
+     previous version's revet fetch run's `lc/` after, whose `merge.json` gives M2's sectors).
   3. `tess-hunt catalogs refresh --targets TARGETS_RUN`, the targets run the snapshots have used: a new snapshot.
   4. `tess-hunt vetting run --signals CSV --targets ... --catalogs NEW_SNAPSHOT --triage-run TRIAGE_RUN --lc-dir
      REVET_RUN/lc`, and its evidence-only twin with `--include-suspect`.
   5. For a signal a package predicts and no earlier version judged: `tess-hunt vetting prereg --run VETTING_RUN
-     --package results/predictions/<run id> --catalogs NEW_SNAPSHOT --as-of DATE`, with `DATE` the day it runs.
+     --package results/predictions/<run id> --catalogs NEW_SNAPSHOT --as-of DATE`, with `DATE` the day it runs. If it
+     names a predicted sector whose product the test can't use, the maintainer may wait for a re-vet whose fetch finds
+     a better product for that sector before publishing a version.
   6. `tess-hunt vetting triceratops --run VETTING_RUN`, `tess-hunt vetting literature --run VETTING_RUN` and `tess-hunt
      vetting titles --literature LITERATURE_RUN`.
   7. `tess-hunt vetting dossier --version N --run ... --lc-run REVET_RUN --signals NAME --out DIR`, with the other
@@ -149,12 +174,22 @@ judged by that prediction, not by a fresh refit.
 - `merge.json` holds every star of its revet fetch run; a version holds the whole file, as its run wrote it.
 - Which predicted sectors hold usable data is read from the light curve's products; a product the package never named
   (the project's own FFI photometry) is not usable until a decision says how the test applies to it (0040).
+- A better product replaces a sector a re-vet added only when a later re-vet's fetch finds it, and the judging date
+  applies to that fetch: a predicted sector that holds QLP until the last re-vet fetched before 2027-12-31 leaves its
+  season untested, whatever lands after.
+- Only M2's sectors are protected from a better product. A version's light curve can therefore differ from the one
+  before it in a sector an earlier re-vet added; its dossier lists each such sector.
 
 ## Evidence
 
 - [tests/test_revet.py](../../tests/test_revet.py): `test_merge_keeps_m2_sectors_and_takes_only_a_suspect_redelivery`
   (a better product over an old sector, a suspect sector replaced by another suspect file, and TESS-SPOC over a suspect
-  QLP sector are all kept as M2 fetched them), `test_revet_fetch_fails_a_star_it_got_no_new_sector_for`,
+  QLP sector are all kept as M2 fetched them),
+  `test_merge_takes_a_better_product_only_for_a_sector_an_earlier_revet_added` (r2 adds QLP for S112, r3 takes SPOC
+  for it, while M2's S38 keeps TESS-SPOC; a worse product and a timing-suspect one are not taken),
+  `test_a_revet_onto_a_revets_light_curve_takes_a_better_product_for_a_sector_a_revet_added` (the same through `revet
+  fetch`, M2's sectors read from r2's `merge.json`, and a base whose run recorded none refused),
+  `test_revet_fetch_fails_a_star_it_got_no_new_sector_for`,
   `test_revet_fetch_refuses_fetch_criteria_without_timing_rules`, `test_revet_fetch_merges_the_base_it_recorded`,
   `test_revet_fetch_refuses_a_base_rewritten_after_it_was_recorded`.
 - [tests/test_vetting.py](../../tests/test_vetting.py): `test_vetting_run_reads_lc_dir`,
@@ -165,10 +200,12 @@ judged by that prediction, not by a fresh refit.
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_the_committed_readme_is_its_render`,
   `test_readme_lists_the_latest_standing_call`, `test_version_published_beside_the_m3_record` (every M3 file's bytes
   unchanged), `test_version_refuses_a_gap_or_an_existing_version`,
-  `test_version_refuses_a_light_curve_not_from_its_lc_run` (the evidence-only twin's included, and another revet
-  fetch run holding the same bytes), `test_version_keeps_the_previous_records_triage_run`,
-  `test_an_interrupted_version_is_finished`, `test_a_version_is_drafted_beside_its_previous_record`,
-  `test_dossier_says_what_changed`,
+  `test_version_refuses_a_light_curve_not_from_its_lc_run` (the evidence-only twin's included, another revet fetch
+  run holding the same bytes, and M2 sectors other than the M3 record's),
+  `test_version_keeps_the_previous_records_triage_run`,
+  `test_an_interrupted_version_is_finished`, `test_a_killed_version_publish_leaves_each_file_absent_or_whole`,
+  `test_a_version_is_drafted_beside_its_previous_record`, `test_dossier_says_what_changed` (an upgraded sector
+  included), `test_vetting_prereg_names_a_predicted_sector_whose_product_the_test_cant_use`,
   `test_the_fetch_date_is_known_only_for_a_light_curve_a_finished_revet_fetch_run_wrote`,
   `test_a_version_of_a_predicted_signal_carries_the_preregistered_test` (`--as-of` before the vetting run's start or
   after today, `--prereg` with no published package, a light curve fetched after the judging date untested through
@@ -179,5 +216,6 @@ judged by that prediction, not by a fresh refit.
   and r3).
 - [tests/test_prereg.py](../../tests/test_prereg.py): `test_prereg_results` (replicated, missed, untested for a family
   without training data, pending before 2027-12-31 with a sector missing and untested from it on, a light curve
-  fetched on or after it untested, the training gates from the package's counts),
+  fetched on or after it untested, the training gates from the package's counts, a package with another judging
+  date refused), `test_the_judged_season_holds_no_training_sector`,
   `test_prereg_equals_holdout_on_an_unchanged_light_curve`.

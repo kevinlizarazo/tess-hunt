@@ -14,7 +14,7 @@ from tess_hunt import revet
 from tess_hunt.cli import main
 from tess_hunt.fetch import fetch_star
 from tess_hunt.lightcurve import LightCurve
-from tess_hunt.mast import MAST_API
+from tess_hunt.mast import MAST_API, PRODUCT_COLUMNS, S3_BASE
 from tess_hunt.provenance import sha256_file
 from tess_hunt.revet import merge
 
@@ -64,7 +64,7 @@ def test_merge_keeps_m2_sectors_and_takes_only_a_suspect_redelivery():
             112: ("SPOC", "spoc/s0112", "spoc 112", False),
         },
     )
-    merged, record = merge(base, fresh)
+    merged, record = merge(base, fresh, sorted(base.sources, key=int))
 
     assert {s: r["status"] for s, r in record.items()} == {
         "38": "kept_m2",
@@ -96,6 +96,64 @@ def test_merge_keeps_m2_sectors_and_takes_only_a_suspect_redelivery():
     assert record["99"]["fresh"] == product(fresh, 99)
     assert record["100"]["base"]["sha256"] != record["100"]["fresh"]["sha256"]
     assert record["112"] == {"status": "added", "base": None, "fresh": product(fresh, 112)}
+
+
+def test_merge_takes_a_better_product_only_for_a_sector_an_earlier_revet_added():
+    m3 = with_keys(
+        make_lc(sectors=(38, 99), seed=1, tic=7),
+        {
+            38: ("TESS-SPOC", "tess-spoc/s0038", "tess-spoc 38", False),
+            99: ("QLP", "qlp/s0099_v01", "qlp 99 v01", True),
+        },
+    )
+    m2 = sorted(m3.sources, key=int)
+    # r2: QLP is the only product for S112 so far, and SPOC 2-min has reached S38.
+    r2_fresh = with_keys(
+        make_lc(sectors=(38, 99, 112, 113, 114), seed=2, tic=7),
+        {
+            38: ("SPOC", "spoc/s0038", "spoc 38", False),
+            99: ("QLP", "qlp/s0099_v01", "qlp 99 v01", True),
+            112: ("QLP", "qlp/s0112_v01", "qlp 112", False),
+            113: ("TESS-SPOC", "tess-spoc/s0113", "tess-spoc 113", False),
+            114: ("QLP", "qlp/s0114_v01", "qlp 114", False),
+        },
+    )
+    r2, record = merge(m3, r2_fresh, m2)
+    assert {s: r["status"] for s, r in record.items()} == {
+        "38": "kept_m2",
+        "99": "kept",
+        "112": "added",
+        "113": "added",
+        "114": "added",
+    }
+    # r3: SPOC 2-min data for S112 have landed; S113's SPOC file failed, so fetch fell back to QLP; S114's TESS-SPOC
+    # file is timing-suspect.
+    r3_fresh = with_keys(
+        make_lc(sectors=(38, 99, 112, 113, 114), seed=3, tic=7),
+        {
+            38: ("SPOC", "spoc/s0038", "spoc 38", False),
+            99: ("QLP", "qlp/s0099_v01", "qlp 99 v01", True),
+            112: ("SPOC", "spoc/s0112", "spoc 112", False),
+            113: ("QLP", "qlp/s0113_v01", "qlp 113", False),
+            114: ("TESS-SPOC", "tess-spoc/s0114", "tess-spoc 114", True),
+        },
+    )
+    r3, record = merge(r2, r3_fresh, m2)
+    assert {s: r["status"] for s, r in record.items()} == {
+        # M2's sector keeps its rule: a better product appearing later is not taken.
+        "38": "kept_m2",
+        "99": "kept",
+        "112": "upgraded",
+        "113": "kept_earlier",
+        "114": "kept_earlier",
+    }
+    taken = ((38, m3), (99, m3), (112, r3_fresh), (113, r2_fresh), (114, r2_fresh))
+    for sector, source in taken:
+        got, want = in_sector(r3, sector), in_sector(source, sector)
+        assert all(np.array_equal(g, w) for g, w in zip(got, want, strict=True)), sector
+        assert r3.sources[str(sector)] == source.sources[str(sector)], sector
+    assert record["112"]["base"]["provenance"] == "QLP"
+    assert record["112"]["fresh"]["provenance"] == "SPOC"
 
 
 def revet_inputs(tmp_path: Path, monkeypatch, served: dict) -> tuple[Path, list[str]]:
@@ -194,7 +252,7 @@ def test_revet_fetch_fails_a_star_it_got_no_new_sector_for(tmp_path, monkeypatch
     assert record["lc_sha256"] is None and record["unfetched"] == ["100"]
     assert json.loads((run / "provenance.json").read_text())["summary"]["failed"] == [tf.TIC]
     out = capsys.readouterr().out
-    assert f"TIC {tf.TIC}: no sector added or redelivered" in out and "S100" in out
+    assert f"TIC {tf.TIC}: no sector added, redelivered or upgraded" in out and "S100" in out
 
 
 def test_revet_fetch_names_the_sectors_a_merged_star_got_no_file_for(tmp_path, monkeypatch, capsys):
@@ -268,3 +326,74 @@ def test_revet_fetch_refuses_a_base_rewritten_after_it_was_recorded(tmp_path, mo
     with pytest.raises(SystemExit, match=f"light curve for TIC {tf.TIC} in --base-lc-dir changed"):
         main(argv)
     assert not (only_run(tmp_path) / "lc").exists()
+
+
+def product_row(sector: int, provenance: str, fixture: Path, key: str) -> tuple:
+    names = {
+        "QLP": f"hlsp_qlp_tess_ffi_s{sector:04d}-{tf.TIC:016d}_tess_v01_llc.fits",
+        "TESS-SPOC": f"hlsp_tess-spoc_tess_phot_{tf.TIC:016d}-s{sector:04d}_tess_v1_lc.fits",
+    }
+    size = fixture.stat().st_size
+    return (tf.TIC, sector, provenance, 1800.0, names[provenance], f"u-{key}", size, key)
+
+
+def revet_fetch(tmp_path: Path, base_dir: Path, rows: list[tuple]) -> Path:
+    """A revet fetch run onto `base_dir` from a products table of `rows`."""
+    targets, table = tmp_path / "targets.parquet", tmp_path / "products.parquet"
+    pd.DataFrame({"tic": [tf.TIC]}).to_parquet(targets)
+    pd.DataFrame(rows, columns=PRODUCT_COLUMNS).to_parquet(table)
+    before = set((tmp_path / "data" / "runs").glob("*-revet-fetch-*"))
+    argv = [
+        *("revet", "fetch", "--targets", str(targets), "--products", str(table)),
+        *("--base-lc-dir", str(base_dir), "--criteria", str(SEARCH)),
+    ]
+    assert main(argv) == 0
+    [run] = set((tmp_path / "data" / "runs").glob("*-revet-fetch-*")) - before
+    return run
+
+
+def test_a_revet_onto_a_revets_light_curve_takes_a_better_product_for_a_sector_a_revet_added(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TESS_HUNT_DATA", str(tmp_path / "data"))
+    served = {S3_BASE + key: tf.QLP.read_bytes() for key in ("k/qlp1", "k/qlp112")}
+    served |= {S3_BASE + key: tf.TSPOC.read_bytes() for key in ("k/tspoc1", "k/tspoc112")}
+    session = FakeSession(served)
+    monkeypatch.setattr(requests, "Session", lambda: session)
+    qlp = [product_row(1, "QLP", tf.QLP, "k/qlp1"), product_row(112, "QLP", tf.QLP, "k/qlp112")]
+    tspoc = [
+        product_row(1, "TESS-SPOC", tf.TSPOC, "k/tspoc1"),
+        product_row(112, "TESS-SPOC", tf.TSPOC, "k/tspoc112"),
+    ]
+    # M2 fetched S1 as QLP; r2 adds S112, for which QLP is all there is yet.
+    m2_dir = tmp_path / "data" / "lc"
+    first = pd.DataFrame(qlp[:1], columns=PRODUCT_COLUMNS)
+    fetch_star(tf.TIC, first, m2_dir, tf.FETCH, session=session)
+    r2 = revet_fetch(tmp_path, m2_dir, qlp)
+    star = json.loads((r2 / "merge.json").read_text())[str(tf.TIC)]
+    assert star["m2_sectors"] == ["1"]
+    assert {s: r["status"] for s, r in star["sectors"].items()} == {"1": "kept", "112": "added"}
+
+    # r3, onto r2's light curve: TESS-SPOC has reached both sectors. S112, which r2 added, takes it; M2's S1 does not.
+    r3 = revet_fetch(tmp_path, r2 / "lc", tspoc + qlp)
+    star = json.loads((r3 / "merge.json").read_text())[str(tf.TIC)]
+    assert star["m2_sectors"] == ["1"]
+    assert star["base_sha256"] == sha256_file(r2 / "lc" / f"{tf.TIC}.npz")
+    statuses = {s: r["status"] for s, r in star["sectors"].items()}
+    assert statuses == {"1": "kept_m2", "112": "upgraded"}
+    merged = LightCurve.load(r3 / "lc" / f"{tf.TIC}.npz")
+    m2 = LightCurve.load(m2_dir / f"{tf.TIC}.npz")
+    assert merged.sources["1"] == m2.sources["1"]
+    assert np.array_equal(merged.select(merged.sector == 1).flux, m2.flux)
+    assert merged.sources["112"]["provenance"] == "TESS-SPOC"
+
+    # A revet fetch run that recorded no M2 sectors is not merged onto: its sectors can't be told apart.
+    edited = json.loads((r3 / "merge.json").read_text())
+    del edited[str(tf.TIC)]["m2_sectors"]
+    # A finished run's files are read-only.
+    (r3 / "merge.json").chmod(0o644)
+    (r3 / "merge.json").write_text(json.dumps(edited))
+    runs = set((tmp_path / "data" / "runs").glob("*-revet-fetch-*"))
+    with pytest.raises(SystemExit, match=f"records no M2 sectors for TIC {tf.TIC}"):
+        revet_fetch(tmp_path, r3 / "lc", tspoc)
+    assert set((tmp_path / "data" / "runs").glob("*-revet-fetch-*")) == runs

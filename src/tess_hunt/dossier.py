@@ -1157,30 +1157,40 @@ def _light_curve_changes(r: Record) -> str:
     """What the revet fetch run's merge record says changed in the light curve (decision 0041)."""
     sectors = r.merge[str(r.checks["tic"])]["sectors"]
 
-    def listed(status: str, said) -> str:
+    def listed(statuses: tuple[str, ...], said) -> str:
         found = [
             said(int(s), x)
             for s, x in sorted(sectors.items(), key=lambda item: int(item[0]))
-            if x["status"] == status
+            if x["status"] in statuses
         ]
         return _words(found) or "none"
 
-    added = listed("added", lambda s, x: f"S{s} ({x['fresh']['provenance']})")
+    added = listed(("added",), lambda s, x: f"S{s} ({x['fresh']['provenance']})")
     redelivered = listed(
-        "redelivered",
+        ("redelivered",),
         lambda s, x: (
             f"S{s} ({x['base']['provenance']}, {_file(x['base'])} replaced by {_file(x['fresh'])})"
         ),
     )
+    upgraded = listed(
+        ("upgraded",),
+        lambda s, x: f"S{s} ({x['base']['provenance']} replaced by {x['fresh']['provenance']})",
+    )
     kept = listed(
-        "kept_m2",
+        ("kept_m2", "kept_earlier"),
         lambda s, x: f"S{s} ({x['base']['provenance']} kept, {x['fresh']['provenance']} not taken)",
+    )
+    # Only a sector an earlier re-vet added can be upgraded, so r2's dossier never has this sentence.
+    better = (
+        f" Replaced by a better product (sectors an earlier re-vet added): {upgraded}."
+        if upgraded != "none"
+        else ""
     )
     return (
         f"The light curve, from revet fetch run {r.provenance['merge']['run_id']} (`merge.json`), keeps every sector of "
         f"the earlier one as it was fetched, but for these. Sectors added: {added}. Redelivered (a timing-suspect "
-        f"product replaced by the same product's newer delivery): {redelivered}. Kept as first fetched though the new "
-        f"fetch found another product: {kept}."
+        f"product replaced by the same product's newer delivery): {redelivered}.{better} Kept as first fetched though "
+        f"the new fetch found another product: {kept}."
     )
 
 

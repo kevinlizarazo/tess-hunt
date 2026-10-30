@@ -556,7 +556,8 @@ def judge_signal(
     training gates. The result is replicated, missed or untested, or pending while a predicted sector has no data the
     test can use before `JUDGED_BY`. The season is judged once, complete: from `JUDGED_BY` on, one still missing a
     sector stays untested, and a light curve `fetched` on or after it completes none (decision 0041). `fetched` is
-    None for the light curve the package was made from."""
+    None for the light curve the package was made from. The result names each predicted sector whose product the test
+    can't use (`untestable_products`)."""
     found = json.loads((package / "references.json").read_text())
     if signal not in found["signals"]:
         raise ValueError(f"the package at {package.name} predicts no {signal}")
@@ -567,13 +568,28 @@ def judge_signal(
         raise ValueError(
             f"vet-v3's [holdout] as given is not the test the package froze for {signal}"
         )
+    # The package froze its judging date as it froze its test; the code's date must be that one.
+    if found["judged_by"] != JUDGED_BY.isoformat():
+        raise ValueError(
+            f"the package at {package.name} froze the judging date {found['judged_by']}, but prereg.JUDGED_BY is "
+            f"{JUDGED_BY}: a package is judged by the date it froze"
+        )
     rows = pd.read_csv(package / "predictions.csv")
     sectors = sorted(int(s) for s in rows.loc[rows["signal"] == signal, "sector"].unique())
+    # Said plainly, so a version can wait for a better product: a later re-vet takes one for such a sector.
+    other = {
+        str(s): product
+        for s in sectors
+        if s in prepared.noisy.sector
+        and (product := PRODUCTS.get(prepared.good.sources[str(s)]["provenance"]))
+        not in p["testable_with"]
+    }
     out = {
         "predicted_sectors": sectors,
         "as_of": as_of.isoformat(),
         "judged_by": JUDGED_BY.isoformat(),
         "fetched": None if fetched is None else fetched.isoformat(),
+        "untestable_products": other,
     }
 
     def untested(status: str, reason: str) -> dict:
@@ -625,6 +641,15 @@ def judge_signal(
             f"{signal}'s predicted sectors fall in {len(held)} seasons of the light curve, not one"
         )
     season = labels == held[0]
+    # Sectors between the training seasons and the predicted ones (a timing-suspect sector redelivered clean, or one
+    # M2 never fetched) can chain them into one season, which would then judge training cadences.
+    trained = {s for t in p["training_seasons"] for s in t["sectors"]}
+    shared = sorted(trained & {int(s) for s in np.unique(noisy.sector[season])})
+    if shared:
+        raise ValueError(
+            f"{signal}'s judged season holds the training sector(s) {_words(shared)}: sectors between the training "
+            "seasons and the predicted ones chain them into one season"
+        )
     row = judge(
         noisy,
         family_labels(noisy, crit_vet["families"]),

@@ -1136,6 +1136,18 @@ def cmd_prereg(args) -> int:
             "sha256": sha256_file(path),
         }
         print(f"{name}: {result['result']} ({result['status']})")
+        other = result["untestable_products"]
+        if other:
+            # A later re-vet takes a better product for such a sector (decision 0041), so the version can wait for it.
+            listed = prereg._words([f"S{s} holds {product}" for s, product in other.items()])
+            testable = prereg._either(predicted[name]["testable_with"])
+            takes = (
+                f"only {testable} data can test it" if testable else "no product's data can test it"
+            )
+            print(
+                f"{name}: {listed}, which the package's test can't use ({takes}); a later re-vet replaces it once "
+                "fetch finds a better product"
+            )
     for name, why in skipped.items():
         print(f"{name}: skipped, {why}")
     run.finish(
@@ -1583,6 +1595,14 @@ def _revet_files(
             f"revet fetch run {run_id} merged TIC {tic}'s sectors onto another light curve than the one the previous "
             "record's vetting run read"
         )
+    # A re-vet keeps M2's sectors as M2 fetched them but takes a better product for a sector a re-vet added, so the
+    # sectors it took as M2's must be those of the light curve the M3 record was vetted on.
+    first = json.loads((_signal_dir(previous) / "checks.json").read_text())["sources"]
+    if star.get("m2_sectors") != sorted(first, key=int):
+        raise SystemExit(
+            f"revet fetch run {run_id} took TIC {tic}'s M2 sectors as {star.get('m2_sectors')}, not those of the light "
+            f"curve the M3 record was vetted on ({sorted(first, key=int)})"
+        )
     return {
         "merge.json": lc_run / "merge.json",
         "provenance-merge.json": lc_run / "provenance.json",
@@ -1674,13 +1694,29 @@ def _tic(files: dict[str, Path]) -> int:
     return int(json.loads(files["checks.json"].read_text())["tic"])
 
 
+def _part(target: Path) -> Path:
+    """The temporary name a record's file is written to before it is renamed onto `target`."""
+    return target.with_name(target.name + ".part")
+
+
 def _copy(files: dict[str, Path], dest: Path) -> None:
+    # Each file goes to a temporary name and is renamed onto its own, as LightCurve.save writes, so a publish killed
+    # mid-copy leaves each file absent or whole: a part-copied file would be refused as another run's on the retry.
     for name, source in files.items():
         target = dest / name
         target.parent.mkdir(parents=True, exist_ok=True)
+        part = _part(target)
+        shutil.copyfile(source, part)
         # Run files are read-only; the copies are not.
-        shutil.copyfile(source, target)
-        target.chmod(0o644)
+        part.chmod(0o644)
+        part.replace(target)
+
+
+def _write(target: Path, text: str) -> None:
+    """`text` written to a temporary name and renamed onto `target`, so `target` is absent or whole."""
+    part = _part(target)
+    part.write_text(text)
+    part.replace(target)
 
 
 def _clear(draft: Path) -> None:
@@ -1863,9 +1899,11 @@ def cmd_publish(args) -> int:
             # copy them again.
             for name in new:
                 (dest / name).unlink(missing_ok=True)
+                _part(dest / name).unlink(missing_ok=True)
             raise
-    # Last of the record: the README lists only a directory that holds it.
-    (dest / "dossier.md").write_text(text)
+    # Last of the record: the README lists only a directory that holds it. A part-written dossier.md would mark the
+    # record published.
+    _write(dest / "dossier.md", text)
     (root / "README.md").write_text(readme)
     print(f"published {args.name} -> {where} ({len(new)} new file(s), dossier.md, README.md)")
     for name, why in left.items():
