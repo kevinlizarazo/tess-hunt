@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import re
 import tomllib
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import pandas as pd
 import pytest
 import test_vetting as tv
 
-from tess_hunt import claims
+from tess_hunt import claims, prereg
 from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.claims import Claim
 from tess_hunt.cli import main
@@ -550,14 +551,50 @@ def test_claims_refuses_a_signal_the_literature_run_has_no_record_of(tmp_path, m
     assert claims_runs(tmp_path) == []
 
 
-def test_the_claims_file_dates_each_predicted_signal_by_its_deposit():
-    found = claims.load_claims(ROOT / "results" / "claims.toml")
+def production(argv: list[str], *made: Path) -> list[str]:
+    for run in made:
+        edit(run, lambda p: p.update(production=True))
+    return [*argv, "--production"]
+
+
+def test_a_production_run_refuses_a_claims_file_from_elsewhere(tmp_path, monkeypatch):
+    argv, vetting_run, literature_run, _ = runs(tmp_path, monkeypatch)
+    elsewhere = re.escape(str(tmp_path / "claims.toml"))
+    with pytest.raises(
+        SystemExit, match=f"reads results/claims.toml from this checkout, not {elsewhere}"
+    ):
+        main(production(argv, vetting_run, literature_run))
+    assert claims_runs(tmp_path) == []
+
+
+def test_a_production_run_refuses_an_uncommitted_claims_file(tmp_path, monkeypatch):
+    argv, vetting_run, literature_run, _ = runs(tmp_path, monkeypatch)
+    committed = ROOT / claims.CLAIMS
+    argv[argv.index("--claims") + 1] = str(committed)
+    monkeypatch.setattr(prereg, "_uncommitted", lambda path: path.resolve() == committed.resolve())
+    with pytest.raises(SystemExit, match="results/claims.toml has changes that are not committed"):
+        main(production(argv, vetting_run, literature_run))
+    assert claims_runs(tmp_path) == []
+
+
+def test_the_claims_file_dates_each_held_signal_and_no_killed_one():
+    found = claims.load_claims(ROOT / claims.CLAIMS)
     root = ROOT / "results" / "predictions"
-    dois = tomllib.loads((root / "dois.toml").read_text())
-    for run_id, entry in dois.items():
-        predicted = set(pd.read_csv(root / run_id / "predictions.csv")["signal"])
-        for name in predicted:
+    deposited = set()
+    for run_id, entry in tomllib.loads((root / "dois.toml").read_text()).items():
+        for name in set(pd.read_csv(root / run_id / "predictions.csv")["signal"]):
             assert found[name] == Claim(name, entry["published"], f"https://doi.org/{entry['doi']}")
+            deposited.add(name)
+    assert len(deposited) == 6
+    # Held signals outside the deposit: the day the repository was made public, as the maintainer states it.
+    public = {"146282666-1", "164767175-1", "277774870-1", "370977908-1"}
+    for name in public:
+        assert found[name] == Claim(
+            name, dt.date(2026, 10, 28), "https://github.com/kevinlizarazo/tess-hunt"
+        )
+    assert set(found) == deposited | public
+    for name in ("44926986-1", "48010903-1", "410399327-1", "441010857-1"):
+        assert name not in found, f"{name} was killed"
 
 
 @pytest.mark.parametrize(

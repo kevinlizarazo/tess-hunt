@@ -26,3 +26,22 @@ record = "https://doi.org/10.5281/zenodo.23745923"
 ["438857197-1"]
 date = 2026-10-28
 record = "https://doi.org/10.5281/zenodo.23745923"
+
+# For the four signals below, the date is the maintainer's statement of the day the repository was made public,
+# because GitHub keeps no public record of the switch.
+
+["146282666-1"]
+date = 2026-10-28
+record = "https://github.com/kevinlizarazo/tess-hunt"
+
+["164767175-1"]
+date = 2026-10-28
+record = "https://github.com/kevinlizarazo/tess-hunt"
+
+["277774870-1"]
+date = 2026-10-28
+record = "https://github.com/kevinlizarazo/tess-hunt"
+
+["370977908-1"]
+date = 2026-10-28
+record = "https://github.com/kevinlizarazo/tess-hunt"

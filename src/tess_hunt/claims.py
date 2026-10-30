@@ -17,10 +17,11 @@ from tess_hunt.catalogs import snapshot_inputs
 from tess_hunt.config import Criteria, catalogs_dir, load_criteria
 from tess_hunt.ephemeris import Ephemeris
 from tess_hunt.novelty import check_novelty
-from tess_hunt.provenance import sha256_file, start_run
+from tess_hunt.provenance import repo_root, sha256_file, start_run
 from tess_hunt.serialize import jsonable
 from tess_hunt.threshold import load_v2_catalog
 
+CLAIMS = "results/claims.toml"
 # Where a literature record keeps ExoFOP's rows of each kind, and the field naming the listing in them.
 ROWS = {"TOI": ("tois", "toi"), "CTOI": ("ctois", "ctoi")}
 # The day ExoFOP first listed a row: the TOI catalog's alert date, the CTOI's creation day (pin P2).
@@ -200,8 +201,8 @@ def _snapshot(made: dict, run_id: str) -> Path:
 
 
 def cmd_claims(args) -> int:
-    # vetting imports this module for its parser.
-    from tess_hunt import vetting
+    # vetting imports this module for its parser, and prereg imports vetting.
+    from tess_hunt import prereg, vetting
 
     crit_search, crit_vet = load_criteria(args.criteria_search), load_criteria(args.criteria_vet)
     # Every refusal comes before the run starts, so it leaves no unfinished run directory.
@@ -218,13 +219,23 @@ def cmd_claims(args) -> int:
         raise SystemExit(f"literature run {literature_id} has no record of {', '.join(unsearched)}")
     vetted = vetting._vetted(args.run, names)
     snapshot = _snapshot(made, run_id)
-    claimed = load_claims(args.claims)
+    committed = repo_root() / CLAIMS
+    claims_file = args.claims or committed
+    # start_run's clean-tree check covers the code, not results/, so a production run could otherwise read claims from
+    # another checkout or an edit no decision record made.
+    if args.production and claims_file.resolve() != committed.resolve():
+        raise SystemExit(f"a production run reads {CLAIMS} from this checkout, not {claims_file}")
+    if args.production and prereg._uncommitted(committed):
+        raise SystemExit(
+            f"{CLAIMS} has changes that are not committed; a production run needs it committed"
+        )
+    claimed = load_claims(claims_file)
     known = load_v2_catalog(snapshot)
     run = start_run("vetting-claims", [crit_search, crit_vet], args.production, sys.argv)
     run.record("vetting_run", run_id)
     run.record("literature_run", literature_id)
     run.record("catalogs", snapshot.name)
-    run.record_input("claims", args.claims)
+    run.record_input("claims", claims_file)
     run.record_input("vetting_provenance", args.run / "provenance.json")
     run.record_input("literature_provenance", args.literature / "provenance.json")
     for name, path in snapshot_inputs(snapshot).items():
@@ -286,8 +297,7 @@ def add_parser(modes) -> None:
     c.add_argument(
         "--claims",
         type=Path,
-        default=Path("results/claims.toml"),
-        help="each signal's claim date and public record",
+        help=f"each signal's claim date and public record; by default, and in a production run, {CLAIMS}",
     )
     c.add_argument("--criteria-search", type=Path, default=Path("criteria/search-v2.toml"))
     c.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))
