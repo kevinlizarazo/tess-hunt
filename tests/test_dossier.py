@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 import requests
 import test_calls as tc
+import test_claims as tcl
 import test_literature as tl
 import test_tricera as tt
 import test_vetting as tv
@@ -55,11 +56,13 @@ def edit_json(path: Path, change) -> None:
     path.write_text(json.dumps(data))
 
 
-def vetting_runs(tmp_path, monkeypatch) -> tuple[Path, Path]:
-    """A vetting run with triage's evidence beside it, and its evidence-only twin."""
+def vetting_runs(tmp_path, monkeypatch, snapshot: Path | None = None) -> tuple[Path, Path]:
+    """A vetting run with triage's evidence beside it, and its evidence-only twin, on `snapshot` if given."""
     # The targets row as the sample's carries it: a TIC Teff and a Gaia DR3 RUWE.
     monkeypatch.setattr(tv, "CANDIDATE", {**tv.CANDIDATE, "teff": 5800.0, "ruwe": 0.85})
     argv, _ = tv.setup(tmp_path, monkeypatch, signals=tv.SIGNALS[:1], suspect={64}, fit=tv.fake_fit)
+    if snapshot is not None:
+        argv[argv.index("--catalogs") + 1] = str(snapshot)
     # Fetched SPOC sources carry CROWDSAP; the synthetic ones don't.
     path = tmp_path / "data" / "lc" / "1.npz"
     lc = LightCurve.load(path)
@@ -1189,6 +1192,13 @@ def claims_unfinished(tmp_path, runs) -> Path:
     return runs["claims"]
 
 
+def claims_of_other_signals(tmp_path, runs) -> Path:
+    # Run with --signals naming others: it sorted nothing for 1-1.
+    writable(runs["claims"])
+    shutil.rmtree(runs["claims"] / "signals" / NAME)
+    return runs["claims"]
+
+
 @pytest.mark.parametrize(
     "change, message",
     [
@@ -1199,6 +1209,7 @@ def claims_unfinished(tmp_path, runs) -> Path:
         (claims_on_other_criteria, "claims run .* ran on other criteria"),
         (claims_not_production, "is not a production claims run"),
         (claims_unfinished, "is not a finished claims run"),
+        (claims_of_other_signals, "claims run .*-vetting-claims-.* sorted no 1-1"),
     ],
 )
 def test_publish_refuses_a_claims_run_that_does_not_belong(tmp_path, monkeypatch, change, message):
@@ -1213,9 +1224,90 @@ def test_publish_refuses_a_claims_run_that_does_not_belong(tmp_path, monkeypatch
 def test_a_draft_with_claims_needs_the_literature_run_they_read(tmp_path, monkeypatch):
     runs, _, _ = claimed_pass(tmp_path, monkeypatch)
     out = tmp_path / "drafts"
-    with pytest.raises(SystemExit, match="was made from literature run .*-a, not none"):
+    with pytest.raises(
+        SystemExit,
+        match="was made from literature run .*-literature-abc1234-a: give it as --literature",
+    ):
         main(["vetting", "dossier", *flags(runs, "run", "claims"), "--out", str(out)])
     assert not out.exists()
+
+
+def test_publish_reads_the_claims_run_vetting_claims_writes(tmp_path, monkeypatch):
+    """The chain on a synthetic vetting run: novelty fails on a TOI the snapshot lists on the star, `vetting claims`
+    excepts it from the literature run's ExoFOP record, and publish reads what claims.py recorded."""
+    snapshot = tcl.write_snapshot(
+        tmp_path / "data" / "catalogs" / tcl.SNAPSHOT, tcl.row("TOI", "TOI-7001.01")
+    )
+    run, suspect = vetting_runs(tmp_path, monkeypatch, snapshot)
+    [novelty] = [c for c in tv.read(run, NAME)["checks"] if c["check"] == "novelty"]
+    assert novelty["outcome"] == "fail"
+    edit_json(
+        run / "signals" / NAME / "checks.json",
+        lambda c: next(x for x in c["checks"] if x["check"] == "holdout").update(
+            outcome="pass", reason="every held-out season predicted"
+        ),
+    )
+    record = {**literature_record(run, monkeypatch), "outcome": "pass", "reason": "complete"}
+    # ExoFOP lists the TOI after the claim, with its parameters at the period.
+    planet = {
+        "provenance": "TOIs (TESS Project)",
+        "name": "TIC 1.01",
+        "toi": "TOI 7001.01",
+        "period": 5.0,
+        "epoch_bjd": None,
+        "duration_hours": None,
+        "disposition": None,
+    }
+    record["search"]["exofop"].update(tois=[tcl.toi("TOI 7001.01")], ctois=[], planets=[planet])
+    lit = made_run(tmp_path, "vetting-literature", run, {NAME: {"literature.json": record}})
+    written = lit / "signals" / NAME / "literature.json"
+    edit_json(
+        lit / "provenance.json",
+        lambda p: p.update(summary={"signals": {NAME: {"tic": 1, "sha256": sha256_file(written)}}}),
+    )
+    claims_file = tmp_path / "claims.toml"
+    claims_file.write_text(f'["{NAME}"]\ndate = 2026-10-28\nrecord = "{CLAIM["record"]}"\n')
+    argv = [
+        *("vetting", "claims", "--run", str(run), "--literature", str(lit)),
+        *("--claims", str(claims_file)),
+        *("--criteria-search", str(tv.SEARCH), "--criteria-vet", str(tv.VET3)),
+    ]
+    assert main(argv) == 0
+    [claims] = (tmp_path / "data" / "runs").glob("*-vetting-claims-*")
+    tric = made_run(
+        tmp_path,
+        "vetting-triceratops",
+        run,
+        {NAME: {"triceratops.json": triceratops_record(run), "probs.csv": "ID,prob\n1,0.98\n"}},
+    )
+    runs = {
+        "run": run,
+        "suspect": suspect,
+        "triceratops": tric,
+        "literature": lit,
+        "titles": titles_run(tmp_path, lit),
+        "claims": claims,
+    }
+    production(*runs.values())
+    repo = tmp_path / "repo"
+    monkeypatch.setattr(vetting, "repo_root", lambda: repo)
+    signal = repo / "results" / "vetting" / NAME
+    signal.mkdir(parents=True)
+    (signal / "call.toml").write_text(tc.edit(tc.PASSED, '"44926986-1"', f'"{NAME}"'))
+    (signal / "review.json").write_text(json.dumps(REVIEW))
+    argv = publish_argv(runs, "run", "triceratops", "literature", "suspect", "titles")
+    with pytest.raises(SystemExit, match="ExoFOP lists TOI 7001.01"):
+        main(argv)
+    assert main([*argv, *flags(runs, "claims")]) == 0
+    assert calls.problems(signal) == []
+    made = claims / "signals" / NAME / "claims.json"
+    assert sha256_file(signal / "claims.json") == sha256_file(made)
+    assert sha256_file(signal / "provenance-claims.json") == sha256_file(claims / "provenance.json")
+    real = section((signal / "dossier.md").read_text(), "Real and new?")
+    assert (
+        "TOI-7001.01 was first listed on ExoFOP on 2027-03-01, after this signal was made public on 2026-10-28 "
+        f"({CLAIM['record']}). Without it, novelty is pass: no known object matches."
+    ) in real
 
 
 def test_the_dossier_names_each_excepted_listing(tmp_path, monkeypatch):

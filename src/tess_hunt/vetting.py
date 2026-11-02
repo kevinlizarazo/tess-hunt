@@ -1467,11 +1467,12 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
         # Decision 0042's first-listed dates come from the ExoFOP record of the literature run it read, which must be
         # the record's own.
         if role == "claims":
-            literature = (
-                args.literature.resolve().name
-                if args.literature is not None
-                else "none: give --literature"
-            )
+            if args.literature is None:
+                raise SystemExit(
+                    f"claims run {name} was made from literature run {made['literature_run']}: give it as "
+                    "--literature"
+                )
+            literature = args.literature.resolve().name
             if made["literature_run"] != literature:
                 raise SystemExit(
                     f"claims run {name} was made from literature run {made['literature_run']}, not {literature}"
@@ -1512,8 +1513,11 @@ def _signal_files(
             continue
         files[f"provenance-{role}.json"] = path / "provenance.json"
         made = path / "signals" / name
-        # A signal a check killed gets no TRICERATOPS; the dossier says the run did not judge it.
+        # A signal a check killed gets no TRICERATOPS; the dossier says the run did not judge it. `vetting claims`
+        # sorts every signal it is given, so a claims run without this one's record was made for others.
         if not (made / outputs[0]).is_file():
+            if role == "claims":
+                raise SystemExit(f"claims run {path.resolve().name} sorted no {name}")
             continue
         made_from = json.loads((path / "provenance.json").read_text())
         inputs = made_from["inputs"]

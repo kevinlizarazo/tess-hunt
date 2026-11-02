@@ -219,9 +219,9 @@ def _scrub(text: str) -> str:
     return MACHINE_DIRS.sub("", unname(scrub(text)))
 
 
-def _decision(number: str, vetting: str = "../") -> str:
+def _decision(number: str, vetting: str = "../", label: str = "decision") -> str:
     """A link to a decision record from a dossier `vetting` below results/vetting/."""
-    return f"[decision {number}]({vetting}../../docs/decisions/{DECISIONS[number]})"
+    return f"[{label} {number}]({vetting}../../docs/decisions/{DECISIONS[number]})"
 
 
 def _list(items: list[str]) -> str:
@@ -828,7 +828,7 @@ def _excepted(r: Record) -> str:
         return ""
     claim, rerun = found["claim"], found["novelty"]
     # Each sentence opens on the decision.
-    cite = r.decision("0042").replace("[decision", "[Decision", 1)
+    cite = _decision("0042", r.vetting, "Decision")
     said = [
         f" {cite}: {row['name']} was first listed on ExoFOP on {row['first_listed']}, after this signal was made "
         f"public on {claim['date']} ({claim['record']})."

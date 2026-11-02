@@ -97,15 +97,17 @@ listing made after our claim, possibly from the data we asked for.
   row at the period blocks bar 2 as before, a confirmed planet's and one whose name reads as no listing included.
 - **Publish and the dossier.** `vetting publish` and `vetting dossier` take `--claims RUN`: a finished claims run
   (production, for `publish`) made from `--run` on the same criteria, whose literature run is `--literature`'s. Both
-  also check (the build's choice) that its `claims.json` is the file the run wrote (the sha256 it recorded) and that
-  the run read the literature record the record holds. Any failure refuses the record before anything is copied. The
-  record holds `claims.json` and `provenance-claims.json`, and a later publish compares them with the run's files like
-  any other copied file. A version takes no claims run from an earlier record: its own literature run dates the
-  listings. The dossier names the claims run among the record's runs and, after novelty's own result under "Real and
-  new?", gives for each excepted listing "Decision 0042: LISTING was first listed on ExoFOP on DATE, after this signal
-  was made public on CLAIM DATE (RECORD).", linked to this record, then the rerun's outcome once: "Without it, novelty
-  is OUTCOME: REASON." ("Without them" for several). A record without `claims.json` renders as before: the fourteen
-  published records render byte for byte as they did before this change.
+  also check (the build's choice) that the run sorted the signal, that its `claims.json` is the file the run wrote
+  (the sha256 it recorded), and that the run read the literature run's record for the signal. Any failure refuses the
+  record before anything is copied. The record holds `claims.json` and `provenance-claims.json`, and a later publish
+  compares them with the run's files like any other copied file. A version takes no claims run from an earlier
+  record: its own literature run dates the listings. A refusal of a pass on the rerun names it ("novelty, run again
+  under decision 0042, is ..."), since `checks.json` keeps novelty's own result. The dossier names the claims run
+  among the record's runs and, after novelty's own result under "Real and new?", gives for each excepted listing
+  "Decision 0042: LISTING was first listed on ExoFOP on DATE, after this signal was made public on CLAIM DATE
+  (RECORD).", linked to this decision, then the rerun's outcome once: "Without it, novelty is OUTCOME: REASON."
+  ("Without them" for several). A record without `claims.json` renders as before: the fourteen published records
+  render byte for byte as they did before this change.
 - **What it leaves out.**
   - SPOC TCE and ExoMiner rows. A later TCE from the same 2-min data leaves novelty at `known_to_spoc`, which a
     second-list row's promotion already covers (241522065-1, 423100454-1 and 438857197-1 are second-list rows). For a
@@ -123,8 +125,7 @@ listing made after our claim, possibly from the data we asked for.
 
 - A CTOI's first-listed date rests on `ctoi_created` matching the CTOI export's "CTOI lastmod" day on three rows (pin
   P2). If ExoFOP moved that field on an edit, a CTOI listed before the claim could read as listed after it.
-- The four repository claims rest on the maintainer's statement. On 2026-10-30 the repository read as private, for a
-  reason not known, and was made public again that day; no public record shows the 2026-10-28 date.
+- The four repository claims rest on the maintainer's statement; no public record shows the 2026-10-28 date.
 - Dates and dispositions are ExoFOP's as the record's literature run read them. A disposition entered later is seen at
   the next re-vet's literature run.
 
@@ -145,14 +146,17 @@ listing made after our claim, possibly from the data we asked for.
   `test_the_claims_file_dates_each_held_signal_and_no_killed_one`, `test_load_claims_refuses_an_entry_it_cannot_read`.
 - [tests/test_calls.py](../../tests/test_calls.py): `test_a_pass_stands_on_a_novelty_fail_0042_excepts`,
   `test_a_pass_on_a_kept_listing_is_refused`,
-  `test_a_rerun_at_known_to_spoc_passes_a_promoted_row_and_blocks_a_shortlisted_one`,
+  `test_a_rerun_at_known_to_spoc_passes_a_promoted_row_and_blocks_a_shortlisted_one` (the refusal names the rerun),
+  `test_a_claims_json_the_bar_cannot_read_raises` (a listing excepted with no rerun, and a file that isn't JSON),
   `test_a_planet_parameter_row_under_an_excepted_toi_does_not_block_bar_2` (and one under another TOI does, its `name`
   an excepted CTOI's included), `test_a_planet_parameter_row_under_an_excepted_ctoi_does_not_block_bar_2` (and rows
   under any other name do), `test_a_kill_cannot_rest_on_a_novelty_fail_the_rerun_does_not_repeat`,
   `test_without_claims_json_the_bar_is_unchanged`.
 - [tests/test_dossier.py](../../tests/test_dossier.py): `test_publish_carries_the_claims_record` (the pass refused
-  without the claims run and published with it), `test_publish_refuses_a_claims_run_that_does_not_belong` (made from
-  another vetting run or literature run, a `claims.json` changed after its run, another literature record read, other
-  criteria, not production, unfinished), `test_a_draft_with_claims_needs_the_literature_run_they_read`,
+  without the claims run and published with it), `test_publish_reads_the_claims_run_vetting_claims_writes` (a real
+  `vetting claims` run on a synthetic vetting run whose novelty fails on a later TOI, published),
+  `test_publish_refuses_a_claims_run_that_does_not_belong` (made from another vetting run or literature run, a
+  `claims.json` changed after its run, another literature record read, other criteria, not production, unfinished, a
+  run that sorted no record of the signal), `test_a_draft_with_claims_needs_the_literature_run_they_read`,
   `test_the_dossier_names_each_excepted_listing` (one listing and two, and a record without `claims.json` or with one
   that excepts nothing rendered as before).

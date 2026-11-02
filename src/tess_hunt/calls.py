@@ -164,13 +164,22 @@ def pixels(signal_dir: Path, checks: dict) -> dict | None:
     return checks["pixels"]
 
 
+def _excepting(signal_dir: Path) -> dict | None:
+    """claims.json when it excepts at least one listing made after the signal's claim (decision 0042), else None."""
+    found = _json(signal_dir / "claims.json")
+    return found if found is not None and found["excepted"] else None
+
+
 def novelty(signal_dir: Path, checks: dict) -> dict:
     """The novelty check the bars read (decision 0042): where claims.json excepts at least one listing made after the
-    signal's claim, the check as `vetting claims` ran it again without them; otherwise the vetting run's."""
-    found = _json(signal_dir / "claims.json")
-    if found is not None and found["excepted"]:
-        return found["novelty"]
-    return next(c for c in checks["checks"] if c["check"] == "novelty")
+    signal's claim, the check as `vetting claims` ran it again without them; otherwise the vetting run's. Raises
+    CallError for a claims.json that excepts a listing and holds no rerun."""
+    found = _excepting(signal_dir)
+    if found is None:
+        return next(c for c in checks["checks"] if c["check"] == "novelty")
+    if not isinstance(found.get("novelty"), dict):
+        raise CallError("claims.json excepts a listing but holds no rerun of novelty")
+    return found["novelty"]
 
 
 def _listing(kind: str, name: str | None) -> str | None:
@@ -182,7 +191,7 @@ def _listing(kind: str, name: str | None) -> str | None:
 def excepted_listings(signal_dir: Path) -> set[str]:
     """The TOIs and CTOIs claims.json excepts under decision 0042, as the snapshot names them (TOI-185.01,
     CTOI-17361.01)."""
-    found = _json(signal_dir / "claims.json")
+    found = _excepting(signal_dir)
     if found is None:
         return set()
     return {_listing(r["source"], r["name"]) for r in found["excepted"]} - {None}
@@ -338,6 +347,9 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
     promotion = call["promotion"]
     if promotion is not None and kind != "second":
         out.append(f"promotion is for second-list rows; {signal_name(signal_dir)} is a {kind}")
+    # checks.json and the dossier's table keep the vetting run's own novelty, so a refusal on the rerun says which it
+    # read.
+    rerun = _excepting(signal_dir) is not None
     for c in _judged(signal_dir, checks):
         if c["outcome"] == "pass":
             continue
@@ -350,7 +362,12 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
             and c["evidence"].get("category") == "known_to_spoc"
         )
         if not promoted:
-            out.append(f"{c['check']} is {c['outcome']}: {c['reason']}")
+            said = (
+                "novelty, run again under decision 0042,"
+                if rerun and c["check"] == "novelty"
+                else c["check"]
+            )
+            out.append(f"{said} is {c['outcome']}: {c['reason']}")
     # Ruling W: every pass needs a pixel pass. `vetting run` never checks that a candidate was shortlisted, so its
     # triage pixel record is read here, as a second-list row's is from the second list.
     pixel = pixels(signal_dir, checks)

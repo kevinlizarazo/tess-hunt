@@ -536,9 +536,23 @@ def test_a_rerun_at_known_to_spoc_passes_a_promoted_row_and_blocks_a_shortlisted
         return calls.problems(claimed(path, [LATER_TOI], spoc))
 
     assert found("a", PROMOTED, "second") == []
+    # The refusal names the rerun: checks.json still holds novelty's own fail.
     assert found("b", PASSED, "candidate") == [
-        "novelty is inconclusive: matches only SPOC TCE or ExoMiner rows"
+        "novelty, run again under decision 0042, is inconclusive: matches only SPOC TCE or ExoMiner rows"
     ]
+
+
+def test_a_claims_json_the_bar_cannot_read_raises(tmp_path):
+    # An exception is never a pass: a claims.json that excepts a listing with no rerun, or one that isn't JSON, stops
+    # the bar for a pass and for a kill alike.
+    on_novelty = edit(KILLED, '["odd_even"]', '["novelty"]')
+    for name, call in (("a", PASSED), ("b", on_novelty)):
+        path = claimed(signal_dir(tmp_path / name, call=call, **FAILED), [LATER_TOI], None)
+        with pytest.raises(calls.CallError, match="excepts a listing but holds no rerun"):
+            calls.problems(path)
+        (path / "claims.json").write_text('{"excepted": [')
+        with pytest.raises(json.JSONDecodeError):
+            calls.problems(path)
 
 
 def bar_2(path: Path, planets: list[dict], excepted: list[dict]) -> list[str]:
