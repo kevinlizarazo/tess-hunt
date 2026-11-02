@@ -216,7 +216,9 @@ def cmd_fetch(args) -> int:
 
 def add_parser(sub) -> None:
     p = sub.add_parser(
-        "revet", help="light curves for a re-vet, keeping the earlier fetch's sectors"
+        "revet",
+        help="before a re-vet, what MAST holds for the predicted sectors (status); then light curves for it, keeping "
+        "the earlier fetch's sectors (fetch)",
     )
     modes = p.add_subparsers(dest="mode", required=True)
     f = modes.add_parser(

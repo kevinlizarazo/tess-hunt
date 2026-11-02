@@ -147,14 +147,15 @@ judged by that prediction, not by a fresh refit.
 - **The runbook, in order.** Every run is a production run (`--production`).
   0. `tess-hunt revet status`, before any re-vet (2026-11-02). For a deposited predictions package (`--package RUN_ID`,
      by default the one `results/predictions/dois.toml` lists as published last) it lists, for each signal and
-     predicted sector, the light-curve files MAST holds for the star, the one fetch would take (`mast.best`, so fetch's
-     own order), whether a timing-suspect rule flags it, and whether the package's test can use it, in `vetting
-     prereg`'s words. One line per signal follows: complete when every predicted sector has data the test can use, not
-     yet with each sector that hasn't and why, or unknown when MAST did not answer for the star, which also makes the
-     command exit 1. Last, it gives the version MAST serves of each file in a sector a timing-suspect rule covers
-     (QLP's S99 to S104), the redelivery 241522065-1's call names. It fetches no light curve, records no run and writes
-     nothing. Re-vet a predicted signal when its line reads complete, or earlier only on the maintainer's call, knowing
-     the season is judged on what that light curve holds.
+     predicted sector, the light-curve files MAST holds for the star, the file fetch tries first (`mast.best`, so
+     fetch's own order; fetch falls back to the next file if that one fails to download), whether a timing-suspect rule
+     flags it, and whether the package's test can use it, in `vetting prereg`'s words. One line per signal follows:
+     complete when every predicted sector has data the test can use, not yet with each sector that hasn't and why, or
+     unknown when MAST did not answer for the star, which also makes the command exit 1. Last, it gives the version
+     MAST serves of each file in a sector a timing-suspect rule covers (QLP's S99 to S104), the redelivery
+     241522065-1's call names, and unknown for a star MAST did not answer for. It fetches no light curve, records no
+     run and writes nothing. Re-vet a predicted signal when its line reads complete, or earlier only on the
+     maintainer's call, knowing the season is judged on what that light curve holds.
   1. `tess-hunt targets tics --from CSV`, the star's TIC in a `tic` column: its targets and products tables.
   2. `tess-hunt revet fetch --targets TARGETS --products PRODUCTS --base-lc-dir DIR`, with `DIR` the directory of the
      light curve the previous record's vetting run read (the shared cache for r2 while it holds that file, the
@@ -206,9 +207,11 @@ judged by that prediction, not by a fresh refit.
   `test_a_sector_with_spoc_2min_is_usable_for_a_2min_signal`, `test_a_qlp_sector_cannot_test_a_pdcsap_signal`,
   `test_a_timing_suspect_product_is_not_usable`, `test_taken_is_what_fetch_would_take`,
   `test_complete_only_when_every_predicted_sector_is_usable`, `test_a_star_mast_could_not_list_is_never_complete` (and
-  a sector nothing is listed for yet), `test_redelivery_rows_show_the_served_qlp_version`,
-  `test_the_default_package_is_the_latest_deposited`, `test_a_signal_the_package_predicts_no_transit_of_is_refused`,
-  `test_status_writes_nothing`, and the network test `test_status_on_the_deposited_package`.
+  a sector nothing is listed for yet, and the star unknown among the redelivery rows),
+  `test_redelivery_rows_show_the_served_qlp_version`, `test_the_default_package_is_the_latest_deposited`,
+  `test_of_two_deposited_on_one_day_the_later_made_is_the_default`,
+  `test_a_signal_the_package_predicts_no_transit_of_is_refused`, `test_status_writes_nothing`, and the network test
+  `test_status_on_the_deposited_package`.
 - [tests/test_revet.py](../../tests/test_revet.py): `test_merge_keeps_m2_sectors_and_takes_only_a_suspect_redelivery`
   (a better product over an old sector, a suspect sector replaced by another suspect file, and TESS-SPOC over a suspect
   QLP sector are all kept as M2 fetched them),

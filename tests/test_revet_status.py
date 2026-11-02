@@ -211,6 +211,9 @@ def test_a_star_mast_could_not_list_is_never_complete(tmp_path, monkeypatch, cap
     out = capsys.readouterr().out
     assert "103312990-1: unknown: MAST did not answer for TIC 103312990" in out
     assert f"241522065-1: {COMPLETE}" in out
+    # Nor does the redelivery section read as nothing served for it.
+    assert "| 103312990 | unknown | unknown | MAST did not answer | unknown |" in out
+    assert "none listed" not in out
 
 
 def test_redelivery_rows_show_the_served_qlp_version():
@@ -248,6 +251,17 @@ def test_the_default_package_is_the_latest_deposited(tmp_path, monkeypatch, caps
     assert status("--package", PACKAGE) == 0
     out = capsys.readouterr().out
     assert "A-1: not yet: S112 no data" in out and "B-1" not in out
+
+
+def test_of_two_deposited_on_one_day_the_later_made_is_the_default(tmp_path, monkeypatch, capsys):
+    repo = in_repo(tmp_path, monkeypatch)
+    later = "20261119T120000Z-predictions-bbbbbbb-0002"
+    # The earlier-made package comes first in dois.toml, so the date alone would pick it.
+    deposit(repo, PACKAGE, {"A-1": signal([112], TWO_MIN)}, published="2026-11-20")
+    deposit(repo, later, {"B-1": signal([113], TWO_MIN)}, published="2026-11-20")
+    observe(monkeypatch, listing())
+    assert status() == 0
+    assert capsys.readouterr().out.startswith(f"package {later}\n")
 
 
 def test_a_signal_the_package_predicts_no_transit_of_is_refused(tmp_path):

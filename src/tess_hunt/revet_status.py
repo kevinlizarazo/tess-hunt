@@ -1,5 +1,5 @@
 """`tess-hunt revet status`: before a re-vet, what MAST lists today for each sector a deposited predictions package
-predicts, which file fetch would take, and whether the package's test could use it (decision 0041, runbook step 0).
+predicts, which file fetch tries first, and whether the package's test could use it (decision 0041, runbook step 0).
 It fetches no light curve, records no run and writes nothing: the re-vet that follows records what it read."""
 
 import json
@@ -41,9 +41,10 @@ def _version(filename: str) -> str | None:
 def sector_rows(
     predicted: dict, products: pd.DataFrame, rules: list[dict], failed: list[int]
 ) -> list[dict]:
-    """One row per signal and predicted sector: each file MAST lists for it, the one fetch would take (`mast.best`'s),
-    and why the test could not use it, in `prereg.judge_signal`'s words. A star in `failed`, which MAST did not
-    answer for, has `listed` None: what MAST holds for it is unknown, never nothing."""
+    """One row per signal and predicted sector: each file MAST lists for it, the file fetch tries first (`mast.best`'s;
+    fetch falls back to the next file if that one fails to download, which only a download can tell), and why the
+    test could not use it, in `prereg.judge_signal`'s words. A star in `failed`, which MAST did not answer for, has
+    `listed` None: what MAST holds for it is unknown, never nothing."""
     taken = {(int(r.tic), int(r.sector)): r for r in mast.best(products).itertuples()}
     rows = []
     for name, p in predicted.items():
@@ -172,7 +173,7 @@ def cmd_status(args) -> int:
         ]
         for r in rows
     ]
-    print(_table(["Signal", "Sector", "Listed at MAST", "Fetch takes", "The test"], table))
+    print(_table(["Signal", "Sector", "Listed at MAST", "Fetch tries first", "The test"], table))
     print()
     for name, text in verdict(rows).items():
         print(f"{name}: {text}")
@@ -180,6 +181,8 @@ def cmd_status(args) -> int:
         [r["tic"], f"S{r['sector']}", r["version"], r["filename"], "yes" if r["suspect"] else "no"]
         for r in redelivery_rows(products, tics, rules)
     ]
+    # A star MAST did not answer for has no rows, and an empty section would read as nothing served.
+    redelivered += [[tic, "unknown", "unknown", UNANSWERED, "unknown"] for tic in failed]
     print("\nFiles in the sectors a timing-suspect rule covers, as MAST serves them now:")
     print(
         _table(["TIC", "Sector", "Version", "File", "Timing-suspect"], redelivered)
