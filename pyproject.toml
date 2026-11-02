@@ -34,6 +34,10 @@ tess-hunt = "tess_hunt.cli:main"
 
 [dependency-groups]
 dev = ["pytest", "ruff"]
+preprint = [
+    "markdown==3.11.1",
+    "weasyprint==70.0",
+]
 
 [build-system]
 requires = ["hatchling"]

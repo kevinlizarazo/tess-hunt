@@ -9,6 +9,7 @@ from tess_hunt import (
     catalogs,
     ddt,
     fetch,
+    preprint,
     prereg,
     revet,
     search,
@@ -30,6 +31,7 @@ COMMANDS: list = [
     ddt,
     prereg,
     revet,
+    preprint,
 ]
 
 
