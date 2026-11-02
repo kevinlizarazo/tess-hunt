@@ -460,7 +460,10 @@ def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
     assert "Stassun et al. 2019" in text and "Paegert et al. 2021" in text
     assert "European Space Agency (ESA) mission Gaia" in text
     assert "tess-hunt's code and this paper's text were written with LLM assistance" in text
-    assert "written by an AI model, claude-opus-5-5" in text
+    assert (
+        "Adversarial reviews this paper quotes were assisted by LLMs. "
+        "More information on models is available on GitHub." in " ".join(text.split())
+    )
     # Gaia is credited when the dataset holds Gaia data.
     monkeypatch.setattr(preprint, "GAIA_FILES", set())
     assert "European Space Agency (ESA) mission Gaia" not in paper(repo)

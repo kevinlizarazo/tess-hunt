@@ -127,9 +127,8 @@ stay under ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php).
 
 ## Use of LLMs
 
-tess-hunt's code and this paper's text were written with LLM assistance. The adversarial review this paper quotes was
-written by an AI model, $review_model, and any refuter that tested one of its findings was an AI-model session too.
-The call on the signal is the maintainer's.
+tess-hunt's code and this paper's text were written with LLM assistance. Adversarial reviews this paper quotes were
+assisted by LLMs. More information on models is available on GitHub.
 
 ## Acknowledgements
 
