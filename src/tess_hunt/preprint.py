@@ -7,6 +7,7 @@ section 5.5). The PDF needs the optional `preprint` dependency group."""
 
 import json
 import shutil
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -120,7 +121,10 @@ $description
 
 ## Licence
 
-Creative Commons Attribution 4.0 International (CC BY 4.0)
+- Creative Commons Attribution 4.0 International (CC BY 4.0): the paper, its figures and the dataset's other files
+- Creative Commons Attribution-NonCommercial 3.0 IGO (CC BY-NC 3.0 IGO), ESA's terms for Gaia data
+  (https://www.cosmos.esa.int/web/gaia-users/license): the dataset's files that hold Gaia DR3 data, which the
+  description lists
 
 ## Related identifiers
 
@@ -198,9 +202,9 @@ def _versions(record: Path) -> list[Path]:
     return [*earlier, record]
 
 
-def record_files(record: Path) -> dict[str, Path]:
-    """Each file of the signal's published records up to `record`, by its path under the dataset's `vetting/`, as
-    results/vetting/ holds it."""
+def _record_paths(record: Path) -> dict[str, Path]:
+    """Each file in the directories of the signal's published records up to `record`, by its path under the
+    dataset's `vetting/`, as results/vetting/ holds it."""
     signal = vetting._signal_dir(record)
     out = {}
     for r in _versions(record):
@@ -209,6 +213,16 @@ def record_files(record: Path) -> dict[str, Path]:
             if path.is_file() and calls.version(r / path.relative_to(r).parts[0]) is None:
                 out[f"vetting/{signal.name}/{path.relative_to(signal)}"] = path
     return out
+
+
+def record_files(record: Path) -> dict[str, Path]:
+    """The records' files that git tracks: a file git ignores, such as macOS's .DS_Store, is no part of a record."""
+    signal = vetting._signal_dir(record)
+    listed = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=signal, capture_output=True, text=True, check=True
+    ).stdout
+    tracked = {signal / name for name in listed.split("\0") if name}
+    return {name: path for name, path in _record_paths(record).items() if path in tracked}
 
 
 def _light_curve(record: Path) -> tuple[str, Path]:
@@ -233,14 +247,20 @@ def dataset(record: Path) -> dict[str, Path]:
     return record_files(record) | {name: path}
 
 
-def licence(path: str) -> dict[str, str]:
-    """A dataset file's licence by its path under `dataset/` (results/README.md): a record's file holding Gaia DR3 data
-    stays under ESA's terms, ExoFOP's rows stay under ExoFOP's, and the rest is CC BY 4.0."""
+def _in_record(path: str) -> str:
+    """A dataset file's path within its record, from its path under `dataset/`: `vetting/NAME/r2/plots/x.png` is
+    `plots/x.png`."""
     parts = Path(path).parts
     inside = parts[2:] if parts[0] == "vetting" else parts
     if inside and calls.version(Path(inside[0])):
         inside = inside[1:]
-    name = "/".join(inside)
+    return "/".join(inside)
+
+
+def licence(path: str) -> dict[str, str]:
+    """A dataset file's licence by its path under `dataset/` (results/README.md): a record's file holding Gaia DR3 data
+    stays under ESA's terms, ExoFOP's rows stay under ExoFOP's, and the rest is CC BY 4.0."""
+    name = _in_record(path)
     found = {"licence": GAIA if name in GAIA_FILES else CC_BY}
     if name in EXOFOP_FILES:
         found["exofop"] = EXOFOP
@@ -249,6 +269,20 @@ def licence(path: str) -> dict[str, str]:
 
 def _quoted(items: list[str]) -> str:
     return "\n".join(f"- {_scrub(item)}" for item in items)
+
+
+def _count(n: int, word: str) -> str:
+    return f"{n} {word}" + ("" if n == 1 else "s")
+
+
+def _beside(notes: list[dict]) -> str:
+    """The notes added beside a quoted finding under decision 0037, worded as the dossier words them, each nested
+    under the finding. Python-Markdown nests a list only at four spaces."""
+    return "".join(
+        f"\n    - **Note added on {n['date']} under decision 0037, not part of the review or the call:** "
+        f"{_scrub(n['text'])}"
+        for n in notes
+    )
 
 
 def _claims(record: Path) -> dict | None:
@@ -358,46 +392,57 @@ def _vetting(record: Path, checks: dict, call: dict) -> dict:
         ),
         "novelty": _novelty(record, checks, call),
         "pixel_check": PIXEL_CHECK[second][0] + (", run as triage runs it" if second else ""),
-        # A Gaia DR3 source id is Gaia data, which the paper leaves to the dataset.
-        "names": ", ".join(n for n in literature["search"]["names"] if not n.startswith("Gaia ")),
+        # results/README.md leaves a bare Gaia DR3 source id under CC BY 4.0; the paper leaves it out anyway, so its own
+        # text holds nothing from Gaia.
+        "names": _words([n for n in literature["search"]["names"] if not n.startswith("Gaia ")]),
         "excepted": ""
         if not excepted
         else f", but for the {'listing' if len(excepted) == 1 else 'listings'} decision record 0042 sets aside",
+        "triceratops_runs": _count(len(triceratops["evidence"]["fpp"]), "run"),
         "companions": "TRICERATOPS weighed unresolved companions and background stars by its priors alone: no "
         "high-resolution image of the star went into it."
         if not contrast
         else "TRICERATOPS weighed unresolved companions and background stars by its priors, limited by "
-        f"{len(contrast)} high-resolution contrast curve(s) of the star from ExoFOP.",
+        f"{_count(len(contrast), 'high-resolution contrast curve')} of the star from ExoFOP.",
         "holdout": next(
             f"{c['outcome']}, {c['reason']}" for c in checks["checks"] if c["check"] == "holdout"
         ),
     }
 
 
-def _review(review: dict, call: dict) -> dict:
+def _review(record: Path, review: dict, call: dict) -> dict:
+    """The review's counts and its quoted findings, each with any note decision 0037 added beside it in
+    review-notes.toml, and the call's answers and sentences."""
+    path = record / "review-notes.toml"
+    added = calls.load_notes(path, review) if path.is_file() else {}
     confirmed = calls.confirmed(review)
     findings = {f["id"]: f for f in review["findings"]}
     flagged = review["hits_flagged"]
-    notes = [f for f in review["findings"] if f["rating"] == "note"]
+    rated_note = [f for f in review["findings"] if f["rating"] == "note"]
     return {
         "call_date": str(call["date"]),
         "review_model": review["model"],
         "review_date": str(review["date"]),
-        "n_findings": str(len(findings)),
+        "findings": _count(len(findings), "finding"),
         "n_confirmed": str(len(confirmed)),
         "hits_read": f"The maintainer read each paper the review flagged, {len(flagged)} in all."
         if flagged
         else "The review flagged no paper for the maintainer to read.",
         "answers": "\n".join(
             f"- {f} ({LENSES[findings[f]['lens']]}, {findings[f]['rating']})\n"
-            f"  - Finding: {_scrub(findings[f]['claim'])}\n"
-            f"  - Answer: {_scrub(call['answers'][f])}"
+            f"    - Finding: {_scrub(findings[f]['claim'])}"
+            + _beside(added.get(f, []))
+            + f"\n    - Answer: {_scrub(call['answers'][f])}"
             for f in confirmed
         )
         or "None: the review confirmed no finding.",
         "notes": "The review's notes, which need no answer, quoted:\n\n"
-        + _quoted([f"{f['id']} ({LENSES[f['lens']]}): {f['claim']}" for f in notes])
-        if notes
+        + "\n".join(
+            f"- {f['id']} ({LENSES[f['lens']]}): {_scrub(f['claim'])}"
+            + _beside(added.get(f["id"], []))
+            for f in rated_note
+        )
+        if rated_note
         else "The review made no note.",
         "sentences": _quoted(
             [f"{label}: {call['sentences'][key]}" for key, label in SENTENCES.items()]
@@ -494,8 +539,9 @@ def predictions_doi(record: Path, repo: Path) -> str | None:
     return doi
 
 
-def _prereg(record: Path, repo: Path) -> str:
-    """The preregistered test of a later season (decision 0040), as the dossier gives its result."""
+def _prereg(record: Path, repo: Path) -> str | None:
+    """The preregistered test of a later season (decision 0040), as the dossier gives its result; None for a judged
+    result without its depth or error, so its placeholder raises."""
     path = record / "prereg.json"
     if not path.is_file():
         return "This record holds no preregistered test of a later season (decision record 0040 in tess-hunt's repository)."
@@ -505,10 +551,13 @@ def _prereg(record: Path, repo: Path) -> str:
     elif p["result"] == "untested":
         said = f"untested ({p['status']}): {p['reason']}"
     else:
+        depth, err = _ppm(p["depth"]), _ppm(p["err"])
+        if depth is None or err is None:
+            return None
         tension = f"tension {p['tension']:.2f} sigma" if "tension" in p else p["tension_skipped"]
         said = (
-            f"{p['result']} ({p['status']}): depth {_ppm(p['depth'])} ppm (error {_ppm(p['err'])} ppm, {p['n']} "
-            f"cadences in the predicted cores), {p['sigma']:.2f} sigma, expected SNR {p['expected_snr']:.2f}, {tension}"
+            f"{p['result']} ({p['status']}): depth {depth} ppm (error {err} ppm, {p['n']} cadences in the predicted "
+            f"cores), {p['sigma']:.2f} sigma, expected SNR {p['expected_snr']:.2f}, {tension}"
         )
     return (
         f"Before TESS observed {prereg._sectors_words(p['predicted_sectors'])}, tess-hunt deposited a prediction of "
@@ -525,7 +574,7 @@ def _data(record: Path, checks: dict, made: dict) -> dict:
         sectors.setdefault(prereg.PRODUCTS[source["provenance"]], []).append(int(sector))
     used = {product: sorted(sectors[product]) for product in prereg.CREDITED if product in sectors}
     signal = vetting._signal_dir(record).name
-    gaia = any(licence(path)["licence"] == GAIA for path in record_files(record))
+    gaia = any(licence(path)["licence"] == GAIA for path in _record_paths(record))
     folder = f"`dataset/vetting/{signal}/`"
     return {
         "commit": made["git"]["commit"],
@@ -545,6 +594,9 @@ def _data(record: Path, checks: dict, made: dict) -> dict:
         if calls.version(record) is None
         else f"The signal's published vetting records, from the first to version r{calls.version(record)}, from "
         f"which this paper is rendered, are in {folder}, each version in its own `r<N>/` directory.",
+        "rendered_from": "that record"
+        if calls.version(record) is None
+        else f"version r{calls.version(record)}",
         "tess_credit": prereg.TESS_CREDIT,
         "qlp_credit": f" {prereg.QLP_CREDIT}" if "QLP" in used else "",
         "gaia_credit": GAIA_CREDIT if gaia else "",
@@ -582,7 +634,7 @@ def values(record: Path, author: dict, repo: Path) -> dict[str, str]:
         _star(checks)
         | _vetting(record, checks, call)
         | _from_triceratops(record, checks["criteria_version"])
-        | _review(calls.load_review(record / "review.json"), call)
+        | _review(record, calls.load_review(record / "review.json"), call)
         | _found(repo, checks, made)
         | _public(record, repo, checks["signal"]["name"])
         | _data(record, checks, made)
@@ -600,16 +652,22 @@ def render(record: Path, author: dict, repo: Path, specimen: bool = False) -> st
     return text
 
 
-def document(markdown_text: str, assets: Path, specimen: bool):
-    """The paper laid out by WeasyPrint, its figures read from `assets`. With `specimen`, each page's header and
-    footer say it is one."""
+def html(markdown_text: str, specimen: bool) -> str:
+    """The paper as the HTML page WeasyPrint lays out. With `specimen`, each page's header and footer say it is
+    one."""
     # The optional preprint group's; the rest of tess-hunt runs without it.
     import markdown
-    import weasyprint
 
     body = markdown.markdown(markdown_text, extensions=["tables"])
     style = STYLE + (SPECIMEN_STYLE if specimen else "")
-    page = f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>{style}</style></head><body>{body}</body></html>'
+    return f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>{style}</style></head><body>{body}</body></html>'
+
+
+def document(markdown_text: str, assets: Path, specimen: bool):
+    """The paper laid out by WeasyPrint, its figures read from `assets`."""
+    import weasyprint
+
+    page = html(markdown_text, specimen)
     return weasyprint.HTML(string=page, base_url=assets.resolve().as_uri() + "/").render()
 
 
@@ -708,7 +766,16 @@ def deposit_form(run: Path) -> str:
         raise SystemExit(f"run {run.name} is not a preprint run")
     if made.get("ended_at") is None:
         raise SystemExit(f"run {run.name} has not finished")
+    # The deposited copy is the committed one, and `publish` commits only a production run.
+    if not made.get("production"):
+        raise SystemExit(
+            f"run {run.name} is not a production run; only a production preprint is deposited"
+        )
     text = (run / "preprint.md").read_text()
+    manifest = json.loads((run / "manifest.json").read_text())["files"]
+    gaia = sorted(
+        {_in_record(f["path"].removeprefix("dataset/")) for f in manifest if f["licence"] == GAIA}
+    )
     author = made["author"]
     creators = f"- Name: {author['family_names']}, {author['given_names']}\n  Affiliation: {author['affiliation']}"
     if "orcid" in author:
@@ -724,10 +791,11 @@ def deposit_form(run: Path) -> str:
     description = [
         _section(text, "Summary"),
         "The deposit holds the paper (`preprint.pdf`, rendered from `preprint.md`), its figures and its dataset: the "
-        "signal's published vetting records and the light curve its vetting checks read, which `manifest.json` lists "
-        "with each file's sha256 and licence. The files are CC BY 4.0, except the dataset's files that hold Gaia DR3 "
-        "data and any Gaia value in the paper's quoted text, which stay under ESA's CC BY-NC 3.0 IGO terms, and "
-        "ExoFOP's rows, which stay under ExoFOP's terms.",
+        "signal's published vetting records and the light curve the vetting run of the paper's record read, which "
+        "`manifest.json` lists with each file's sha256 and licence. The files are CC BY 4.0, except the dataset's "
+        f"files that hold Gaia DR3 data ({_words([f'`{name}`' for name in gaia])}, in each record's directory) and "
+        "any Gaia value in the paper's quoted text, which stay under ESA's CC BY-NC 3.0 IGO terms, and ExoFOP's rows "
+        "in the dataset, which stay under ExoFOP's terms.",
         _section(text, "Use of LLMs"),
     ]
     return ZENODO.substitute(

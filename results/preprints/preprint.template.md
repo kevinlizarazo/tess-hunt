@@ -62,21 +62,21 @@ $novelty
 
 The neighbour check lists every Gaia DR3 star near the target whose eclipse could make the dip if all its light fell
 in the photometric aperture. TRICERATOPS (Giacalone et al. 2021) then weighed the scenarios that could make the dip,
-those stars among them. Over $tric_runs runs its mean false-positive probability (FPP) is $fpp and its mean nearby
+those stars among them. Over $triceratops_runs its mean false-positive probability (FPP) is $fpp and its mean nearby
 false-positive probability (NFPP) is $nfpp, below the limits tess-hunt takes for a likely planet, $fpp_pass and
 $nfpp_pass.
 
 The pixel check in the table is $pixel_check: it measures how far the dip's difference-image centroid sits from the
 target in each sector.
 
-The literature search looked for the star under each of its names ($names) in NASA ADS, arXiv, OpenAlex and Zenodo,
-and read ExoFOP's records for the star. None of ExoFOP's planet-parameter rows for the star matches the signal's
-period or a harmonic of it$excepted. $hits_read
+The literature search looked for the star under each of its names, among them $names, in NASA ADS, arXiv, OpenAlex
+and Zenodo, and read ExoFOP's records for the star. None of ExoFOP's planet-parameter rows for the star matches the
+signal's period or a harmonic of it$excepted. $hits_read
 
 An adversarial review, written by an AI model ($review_model) on $review_date, looked for reasons the signal is not on
-the star, not a planet, or not real and new. A finding it rated kill or hold is confirmed when no refuter refutes it.
-Of its $n_findings findings, $n_confirmed stood as confirmed, and the maintainer's call answers each confirmed finding
-(under What it can't rule out).
+the star, not a planet, or not real and new. A finding it rated kill or hold counts as confirmed unless a refuter, a
+separate AI-model session asked to disprove that finding, did so. Of its $findings, $n_confirmed stood as confirmed,
+and the maintainer's call answers each confirmed finding (under What it can't rule out).
 
 The call gives one sentence for each of three questions. They are quoted from the record's `call.toml`, in the
 maintainer's words; numbers in them are the maintainer's, not rendered from the runs (decision record 0037 in
@@ -95,8 +95,8 @@ $prereg
 
 Photometry alone does not measure the transiting body's mass. $companions
 
-The review's confirmed findings, each with the maintainer's answer from the call, both quoted (decision record 0037 in
-tess-hunt's repository):
+The review's confirmed findings, each with the maintainer's answer from the call, both quoted, with any note added
+beside a finding later (decision record 0037 in tess-hunt's repository):
 
 $answers
 
@@ -111,10 +111,10 @@ tess-hunt first made this signal public on $claim_date, in $claim_record.$listin
 The TESS light curves come from MAST: $products. tess-hunt's code is at $repository; vetting run $vetting_run ran it
 at commit $commit, and this paper's `provenance.json` names the commit that rendered it.
 
-The dataset deposited with this paper holds the signal's records and the light curve they were vetted on. $records
-The light curve the vetting run read is `dataset/$light_curve`. `manifest.json` lists each file of the dataset with
-its sha256 and licence. The search, threshold, injection-recovery and triage runs named above, from which the rest of
-the numbers come, are published in the repository under `results/`.
+The dataset deposited with this paper holds the signal's published records and one light curve. $records The light
+curve, `dataset/$light_curve`, is the one the vetting run of $rendered_from read. `manifest.json` lists each file of
+the dataset with its sha256 and licence. The search, threshold, injection-recovery and triage runs named above, from
+which the rest of the numbers come, are published in the repository under `results/`.
 
 Every number in this paper outside the quoted text was rendered by tess-hunt's code from those files and runs. The
 review and the call are quoted word for word, so their numbers are their authors'.
@@ -128,7 +128,8 @@ stay under ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php).
 ## Use of LLMs
 
 tess-hunt's code and this paper's text were written with LLM assistance. The adversarial review this paper quotes was
-written by an AI model, $review_model. The call on the signal is the maintainer's.
+written by an AI model, $review_model, and the refuters that tested its findings were AI-model sessions too. The call
+on the signal is the maintainer's.
 
 ## Acknowledgements
 
@@ -173,6 +174,7 @@ and the citation it asks for.
 - Services: SIMBAD, Wenger et al. 2000, A&AS, 143, 9; VizieR, Ochsenbein et al. 2000, A&AS, 143, 23; the CDS
   cross-match service, Boch et al. 2012, ASPC, 461, 291, and Pineau et al. 2020, ASPC, 522, 125; OpenAlex, Priem, J.,
   Piwowar, H., & Orr, R. 2022, arXiv:2205.01833
-- Software: lightkurve (Lightkurve Collaboration 2018); astropy (Astropy Collaboration 2013, 2018, 2022); wotan
-  (Hippke et al. 2019); emcee (Foreman-Mackey et al. 2013); batman (Kreidberg 2015); matplotlib (Hunter, J. D. 2007,
-  Computing in Science & Engineering, 9, 90)
+- Software: lightkurve (Lightkurve Collaboration 2018); astropy (Astropy Collaboration 2013, 2018, 2022); astroquery,
+  which queries MAST and the Gaia archive (Ginsburg et al. 2019); transitleastsquares, whose period grid the search
+  uses (Hippke & Heller 2019); wotan (Hippke et al. 2019); emcee (Foreman-Mackey et al. 2013); batman (Kreidberg
+  2015); matplotlib (Hunter, J. D. 2007, Computing in Science & Engineering, 9, 90)

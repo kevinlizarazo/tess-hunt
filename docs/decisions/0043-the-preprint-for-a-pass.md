@@ -46,7 +46,9 @@ reviewed on a specimen and fixed before a real result can shape it.
     `signals.csv` for the signal's SDE, and the injection-recovery run. Numbers are formatted as the dossier and the
     DDT proposal format them. The call's words and the review's are quoted under
     [0037](0037-quoted-text-in-the-dossier.md), with machine paths and the maintainer's name written as the dossier
-    writes them ([0038](0038-literature-trim-and-username-scrub.md)).
+    writes them ([0038](0038-literature-trim-and-username-scrub.md)). Each note `review-notes.toml` adds beside a
+    quoted finding under 0037 is given under that finding, worded as the dossier words it ("Note added on DATE under
+    decision 0037, not part of the review or the call").
   - No provenance in a record names the injection-recovery run, so the paper takes the one published production
     `benchmark-inject` run made at the search's threshold run, and refuses unless exactly one is (the build's choice).
   - The claim date and record are `results/claims.toml`'s. Each listing the record's `claims.json` excepts under 0042
@@ -60,8 +62,9 @@ reviewed on a specimen and fixed before a real result can shape it.
     value, so the paper and its figures are CC BY 4.0 (the build's choice). A Gaia value in the text it quotes from
     the review or the call stays under Gaia's terms, as `results/README.md` says of the reviews' quoted Gaia values,
     and the paper says so.
-- **The dataset.** The run's `dataset/` directory holds `vetting/NAME/`, every file of each published record of the
-  signal from the M3 record to the one the paper is rendered from, as `results/vetting/` holds them, and
+- **The dataset.** The run's `dataset/` directory holds `vetting/NAME/`, every file git tracks in each published
+  record of the signal from the M3 record to the one the paper is rendered from, as `results/vetting/` holds them (a
+  file git ignores, such as macOS's `.DS_Store`, is no part of a record), and
   `lc/<tic>.npz`, the light curve that record's vetting run read, checked against the sha256 that run recorded.
   `manifest.json` lists each file of the dataset with its sha256 and licence, following `results/README.md`: the
   files that hold Gaia DR3 data (`checks.json`, `checks-with-suspect.json`, `neighbours.csv`, `triceratops.json`,
@@ -76,11 +79,12 @@ reviewed on a specimen and fixed before a real result can shape it.
     `manifest.json`, `provenance.json` and figures into `results/preprints/<run id>/`, and refuses any other run.
     The dataset is not committed: it holds a light curve, which is raw data. The maintainer deposits it from the run
     directory, and the committed `manifest.json` gives the sha256 of each of its files.
-  - `tess-hunt preprint zenodo --run RUN_ID` prints the deposit form's text from the run's own files: the title,
-    Publication / Preprint as the resource type, the creators from the author line the run recorded, the description,
-    CC BY 4.0 with its exceptions, the related identifiers (the repository's URL, and the predictions DOI when the
-    record holds a preregistered result) and the files to upload, `dataset/` as one zip archive. The form is not a
-    package file.
+  - `tess-hunt preprint zenodo --run RUN_ID` prints the deposit form's text from a finished production run's own
+    files, and refuses any other run, since the deposited copy is the committed one: the title, Publication / Preprint
+    as the resource type, the creators from the author line the run recorded, the description, both licences (CC BY
+    4.0, and CC BY-NC 3.0 IGO for the files holding Gaia DR3 data, which the description names), the related
+    identifiers (the repository's URL, and the predictions DOI when the record holds a preregistered result) and the
+    files to upload, `dataset/` as one zip archive. The form is not a package file.
 - **The author line.** The template holds no name. The author line and the repository's URL come from
   `results/preprints/author.toml` (`given_names`, `family_names`, `affiliation` and `repository`, and optionally
   `orcid` and `email`), read when the paper is rendered. The file is the maintainer's: its text changes only with the
@@ -113,9 +117,12 @@ reviewed on a specimen and fixed before a real result can shape it.
 - [tests/test_preprint.py](../../tests/test_preprint.py): `test_preprint_refuses_unless_the_latest_version_is_a_standing_pass`
   (a held record, a passed M3 record with a held r2, a pass `calls.problems` refuses, an uncommitted change),
   `test_every_number_comes_from_the_record` (and a missing value raises), `test_the_paper_says_candidate_not_planet`,
+  `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_versions_paper_names_its_records`,
   `test_the_paper_names_the_claim_date_and_any_0042_listing` (and a `claims.json` resting on another claim is
   refused), `test_the_paper_gives_the_ephemeris_with_uncertainties`, `test_credits_and_disclosure_are_present`,
-  `test_the_dataset_lets_a_reader_recompute`, `test_a_versions_dataset_holds_each_record_up_to_it`,
-  `test_the_author_line_comes_from_author_toml`, `test_a_production_run_reads_only_committed_results`,
-  `test_run_refuses_before_starting_without_the_pdf_group`,
-  `test_publish_copies_the_package`, `test_zenodo_prints_the_form_from_the_run`, `test_the_pdf_renders`.
+  `test_the_dataset_lets_a_reader_recompute` (a file git ignores stays out),
+  `test_a_versions_dataset_holds_each_record_up_to_it`, `test_the_author_line_comes_from_author_toml`,
+  `test_a_production_run_reads_only_committed_results`, `test_run_refuses_before_starting_without_the_pdf_group`,
+  `test_publish_copies_the_package`, `test_zenodo_prints_the_form_from_the_run` (only a production run, and a judged
+  result without its depth raises), `test_the_pdf_renders` (the header and footer of every page, and the findings'
+  nested list in the HTML).

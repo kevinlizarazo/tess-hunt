@@ -1,7 +1,9 @@
 import json
+import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +12,7 @@ import test_calls as tc
 import test_dossier as td
 import test_vetting as tv
 
-from tess_hunt import preprint, prereg, provenance
+from tess_hunt import calls, dossier, preprint, prereg, provenance
 from tess_hunt.cli import main
 from tess_hunt.provenance import sha256_file
 
@@ -54,9 +56,23 @@ GAIA_FILES = [
     "neighbours.csv",
     "triceratops.json",
     "plots/centroids.png",
+    "pixels.png",
     "dossier.md",
     "review.json",
+    "review-scripts.tar.gz",
 ]
+# Notes added beside two of the review's findings under decision 0037.
+NOTES = """\
+[[note]]
+finding = "F2"
+date = 2026-10-26
+text = "The star is 12.4 arcsec away; the review rounds up."
+
+[[note]]
+finding = "F1"
+date = 2026-10-27
+text = "Sector 2 carries most of it."
+"""
 
 
 def git(repo: Path, *args: str) -> None:
@@ -259,6 +275,13 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
     eph, rp = prior["ephemeris"], prior["rp_rearth"]
     tric = json.loads((record / "triceratops.json").read_text())["evidence"]
     made = json.loads((record / "provenance-checks.json").read_text())
+    # The bars TRICERATOPS was judged against, from the criteria its run recorded.
+    bars = tomllib.loads((REPO / "criteria" / "vet-v3.toml").read_text())["triceratops"]
+    review = calls.load_review(record / "review.json")
+
+    def spread(value: dict) -> str:
+        return f"{value['median']:.2f} (-{value['minus']:.2f}, +{value['plus']:.2f})"
+
     expected = {
         "tic": str(checks["tic"]),
         "tmag": f"{star['tmag']:.2f}",
@@ -273,8 +296,16 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "rp_rearth": f"{rp['median']:.2f}",
         "rp_lo": f"{rp['p16']:.2f}",
         "rp_hi": f"{rp['p84']:.2f}",
+        "b": spread(prior["b"]),
+        "a_rs": spread(prior["a_rs"]),
         "fpp": f"{tric['fpp_mean']:.3g}",
         "nfpp": f"{tric['nfpp_mean']:.3g}",
+        "fpp_pass": f"{bars['fpp_pass']:g}",
+        "nfpp_pass": f"{bars['nfpp_pass']:g}",
+        "tric_runs": str(len(tric["fpp"])),
+        "triceratops_runs": f"{len(tric['fpp'])} runs",
+        "findings": f"{len(review['findings'])} findings",
+        "n_confirmed": str(len(calls.confirmed(review))),
         "vetting_run": made["run_id"],
         "commit": made["git"]["commit"],
         "search_run": tv.SEARCH_RUN,
@@ -309,6 +340,46 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     assert "planet candidate" in summary
     for claim in ("confirmed", "discovered a planet", "validated"):
         assert claim not in summary.lower()
+
+
+def test_a_note_0037_added_sits_under_the_quoted_finding(tmp_path, monkeypatch):
+    _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
+    (record / "review-notes.toml").write_text(NOTES)
+    commit(repo)
+    text = td.section(paper(repo), "What it can't rule out")
+    note = "    - **Note added on {} under decision 0037, not part of the review or the call:** {}"
+    f2 = note.format("2026-10-26", "The star is 12.4 arcsec away; the review rounds up.")
+    f1 = note.format("2026-10-27", "Sector 2 carries most of it.")
+    # Under the confirmed finding's quoted claim, before the call's answer.
+    assert (
+        "- F2 (on the star, hold)\n"
+        "    - Finding: a star 12.5 arcsec away could host the dip\n"
+        f"{f2}\n"
+        "    - Answer: TRICERATOPS weighed that star and the centroids sit on the target."
+    ) in text
+    assert f"- F1 (real and new): one sector carries most of the depth\n{f1}" in text
+    # Worded as the dossier words a note, but for its link to the decision.
+    review = calls.load_review(record / "review.json")
+    quoted = dossier.render_review(review, calls.load_notes(record / "review-notes.toml", review))
+    said = re.sub(r"\[(decision 0037)\]\([^)]*\)", r"\1", quoted)
+    for line in (f1, f2):
+        assert line.removeprefix("    - ") in said
+
+
+def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
+    repo = held_r2(tmp_path, monkeypatch)
+    r2 = repo / "results" / "vetting" / NAME / "r2"
+    # r2 called passed, to render it; the bar is passed_record's, tested above.
+    (r2 / "call.toml").write_text(tc.edit(tc.PASSED, "44926986-1", NAME))
+    text = preprint.render(r2, preprint.load_author(repo / preprint.AUTHOR), repo)
+    made = json.loads((r2 / "provenance-checks.json").read_text())
+    available = td.section(text, "Data and code availability")
+    assert f"vetting run {made['run_id']} ran it" in available
+    assert f"at commit {made['git']['commit']}" in available
+    assert "records, from the first to version r2, from which this paper is rendered" in available
+    assert "the one the vetting run of version r2 read" in available
+    assert f"Vetting run {made['run_id']} applied" in text
 
 
 def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypatch):
@@ -374,13 +445,20 @@ def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
 
 def test_the_dataset_lets_a_reader_recompute(tmp_path, monkeypatch, no_pdf):
     _, repo = published(tmp_path, monkeypatch)
+    signal = repo / "results" / "vetting" / NAME
+    # A second-list row's centroid plot and the review's scripts, as some records hold them.
+    (signal / "pixels.png").write_bytes(b"\x89PNG")
+    (signal / "review-scripts.tar.gz").write_bytes(b"\x1f\x8b")
+    (repo / ".gitignore").write_text(".DS_Store\n")
+    commit(repo)
+    # A file git ignores is no part of the record.
+    (signal / ".DS_Store").write_bytes(b"Finder")
     assert main(["preprint", "run", "--name", NAME]) == 0
     [run] = runs_made(tmp_path)
-    signal = repo / "results" / "vetting" / NAME
     expected = {
         f"dataset/vetting/{NAME}/{path.relative_to(signal)}": sha256_file(path)
         for path in signal.rglob("*")
-        if path.is_file()
+        if path.is_file() and path.name != ".DS_Store"
     }
     # The light curve the vetting run read, under the sha256 it recorded.
     made = json.loads((signal / "provenance-checks.json").read_text())
@@ -388,6 +466,7 @@ def test_the_dataset_lets_a_reader_recompute(tmp_path, monkeypatch, no_pdf):
     manifest = json.loads((run / "manifest.json").read_text())["files"]
     assert {f["path"]: f["sha256"] for f in manifest} == expected
     assert all(sha256_file(run / f["path"]) == f["sha256"] for f in manifest)
+    assert not list((run / "dataset").rglob(".DS_Store"))
     licences = {f["path"]: f["licence"] for f in manifest}
     gaia = {f"dataset/vetting/{NAME}/{name}" for name in GAIA_FILES}
     assert gaia <= set(licences)
@@ -476,8 +555,13 @@ def test_publish_copies_the_package(tmp_path, monkeypatch, no_pdf):
 
 def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, capsys):
     _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
     assert main(["preprint", "run", "--name", NAME]) == 0
     [first] = runs_made(tmp_path)
+    # The deposited copy is the committed one, and only a production run is committed.
+    with pytest.raises(SystemExit, match="not a production run"):
+        main(["preprint", "zenodo", "--run", first.name])
+    td.production(first)
     capsys.readouterr()
     assert main(["preprint", "zenodo", "--run", first.name]) == 0
     form = capsys.readouterr().out
@@ -485,12 +569,20 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     assert f"## Title\n\n{title}\n" in form
     assert "## Resource type\n\nPublication / Preprint\n" in form
     assert "Placeholder, Vera" in form and "0000-0002-1825-0097" in form
-    assert "Creative Commons Attribution 4.0 International (CC BY 4.0)" in form
+    licences = form.split("## Licence\n")[1].split("\n## ")[0]
+    assert "Creative Commons Attribution 4.0 International (CC BY 4.0)" in licences
+    assert "(CC BY-NC 3.0 IGO)" in licences
+    # The description names the files the second licence covers.
+    description = form.split("## Description\n")[1].split("\n## ")[0]
+    gaia = sorted(name for name in GAIA_FILES if (record / name).is_file())
+    assert (
+        f"({dossier._words([f'`{name}`' for name in gaia])}, in each record's directory)"
+        in description
+    )
     assert "https://example.org/tess-hunt" in form
     assert "zenodo.99999999" not in form
 
     # A record that holds a preregistered test's result cites the predictions' DOI.
-    record = repo / "results" / "vetting" / NAME
     (record / "prereg.json").write_text(json.dumps(PREREG))
     (repo / "results" / "predictions").mkdir()
     (repo / "results" / "predictions" / "dois.toml").write_text(
@@ -499,6 +591,7 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     commit(repo)
     assert main(["preprint", "run", "--name", NAME]) == 0
     [second] = [r for r in runs_made(tmp_path) if r != first]
+    td.production(second)
     capsys.readouterr()
     assert main(["preprint", "zenodo", "--run", second.name]) == 0
     form = capsys.readouterr().out
@@ -507,6 +600,10 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
         (second / "preprint.md").read_text(), "The held-out seasons and the preregistered test"
     )
     assert f"doi:{DOI}" in text and "replicated (predicted): depth 500 ppm" in text
+    # A judged result without its depth raises instead of rendering.
+    (record / "prereg.json").write_text(json.dumps({**PREREG, "depth": None}))
+    with pytest.raises(KeyError, match="prereg"):
+        paper(repo)
 
 
 def test_the_pdf_renders(tmp_path, monkeypatch):
@@ -517,15 +614,27 @@ def test_the_pdf_renders(tmp_path, monkeypatch):
     assert (run / "preprint.pdf").read_bytes().startswith(b"%PDF")
     plots = repo / "results" / "vetting" / NAME / "plots"
 
-    def pages(specimen: bool) -> list[str]:
-        """Each page's text from WeasyPrint's layout, its margin boxes included (the lock holds no PDF reader)."""
+    def text(box) -> str:
+        return " ".join(b.text for b in box.descendants() if hasattr(b, "text"))
+
+    def marks(specimen: bool) -> list[list[str]]:
+        """The margin boxes on each page of WeasyPrint's layout that carry the specimen's marking (the lock holds no
+        PDF reader)."""
         document = preprint.document(paper(repo, specimen), plots, specimen)
         return [
-            " ".join(box.text for box in page._page_box.descendants() if hasattr(box, "text"))
+            sorted(
+                box.at_keyword
+                for box in page._page_box.children
+                if getattr(box, "at_keyword", None) and preprint.SPECIMEN in text(box)
+            )
             for page in document.pages
         ]
 
-    marked = pages(specimen=True)
+    marked = marks(specimen=True)
     assert len(marked) >= 1
-    assert all(preprint.SPECIMEN in page for page in marked)
-    assert not any(preprint.SPECIMEN in page for page in pages(specimen=False))
+    # The header and the footer of every page.
+    assert all(page == ["@bottom-center", "@top-center"] for page in marked)
+    assert all(page == [] for page in marks(specimen=False))
+    # The review's finding keeps its quoted claim and the call's answer nested under it.
+    page = preprint.html(paper(repo), specimen=False)
+    assert re.search(r"<li>F2 \(on the star, hold\)\s*<ul>\s*<li>Finding: ", page)
