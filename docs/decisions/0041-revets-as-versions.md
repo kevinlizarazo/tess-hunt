@@ -18,6 +18,11 @@
   the package's test can't use; the test refuses a package whose judging date is not the code's and a judged season
   that holds a training sector; and a published file is written under a temporary name and renamed, so a killed
   publish leaves each file absent or whole.
+  Amended 2026-11-02, in the M5 build. Runbook step 0, `tess-hunt revet status`, and its rule for when to re-vet are
+  the M5 design's (section 4.3), approved by the maintainer with the M5 plan on 2026-10-30; the command's output is
+  the build's choice, stated in the step. Steps 6, 7 and 9 now include the claims stage of
+  [0042](0042-listings-after-our-claim.md), which came after this record. These additions to steps 6, 7 and 9 are the
+  M5 build's controller's, with no acceptance by the maintainer recorded.
 
 ## Context
 
@@ -140,6 +145,16 @@ judged by that prediction, not by a fresh refit.
   package), and `--prereg` for a signal no published package predicts is refused. The dossier gives the result beside
   vet-v3's own held-out result.
 - **The runbook, in order.** Every run is a production run (`--production`).
+  0. `tess-hunt revet status`, before any re-vet (2026-11-02). For a deposited predictions package (`--package RUN_ID`,
+     by default the one `results/predictions/dois.toml` lists as published last) it lists, for each signal and
+     predicted sector, the light-curve files MAST holds for the star, the one fetch would take (`mast.best`, so fetch's
+     own order), whether a timing-suspect rule flags it, and whether the package's test can use it, in `vetting
+     prereg`'s words. One line per signal follows: complete when every predicted sector has data the test can use, not
+     yet with each sector that hasn't and why, or unknown when MAST did not answer for the star, which also makes the
+     command exit 1. Last, it gives the version MAST serves of each file in a sector a timing-suspect rule covers
+     (QLP's S99 to S104), the redelivery 241522065-1's call names. It fetches no light curve, records no run and writes
+     nothing. Re-vet a predicted signal when its line reads complete, or earlier only on the maintainer's call, knowing
+     the season is judged on what that light curve holds.
   1. `tess-hunt targets tics --from CSV`, the star's TIC in a `tic` column: its targets and products tables.
   2. `tess-hunt revet fetch --targets TARGETS --products PRODUCTS --base-lc-dir DIR`, with `DIR` the directory of the
      light curve the previous record's vetting run read (the shared cache for r2 while it holds that file, the
@@ -151,13 +166,18 @@ judged by that prediction, not by a fresh refit.
      --package results/predictions/<run id> --catalogs NEW_SNAPSHOT --as-of DATE`, with `DATE` the day it runs. If it
      names a predicted sector whose product the test can't use, the maintainer may wait for a re-vet whose fetch finds
      a better product for that sector before publishing a version.
-  6. `tess-hunt vetting triceratops --run VETTING_RUN`, `tess-hunt vetting literature --run VETTING_RUN` and `tess-hunt
-     vetting titles --literature LITERATURE_RUN`.
+  6. `tess-hunt vetting triceratops --run VETTING_RUN`, `tess-hunt vetting literature --run VETTING_RUN`, `tess-hunt
+     vetting titles --literature LITERATURE_RUN` and `tess-hunt vetting claims --run VETTING_RUN --literature
+     LITERATURE_RUN` ([0042](0042-listings-after-our-claim.md), 2026-11-02). A signal 0042 can help has a failed
+     novelty check, and by default the literature run searches only signals no check failed and the claims run sorts
+     only what the literature run searched, so such a signal must be named with `--signals` in both the literature
+     and claims runs.
   7. `tess-hunt vetting dossier --version N --run ... --lc-run REVET_RUN --signals NAME --out DIR`, with the other
-     runs as `publish` takes them, for the review workflow, which runs on the maintainer's go-ahead and writes
-     `review.json` into `results/vetting/<name>/r<N>/`.
+     runs as `publish` takes them, `--claims CLAIMS_RUN` among them (2026-11-02), for the review workflow, which runs
+     on the maintainer's go-ahead and writes `review.json` into `results/vetting/<name>/r<N>/`.
   8. The maintainer's call, `results/vetting/<name>/r<N>/call.toml`.
-  9. `tess-hunt vetting publish --name NAME --version N ...`.
+  9. `tess-hunt vetting publish --name NAME --version N ...`, with the runs it takes, `--claims CLAIMS_RUN` among them
+     (2026-11-02).
 
 ## Limitations
 
@@ -182,6 +202,13 @@ judged by that prediction, not by a fresh refit.
 
 ## Evidence
 
+- [tests/test_revet_status.py](../../tests/test_revet_status.py) (step 0):
+  `test_a_sector_with_spoc_2min_is_usable_for_a_2min_signal`, `test_a_qlp_sector_cannot_test_a_pdcsap_signal`,
+  `test_a_timing_suspect_product_is_not_usable`, `test_taken_is_what_fetch_would_take`,
+  `test_complete_only_when_every_predicted_sector_is_usable`, `test_a_star_mast_could_not_list_is_never_complete` (and
+  a sector nothing is listed for yet), `test_redelivery_rows_show_the_served_qlp_version`,
+  `test_the_default_package_is_the_latest_deposited`, `test_a_signal_the_package_predicts_no_transit_of_is_refused`,
+  `test_status_writes_nothing`, and the network test `test_status_on_the_deposited_package`.
 - [tests/test_revet.py](../../tests/test_revet.py): `test_merge_keeps_m2_sectors_and_takes_only_a_suspect_redelivery`
   (a better product over an old sector, a suspect sector replaced by another suspect file, and TESS-SPOC over a suspect
   QLP sector are all kept as M2 fetched them),

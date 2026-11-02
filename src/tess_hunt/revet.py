@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-from tess_hunt import fetch
+from tess_hunt import fetch, revet_status
 from tess_hunt.config import load_criteria
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.mast import PREFERENCE
@@ -234,3 +234,4 @@ def add_parser(sub) -> None:
     f.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
     f.add_argument("--production", action="store_true")
     f.set_defaults(func=cmd_fetch)
+    revet_status.add_parser(modes)
