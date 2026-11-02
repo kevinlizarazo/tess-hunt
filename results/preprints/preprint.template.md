@@ -128,8 +128,8 @@ stay under ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php).
 ## Use of LLMs
 
 tess-hunt's code and this paper's text were written with LLM assistance. The adversarial review this paper quotes was
-written by an AI model, $review_model, and the refuters that tested its findings were AI-model sessions too. The call
-on the signal is the maintainer's.
+written by an AI model, $review_model, and any refuter that tested one of its findings was an AI-model session too.
+The call on the signal is the maintainer's.
 
 ## Acknowledgements
 

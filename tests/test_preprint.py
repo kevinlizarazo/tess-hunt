@@ -367,6 +367,29 @@ def test_a_note_0037_added_sits_under_the_quoted_finding(tmp_path, monkeypatch):
         assert line.removeprefix("    - ") in said
 
 
+def test_a_confirmed_finding_no_refuter_ran_on_says_so(tmp_path, monkeypatch):
+    _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
+    untested = {
+        "id": "F4",
+        "lens": "planet",
+        "rating": "hold",
+        "claim": "the depth is shallow for the fitted radius",
+        "evidence": "fit_prior",
+        "refuters": [],
+    }
+    review = {**td.REVIEW, "findings": [*td.REVIEW["findings"], untested]}
+    (record / "review.json").write_text(json.dumps(review))
+    call = record / "call.toml"
+    call.write_text(
+        tc.edit(call.read_text(), "[answers]\n", '[answers]\nF4 = "The radius fits."\n')
+    )
+    text = td.section(paper(repo), "What it can't rule out")
+    # Confirmed only because nothing refuted it, as the dossier marks it; F2's refuters ran.
+    assert "- F4 (a planet, hold), no refuter ran on it\n    - Finding: the depth" in text
+    assert "- F2 (on the star, hold)\n    - Finding: " in text
+
+
 def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
     repo = held_r2(tmp_path, monkeypatch)
     r2 = repo / "results" / "vetting" / NAME / "r2"

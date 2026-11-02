@@ -117,7 +117,8 @@ reviewed on a specimen and fixed before a real result can shape it.
 - [tests/test_preprint.py](../../tests/test_preprint.py): `test_preprint_refuses_unless_the_latest_version_is_a_standing_pass`
   (a held record, a passed M3 record with a held r2, a pass `calls.problems` refuses, an uncommitted change),
   `test_every_number_comes_from_the_record` (and a missing value raises), `test_the_paper_says_candidate_not_planet`,
-  `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_versions_paper_names_its_records`,
+  `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_confirmed_finding_no_refuter_ran_on_says_so`,
+  `test_a_versions_paper_names_its_records`,
   `test_the_paper_names_the_claim_date_and_any_0042_listing` (and a `claims.json` resting on another claim is
   refused), `test_the_paper_gives_the_ephemeris_with_uncertainties`, `test_credits_and_disclosure_are_present`,
   `test_the_dataset_lets_a_reader_recompute` (a file git ignores stays out),

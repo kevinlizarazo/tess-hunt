@@ -429,8 +429,10 @@ def _review(record: Path, review: dict, call: dict) -> dict:
         if flagged
         else "The review flagged no paper for the maintainer to read.",
         "answers": "\n".join(
-            f"- {f} ({LENSES[findings[f]['lens']]}, {findings[f]['rating']})\n"
-            f"    - Finding: {_scrub(findings[f]['claim'])}"
+            f"- {f} ({LENSES[findings[f]['lens']]}, {findings[f]['rating']})"
+            # Confirmed only because nothing refuted it, as the dossier says: the reader should not take it for tested.
+            + ("" if findings[f]["refuters"] else ", no refuter ran on it")
+            + f"\n    - Finding: {_scrub(findings[f]['claim'])}"
             + _beside(added.get(f, []))
             + f"\n    - Answer: {_scrub(call['answers'][f])}"
             for f in confirmed
