@@ -2,9 +2,9 @@
 
 This brief adds to [review-brief.md](review-brief.md) for the review of a re-vet, a new version `r<N>` of a signal's
 record ([decision 0041](../../docs/decisions/0041-revets-as-versions.md)). Everything in that brief holds. This one
-covers a single question for the "real and new" lens: how to read a TOI or CTOI listed after the signal was made
-public ([decision 0042](../../docs/decisions/0042-listings-after-our-claim.md)). It applies whenever the version's
-record holds `claims.json`.
+covers a single question for the real and new lens (`real_new`): how to read a TOI or CTOI listed after the signal
+was made public ([decision 0042](../../docs/decisions/0042-listings-after-our-claim.md)). It applies whenever the
+version's record holds `claims.json`.
 
 ## What you have
 
@@ -55,7 +55,9 @@ As in the brief, with these meanings here:
 - **kill:** a listing `claims.json` excepted fails one of the four conditions, or a listing before the claim holds the
   signal: the signal is known. Name the condition and show the evidence. This is also a finding that a check is
   wrong, so it goes to a decision record.
-- **hold:** the public data can't say whether one of the four conditions holds. Name what would decide it.
+- **hold:** the public data can't say whether one of the four conditions holds. Name what would decide it. Under
+  decision 0042 a listing that can't be placed counts as known, so the exception doesn't stand until the hold is
+  decided.
 - **note:** anything else a listing shows that is worth the maintainer's eye.
 
 The refuters test each kill or hold finding against the four conditions above as well as the brief's rules.

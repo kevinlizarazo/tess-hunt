@@ -11,15 +11,15 @@ review or a call ([Preprints](#preprints)). They stay under ESA's CC BY-NC 3.0 I
 
 ExoFOP's rows in the vetting records' `literature.json` (TOIs, CTOIs, planet parameters, confirmed planets and imaging
 rows) and `claims.json` (the TOI and CTOI rows decision 0042 sorted), and the same rows where `dossier.md` shows them,
-stay under ExoFOP's terms, not CC BY 4.0: its data-use
-guidelines (https://exofop.ipac.caltech.edu/tess/pcp.php) treat data as its provider's property. The paper titles in
-`literature.json` come only from arXiv's, OpenAlex's and Zenodo's metadata
-([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read 2026-10-26: arXiv's API terms
-of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive metadata about arXiv e-prints
-under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration"; OpenAlex's about page
-(https://openalex.org/about) says "Our data is CC0"; Zenodo's policies (https://about.zenodo.org/policies/) say
-"Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs and arXiv ids are identifiers. From NASA
-ADS the records keep those identifiers and each search's query, total and status, never a title.
+stay under ExoFOP's terms, not CC BY 4.0: its data-use guidelines (https://exofop.ipac.caltech.edu/tess/pcp.php)
+treat data as its provider's property. The paper titles in `literature.json` come only from arXiv's, OpenAlex's and
+Zenodo's metadata ([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read
+2026-10-26: arXiv's API terms of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive
+metadata about arXiv e-prints under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration";
+OpenAlex's about page (https://openalex.org/about) says "Our data is CC0"; Zenodo's policies
+(https://about.zenodo.org/policies/) say "Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs
+and arXiv ids are identifiers. From NASA ADS the records keep those identifiers and each search's query, total and
+status, never a title.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -287,8 +287,8 @@ holds, as above, from runs made from its own vetting run, and these:
 
 - `call.toml`, `review.json`, `review-scripts.tar.gz` and any `review-notes.toml`, written into `r<N>/` before it is
   published. The call names the signal, not `r<N>`. A version's review is given
-  [vetting/review-brief-0042.md](vetting/review-brief-0042.md) beside the brief, for any listing decision 0042
-  excepts.
+  [vetting/review-brief-0042.md](vetting/review-brief-0042.md) beside the brief whenever the version holds
+  `claims.json`.
 - `provenance-checks.json`, which also names the directory the vetting run read its light curves from (`lc_dir`), the
   revet fetch run whose `lc/` that is (`revet_run`) and the catalog snapshot (`catalogs`).
 - For a second-list row, `pixels.json`, `pixels.png` and `provenance-second-list.json`: the previous record's, byte

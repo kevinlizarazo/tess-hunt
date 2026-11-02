@@ -50,7 +50,7 @@ Consequences for this design:
 - A peer-reviewed paper on the methods could meet that clause. The Journal of Open Source Software (JOSS) is peer
   reviewed and online, and allows generative AI with a disclosure, but takes a repository only once it has "been
   public for more than six months prior to submission" (JOSS's pages, read 2026-10-30, section 9). tess-hunt went
-  public on 2026-10-28, so the earliest JOSS submission is 2027-04-29 (2026-11-02).
+  public on 2026-10-28, so a JOSS submission comes no earlier than 2027-04-29 (2026-11-02).
 - If the TOI team lists a signal before it passes, there is no CTOI to upload, and the preprint records that
   tess-hunt's public claim came first (2026-11-02, [0042](decisions/0042-listings-after-our-claim.md)).
 
@@ -334,7 +334,8 @@ from a run directory and writes its own.
   and the dossier; where `claims.json` excepts a row, its rerun stands in for novelty in the "passed" bar and the kill
   rule, and ExoFOP's planet-parameter rows under an excepted listing don't count against the bar. Every other match
   counts as before: a neighbour's listing, an archive planet, a row from any other source, a SPOC TCE or ExoMiner row,
-  a listing with another disposition and one the rule can't date. A signal with no claim gets no exception.
+  a listing with another disposition and one the rule can't date. A signal with no claim gets no exception. When
+  unsure, a row counts as known.
 
 **publish**
 - **Predictions for held signals** ([0040](decisions/0040-predictions-for-held-signals.md)): each held signal with a
@@ -360,8 +361,10 @@ from a run directory and writes its own.
   prediction was made with ([0040](decisions/0040-predictions-for-held-signals.md)): `vet.py`, `holdout.py`,
   `prereg.py`, the `checks` package, `novelty.py`, `ephemeris.py`, `fit.py`, `transit.py`, `lightcurve.py`,
   `tricera.py`, `neighbours.py`, `pixels.py`, every file under `criteria/`, the search code (`search.SEARCH_CODE`) and
-  `leo.py` stay unchanged until every predicted season is judged or 2027-12-31 passes, whichever comes first. A test
-  may be added. A change to any of them needs its own decision record and the maintainer's yes.
+  `leo.py` stay unchanged until every predicted season is judged or 2027-12-31 passes, whichever comes first. The M5
+  design froze the check code, and the M5 plan, which the maintainer approved on 2026-10-30, added `criteria/`, the
+  search code and `leo.py`. A test may be added. A change to any of them needs its own decision record and the
+  maintainer's yes.
 - **The DDT ask for a held signal** ([0039](decisions/0039-ddt-for-held-signals.md)): a held signal may go to it, on
   the maintainer's call each time, when 2-min data would supply its deciding evidence: the transit's shape, or a
   season no public light curve will otherwise cover. A hold on blending does not go. `tess-hunt ddt render` fills the
@@ -370,7 +373,8 @@ from a run directory and writes its own.
   the TESS DDT program on 2026-10-28.
 - For a candidate the maintainer passes:
   - **Preregistration:** predicted transit windows with uncertainties for TESS's upcoming sectors, plus the pass/fail
-    rule, deposited on Zenodo before the data exists.
+    rule, deposited on Zenodo before the data exists. Not built: it waits for a pass (2026-11-02,
+    [0043](decisions/0043-the-preprint-for-a-pass.md)).
   - **Zenodo preprint and dataset** (a held signal gets no preprint): each version is its own record with its own DOI,
     under one concept DOI; 50 GB per record; a license is required [T44][T45]. `tess-hunt preprint run --name NAME`
     renders the paper (Markdown and PDF) and its dataset from the signal's latest published record, and refuses unless
@@ -704,9 +708,9 @@ Done when:
 
 **M5: Ready for the spring data.** No signal has passed. Sectors 112 to 114 reach MAST between February and April
 2027, and of the held signals only 241522065-1 can pass on TESS data alone; every other hold needs ground-based
-photometry, high-resolution imaging, radial velocities or CHEOPS. The maintainer chose a short M5 (2026-10-30) so that
-a re-vet that replicates can go to a published candidate with no rule decided after its data is seen, and moved slice
-B to M6. M5 built:
+photometry, high-resolution imaging, radial velocities or CHEOPS. The M5 design, which the maintainer approved on
+2026-10-30, kept M5 short so that a re-vet that replicates can go to a published candidate with no rule decided after
+its data is seen, and moved slice B to M6. M5 built:
 - the rule for a listing made after our claim: a TOI or CTOI on the signal's own star, first listed after tess-hunt's
   public claim and with every ExoFOP disposition PC or empty, doesn't make the signal known. `results/claims.toml`
   holds the claims, `tess-hunt vetting claims` runs novelty again without the excepted rows, and the "passed" bar, the
@@ -807,8 +811,9 @@ judged or 2027-12-31 passes (section 4.1, publish), so either change before then
   blocking a pass only for a listing on the signal's own star, first listed after the claim, with every disposition PC
   or empty, and the record still shows novelty's fail. The rule can read as self-serving; it is narrow and was decided
   before any spring data. A SPOC TCE from the same 2-min data still leaves novelty at `known_to_spoc`, which blocks a
-  shortlisted signal's pass. If the TOI team lists a signal before its re-vet runs, TFOP's follow-up may decide it
-  first, and the preprint records the order (2026-11-02).
+  shortlisted signal's pass; 241522065-1, a promoted second-list row, is not blocked by it. If the TOI team lists a
+  signal before its re-vet runs, TFOP's follow-up may decide it first, and the preprint records the order
+  (2026-11-02).
 - **30-min data:** a candidate seen mostly in 30-min data cannot be validated by TRICERATOPS alone; that is the case
   for the DDT ask.
 - **Unverified estimates:** the yield is an estimate. M2's runs replaced the sample-size and search-cost estimates
