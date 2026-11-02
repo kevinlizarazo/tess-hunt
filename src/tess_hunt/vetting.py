@@ -1513,11 +1513,14 @@ def _signal_files(
             continue
         files[f"provenance-{role}.json"] = path / "provenance.json"
         made = path / "signals" / name
-        # A signal a check killed gets no TRICERATOPS; the dossier says the run did not judge it. `vetting claims`
-        # sorts every signal it is given, so a claims run without this one's record was made for others.
+        # A signal a check killed gets no TRICERATOPS, and by default no literature search or claims sort; the dossier
+        # says the run did not judge it. A claims run sorts every signal its literature run searched unless given
+        # others, so one with no record of a signal that run searched was made for other signals.
         if not (made / outputs[0]).is_file():
             if role == "claims":
-                raise SystemExit(f"claims run {path.resolve().name} sorted no {name}")
+                searched = runs["literature"] / "signals" / name / "literature.json"
+                if searched.is_file():
+                    raise SystemExit(f"claims run {path.resolve().name} sorted no {name}")
             continue
         made_from = json.loads((path / "provenance.json").read_text())
         inputs = made_from["inputs"]

@@ -1232,6 +1232,30 @@ def test_a_draft_with_claims_needs_the_literature_run_they_read(tmp_path, monkey
     assert not out.exists()
 
 
+def test_a_whole_run_draft_with_claims_passes_over_a_signal_the_literature_run_never_searched(
+    tmp_path, monkeypatch
+):
+    runs, _, _ = claimed_pass(tmp_path, monkeypatch)
+    # A second signal, which a check failed: a default literature run searches only signals no check failed, and a
+    # default claims run sorts only the signals its literature run searched.
+    signals = runs["run"] / "signals"
+    writable(runs["run"])
+    shutil.copytree(signals / NAME, signals / "2-1")
+    edit_json(signals / "2-1" / "checks.json", lambda c: c["signal"].update(name="2-1"))
+    out = tmp_path / "drafts"
+    roles = ("run", "triceratops", "literature", "claims")
+    argv = ["vetting", "dossier", *flags(runs, *roles), "--out", str(out)]
+    assert main(argv) == 0
+    assert "Decision 0042" in section((out / NAME / "dossier.md").read_text(), "Real and new?")
+    assert not (out / "2-1" / "claims.json").exists()
+    assert "Decision 0042" not in (out / "2-1" / "dossier.md").read_text()
+    # A signal the literature run searched still needs the claims run's record of it.
+    writable(runs["claims"])
+    shutil.rmtree(runs["claims"] / "signals" / NAME)
+    with pytest.raises(SystemExit, match=f"claims run .*-vetting-claims-.* sorted no {NAME}"):
+        main(argv)
+
+
 def test_publish_reads_the_claims_run_vetting_claims_writes(tmp_path, monkeypatch):
     """The chain on a synthetic vetting run: novelty fails on a TOI the snapshot lists on the star, `vetting claims`
     excepts it from the literature run's ExoFOP record, and publish reads what claims.py recorded."""
