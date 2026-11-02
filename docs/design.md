@@ -4,8 +4,9 @@ Status: approved 2026-10-08.
 Amended for M2 from the M2 design of 2026-10-12 (kept outside the repository): sections 3, 4.1, 4.2, 5.2, 5.4, 5.6,
 6.1, 6.2, 7 and 8. Amended for M3 from the M3 design of 2026-10-16 (kept outside the repository) and M3's decisions:
 sections 4.1, 5.2, 5.4, 5.7, 5.8, 6, 6.2, 7 and 8. Amended for M4 from the M4 design of 2026-10-27 (kept outside the
-repository) and M4's decisions: sections 1.1, 4.1, 7, 8 and 9. Each changed rule links its decision record in
-[docs/decisions/](decisions/).
+repository) and M4's decisions: sections 1.1, 4.1, 7, 8 and 9. Amended for M5 on 2026-11-02 from the M5 design of
+2026-10-30 (kept outside the repository) and M5's decisions: sections 1.1, 3, 4.1, 7, 8 and 9. Each changed rule links
+its decision record in [docs/decisions/](decisions/).
 Repo: `kevinlizarazo/tess-hunt` (public since 2026-10-28).
 
 ## 1. Goal
@@ -31,19 +32,27 @@ pass/fail call.
 
 ExoFOP paused community candidate (CTOI) uploads on 2026-03-31. It reopened them on 2026-08-19 with this rule:
 "Candidates must be published in a peer-reviewed journal that offers online access before being uploaded to ExoFOP."
-Upload access needs an approved Published Candidate Upload Request [R3][R4].
+Upload access needs an approved Published Candidate Upload Request [R3][R4]. The rule read the same on 2026-10-30.
 
 A Research Note of the AAS (RNAAS) qualifies only "if the methodology to detect and vet the candidate has been
 previously published in a peer-reviewed journal that is available online and is cited by the Research Note" [R4].
 RNAAS is not peer reviewed and is limited to 1,500 words with one figure or table [R5].
 
 Consequences for this design:
-- The endpoint is the Zenodo, preregistration and DDT route, not a CTOI.
+- The endpoint is the Zenodo, preregistration and DDT route, not a CTOI. A signal that passes goes out as a Zenodo
+  preprint and dataset rendered from its published record (2026-11-02,
+  [0043](decisions/0043-the-preprint-for-a-pass.md)).
 - Methods stay close to published tools in their published configurations (LEO-Vetter, TRICERATOPS). A later RNAAS
   can then cite them. The search is BLS ([0007](decisions/0007-search-engine.md)).
 - Whether a pipeline assembled from published tools satisfies the RNAAS clause is unknown. ExoFOP support
-  (exofop-support@ipac.caltech.edu) was asked on 2026-10-22 and had not answered by 2026-10-27, so RNAAS eligibility
+  (exofop-support@ipac.caltech.edu) was asked on 2026-10-22 and had not answered by 2026-10-30, so RNAAS eligibility
   is still unknown. No note is written before it answers.
+- A peer-reviewed paper on the methods could meet that clause. The Journal of Open Source Software (JOSS) is peer
+  reviewed and online, and allows generative AI with a disclosure, but takes a repository only once it has "been
+  public for more than six months prior to submission" (JOSS's pages, read 2026-10-30, section 9). tess-hunt went
+  public on 2026-10-28, so the earliest JOSS submission is 2027-04-29 (2026-11-02).
+- If the TOI team lists a signal before it passes, there is no CTOI to upload, and the preprint records that
+  tess-hunt's public claim came first (2026-11-02, [0042](decisions/0042-listings-after-our-claim.md)).
 
 ## 2. Decisions (Kevin, 2026-10-08)
 
@@ -87,7 +96,7 @@ Costs and risks:
 - **Yield:** eumemic found about 2 candidates per 1,000 bright K/M dwarfs [L4]. Slice A will yield fewer
   (estimate, not sourced).
 
-Slice B (later, M5): duo- and tri-transits with P >~ 20 d on the same stars. It combines Cycles 1 and 3 with
+Slice B (later, M6): duo- and tri-transits with P >~ 20 d on the same stars. It combines Cycles 1 and 3 with
 Year 8's sixteen consecutive southern sectors [L25][L30]. Nearly every automated search needs 2-3 transits or caps
 the period.
 
@@ -310,6 +319,22 @@ from a run directory and writes its own.
   lists the masks, catalogued rows and novelty matches that changed. TRICERATOPS, the literature search, a fresh
   review and the maintainer's call follow, under the same "passed" bar. `results/vetting/README.md` shows each
   signal's latest standing call and links its earlier versions.
+- **When to re-vet** (2026-11-02, step 0 of [0041](decisions/0041-revets-as-versions.md)'s runbook): `tess-hunt revet
+  status` runs before any re-vet. For each signal of a deposited predictions package and each predicted sector, it
+  lists the light-curve files MAST holds for the star, the one fetch tries first, whether a timing-suspect rule flags
+  it and whether the package's test can use it, then says whether every predicted sector has data the test can use.
+  It fetches nothing and writes nothing. A predicted signal is re-vetted when every predicted sector is usable, or
+  earlier on the maintainer's call, knowing its season is then judged on what that light curve holds.
+- **Listings after our claim** (2026-11-02, [0042](decisions/0042-listings-after-our-claim.md)): a TOI or CTOI does not
+  make a re-vetted signal known when it is on the signal's own star, the version's literature run finds ExoFOP first
+  listed it after the signal's public claim (strictly after), and each of its ExoFOP dispositions is PC or empty.
+  `results/claims.toml` gives each held signal's claim date and the public record that shows it, and changes only with
+  a decision record. `tess-hunt vetting claims` takes the excepted rows out of the vetting run's catalog snapshot and
+  runs the unchanged novelty check again, into the version's `claims.json`. Novelty's own fail stays in `checks.json`
+  and the dossier; where `claims.json` excepts a row, its rerun stands in for novelty in the "passed" bar and the kill
+  rule, and ExoFOP's planet-parameter rows under an excepted listing don't count against the bar. Every other match
+  counts as before: a neighbour's listing, an archive planet, a row from any other source, a SPOC TCE or ExoMiner row,
+  a listing with another disposition and one the rule can't date. A signal with no claim gets no exception.
 
 **publish**
 - **Predictions for held signals** ([0040](decisions/0040-predictions-for-held-signals.md)): each held signal with a
@@ -323,13 +348,20 @@ from a run directory and writes its own.
   ([facts.toml](../results/predictions/facts.toml), read 2026-10-28), so a package deposited by 2026-11-05 is fixed by
   2026-12-20 and predicts only sectors that start then or later: 103312990-1's S110 and S111 are left out. A signal is
   judged once, on its complete new season, at the first re-vet whose light curve has data the test can use in every
-  predicted sector. The judging date, 2027-12-31, applies to when that light curve was fetched, which is what the code
-  can see, not when the re-vet runs: a light curve fetched before it that covers every predicted sector is judged
-  whenever the re-vet runs, one fetched on or after it completes no season, and a season still missing a sector in a
-  re-vet judged as of that date or later stays untested. A result once judged stands, and every later version carries it
-  ([0041](decisions/0041-revets-as-versions.md)). `tess-hunt predictions run` makes a package in one production run,
-  `tess-hunt predictions publish` copies it to `results/predictions/<run id>/`, and `tess-hunt predictions zenodo`
-  prints the Zenodo deposit form's text from the run; that text is not a package file.
+  predicted sector. The judging date, 2027-12-31, applies to when that light curve was fetched, not when the re-vet
+  runs, since a run records when it fetched its data, not when the data went public (2026-11-02): a light curve
+  fetched before it that covers every predicted sector is judged whenever the re-vet runs, one fetched on or after it
+  completes no season, and a season still missing a sector in a re-vet judged as of that date or later stays untested.
+  A result once judged stands, and every later version carries it ([0041](decisions/0041-revets-as-versions.md)).
+  `tess-hunt predictions run` makes a package in one production run, `tess-hunt predictions publish` copies it to
+  `results/predictions/<run id>/`, and `tess-hunt predictions zenodo` prints the Zenodo deposit form's text from the
+  run; that text is not a package file.
+- **Judging code stays frozen** (2026-11-02), so that each predicted season is judged with the code and criteria the
+  prediction was made with ([0040](decisions/0040-predictions-for-held-signals.md)): `vet.py`, `holdout.py`,
+  `prereg.py`, the `checks` package, `novelty.py`, `ephemeris.py`, `fit.py`, `transit.py`, `lightcurve.py`,
+  `tricera.py`, `neighbours.py`, `pixels.py`, every file under `criteria/`, the search code (`search.SEARCH_CODE`) and
+  `leo.py` stay unchanged until every predicted season is judged or 2027-12-31 passes, whichever comes first. A test
+  may be added. A change to any of them needs its own decision record and the maintainer's yes.
 - **The DDT ask for a held signal** ([0039](decisions/0039-ddt-for-held-signals.md)): a held signal may go to it, on
   the maintainer's call each time, when 2-min data would supply its deciding evidence: the transit's shape, or a
   season no public light curve will otherwise cover. A hold on blending does not go. `tess-hunt ddt render` fills the
@@ -340,7 +372,14 @@ from a run directory and writes its own.
   - **Preregistration:** predicted transit windows with uncertainties for TESS's upcoming sectors, plus the pass/fail
     rule, deposited on Zenodo before the data exists.
   - **Zenodo preprint and dataset** (a held signal gets no preprint): each version is its own record with its own DOI,
-    under one concept DOI; 50 GB per record; a license is required [T44][T45].
+    under one concept DOI; 50 GB per record; a license is required [T44][T45]. `tess-hunt preprint run --name NAME`
+    renders the paper (Markdown and PDF) and its dataset from the signal's latest published record, and refuses unless
+    that record's call is a standing pass and the record is committed unchanged. `tess-hunt preprint publish` copies a
+    production run's paper, figures, manifest and provenance to `results/preprints/<run id>/`; the dataset holds a
+    light curve, so it is deposited from the run directory, and the committed manifest gives each file's sha256.
+    `tess-hunt preprint zenodo` prints the deposit form's text. The committed copy is the deposited copy, and a real
+    pass's paper gets its own pre-release review before the maintainer deposits it (2026-11-02,
+    [0043](decisions/0043-the-preprint-for-a-pass.md)).
   - **DDT proposal:** for 2-min cadence through the TESS DDT page (`https://tess.mit.edu/science/ddt/`).
 - **Acknowledgements and DOIs:** per section 6.
 
@@ -663,6 +702,35 @@ Done when:
 - the deferred minors in the code M4 touched are fixed;
 - this spec carries M4's amendments, CI is green, and the milestone review is done.
 
+**M5: Ready for the spring data.** No signal has passed. Sectors 112 to 114 reach MAST between February and April
+2027, and of the held signals only 241522065-1 can pass on TESS data alone; every other hold needs ground-based
+photometry, high-resolution imaging, radial velocities or CHEOPS. The maintainer chose a short M5 (2026-10-30) so that
+a re-vet that replicates can go to a published candidate with no rule decided after its data is seen, and moved slice
+B to M6. M5 built:
+- the rule for a listing made after our claim: a TOI or CTOI on the signal's own star, first listed after tess-hunt's
+  public claim and with every ExoFOP disposition PC or empty, doesn't make the signal known. `results/claims.toml`
+  holds the claims, `tess-hunt vetting claims` runs novelty again without the excepted rows, and the "passed" bar, the
+  kill rule and the dossier read its `claims.json` ([0042](decisions/0042-listings-after-our-claim.md));
+- `tess-hunt revet status`, step 0 of the re-vet runbook, which says from MAST's listings whether each predicted
+  sector has data the preregistered test can use ([0041](decisions/0041-revets-as-versions.md));
+- the preprint and dataset for a pass, `tess-hunt preprint run`, `publish` and `zenodo`, with a specimen rendered from
+  a made-up record so that the template is reviewed before any real result exists
+  ([0043](decisions/0043-the-preprint-for-a-pass.md));
+- the re-vet minors: fetch takes the higher QLP version when MAST lists two for a sector, so a `v02` redelivery of
+  S99 to S104 reaches a re-vet, and a version's publish stopped between its dossier and the README is finished by the
+  same runs ([0041](decisions/0041-revets-as-versions.md)).
+
+M5 runs no search, null, threshold, triage, vetting or TRICERATOPS run, and changes no criteria file or judging code
+(section 4.1, publish).
+
+Done when:
+- decision 0042 is written and the "passed" bar and the dossier apply it, with tests;
+- `tess-hunt revet status` is built and tested, network test included;
+- the preprint path is built and tested on a fixture record, and a specimen rendered from that fixture has had a
+  pre-release review whose fixes are in the template;
+- the re-vet minors are fixed, and the judging code is unchanged since M4;
+- this spec carries M5's amendments, CI is green, the milestone review is done, and M5 is merged with a merge commit.
+
 **FFI photometry checkpoint, 2027-02-15** (S112's FFIs plus about two weeks). If 241522065-1 has no S112 light curve
 its preregistered test can use (SPOC 2-min or TESS-SPOC) by then, the maintainer decides whether to build the
 project's own FFI photometry as a small milestone of its own. That milestone would add a product family and prove it
@@ -670,15 +738,51 @@ on known planets with SPOC 2-min data in the same sectors (depth and timing). Si
 data in its own family, it would also make photometry of the old sectors' FFIs. It would write the decision record
 [0040](decisions/0040-predictions-for-held-signals.md) requires before it touches the held stars.
 
-**M5: Slice B**, next. A long-period duo/tri-transit search mode on the same light curves, with alias lists for the
-period. It meets the same bar as M2 and M3.
+What the checkpoint weighs (2026-11-02):
+- S112's final 2-min target list, due about 2026-11-22, says sooner whether TIC 241522065 gets 2-min data. A granted
+  S112 light curve lands about 2027-02-10 to 02-24, from M4's 24 to 38 days between a sector's end and its 2-min light
+  curves, so it may not be on MAST on 2027-02-15.
+- Our own FFI photometry could cover S112 to S114 for 241522065 and the other FFI-only stars, but it can't judge the
+  deposited prediction: the package names the products its test uses (SPOC 2-min or TESS-SPOC for 241522065-1).
+- It is a product family vet-v3 doesn't know, so a held-out check on it needs a new criteria version, the old seasons
+  photometered the same way, and a way for a version to run under that criteria version, since
+  [0041](decisions/0041-revets-as-versions.md) ties a version to the same criteria files.
+- Its one payoff: a held-out result under a new criteria version that could pass 241522065-1 without its
+  preregistered test, if TESS-SPOC stays stalled and no 2-min data come.
 
-A search milestone paired with M5 takes up what M3 moved there: a treatment for short-period variables, starting from
-M3's count ([0030](decisions/0030-short-period-variables.md)), and another look at LEO-Vetter's false-positive tests
-odd_even and secondary and at the 16 to 40 d bin ([0029](decisions/0029-triage-completeness.md)). A LEO-Vetter change
-needs a new threshold run and a new triage run, and is chosen on injections and controls only, never on which sample
-signals it would add. The treatment changes the search code, so it needs a new null, a new threshold and a new
-production search.
+**Criteria decisions that wait on outside data** (2026-11-02). Not built. Each is a new criteria version, decided on
+controls for every signal before any outside data for these stars is looked at:
+- cleared stars leaving TRICERATOPS's NFPP: a star that seeing-limited photometry shows did not dim by the depth it
+  would need, at a predicted transit, leaves TRICERATOPS's star list (`remove_star`) before its probabilities are
+  computed. Controls can come from TFOP's public photometry on known planets and on TOI-1399.01, and the rule must not
+  clear a star TFOP found eclipsing ([423100454-1's call](../results/vetting/423100454-1/call.toml));
+- imaging lifting the RUWE blocker, for 103312990-1 (RUWE 6.21): it needs imaging nobody has taken. Gaia DR4's
+  astrometry may say more about the companion; using DR4 is a new source and its own decision
+  ([103312990-1's call](../results/vetting/103312990-1/call.toml));
+- a pixel fail that measures a variable neighbour, for 423100454-1: a new version of the pixel check, decided on the
+  pixel completeness set ([0033](decisions/0033-second-list-decisions.md), item 5). It matters only with the first
+  rule, since 423100454-1's NFPP and neighbour-table blockers stay until stars are cleared.
+
+No one is collecting that data. Paid photometry (LCO's network time costs at least about $9,500 a year) and TFOP,
+which wants two or three observational results before a citizen scientist joins [T39], are revisited when a
+candidate's only blocker is a neighbour check the maintainer is willing to pay for, or after Gaia DR4 has been looked
+at.
+
+**M6: Slice B and its paired search**, designed after M5 merges and built over the winter. A long-period duo- and
+tri-transit search mode on the same light curves, with alias lists for the period. It meets the same bar as M2 and M3.
+Its design has to say what "passed" can mean for a duo- or tri-transit, which can rarely pass vet-v3's held-out
+check. A lead it should find unprompted: 410399327-1, killed at 34.94 d, whose usable dips all fall on even epochs,
+as a 69.878-day transit past the search's 40-day cap would. ExoFOP's note on TOI-7925.01 already names two of these
+dips, and any claim on them credits it ([410399327-1's call](../results/vetting/410399327-1/call.toml)). Sector 114's
+transit, due on 2027-02-25 at both periods, is a free check.
+
+The search work paired with slice B, also M6, takes up what M3 moved to it: a treatment for short-period variables,
+starting from M3's count ([0030](decisions/0030-short-period-variables.md)), and another look at LEO-Vetter's
+false-positive tests odd_even and secondary and at the 16 to 40 d bin ([0029](decisions/0029-triage-completeness.md)).
+A LEO-Vetter change needs a new threshold run and a new triage run, and is chosen on injections and controls only,
+never on which sample signals it would add. The treatment changes the search code, so it needs a new null, a new
+threshold and a new production search. The search code and `leo.py` stay frozen until every predicted season is
+judged or 2027-12-31 passes (section 4.1, publish), so either change before then waits on the maintainer's decision.
 
 ## 8. Risks and open questions
 
@@ -692,7 +796,19 @@ production search.
   ([0039](decisions/0039-ddt-for-held-signals.md), [0040](decisions/0040-predictions-for-held-signals.md)). Those
   sectors may never become light curves. They would if QLP resumed, if TESS-SPOC reached past S85, if a later 2-min
   list added a star (a list can change before its sector) or a DDT ask was taken, or if the checkpoint started our
-  own photometry.
+  own photometry. MAST's listings read the same on 2026-10-30: MAST's QLP page says S99 to S104 were uploaded again
+  as `v02`, but TIC 241522065's files there are still `v01`. `tess-hunt revet status` reads the listings again before
+  every re-vet (section 4.1, vet).
+- **The DDT ask declined:** the TESS DDT office had not answered by 2026-10-30. If it declines and TESS-SPOC stays
+  stalled, 241522065-1's new season goes untested and no held signal can pass on TESS data alone, so the preprint
+  path waits (2026-11-02).
+- **A listing after our claim:** the TOI team may list a held signal, likeliest 241522065-1 if the DDT ask brings 2-min
+  data. Its novelty check then fails on the TOI row. [0042](decisions/0042-listings-after-our-claim.md) keeps that from
+  blocking a pass only for a listing on the signal's own star, first listed after the claim, with every disposition PC
+  or empty, and the record still shows novelty's fail. The rule can read as self-serving; it is narrow and was decided
+  before any spring data. A SPOC TCE from the same 2-min data still leaves novelty at `known_to_spoc`, which blocks a
+  shortlisted signal's pass. If the TOI team lists a signal before its re-vet runs, TFOP's follow-up may decide it
+  first, and the preprint records the order (2026-11-02).
 - **30-min data:** a candidate seen mostly in 30-min data cannot be validated by TRICERATOPS alone; that is the case
   for the DDT ask.
 - **Unverified estimates:** the yield is an estimate. M2's runs replaced the sample-size and search-cost estimates
@@ -718,15 +834,15 @@ production search.
   0.945 of the recovered injections from 4 to 8 d planet candidates and 0.761 from 16 to 40 d, the bin that holds 401
   of the 769; odd_even and secondary failed 36 and 24 injections whose transits are identical and carry no secondary.
   The pixel check passed 16 of the 20 known planets, and [0033](decisions/0033-second-list-decisions.md) understands
-  the four fails. The maintainer's answer on 2026-10-22: no LEO-Vetter change now; the search milestone paired with M5
-  looks again (section 7). If that is wrong, real planets LEO-Vetter fails stay missed until then.
+  the four fails. The maintainer's answer on 2026-10-22: no LEO-Vetter change now; M6's search work looks again
+  (section 7). If that is wrong, real planets LEO-Vetter fails stay missed until then.
 - **Planets on short-period variables:** the search can spend later ranks on a pulsator's other multiples, so
   completeness on those stars is low ([0008](decisions/0008-search-fix.md)). M3 counted them
   ([0030](decisions/0030-short-period-variables.md)): 778 of the 1,994 stars with a signal at or above the threshold
   have every signal there within 1.24% of n/m times one of them under 5 days, n and m from 1 to 5, each failed by
   LEO-Vetter as non_unique or sinusoidal. They hold 1,206 of the 2,993 signals, and the inject run recovered 12 of its
-  48 injections on them (0.250) against 757 of 1,952 on the other stars (0.388). The treatment moves to the search
-  milestone paired with M5 (section 7).
+  48 injections on them (0.250) against 757 of 1,952 on the other stars (0.388). The treatment moves to M6's search
+  work (section 7).
 - **QLP S99-S104 timing:** their timestamps are wrong until MAST redelivers them [L8]. An ephemeris-independent
   comparison with SPOC puts every reliable median offset within 10 minutes, the largest -6.50 min
   ([output](../results/benchmarks/qlp-timing-robust-2026-10-13.txt)). Detection tolerates minutes. vet-v3 leaves those
@@ -820,6 +936,10 @@ production search.
   exceptions to the CC BY 4.0 licence of `results/` and stay under ESA's terms.
   [results/README.md](../results/README.md) lists every one ([0025](decisions/0025-neighbours.md),
   [0026](decisions/0026-triceratops.md), [ACKNOWLEDGEMENTS.md](../ACKNOWLEDGEMENTS.md)).
+- **Gaia DR4** is scheduled for December 2026, with epoch photometry for nearly all sources (ESA's DR4 page, section
+  9). It will carry new values for the same stars the records hold Gaia DR3 values for: RUWE and any orbit for TIC
+  103312990, G magnitudes for stars that lack one, epoch photometry of the stars that carry an NFPP. A read-only look
+  comes first; none of it is used until a decision record says how, since DR4 is a new source (2026-11-02).
 - **Fragile dependencies:** wotan is dormant and transit-diffImage is unpackaged. If either breaks on the pinned
   stack, the fallback is a decision-log entry, not a silent swap.
 - **Leap seconds:** astropy's bundled leap-second table, which `uv.lock` fixes, expires on 2027-06-28. The conversions
@@ -838,8 +958,8 @@ production search.
   ([0040](decisions/0040-predictions-for-held-signals.md)). That stakes priority (44926986-1 was killed for being on
   eumemic's list first) and invites others to look, the only free route to the ground photometry they need. It also
   means a held signal can be scooped or dismissed in public.
-- **Criteria decisions still open:** three decisions wait on outside evidence that no M4 step produced: how stars
-  cleared by ground-based photometry leave TRICERATOPS's NFPP
+- **Criteria decisions still open:** three decisions wait on outside evidence that no M4 or M5 step produced
+  (section 7): how stars cleared by ground-based photometry leave TRICERATOPS's NFPP
   ([423100454-1's call](../results/vetting/423100454-1/call.toml)), how imaging clears the RUWE blocker
   ([103312990-1's call](../results/vetting/103312990-1/call.toml)), and how a pixel fail that measures a variable
   neighbour is treated ([0033](decisions/0033-second-list-decisions.md)). Each is to be decided on controls for every
@@ -918,3 +1038,13 @@ from them are in [results/ddt/241522065-1/facts.toml](../results/ddt/241522065-1
 - https://help.zenodo.org/docs/deposit/manage-files/
 - DACE CHEOPS database (dace-query 3.0.2, public mode); https://archive-api.lco.global/frames/
 - https://www.itelescope.net/telescope-rates-premium, /standard-plans, /pricing-premium
+
+M5's facts were read on 2026-10-30 from the pages below, the M5 design's sources, and added here on 2026-11-02.
+
+- https://exofop.ipac.caltech.edu/tess/news.php and https://exofop.ipac.caltech.edu/tess/candidate_help.php: the CTOI
+  and RNAAS rules (section 1.1), unchanged
+- https://joss.readthedocs.io/en/latest/submitting.html and https://joss.readthedocs.io/en/latest/policies.html:
+  JOSS's six-month rule and its policy on generative AI (section 1.1)
+- https://lco.global/sales/networktime/: LCO's network time prices (section 7)
+- https://www.cosmos.esa.int/en/web/gaia/dr4: Gaia DR4's content, read from search results (section 8)
+- MAST's QLP and TESS-SPOC HLSP directories and SPOC's bulk download scripts, read with curl (section 8)
