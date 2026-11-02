@@ -31,7 +31,8 @@ def _product(info: dict | None) -> dict | None:
 
 
 def _rank(info: dict) -> tuple:
-    """Where a product comes in fetch's product order (`mast.rank`): by provenance, then cadence."""
+    """Where a product comes by provenance, then cadence, as fetch's product order (`mast.rank`) has them. It leaves
+    out the QLP version `mast.rank` puts between the two, so two QLP files of a sector at one cadence rank equal."""
     return PREFERENCE[info["provenance"]], info["cadence_s"]
 
 

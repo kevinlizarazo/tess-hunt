@@ -1985,6 +1985,13 @@ def test_version_refuses_a_gap_or_an_existing_version(tmp_path, monkeypatch):
     with pytest.raises(SystemExit, match=f"results/vetting/{NAME}/r2 is already published"):
         main([*version_argv(runs, roles=roles), "--triceratops", str(other)])
     assert published(repo) == after
+    # A run the version was published without adds files; no published file differs, and it is refused all the same.
+    lit = runs["literature"]
+    claims = claims_run(tmp_path, runs["run"], lit, claims_record(runs["run"], lit, [], None))
+    production(claims)
+    with pytest.raises(SystemExit, match=f"results/vetting/{NAME}/r2 is already published"):
+        main([*version_argv(runs), "--claims", str(claims)])
+    assert published(repo) == after
     # Without the M3 record there is no version.
     empty = tmp_path / "empty"
     called(empty / "results" / "vetting" / NAME / "r2")
@@ -2169,7 +2176,7 @@ def test_a_killed_version_publish_leaves_each_file_absent_or_whole(tmp_path, mon
 
 
 def test_a_publish_that_stopped_after_the_dossier_is_finished_by_the_same_runs(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, capsys
 ):
     m3 = all_runs(tmp_path, monkeypatch)
     production(*m3.values())
@@ -2232,7 +2239,11 @@ def test_a_publish_that_stopped_after_the_dossier_is_finished_by_the_same_runs(
     runs["claims"] = claims_run(tmp_path, runs["run"], lit, record, tag="r2")
     production(runs["claims"])
     version = called(root / NAME / "r2")
+    capsys.readouterr()
     files = stopped_then_finished(version_argv(runs, roles=(*VERSION_ROLES, "claims")), version)
+    assert capsys.readouterr().out.endswith(
+        f"results/vetting/{NAME}/r2 was already published from these runs; README.md rendered again\n"
+    )
     assert f"| [{NAME} r2]({NAME}/r2/dossier.md)" in (root / "README.md").read_text()
     excepting = claims_record(runs["run"], lit, [later_listing()], RERUN)
     other = claims_run(tmp_path, runs["run"], lit, excepting, tag="r2-other")

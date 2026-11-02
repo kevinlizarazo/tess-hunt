@@ -22,7 +22,8 @@
   the M5 design's (section 4.3), approved by the maintainer with the M5 plan on 2026-10-30; the command's output is
   the build's choice, stated in the step. Steps 6, 7 and 9 now include the claims stage of
   [0042](0042-listings-after-our-claim.md), which came after this record. These additions to steps 6, 7 and 9 are the
-  M5 build's controller's, with no acceptance by the maintainer recorded.
+  M5 build's controller's, with no acceptance by the maintainer recorded. A version's publish stopped between its
+  `dossier.md` and the README is finished by the same runs, as the M5 design asks (section 4.5).
 
 ## Context
 
@@ -88,20 +89,22 @@ judged by that prediction, not by a fresh refit.
   maintainer makes the call. The "passed" bar is unchanged.
 - **A version, never an overwrite.** `tess-hunt vetting publish --name NAME --version N --run VETTING_RUN
   --lc-run REVET_RUN --triceratops RUN --literature RUN --titles RUN [--evidence-only RUN] [--second-list RUN]
-  [--prereg RUN]` writes `results/vetting/<name>/r<N>/` (N from 2; the M3 record is the first) with the files an M3
-  record holds, and the revet fetch run's `merge.json` with its provenance as `provenance-merge.json`. A record is
-  published once `publish` has written its `dossier.md`, which it writes last. It refuses when the previous version
-  (the M3 record for r2, else r<N-1>) is not published; when `r<N>` is, so a version is published once; when the
-  vetting run's light curve is not the revet fetch run's file for the star; when `--lc-run` is not the revet fetch run
-  the vetting run read its light curves from (its `revet_run`), whose start is the fetch date the preregistered test
-  read (the controller's ruling); and when the revet fetch run merged onto another light curve than the one the
-  previous record's vetting run read (the controller's ruling). Each file, `dossier.md` included, is written to a
-  temporary name beside it and renamed onto its own, so even a killed publish leaves each file absent or whole
-  (2026-10-29). An interrupted publish, which left files but no `dossier.md`, is finished by the same runs, since a
-  file the same run made again is no change and any other is refused. Nothing outside `r<N>` changes but
-  `results/vetting/README.md`, which has one row per signal: its latest version whose call stands, with links to the
-  versions before it. With no version published it is the M3 README unchanged. `calls.problems` judges a version as it
-  judges an M3 record, from the files in its directory; its call names the signal, not `r<N>`.
+  [--prereg RUN] [--claims RUN]` writes `results/vetting/<name>/r<N>/` (N from 2; the M3 record is the first) with the
+  files an M3 record holds, and the revet fetch run's `merge.json` with its provenance as `provenance-merge.json`. A
+  record is published once `publish` has written its `dossier.md`, which it writes last. It refuses when the previous
+  version (the M3 record for r2, else r<N-1>) is not published; when `r<N>` is and a file the runs give is not the
+  record's, so a version is published once; when the vetting run's light curve is not the revet fetch run's file for
+  the star; when `--lc-run` is not the revet fetch run the vetting run read its light curves from (its `revet_run`),
+  whose start is the fetch date the preregistered test read (the controller's ruling); and when the revet fetch run
+  merged onto another light curve than the one the previous record's vetting run read (the controller's ruling). Each
+  file, `dossier.md` included, is written to a temporary name beside it and renamed onto its own, so even a killed
+  publish leaves each file absent or whole (2026-10-29). An interrupted publish, which left files but no `dossier.md`,
+  is finished by the same runs, since a file the same run made again is no change and any other is refused. Once
+  `dossier.md` is written, the same runs again find every file the record's and render only the README, which a
+  publish stopped between the two left unwritten; nothing in `r<N>` changes (2026-11-02). Nothing outside `r<N>`
+  changes but `results/vetting/README.md`, which has one row per signal: its latest version whose call stands, with
+  links to the versions before it. With no version published it is the M3 README unchanged. `calls.problems` judges a
+  version as it judges an M3 record, from the files in its directory; its call names the signal, not `r<N>`.
 - **The version's dossier** reads its own directory and the previous version's `checks.json` and provenance. Its
   title names the version. A section after the call's line links the version before it and says what changed: the
   sectors added, redelivered and kept though another product was found (from `merge.json`), the post-dictions, a
