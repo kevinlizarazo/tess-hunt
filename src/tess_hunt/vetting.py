@@ -1866,10 +1866,6 @@ def cmd_publish(args) -> int:
     where = f"results/vetting/{args.name}"
     if previous is not None:
         dest, where = dest / f"r{args.version}", f"{where}/r{args.version}"
-        # A version is published once, when its dossier.md, written last, is there; nothing in it changes after,
-        # not even from the same runs. Until then the same runs finish an interrupted publish.
-        if (dest / "dossier.md").is_file():
-            raise SystemExit(f"{where} is already published; a published record never changes")
         files |= _revet_files(args.lc_run, args.run, previous, _tic(files), production=True)
         _same_signal(files, previous, root.parent / "predictions")
     # Judged and rendered, the README included, from a staged copy before anything is copied: a refusal or a render
@@ -1898,6 +1894,18 @@ def cmd_publish(args) -> int:
             for name, source in files.items()
             if (dest / name).exists() and sha256_file(dest / name) != sha256_file(source)
         )
+        # A version is published once, when its dossier.md, written last, is there; nothing in it changes after. Until
+        # then the same runs finish an interrupted publish. After it they render only the README, which a publish
+        # stopped between the two left unwritten.
+        if previous is not None and (dest / "dossier.md").is_file():
+            if changed or not all((dest / name).exists() for name in files):
+                raise SystemExit(f"{where} is already published; a published record never changes")
+            left = dossier.listed(root)[1]
+            _write(root / "README.md", dossier.readme(root))
+            print(f"{where} was already published from these runs; README.md rendered again")
+            for name, why in left.items():
+                print(f"README leaves out {name}: {'; '.join(why)}")
+            return 0
         if changed:
             raise SystemExit(
                 f"{where} already holds another {', '.join(changed)}; published files are never overwritten"
@@ -1942,7 +1950,7 @@ def cmd_publish(args) -> int:
     # Last of the record: the README lists only a directory that holds it. A part-written dossier.md would mark the
     # record published.
     _write(dest / "dossier.md", text)
-    (root / "README.md").write_text(readme)
+    _write(root / "README.md", readme)
     print(f"published {args.name} -> {where} ({len(new)} new file(s), dossier.md, README.md)")
     for name, why in left.items():
         print(f"README leaves out {name}: {'; '.join(why)}")

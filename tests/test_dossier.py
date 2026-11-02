@@ -1970,9 +1970,20 @@ def test_version_refuses_a_gap_or_an_existing_version(tmp_path, monkeypatch):
         assert published(repo) == before
     assert main(version_argv(runs)) == 0
     after = published(repo)
-    # Published once, never again, not even from the same runs.
+    # Published once: the same runs again change nothing, and any other run is refused.
+    assert main(version_argv(runs)) == 0
+    assert published(repo) == after
+    other = made_run(
+        tmp_path,
+        "vetting-triceratops",
+        runs["run"],
+        {NAME: {"triceratops.json": triceratops_record(runs["run"], "inconclusive")}},
+        tag="b",
+    )
+    production(other)
+    roles = ("run", "suspect", "literature", "titles", "lc_run")
     with pytest.raises(SystemExit, match=f"results/vetting/{NAME}/r2 is already published"):
-        main(version_argv(runs))
+        main([*version_argv(runs, roles=roles), "--triceratops", str(other)])
     assert published(repo) == after
     # Without the M3 record there is no version.
     empty = tmp_path / "empty"
@@ -2090,7 +2101,13 @@ def test_an_interrupted_version_is_finished(tmp_path, monkeypatch):
         in (repo / "results" / "vetting" / "README.md").read_text()
     )
     with pytest.raises(SystemExit, match="is already published"):
-        main(version_argv(runs))
+        main(
+            [
+                *version_argv(runs, roles=("run", "suspect", "literature", "titles", "lc_run")),
+                "--triceratops",
+                str(other),
+            ]
+        )
 
 
 def test_a_killed_version_publish_leaves_each_file_absent_or_whole(tmp_path, monkeypatch):
@@ -2149,6 +2166,80 @@ def test_a_killed_version_publish_leaves_each_file_absent_or_whole(tmp_path, mon
     )
     assert (version / "dossier.md").read_text() == dossier.render(version)
     assert not [f for f in version.rglob("*") if f.name.endswith(".part")]
+
+
+def test_a_publish_that_stopped_after_the_dossier_is_finished_by_the_same_runs(
+    tmp_path, monkeypatch
+):
+    m3 = all_runs(tmp_path, monkeypatch)
+    production(*m3.values())
+    repo = results_repo(tmp_path, monkeypatch)
+    root = repo / "results" / "vetting"
+    (root / NAME).mkdir(parents=True)
+    (root / NAME / "call.toml").write_text(HELD)
+    (root / NAME / "review.json").write_text(json.dumps(REVIEW))
+    write = vetting._write
+
+    def stops_at_the_readme(target: Path, text: str) -> None:
+        if target.name == "README.md":
+            raise RuntimeError("the machine went down")
+        write(target, text)
+
+    def stopped_then_finished(argv: list[str], record: Path) -> dict[str, str]:
+        """Publish `argv`, stopped once between `record`'s dossier.md and the README, then the same runs again; the
+        files under results/vetting/ after."""
+        monkeypatch.setattr(vetting, "_write", stops_at_the_readme)
+        with pytest.raises(RuntimeError, match="went down"):
+            main(argv)
+        monkeypatch.setattr(vetting, "_write", write)
+        assert (record / "dossier.md").read_text() == dossier.render(record)
+        stopped = published(repo)
+        assert main(argv) == 0
+        assert (root / "README.md").read_text() == dossier.readme(root)
+        files = published(repo)
+        assert files["README.md"] != stopped.get("README.md")
+        assert {k: v for k, v in files.items() if k != "README.md"} == {
+            k: v for k, v in stopped.items() if k != "README.md"
+        }
+        return files
+
+    files = stopped_then_finished(
+        publish_argv(m3, "run", "triceratops", "literature", "suspect", "titles"), root / NAME
+    )
+    assert f"| [{NAME}]({NAME}/dossier.md) | held |" in (root / "README.md").read_text()
+    other = made_run(
+        tmp_path,
+        "vetting-triceratops",
+        m3["run"],
+        {NAME: {"triceratops.json": triceratops_record(m3["run"], "inconclusive")}},
+        tag="b",
+    )
+    production(other)
+    with pytest.raises(SystemExit, match="already holds another .*triceratops.json"):
+        main(
+            [
+                *publish_argv(m3, "run", "literature", "suspect", "titles"),
+                "--triceratops",
+                str(other),
+            ]
+        )
+    assert published(repo) == files
+
+    # A version, with a claims run among its runs: its files are compared with the record's too.
+    runs = revetted(tmp_path, monkeypatch, revet_run(tmp_path))
+    lit = runs["literature"]
+    record = claims_record(runs["run"], lit, [], None)
+    runs["claims"] = claims_run(tmp_path, runs["run"], lit, record, tag="r2")
+    production(runs["claims"])
+    version = called(root / NAME / "r2")
+    files = stopped_then_finished(version_argv(runs, roles=(*VERSION_ROLES, "claims")), version)
+    assert f"| [{NAME} r2]({NAME}/r2/dossier.md)" in (root / "README.md").read_text()
+    excepting = claims_record(runs["run"], lit, [later_listing()], RERUN)
+    other = claims_run(tmp_path, runs["run"], lit, excepting, tag="r2-other")
+    production(other)
+    with pytest.raises(SystemExit, match=f"results/vetting/{NAME}/r2 is already published"):
+        main([*version_argv(runs), "--claims", str(other)])
+    assert published(repo) == files
 
 
 def test_a_version_is_drafted_beside_its_previous_record(tmp_path, monkeypatch):

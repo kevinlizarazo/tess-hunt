@@ -32,6 +32,31 @@ def test_is_light_curve():
     assert not mast.is_light_curve("TESS-SPOC", "hlsp_tess-spoc_x_tp.fits")
 
 
+def qlp_name(sector: int, version: int, tic: int = 1) -> str:
+    return f"hlsp_qlp_tess_ffi_s{sector:04d}-{tic:016d}_tess_v{version:02d}_llc.fits"
+
+
+def spoc_name(sector: int, tic: int = 1) -> str:
+    return f"tess2023096110322-s{sector:04d}-{tic:016d}-0257-s_lc.fits"
+
+
+def tess_spoc_name(sector: int, tic: int = 1) -> str:
+    return f"hlsp_tess-spoc_tess_phot_{tic:016d}-s{sector:04d}_tess_v1_lc.fits"
+
+
+def product(tic: int, sector: int, provenance: str, cadence_s: float, filename: str) -> dict:
+    return {
+        "tic": tic,
+        "sector": sector,
+        "provenance": provenance,
+        "cadence_s": cadence_s,
+        "filename": filename,
+        "data_uri": f"u/{filename}",
+        "size": 1,
+        "s3_key": f"k/{filename}",
+    }
+
+
 def test_rank_prefers_spoc_then_tess_spoc_then_qlp():
     products = pd.DataFrame(
         [
@@ -41,8 +66,51 @@ def test_rank_prefers_spoc_then_tess_spoc_then_qlp():
             {"tic": 1, "sector": 6, "provenance": "QLP", "cadence_s": 200.0},
         ]
     )
+    products["filename"] = [qlp_name(5, 1), spoc_name(5), tess_spoc_name(5), qlp_name(6, 1)]
     assert list(mast.rank(products)["provenance"]) == ["SPOC", "TESS-SPOC", "QLP", "QLP"]
     assert list(mast.best(products)["provenance"]) == ["SPOC", "QLP"]
+
+
+@pytest.mark.parametrize("order", [[0, 1, 2, 3], [1, 0, 3, 2]])
+def test_rank_takes_the_later_qlp_version(order):
+    # QLP redelivers a sector as v02 of the same file. The later version comes first even at a longer cadence label,
+    # and a TESS-SPOC file still comes before it.
+    rows = [
+        product(241522065, 99, "QLP", 200.0, qlp_name(99, 1, 241522065)),
+        product(241522065, 99, "QLP", 600.0, qlp_name(99, 2, 241522065)),
+        product(241522065, 100, "QLP", 200.0, qlp_name(100, 2, 241522065)),
+        product(241522065, 100, "TESS-SPOC", 200.0, tess_spoc_name(100, 241522065)),
+    ]
+    products = pd.DataFrame([rows[i] for i in order], columns=mast.PRODUCT_COLUMNS)
+    assert list(mast.rank(products)["filename"]) == [
+        qlp_name(99, 2, 241522065),
+        qlp_name(99, 1, 241522065),
+        tess_spoc_name(100, 241522065),
+        qlp_name(100, 2, 241522065),
+    ]
+    assert list(mast.best(products)["filename"]) == [
+        qlp_name(99, 2, 241522065),
+        tess_spoc_name(100, 241522065),
+    ]
+
+
+def test_rank_is_unchanged_with_one_version():
+    # One file per product in each star and sector, as in every listing M2 and M3 fetched from: the order as before.
+    products = pd.DataFrame(
+        [
+            product(7, 5, "QLP", 1800.0, qlp_name(5, 1, 7)),
+            product(3, 64, "QLP", 200.0, qlp_name(64, 1, 3)),
+            product(3, 64, "SPOC", 120.0, spoc_name(64, 3)),
+            product(7, 5, "TESS-SPOC", 1800.0, tess_spoc_name(5, 7)),
+            product(3, 38, "QLP", 600.0, qlp_name(38, 1, 3)),
+            product(3, 64, "TESS-SPOC", 200.0, tess_spoc_name(64, 3)),
+            product(7, 4, "QLP", 1800.0, qlp_name(4, 1, 7)),
+        ],
+        columns=mast.PRODUCT_COLUMNS,
+    )
+    pd.testing.assert_frame_equal(
+        mast.rank(products), products.iloc[[4, 2, 5, 1, 6, 3, 0]].reset_index(drop=True)
+    )
 
 
 def test_download_retries_server_errors():
