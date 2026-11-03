@@ -55,9 +55,9 @@ CAPTIONS = {
     "duration. A panel with few points falls at the edge of a gap in the data",
     "folds.png": "The light curve folded on the ephemeris, one panel per season and light-curve product family. Panel "
     "titles give the family (`pdcsap` for SPOC's and TESS-SPOC's PDCSAP flux, `qlp` for QLP's), the season (counted "
-    "from 0) and its sectors. Points and band as in Figure 1",
-    "odd_even.png": "Odd-numbered (left) and even-numbered (right) transits, folded separately. Points and band as in "
-    "Figure 1. The red line is the median flux in each one's core, the central half of the transit",
+    "from 0) and its sectors. Points and band are as in Figure 1",
+    "odd_even.png": "Odd-numbered (left) and even-numbered (right) transits, folded separately. Points and band are "
+    "as in Figure 1. The red line is the median flux in each one's core, the central half of the transit",
     "phase.png": "Flux against orbital phase over the whole orbit, with the transit at phase 0. Grey points are "
     "cadences, and blue points are their medians in bins half the transit's duration wide. The dashed line marks phase "
     "0.5, where a circular orbit puts a secondary eclipse. The red line marks the strongest secondary eclipse ModShift "
@@ -136,7 +136,7 @@ UNTESTED = {
 SUMMARY_RESULT = {
     "replicated": " The transits appeared where predicted.",
     "missed": " The transits were missing where predicted.",
-    "pending": " That test is not yet judged.",
+    "pending": " The preregistered test of that prediction is not yet judged.",
     "untested": " The new data could not test that prediction.",
 }
 PDCSAP = ("SPOC 2-min", "TESS-SPOC")
@@ -149,7 +149,8 @@ PDCSAP_PAPERS = (
 GUIDE = (
     (
         "checks.json",
-        "each vetting check's outcome, reason and evidence, both fits, the red-noise factors and the neighbour table",
+        "each vetting check's outcome, reason and evidence, both fits, the red-noise factors and the neighbour check "
+        "with its table",
     ),
     (
         "neighbours.csv",
@@ -386,7 +387,7 @@ def _spell(n: int) -> str:
 
 
 def _count(n: int, word: str) -> str:
-    return f"{_spell(n)} {word}" + ("" if n in (0, 1) else "s")
+    return f"{_spell(n)} {word}" + ("" if n == 1 else "s")
 
 
 def _quote(text: str) -> str:
@@ -501,7 +502,7 @@ def _history(record: Path) -> str:
             gave += (
                 f" and named the evidence that would decide it: {_quote(call['deciding_evidence'])}"
             )
-        said.append(gave)
+        said.append(f"{gave}.")
     n = calls.version(record)
     said.append(
         f"This paper reports the {ORDINALS.get(n, 'latest')} version, r{n}, {_changed(record)}."
@@ -563,7 +564,7 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
         said.append(
             f"T{_novelty_said(judged)[1:]}. The rows at the signal's period are SPOC threshold-crossing events or "
             "ExoMiner rows that never became TOIs. Decision record 0013 lets the call promote such a signal, and this "
-            f"call does. It gives the reason as {_quote(call['promotion'])}"
+            f"call does. It gives the reason as {_quote(call['promotion'])}."
         )
     return "\n\n".join(said)
 
@@ -615,7 +616,7 @@ def _red_noise(checks: dict) -> str:
 
 
 def _tdepth_zero(evidence: dict, hosts: list[dict]) -> str:
-    """The neighbour table's possible hosts TRICERATOPS gave zero depth: it weighed no scenario on them (decision 0026,
+    """The neighbour check's possible hosts TRICERATOPS gave zero depth: it weighed no scenario on them (decision 0026,
     Ruling M)."""
     zero = evidence["hosts_tdepth_zero"]
     if not zero:
@@ -623,13 +624,15 @@ def _tdepth_zero(evidence: dict, hosts: list[dict]) -> str:
     one = len(zero) == 1
     if len(zero) == len(hosts):
         which = (
-            "the neighbour table's one possible host"
+            "the neighbour check's one possible host"
             if one
-            else f"all {_spell(len(hosts))} of the neighbour table's possible hosts"
+            else "both of the neighbour check's possible hosts"
+            if len(hosts) == 2
+            else f"all {_spell(len(hosts))} of the neighbour check's possible hosts"
         )
     else:
         which = (
-            f"{_spell(len(zero))} of the neighbour table's {_count(len(hosts), 'possible host')}"
+            f"{_spell(len(zero))} of the neighbour check's {_count(len(hosts), 'possible host')}"
         )
     star, it = ("that star", "it") if one else ("those stars", "them")
     return (
@@ -710,32 +713,35 @@ def _blends(hosts: list[dict], limit: float, zero: list) -> str:
     """The possible hosts neither the pixel check nor TRICERATOPS can exclude. The paper gives their count, not their
     Gaia values."""
     if not hosts:
-        return "The neighbour table lists no star that could make the dip."
+        return "The neighbour check found no possible hosts."
     inside = [h for h in hosts if h["sep_arcsec"] is not None and h["sep_arcsec"] < limit]
     within = f"within {limit:g} arcsec of the target, too close for the pixel check to tell apart"
+    two = len(hosts) == 2
     if len(hosts) == 1:
         said = (
-            f"The neighbour table's one possible host is {within}"
+            f"The neighbour check's one possible host is {within}"
             if inside
-            else f"The neighbour table's one possible host is not within {limit:g} arcsec of the target"
+            else f"The neighbour check's one possible host is not within {limit:g} arcsec of the target"
         )
         said += ", and TRICERATOPS weighed no scenario on it." if zero else "."
     else:
         if not inside:
             said = (
-                f"None of the neighbour table's {_spell(len(hosts))} possible hosts is within {limit:g} arcsec of the "
-                "target."
+                f"{'Neither' if two else 'None'} of the neighbour check's {_spell(len(hosts))} possible hosts is "
+                f"within {limit:g} arcsec of the target."
             )
         elif len(inside) == len(hosts):
-            said = f"All {_spell(len(hosts))} of the neighbour table's possible hosts are {within}."
+            every = "Both" if two else f"All {_spell(len(hosts))}"
+            said = f"{every} of the neighbour check's possible hosts are {within}."
         else:
             are = "is" if len(inside) == 1 else "are"
             said = (
-                f"{_spell(len(inside)).capitalize()} of the neighbour table's {_spell(len(hosts))} possible hosts "
+                f"{_spell(len(inside)).capitalize()} of the neighbour check's {_spell(len(hosts))} possible hosts "
                 f"{are} {within}."
             )
         if zero:
-            on = "any of them" if len(zero) == len(hosts) else f"{_spell(len(zero))} of them"
+            every = "either of them" if two else "any of them"
+            on = every if len(zero) == len(hosts) else f"{_spell(len(zero))} of them"
             said += f" TRICERATOPS weighed no scenario on {on}."
     if inside or zero:
         them = "it" if len(hosts) == 1 else "them"
@@ -773,7 +779,7 @@ def _listing(raw: str, kind: str) -> str:
 def _listed(rows: list[dict], kind: str, field: str, disposition: str) -> str:
     """ExoFOP's TOIs or CTOIs on the star, counted and named, each with its disposition."""
     if not rows:
-        return f"no {kind}"
+        return _count(0, kind)
     named = [
         f"{_listing(r[field], kind)}, disposition {r.get(disposition) or 'none'}"
         if len(rows) == 1
@@ -793,7 +799,7 @@ def _exofop(exofop: dict) -> str:
         _listed(exofop["ctois"], "CTOI", "ctoi", "cdisp"),
         f"{_count(len(planets), 'confirmed planet')} ({_words(planets)})"
         if planets
-        else "no confirmed planet",
+        else _count(0, "confirmed planet"),
         _count(len(exofop["imaging"]), "high-resolution imaging observation"),
     ]
     return f"ExoFOP lists {_words(parts)} for the star."
@@ -845,7 +851,7 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "min_sigma": f"{vet['holdout']['min_sigma']:g}",
         "max_tension": f"{vet['holdout']['max_depth_tension']:g}",
         "bar_promotion": " For a SPOC threshold-crossing event that never became a TOI, the maintainer's promotion "
-        "can stand in for the novelty check (decision record 0013)."
+        "can replace the novelty check's pass (decision record 0013)."
         if second
         else "",
         "vetted_products": _words(
@@ -871,10 +877,12 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "modshift": _modshift(checks),
         "eccentric": _eccentric(checks),
         "red_noise": _red_noise(checks),
-        "hosts": f"It found {_count(len(hosts), 'such star')}. The dataset's `neighbours.csv` gives the eclipse depth "
-        f"{'it' if len(hosts) == 1 else 'each'} would need."
-        if hosts
-        else "It found no such star.",
+        "hosts": f"The neighbour check found {_count(len(hosts), 'possible host')}."
+        + (
+            f" The dataset's `neighbours.csv` gives the eclipse depth {'it' if len(hosts) == 1 else 'each'} would need."
+            if hosts
+            else ""
+        ),
         "tdepth_zero": _tdepth_zero(tric, hosts),
         "tric_data": f"{prereg._sectors_words(tric['sectors'])} at {tric['exposure_s']:g}-s exposures"
         + (", folded and binned in phase" if tric["bin_phase"] else ""),
@@ -909,13 +917,21 @@ def _seasons(n: int, testable: int, predicted: int) -> str:
         if not testable:
             return "Its one season was not testable."
         return f"Its one season was testable and was{'' if predicted else ' not'} predicted."
-    if n == testable == predicted == 2:
-        return "Both seasons were testable and both were predicted."
-
-    def were(k: int) -> str:
-        return f"{'none' if k == 0 else _spell(k)} {'was' if k in (0, 1) else 'were'}"
-
-    return f"Of its {_spell(n)} seasons, {were(testable)} testable and {were(predicted)} predicted."
+    if not testable:
+        return f"{'Neither' if n == 2 else 'None'} of its {_spell(n)} seasons was testable."
+    if testable == n:
+        head = "Both seasons were testable" if n == 2 else f"All {_spell(n)} seasons were testable"
+    else:
+        head = f"Of its {_spell(n)} seasons, {_spell(testable)} {'was' if testable == 1 else 'were'} testable"
+    if testable == 1:
+        tail = f"it was{'' if predicted else ' not'} predicted"
+    elif predicted == testable:
+        tail = "both were predicted" if testable == 2 else "all were predicted"
+    elif not predicted:
+        tail = "neither was predicted" if testable == 2 else "none was predicted"
+    else:
+        tail = f"{_spell(predicted)} {'was' if predicted == 1 else 'were'} predicted"
+    return f"{head} and {tail}."
 
 
 def _label(finding: dict, confirmed: list[str]) -> str:
@@ -946,12 +962,28 @@ def _label(finding: dict, confirmed: list[str]) -> str:
 
 
 def _fates(findings: list[dict], confirmed: list[str]) -> str:
+    """How many of the review's findings were confirmed, refuted or notes, by rating."""
+    n = len(findings)
+    if not n:
+        return "The review raised no findings."
     counts = Counter(
         ("note", "note")
         if f["rating"] == "note"
         else ("confirmed" if f["id"] in confirmed else "refuted", f["rating"])
         for f in findings
     )
+    if len(counts) == 1:
+        (fate, rating), _ = counts.popitem()
+        every = (
+            "The review's one finding"
+            if n == 1
+            else "Both of the review's findings"
+            if n == 2
+            else f"All {_spell(n)} of the review's findings"
+        )
+        if fate == "note":
+            return f"{every} {'was a note' if n == 1 else 'were notes'}."
+        return f"{every}, rated {rating}, {'was' if n == 1 else 'were'} {fate}."
 
     def told(k: int, rating: str, fate: str) -> str:
         return f"{_spell(k)} rated {rating} {'was' if k == 1 else 'were'} {fate}"
@@ -964,16 +996,14 @@ def _fates(findings: list[dict], confirmed: list[str]) -> str:
     ]
     if k := counts["note", "note"]:
         said.append("one was a note" if k == 1 else f"{_spell(k)} were notes")
-    if not said:
-        return "none was confirmed"
-    return said[0] if len(said) == 1 else ", ".join(said[:-1]) + ", and " + said[-1]
+    return f"Of the review's {_count(n, 'finding')}, {', '.join(said[:-1])}, and {said[-1]}."
 
 
 def _flagged(review: dict, literature: dict) -> str:
     """The papers the review flagged, each by its title and id where the literature search found it."""
     flagged = review["hits_flagged"]
     if not flagged:
-        return "The review flagged no paper for the maintainer to read."
+        return "The review flagged no papers for the maintainer to read."
     hits = literature["evidence"]["hits"]
 
     def paper(ident: str) -> str:
@@ -1025,18 +1055,17 @@ def _review(record: Path, review: dict, call: dict, literature: dict) -> dict:
     return {
         "call_date": str(call["date"]),
         "review_date": str(review["date"]),
-        "findings": _count(len(findings), "finding"),
         "n_confirmed": str(len(confirmed)),
         "fates": _fates(findings, confirmed),
         "hits_read": _flagged(review, literature),
-        "answers": answers or "The review confirmed no finding.",
+        "answers": answers or "The review confirmed no findings.",
         "refuted": "Refuted findings, with each refuter's verdict:\n\n" + verdicts
         if refuted
         else "No refuter disproved any finding.",
         "notes": "Findings rated note, which need no answer:\n\n"
         + "\n".join(quoted(f, []) for f in noted)
         if noted
-        else "The review rated no finding note.",
+        else "No finding was rated note.",
         "sentences": "\n".join(
             f"- {label}: {_quote(call['sentences'][key])}" for key, label in SENTENCES.items()
         ),
@@ -1121,7 +1150,7 @@ def _found(repo: Path, checks: dict, made: dict) -> dict:
     return {
         "search_run": made["search_run"],
         "sde": _number(float(one["sde"]), ".2f"),
-        "sample_stars": str(search["summary"]["stars"]),
+        "sample_stars": _spell(search["summary"]["stars"]),
         "period_min": f"{cfg['period_min_days']:g}",
         "period_max": f"{cfg['period_max_days']:g}",
         "teff_min": f"{sample['teff_min']:g}",
@@ -1130,18 +1159,18 @@ def _found(repo: Path, checks: dict, made: dict) -> dict:
         "logg_min": f"{sample['logg_min']:g}",
         "logg_max": f"{sample['logg_max']:g}",
         "flame_logg_min": f"{sample['flame_logg_min']:g}",
-        "min_sectors": str(sample["min_sectors"]),
+        "min_sectors": _spell(sample["min_sectors"]),
         "recent_min": str(sample["recent_sector_min"]),
         "recent_max": str(sample["recent_sector_max"]),
         "threshold": _number(search["threshold"]["value"], ".2f"),
         "threshold_run": threshold_run,
         "null_run": threshold["null_run"],
-        "n_sample": str(threshold["n_sample"]),
-        "n_null": str(threshold["n_null_stars"]),
+        "n_sample": _spell(threshold["n_sample"]),
+        "n_null": _spell(threshold["n_null_stars"]),
         "false_alarms": _number(threshold["expected_false_alarms"], ".2f"),
         "inject_run": inject["run_id"],
-        "injections": str(inject["summary"]["injections"]),
-        "inject_stars": str(inject["summary"]["stars"]),
+        "injections": _spell(inject["summary"]["injections"]),
+        "inject_stars": _spell(inject["summary"]["stars"]),
         "completeness": COMPLETENESS,
         "triage_run": made["triage_run"],
         "triage": _triage(one, made, checks),

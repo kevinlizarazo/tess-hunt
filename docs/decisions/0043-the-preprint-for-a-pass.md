@@ -92,7 +92,7 @@ reviewed on a specimen and fixed before a real result can shape it.
     captions, which say what each plot draws: the dossier's assume a reader inside the project. The centroid plots
     draw Gaia DR3 stars, so they stay in the dataset under Gaia's terms. The paper names the star by its TIC number
     and its other names, never its Gaia DR3 source id, and its own text gives no Gaia value: it counts the neighbour
-    table's possible hosts and leaves their separations and depths to `neighbours.csv`. So the paper and its figures
+    check's possible hosts and leaves their separations and depths to `neighbours.csv`. So the paper and its figures
     are CC BY 4.0 (the build's choice), with two exceptions the paper states. A Gaia value in the text it quotes from
     the review or the call, or in a note beside it, stays under Gaia's terms, as `results/README.md` says of the
     reviews' quoted Gaia values. The ExoFOP listings it names (TOIs, CTOIs, confirmed planets, imaging observations

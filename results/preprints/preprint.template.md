@@ -97,12 +97,12 @@ The detection threshold, SDE $threshold, comes from tess-hunt's own null search.
 star's light curve again after shuffling the segments between its data gaps within each sector and then shuffling the
 sectors, so that no real periodic signal survives. The threshold is the highest SDE in that null search that
 LEO-Vetter's false-alarm tests (Kunimoto et al. 2025) do not reject. Scaled by the ratio of the sample's $n_sample
-stars to the $n_null stars the null search covered, that one null signal gives an expected $false_alarms false alarms
-at or above the threshold. This estimate comes from a single null signal. Decision record 0019 calls it an upper
-bound only because the star count includes stars the search couldn't process.
+stars to the $n_null stars the null search covered, the null search gives an expected $false_alarms false alarms at
+or above the threshold. This estimate comes from a single null signal. Decision record 0019 calls it an upper bound
+only because the star count includes stars the search couldn't process.
 
-The injection-recovery run planted $injections synthetic transits in the light curves of $inject_stars sample stars and
-searched them at the same threshold. The fraction it recovered at each expected signal-to-noise ratio is in
+The injection-recovery run injected $injections synthetic transits into the light curves of $inject_stars sample stars
+and searched them at the same threshold. The fraction it recovered at each expected signal-to-noise ratio is in
 `results/benchmarks/$inject_run/$completeness` in tess-hunt's repository.
 
 $triage
@@ -113,10 +113,10 @@ $history
 
 The vetting run applied version $criteria_version of tess-hunt's vetting criteria to the $vetted_products light curves
 of $vetted_sectors.$suspect The table gives each check's outcome. The first rows are the vetting criteria's checks.
-The last four come from other steps: the neighbour table, triage's pixel check, TRICERATOPS and the literature search.
-The neighbour table lists the Gaia DR3 stars that could make the dip. It never fails: its pass means only that it
-could assess every star near the target (decision record 0025). The literature search passes when every search
-completed. What it found is described below.
+The last four come from other steps: the neighbour check, triage's pixel check, TRICERATOPS and the literature search.
+The neighbour check lists the possible hosts: every Gaia DR3 star near the target that could make the dip if all its
+light fell in the aperture. It never fails: its pass means only that it could assess every star near the target
+(decision record 0025). The literature search passes when every search completed. What it found is described below.
 
 $checks
 
@@ -126,10 +126,8 @@ $modshift
 
 $red_noise
 
-The neighbour check lists every Gaia DR3 star near the target that could make the dip if all its light fell in the
-aperture. $hosts TRICERATOPS (Giacalone et al. 2021) then weighed the scenarios that could make the dip: on the
-target, on unresolved companions and background stars, and on each nearby TIC star whose light falls in its
-apertures.$tdepth_zero
+$hosts TRICERATOPS (Giacalone et al. 2021) then weighed the scenarios that could make the dip: on the target, on
+unresolved companions and background stars, and on each nearby TIC star whose light falls in its apertures.$tdepth_zero
 
 TRICERATOPS ran $tric_times on $tric_data. Its mean false-positive probability (FPP) is $fpp and its mean nearby
 false-positive probability (NFPP) is $nfpp. Both are under Giacalone et al.'s (2021) thresholds for a likely planet:
@@ -148,9 +146,8 @@ An LLM-assisted adversarial review, dated $review_date, looked for reasons the s
 be a planet, or not be real and new. It rates each finding kill, hold or note. Kill means the signal is not a planet
 candidate if the finding stands. Hold means the signal can't pass until the finding is answered. A note needs no
 answer. Each finding also names the question it concerns. A kill or hold finding counts as confirmed unless a refuter
-disproves it. Refuters are separate LLM-assisted checks, each asked to disprove one finding. Of the review's
-$findings, $fates. The maintainer's call answers each confirmed finding. The answers are quoted under "What it can't
-rule out". $hits_read
+disproves it. Refuters are separate LLM-assisted checks, each asked to disprove one finding. $fates The maintainer's
+call answers each confirmed finding. The answers are quoted under "What it can't rule out". $hits_read
 
 The call also answers three questions in a sentence each: could the dip be an eclipsing binary on the star, light from
 another star, or an artefact or known object? The answers below are quoted from the call. Any number in them is the

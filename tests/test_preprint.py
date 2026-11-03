@@ -352,7 +352,6 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "nfpp_pass": f"{bars['nfpp_pass']:g}",
         "tric_runs": str(len(tric["fpp"])),
         "tric_times": "three times",
-        "findings": "three findings",
         "n_confirmed": str(len(calls.confirmed(review))),
         "vetting_run": made["run_id"],
         "commit": made["git"]["commit"],
@@ -375,7 +374,7 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "period_max": f"{search['search']['period_max_days']:g}",
         "teff_min": f"{sample['teff_min']:g}",
         "tmag_max": f"{sample['tmag_max']:g}",
-        "min_sectors": str(sample["min_sectors"]),
+        "min_sectors": preprint._spell(sample["min_sectors"]),
         "recent_min": str(sample["recent_sector_min"]),
         "triage_run": tv.TRIAGE_RUN,
         "season_gap_days": f"{holdout['season_gap_days']:g}",
@@ -384,6 +383,7 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "max_offset": f"{checks['pixels']['max_offset_arcsec']:g}",
     }
     assert {key: found[key] for key in expected} == expected
+    assert found["fates"].startswith("Of the review's three findings, ")
     text = paper(repo)
     for key in ("period", "t0", "fpp", "sde", "threshold", "inject_run", "commit", "rp_rs"):
         assert expected[key] in text
@@ -520,7 +520,7 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
     assert vetted.startswith(
         "This signal has two records. The first was called held on 2026-10-28. Its call gave the reason as "
         '"The public data can\'t tell the two stars apart." and named the evidence that would decide it: '
-        '"High-resolution imaging of the 12.5 arcsec companion." This paper reports the second version, r2, a '
+        '"High-resolution imaging of the 12.5 arcsec companion.". This paper reports the second version, r2, a '
         "re-vet whose light curve adds Sector 65 (SPOC)."
     )
     m3 = json.loads((r2.parent / "provenance-checks.json").read_text())
@@ -542,6 +542,26 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
     assert "the one the vetting run of version r2 read" in " ".join(available.split())
     # The dataset's guide lists a re-vet's merge record.
     assert "| `merge.json` | what a re-vet's light curve changed |" in available
+    # A third version counts three records and says what the second's call gave.
+    r3 = r2.parent / "r3"
+    shutil.copytree(r2, r3)
+    history = preprint._history(r3)
+    assert history.startswith(
+        "This signal has three records. The first was called held on 2026-10-28."
+    )
+    assert (
+        "Version r2, a re-vet whose light curve adds Sector 65 (SPOC), was called passed on "
+        in history
+    )
+    assert history.endswith(
+        "This paper reports the third version, r3, a re-vet whose light curve adds Sector 65 (SPOC)."
+    )
+    assert preprint._records(NAME, 3) == (
+        f"The first record is in `dataset/vetting/{NAME}/`, and versions r2 and r3 are in its `r2/` and `r3/` "
+        "subdirectories."
+    )
+    assert preprint._records(NAME, None) == f"The record is in `dataset/vetting/{NAME}/`."
+    shutil.rmtree(r3)
     # A record with no version before it says it is the only one.
     single = tmp_path / "single"
     single.mkdir()
@@ -915,7 +935,8 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
                 "reason": "no light curve the test can use yet in S112",
             },
             'As of 2027-02-20, the test is pending ("no light curve the test can use yet in S112").',
-            "That test is not yet judged.",
+            "Before TESS observed Sectors 112 and 113, tess-hunt deposited on Zenodo a prediction of the signal's "
+            "transits in them. The preregistered test of that prediction is not yet judged.",
         ),
         (
             {
@@ -933,8 +954,9 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
         ),
     ):
         (record / "prereg.json").write_text(json.dumps({**PREREG, **result}))
-        text = " ".join(paper(repo).split())
-        assert said in text and summary in text
+        written = paper(repo)
+        text = " ".join(written.split())
+        assert said in text and summary in " ".join(td.section(written, "Summary").split())
         assert "untestable" not in text and "Replication shows" not in text
 
 
@@ -952,8 +974,19 @@ def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
         f"{sample['teff_max']:g} K;" in found
     )
     assert (
-        f"Scaled by the ratio of the sample's {SAMPLE} stars to the {NULL_STARS} stars the null search covered, that "
-        "one null signal gives an expected 1.03 false alarms at or above the threshold." in found
+        f"- light curves in at least {preprint._spell(sample['min_sectors'])} sectors, one of them in Sectors "
+        in found
+    )
+    # The single null signal is said once.
+    assert (
+        f"Scaled by the ratio of the sample's {SAMPLE} stars to the {NULL_STARS} stars the null search covered, the "
+        "null search gives an expected 1.03 false alarms at or above the threshold. This estimate comes from a "
+        "single null signal." in found
+    )
+    assert found.count("null signal") == 1
+    assert (
+        "The injection-recovery run injected 2000 synthetic transits into the light curves of 1000 sample stars"
+        in found
     )
     assert f"`results/benchmarks/{INJECT_RUN}/completeness_snr.csv`" in found
     # Triage's row for the signal, under the criteria the vetting run recorded for it.
@@ -991,7 +1024,7 @@ def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
     assert runs_made(tmp_path) == []
 
 
-def test_triage_and_the_novelty_check_are_said_in_words(tmp_path):
+def test_triage_and_the_novelty_check_are_said_in_words(tmp_path, monkeypatch):
     made = {"inputs": {}}
     row = pd.Series(
         {
@@ -1050,6 +1083,18 @@ def test_triage_and_the_novelty_check_are_said_in_words(tmp_path):
         (None, "a harmonic of this period"),
     ):
         assert preprint._harmonic(ratio) == said
+    # A promotion's quoted reason ends its sentence with a full stop of the paper's own.
+    monkeypatch.setattr(preprint, "_excepted", lambda record: [])
+    monkeypatch.setattr(preprint.calls, "novelty", lambda record, checks: spoc)
+    promoted = preprint._novelty(
+        tmp_path,
+        {"checks": [{"check": "novelty", **spoc}]},
+        {"promotion": "ExoMiner scores it 0.98"},
+    )
+    assert promoted.startswith(
+        'The novelty check is inconclusive, for the reason "known to SPOC only".'
+    )
+    assert promoted.endswith('It gives the reason as "ExoMiner scores it 0.98".')
 
 
 def test_what_a_revet_changed_is_said(tmp_path):
@@ -1078,19 +1123,210 @@ def test_what_a_revet_changed_is_said(tmp_path):
     assert preprint._changed(version) == "a re-vet on the same light curve"
 
 
+def test_each_count_reads_as_words():
+    # Counts up to nine are words, two is "both" or "neither" where the sentence takes it, and the noun agrees.
+    assert [preprint._count(n, "paper") for n in (0, 1, 2, 12)] == [
+        "no papers",
+        "one paper",
+        "two papers",
+        "12 papers",
+    ]
+    for args, said in (
+        ((1, 0, 0), "Its one season was not testable."),
+        ((1, 1, 0), "Its one season was testable and was not predicted."),
+        ((2, 0, 0), "Neither of its two seasons was testable."),
+        ((2, 1, 1), "Of its two seasons, one was testable and it was predicted."),
+        ((2, 2, 2), "Both seasons were testable and both were predicted."),
+        ((2, 2, 0), "Both seasons were testable and neither was predicted."),
+        ((3, 0, 0), "None of its three seasons was testable."),
+        ((3, 2, 1), "Of its three seasons, two were testable and one was predicted."),
+        ((3, 3, 3), "All three seasons were testable and all were predicted."),
+        ((4, 3, 0), "Of its four seasons, three were testable and none was predicted."),
+    ):
+        assert preprint._seasons(*args) == said
+
+    def finding(rating: str, *refuted: bool) -> dict:
+        return {
+            "id": "F1",
+            "lens": "planet",
+            "rating": rating,
+            "refuters": [{"refuted": r} for r in refuted],
+        }
+
+    for found, confirmed, said in (
+        (finding("note"), [], "Rated note."),
+        (finding("hold"), ["F1"], "Rated hold; no refuter tested it, so it counts as confirmed."),
+        (finding("hold", False), ["F1"], "Rated hold; its one refuter did not disprove it."),
+        (
+            finding("hold", False, False),
+            ["F1"],
+            "Rated hold; neither of its two refuters disproved it.",
+        ),
+        (
+            finding("hold", False, False, False),
+            ["F1"],
+            "Rated hold; none of its three refuters disproved it.",
+        ),
+        (finding("kill", True), [], "Rated kill; its one refuter disproved it."),
+        (finding("kill", True, False), [], "Rated kill; one of its two refuters disproved it."),
+        (finding("kill", True, True), [], "Rated kill; both of its refuters disproved it."),
+        (
+            finding("kill", True, True, True),
+            [],
+            "Rated kill; all three of its refuters disproved it.",
+        ),
+    ):
+        assert preprint._label(found, confirmed) == f"F1, on whether it is a planet. {said}"
+
+    def rated(*ratings: str) -> list[dict]:
+        return [{"id": f"F{i}", "rating": r} for i, r in enumerate(ratings, 1)]
+
+    for findings, confirmed, said in (
+        ([], [], "The review raised no findings."),
+        (rated("note"), [], "The review's one finding was a note."),
+        (rated("hold"), ["F1"], "The review's one finding, rated hold, was confirmed."),
+        (rated("kill", "kill"), [], "Both of the review's findings, rated kill, were refuted."),
+        (rated("note", "note", "note"), [], "All three of the review's findings were notes."),
+        (
+            rated("hold", "note", "note"),
+            ["F1"],
+            "Of the review's three findings, one rated hold was confirmed, and two were notes.",
+        ),
+    ):
+        assert preprint._fates(findings, confirmed) == said
+    assert (
+        preprint._flagged({"hits_flagged": []}, {})
+        == "The review flagged no papers for the maintainer to read."
+    )
+
+    # The neighbour check's possible hosts, by how many there are and how many lie inside the pixel check's reach.
+    def hosts(*seps: float) -> list[dict]:
+        return [{"sep_arcsec": s} for s in seps]
+
+    assert preprint._blends([], 15, []) == "The neighbour check found no possible hosts."
+    assert preprint._blends(hosts(5, 6), 15, []) == (
+        "Both of the neighbour check's possible hosts are within 15 arcsec of the target, too close for the pixel "
+        "check to tell apart. Photometry that resolves the stars near the target could rule them out."
+    )
+    assert preprint._blends(hosts(20, 30), 15, [1, 2]) == (
+        "Neither of the neighbour check's two possible hosts is within 15 arcsec of the target. TRICERATOPS weighed "
+        "no scenario on either of them. Photometry that resolves the stars near the target could rule them out."
+    )
+    assert preprint._blends(hosts(5, 6, 7), 15, []).startswith(
+        "All three of the neighbour check's possible hosts are within 15 arcsec"
+    )
+    assert preprint._blends(hosts(5, 20, 30), 15, [1]) == (
+        "One of the neighbour check's three possible hosts is within 15 arcsec of the target, too close for the "
+        "pixel check to tell apart. TRICERATOPS weighed no scenario on one of them. Photometry that resolves the "
+        "stars near the target could rule them out."
+    )
+    assert preprint._blends(hosts(20, 30, 40), 15, [1, 2, 3]).endswith(
+        "TRICERATOPS weighed no scenario on any of them. Photometry that resolves the stars near the target could "
+        "rule them out."
+    )
+    assert preprint._tdepth_zero({"hosts_tdepth_zero": []}, hosts(5)) == ""
+    for many, zero, which in (
+        (1, 1, "the neighbour check's one possible host for that star"),
+        (2, 2, "both of the neighbour check's possible hosts for those stars"),
+        (3, 3, "all three of the neighbour check's possible hosts for those stars"),
+        (3, 1, "one of the neighbour check's three possible hosts for that star"),
+    ):
+        said = preprint._tdepth_zero({"hosts_tdepth_zero": list(range(zero))}, hosts(*[5] * many))
+        assert said.startswith(
+            f" Its apertures take in too little light from {which} to make the dip."
+        )
+
+    # Red noise left unmeasured in one sector and in two.
+    def unmeasured(*sectors: int) -> str:
+        return preprint._red_noise(
+            {"red_noise": {str(s): {"note": "too few bins"} for s in sectors}}
+        )
+
+    assert unmeasured(1).endswith(
+        "Sector 1 had too few binned points to measure it, so beta is 1 there and its errors assume white noise."
+    )
+    assert unmeasured(1, 2).endswith(
+        "Sectors 1 and 2 had too few binned points to measure it, so beta is 1 there and their errors assume white "
+        "noise."
+    )
+    assert preprint._exofop(
+        {"status": "ok", "tois": [], "ctois": [], "confirmed_planets": "", "imaging": []}
+    ) == (
+        "ExoFOP lists no TOIs, no CTOIs, no confirmed planets and no high-resolution imaging observations for the "
+        "star."
+    )
+
+
+def test_counts_from_the_record_read_as_words(tmp_path, monkeypatch):
+    _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
+    author = preprint.load_author(repo / preprint.AUTHOR)
+    checks = json.loads((record / "checks.json").read_text())
+    triceratops = json.loads((record / "triceratops.json").read_text())
+    limit = tomllib.loads((REPO / "criteria" / "vet-v3.toml").read_text())["triceratops"][
+        "fpp_validated"
+    ]
+
+    def validated(**evidence) -> str:
+        edited = {**triceratops, "evidence": {**triceratops["evidence"], **evidence}}
+        return preprint._validated(record, checks["criteria_version"], edited)
+
+    assert validated(exposure_s=preprint.TWO_MINUTES_S).endswith(
+        "These runs had no contrast curve, so the label doesn't apply."
+    )
+    assert validated(fpp_mean=0.5).endswith(
+        f"These runs had no FPP under {limit:g}, no contrast curve and no 2-minute data, so the label doesn't apply."
+    )
+    # TRICERATOPS's run count, and the neighbour check's count of possible hosts.
+    host = checks["neighbours"]["evidence"]["possible_hosts"][0]
+    for fpp, hosts, times, found in (
+        (
+            [0.01],
+            [],
+            "once",
+            "The neighbour check found no possible hosts.",
+        ),
+        (
+            [0.01, 0.014],
+            [host, host, host],
+            "twice",
+            "The neighbour check found three possible hosts. The dataset's `neighbours.csv` gives the eclipse depth "
+            "each would need.",
+        ),
+    ):
+        td.edit_json(
+            record / "triceratops.json",
+            lambda t, fpp=fpp: t["evidence"].update(fpp=fpp, hosts_tdepth_zero=[]),
+        )
+        td.edit_json(
+            record / "checks.json",
+            lambda c, hosts=hosts: c["neighbours"]["evidence"].update(possible_hosts=hosts),
+        )
+        made = preprint.values(record, author, repo)
+        assert made["tric_times"] == times
+        assert made["hosts"] == found
+
+
 def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     _, repo = published(tmp_path, monkeypatch)
     record = repo / "results" / "vetting" / NAME
     text = paper(repo)
     vetted = " ".join(td.section(text, "How it was vetted").split())
     left = " ".join(td.section(text, "What it can't rule out").split())
-    # TRICERATOPS gave the neighbour table's one possible host zero depth (decision 0026, Ruling M).
+    # The neighbour check is described once, by that name, where the table introduces it.
+    assert vetted.count("Gaia DR3 star near the target that could make the dip") == 1
+    assert "neighbour table" not in text
     assert (
-        "It found one such star. The dataset's `neighbours.csv` gives the eclipse depth it would need."
-        in vetted
+        "The neighbour check lists the possible hosts: every Gaia DR3 star near the target that could make the dip "
+        "if all its light fell in the aperture. It never fails:" in vetted
+    )
+    # TRICERATOPS gave the neighbour check's one possible host zero depth (decision 0026, Ruling M).
+    assert (
+        "The neighbour check found one possible host. The dataset's `neighbours.csv` gives the eclipse depth it "
+        "would need." in vetted
     )
     assert (
-        "Its apertures take in too little light from the neighbour table's one possible host for that star to make "
+        "Its apertures take in too little light from the neighbour check's one possible host for that star to make "
         "the dip. TRICERATOPS gave it zero depth and weighed no scenario on it (decision record 0026)."
         in vetted
     )
@@ -1117,7 +1353,7 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     )
     assert "11.6" not in vetted
     assert (
-        "The neighbour table's one possible host is within 15 arcsec of the target, too close for the pixel check "
+        "The neighbour check's one possible host is within 15 arcsec of the target, too close for the pixel check "
         "to tell apart, and TRICERATOPS weighed no scenario on it. Photometry that resolves the stars near the "
         "target could rule it out." in left
     )
@@ -1190,7 +1426,7 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
         "was not testable, because the depth expected there is too small against its error." in text
     )
     assert "weighed no scenario" not in text
-    assert "The neighbour table's one possible host is not within 15 arcsec of the target." in text
+    assert "The neighbour check's one possible host is not within 15 arcsec of the target." in text
     assert (
         "These runs meet those conditions, but this paper still calls the signal a planet candidate."
         in text
@@ -1223,8 +1459,8 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
     td.edit_json(record / "checks.json", lambda c: c["signal"].update(kind="second"))
     found = preprint.values(record, preprint.load_author(repo / preprint.AUTHOR), repo)
     assert found["bar_promotion"] == (
-        " For a SPOC threshold-crossing event that never became a TOI, the maintainer's promotion can stand in for "
-        "the novelty check (decision record 0013)."
+        " For a SPOC threshold-crossing event that never became a TOI, the maintainer's promotion can replace the "
+        "novelty check's pass (decision record 0013)."
     )
 
 
