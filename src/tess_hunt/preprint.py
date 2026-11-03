@@ -396,6 +396,11 @@ def _quote(text: str) -> str:
     return f'"{_scrub(text)}"'
 
 
+def _stop(sentence: str) -> str:
+    """A sentence with its full stop, unless it ends on a quote whose own text already ends one."""
+    return sentence if re.search(r'[.?!]"$', sentence) else f"{sentence}."
+
+
 def _beside(notes: list[dict]) -> str:
     """The notes added on a quoted finding under decision 0037, each nested under the finding after its quoted lines.
     Python-Markdown nests a list only at four spaces."""
@@ -502,7 +507,7 @@ def _history(record: Path) -> str:
             gave += (
                 f" and named the evidence that would decide it: {_quote(call['deciding_evidence'])}"
             )
-        said.append(f"{gave}.")
+        said.append(_stop(gave))
     n = calls.version(record)
     said.append(
         f"This paper reports the {ORDINALS.get(n, 'latest')} version, r{n}, {_changed(record)}."
@@ -537,7 +542,7 @@ def _novelty_against(check: dict) -> str:
         return f"{head}: no known object matches the signal."
     if matched:
         return f"{head}, because {_words(matched)} {'matches' if len(matched) == 1 else 'match'} the signal."
-    return f"{head}, for the reason {_quote(check['reason'])}."
+    return _stop(f"{head}, for the reason {_quote(check['reason'])}")
 
 
 def _novelty(record: Path, checks: dict, call: dict) -> str:
@@ -557,14 +562,16 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
         it = "it" if one else "them"
         line += (
             f" ExoFOP first listed {which} after tess-hunt made the signal public, so decision record 0042 sets {it} "
-            f'aside (see "When it was made public"). Without {it}, {_novelty_said(judged)}.'
+            'aside (see "When it was made public"). '
+            + _stop(f"Without {it}, {_novelty_said(judged)}")
         )
         said.append(line)
     if judged["outcome"] != "pass":
         said.append(
-            f"T{_novelty_said(judged)[1:]}. The rows at the signal's period are SPOC threshold-crossing events or "
-            "ExoMiner rows that never became TOIs. Decision record 0013 lets the call promote such a signal, and this "
-            f"call does. It gives the reason as {_quote(call['promotion'])}."
+            _stop(f"T{_novelty_said(judged)[1:]}")
+            + " The rows at the signal's period are SPOC threshold-crossing events or ExoMiner rows that never became "
+            "TOIs. Decision record 0013 lets the call promote such a signal, and this call does. "
+            + _stop(f"It gives the reason as {_quote(call['promotion'])}")
         )
     return "\n\n".join(said)
 

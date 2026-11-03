@@ -520,7 +520,7 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
     assert vetted.startswith(
         "This signal has two records. The first was called held on 2026-10-28. Its call gave the reason as "
         '"The public data can\'t tell the two stars apart." and named the evidence that would decide it: '
-        '"High-resolution imaging of the 12.5 arcsec companion.". This paper reports the second version, r2, a '
+        '"High-resolution imaging of the 12.5 arcsec companion." This paper reports the second version, r2, a '
         "re-vet whose light curve adds Sector 65 (SPOC)."
     )
     m3 = json.loads((r2.parent / "provenance-checks.json").read_text())
@@ -1083,7 +1083,13 @@ def test_triage_and_the_novelty_check_are_said_in_words(tmp_path, monkeypatch):
         (None, "a harmonic of this period"),
     ):
         assert preprint._harmonic(ratio) == said
-    # A promotion's quoted reason ends its sentence with a full stop of the paper's own.
+    # A quoted reason that ends a sentence takes the paper's full stop unless its own text ends one.
+    assert preprint._stop('the reason "two TCEs agree"') == 'the reason "two TCEs agree".'
+    assert preprint._stop('the reason "Two TCEs agree."') == 'the reason "Two TCEs agree."'
+    assert (
+        preprint._stop('the question "Is it on the star?"') == 'the question "Is it on the star?"'
+    )
+    assert preprint._stop("no ModShift result") == "no ModShift result."
     monkeypatch.setattr(preprint, "_excepted", lambda record: [])
     monkeypatch.setattr(preprint.calls, "novelty", lambda record, checks: spoc)
     promoted = preprint._novelty(
@@ -1095,6 +1101,12 @@ def test_triage_and_the_novelty_check_are_said_in_words(tmp_path, monkeypatch):
         'The novelty check is inconclusive, for the reason "known to SPOC only".'
     )
     assert promoted.endswith('It gives the reason as "ExoMiner scores it 0.98".')
+    ended = preprint._novelty(
+        tmp_path,
+        {"checks": [{"check": "novelty", **spoc}]},
+        {"promotion": "ExoMiner scores it 0.98."},
+    )
+    assert ended.endswith('It gives the reason as "ExoMiner scores it 0.98."')
 
 
 def test_what_a_revet_changed_is_said(tmp_path):
