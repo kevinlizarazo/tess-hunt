@@ -25,7 +25,7 @@ import test_preprint as tp
 import test_vetting as tv
 from synthetic import make_transit_lc
 
-from tess_hunt import literature, preprint
+from tess_hunt import literature, predict, preprint
 from tess_hunt.cli import main
 from tess_hunt.fit import NAMES, FitResult
 from tess_hunt.lightcurve import LightCurve
@@ -53,7 +53,8 @@ EXOFOP = {
     "status": "ok",
     "error": None,
     "tois": [],
-    "ctois": [],
+    # The CTOI decision 0042 sets aside, as ExoFOP lists it on the star.
+    "ctois": [{"ctoi": f"TIC {TIC}.01", "cdisp": "PC"}],
     "planets": [],
     "confirmed_planets": None,
     "imaging": [
@@ -184,6 +185,12 @@ def vetting_runs(tmp: Path, mp) -> tuple[Path, Path]:
     mp.setattr(td, "make_transit_lc", transit)
     signal = {"name": NAME, "tic": TIC, **SIGNAL, "kind": "candidate"}
     argv, _ = tv.setup(tmp, mp, signals=[signal], suspect={64}, fit=fit)
+    # A deposit predicts only sectors tess-point placed the star in.
+    mp.setattr(
+        predict,
+        "tess_stars2px_function_entry",
+        lambda tic, ra, dec: (None, None, None, np.array([35, 112, 113, 115])),
+    )
     path = tmp / "data" / "lc" / f"{TIC}.npz"
     lc = LightCurve.load(path)
     for i, source in enumerate(lc.sources.values()):

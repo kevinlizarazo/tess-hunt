@@ -35,6 +35,7 @@ TRIAGED = {
     "leo_flux": "pass",
     "leo_reason": "planet candidate at flux level",
     "pixels": "pass",
+    "pixels_reason": 'centroid offset 10.9" within 15"',
     "shortlisted": True,
 }
 NULL_RUN = "20261013T000000Z-search-abc-0"
@@ -173,6 +174,7 @@ def published_runs(repo: Path) -> None:
                 "leo_flux": "fail",
                 "leo_reason": "FA: non_unique",
                 "pixels": "inconclusive",
+                "pixels_reason": "not run: novelty or the flux tests did not pass",
                 "shortlisted": False,
             },
         ]
@@ -408,6 +410,8 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     assert "they don't rule out every other star's light" in summary
     # Only a record holding a preregistered result says so here.
     assert "deposited the prediction on Zenodo" not in summary
+    # It is the Zenodo description too, where no other section exists.
+    assert "How tess-hunt works" not in summary
     for claim in ("confirmed", "discovered a planet", "validated"):
         assert claim not in summary.lower()
 
@@ -546,6 +550,12 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
     other = tmp_path / "claimed"
     other.mkdir()
     runs, repo, argv = td.claimed_pass(other, monkeypatch)
+    # Decision 0042 also excepts a later listing on the star at another period, which novelty never matched.
+    later = {**td.later_listing(name="TOI-7001.02", first="2027-04-01"), "period": 12.1}
+    excepted = [td.later_listing(), later]
+    record = td.claims_record(runs["run"], runs["literature"], excepted, td.RERUN)
+    runs["claims"] = td.claims_run(other, runs["run"], runs["literature"], record, tag="b")
+    td.production(runs["claims"])
     assert main([*argv, *td.flags(runs, "claims")]) == 0
     prepared(repo, monkeypatch)
     text = paper(repo)
@@ -556,6 +566,11 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
         "with disposition PC, after tess-hunt made this signal public; the record does not say who submitted it."
         in public
     )
+    assert (
+        "ExoFOP lists TOI-7001.02 on the star (period 12.1 d), first listed on 2027-04-01 with disposition PC, after "
+        "tess-hunt made this signal public" in public
+    )
+    assert "as TOI-7001.02" not in public
     assert "decision record 0042" in public
     assert (
         "ExoFOP's page for the star is https://exofop.ipac.caltech.edu/tess/target.php?id=1."
@@ -567,11 +582,17 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
     vetted = " ".join(td.section(text, "How it was vetted").split())
     assert "| Known objects at the period (`novelty`; see below the table) | fail |" in vetted
     assert (
-        "Against the catalogs the vetting run read, the novelty check fails: matches TOI TOI-7001.01."
+        "Against the catalogs the vetting run read, the novelty check fails: TOI-7001.01 matches the signal. ExoFOP "
+        "first listed TOI-7001.01 and TOI-7001.02 only after tess-hunt made the signal public, so decision record "
+        "0042 sets them aside" in vetted
+    )
+    assert (
+        "Run again without them, the novelty check passes: no known object matches the signal."
         in vetted
     )
-    assert "Run again without it, the novelty check passes: no known object matches." in vetted
+    # Only the listing at the signal's period is named against ExoFOP's rows at the period.
     assert ", apart from TOI-7001.01, which decision record 0042 sets aside" in vetted
+    assert "TOI-7001.02, which" not in vetted
     # The claim the exception rests on must be the committed one.
     claims = repo / "results" / "claims.toml"
     claims.write_text(claims.read_text().replace("2026-10-28", "2026-10-29"))
@@ -751,6 +772,7 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     licences = form.split("## Licence\n")[1].split("\n## ")[0]
     assert "Creative Commons Attribution 4.0 International (CC BY 4.0)" in licences
     assert "(CC BY-NC 3.0 IGO)" in licences
+    assert "ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php)" in licences
     # The description names the files the second licence covers.
     description = form.split("## Description\n")[1].split("\n## ")[0]
     gaia = sorted(name for name in GAIA_FILES if (record / name).is_file())
@@ -791,7 +813,8 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     assert (
         "As of 2027-02-20 the new sectors replicate the signal: in the cores of the predicted transits, 412 "
         "cadences give a depth of 500 ± 100 ppm, 5.00 times its error, where the test expected 4.80 times it, and "
-        "0.40 sigma from the depth the earlier seasons give" in text
+        "a tension of 0.40 sigma, the largest across the light-curve product families, each family's depth here "
+        "against its own depth in the earlier seasons" in text
     )
     assert "it does not show that the dip is on the target" in text
     assert "The maintainer's call (2026-10-28) came before this result." in text
@@ -873,9 +896,38 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
     assert runs_made(tmp_path) == []
     deposited(repo, record, "2026-12-21")
     assert "Zenodo published the deposit on 2026-12-21" in " ".join(paper(repo).split())
+    for result, said, summary in (
+        (
+            {
+                "result": "pending",
+                "status": "pending",
+                "reason": "no light curve the test can use yet in S112",
+            },
+            'As of 2027-02-20 the test is pending ("no light curve the test can use yet in S112").',
+            "that test is not yet judged.",
+        ),
+        (
+            {
+                "result": "untested",
+                "status": "untestable",
+                "reason": "1 training season(s), need 2",
+            },
+            'As of 2027-02-20 the new data could not test it ("1 training season(s), need 2").',
+            "the new data could not test that prediction.",
+        ),
+        (
+            {"result": "missed", "status": "missed"},
+            "As of 2027-02-20 the new sectors miss the prediction: in the cores of the predicted transits",
+            "the transits were missing where predicted.",
+        ),
+    ):
+        (record / "prereg.json").write_text(json.dumps({**PREREG, **result}))
+        text = " ".join(paper(repo).split())
+        assert said in text and summary in text
+        assert "untestable" not in text and "A replicated season" not in text
 
 
-def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch):
+def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
     _, repo = published(tmp_path, monkeypatch)
     text = paper(repo)
     found = " ".join(td.section(text, "How it was found").split())
@@ -908,6 +960,89 @@ def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch):
     (repo / "results" / "benchmarks" / INJECT_RUN / "completeness_snr.csv").unlink()
     with pytest.raises(SystemExit, match="completeness_snr.csv"):
         paper(repo)
+    # The SDE and triage's steps come from the signal's row, so a triage run without it is refused.
+    commit(repo)
+    signals = repo / "results" / "triage" / tv.TRIAGE_RUN / "signals.csv"
+    rows = pd.read_csv(signals)
+    rows[rows["rank"] != 1].to_csv(signals, index=False)
+    (repo / "results" / "benchmarks" / INJECT_RUN / "completeness_snr.csv").write_text(
+        "engine,bin\n"
+    )
+    commit(repo)
+    with pytest.raises(SystemExit, match=f"holds 0 rows for {NAME}, not one"):
+        main(["preprint", "run", "--name", NAME])
+    assert runs_made(tmp_path) == []
+
+
+def test_triage_and_the_novelty_check_are_said_in_words(tmp_path):
+    made = {"inputs": {}}
+    row = pd.Series(
+        {
+            **TRIAGED,
+            "leo_flux": "fail",
+            "pixels": "inconclusive",
+            "pixels_reason": "not run: novelty or the flux tests did not pass",
+            "shortlisted": False,
+        }
+    )
+    said = preprint._triage(row, made, {"signal": {"kind": "candidate"}})
+    assert said == (
+        "Triage then screened every signal at or above the threshold. This signal's novelty check passed, "
+        "LEO-Vetter's tests failed and triage did not run its pixel check, so triage did not shortlist it."
+    )
+    ran = pd.Series({**row, "pixels": "fail", "pixels_reason": 'centroid offset 20.1" beyond 15"'})
+    second = preprint._triage(ran, made, {"signal": {"kind": "second"}})
+    assert "and its pixel check failed, so triage did not shortlist it." in second
+    assert second.endswith(
+        "It came to vetting on tess-hunt's second list, of SPOC threshold-crossing events that never became TOIs "
+        "(decision record 0028)."
+    )
+    # A novelty check's outcome as a verb with what it matched; its reason quoted where it lists no match.
+    passed = {"outcome": "pass", "reason": "no known object matches", "evidence": {}}
+    assert (
+        preprint._novelty_said(passed)
+        == "the novelty check passes: no known object matches the signal"
+    )
+    two = {
+        "outcome": "fail",
+        "reason": "matches A",
+        "evidence": {"matches": [{"name": "A"}, {"name": "B"}]},
+    }
+    assert preprint._novelty_said(two) == "the novelty check fails: A and B match the signal"
+    spoc = {
+        "outcome": "inconclusive",
+        "reason": "known to SPOC only",
+        "evidence": {"category": "known_to_spoc"},
+    }
+    assert (
+        preprint._novelty_said(spoc) == 'the novelty check is inconclusive ("known to SPOC only")'
+    )
+
+
+def test_what_a_revet_changed_is_said(tmp_path):
+    version = tmp_path / "r2"
+    version.mkdir()
+    (version / "checks.json").write_text(json.dumps({"tic": 1}))
+    sectors = {
+        "64": {
+            "status": "redelivered",
+            "base": {"provenance": "QLP"},
+            "fresh": {"provenance": "QLP"},
+        },
+        "65": {
+            "status": "upgraded",
+            "base": {"provenance": "QLP"},
+            "fresh": {"provenance": "TESS-SPOC"},
+        },
+        "66": {"status": "added", "base": None, "fresh": {"provenance": "SPOC"}},
+    }
+    (version / "merge.json").write_text(json.dumps({"1": {"sectors": sectors}}))
+    assert preprint._changed(version) == (
+        "a re-vet on a light curve that adds Sector 66 (SPOC), takes a newer delivery of Sector 64, whose earlier "
+        "one had suspect timestamps and replaces Sector 65's QLP light curve with TESS-SPOC's"
+    )
+    (version / "merge.json").write_text(json.dumps({"1": {"sectors": {"64": {"status": "kept"}}}}))
+    assert preprint._changed(version) == "a re-vet on the same light curve"
 
 
 def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
@@ -939,9 +1074,10 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
         "for suspect timestamps." in vetted
     )
     assert (
-        "TOI-1399.01, whose dip comes from a nearby binary, passes the check at 11.6 arcsec"
-        in vetted
+        "TOI-1399.01, whose dip comes from a nearby binary inside that limit, passes the check (decision record "
+        "0032)." in vetted
     )
+    assert "11.6" not in vetted
     assert (
         "1 of the neighbour table's 1 possible host lies within the pixel check's 15 arcsec of the target"
         in left
@@ -959,9 +1095,11 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     )
     assert "Each sector's depth errors are scaled by its red-noise factor, beta" in vetted
     # ExoFOP's listings on the star, and the imaging that did not go into TRICERATOPS.
-    exofop = json.loads((record / "literature.json").read_text())["search"]["exofop"]
-    assert exofop["imaging"]
-    assert preprint._exofop(exofop) in vetted
+    # The fixture's ExoFOP rows, as the literature search keeps them.
+    assert (
+        "ExoFOP lists TOIs TOI 266.01 (CP) and TOI 266.02 (CP), CTOI TIC 164767175.03 (PC), the confirmed planets "
+        "HIP 8152 b, HIP 8152 c and 1 high-resolution imaging observation for the star." in vetted
+    )
     assert "1 high-resolution imaging observation of the star, which did not go into it." in left
     held_out = " ".join(td.section(text, "The held-out seasons and the preregistered test").split())
     # The fixture's light curve gives one season.
@@ -995,7 +1133,14 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
         record_["evidence"].update(hosts_tdepth_zero=[], validated_label=True)
 
     td.edit_json(record / "triceratops.json", labelled)
+    td.edit_json(
+        record / "checks.json", lambda c: c["pixels"]["evidence"].update(offset_qual_arcsec=11.5)
+    )
     text = " ".join(paper(repo).split())
+    assert (
+        "Its pass rests on the best-quality sector's offset, which no single sector above reports."
+        in text
+    )
     assert "it is 1.30 in Sector 1." in text
     assert "of its 1 season, 0 could be tested and 0 were predicted." in text
     assert "could not be tested: the depth expected there is too small against its error." in text
@@ -1012,6 +1157,30 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     assert "and the record holds no ModShift result to look there." in text
 
 
+def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
+    _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
+    made = json.loads((record / "provenance-checks.json").read_text())
+    works = " ".join(td.section(paper(repo), "How tess-hunt works").split())
+    assert (
+        f"(https://example.org/tess-hunt/tree/{made['git']['commit']}/docs/decisions); this paper cites each by its "
+        "number" in works
+    )
+    holdout = tomllib.loads(tv.VET3.read_text())["holdout"]
+    assert f"no gap longer than {holdout['season_gap_days']:g} days between them." in works
+    assert "set aside (decision record 0042); no row of ExoFOP's planet parameters" in works
+    assert "a row of a listing set aside that way apart" in works
+    # A second-list row's bar names its promotion (decision 0013).
+    pixels = json.loads((record / "checks.json").read_text())["pixels"]
+    (record / "pixels.json").write_text(json.dumps(pixels))
+    td.edit_json(record / "checks.json", lambda c: c["signal"].update(kind="second"))
+    found = preprint.values(record, preprint.load_author(repo / preprint.AUTHOR), repo)
+    assert found["bar_promotion"] == (
+        ", or the maintainer promoted a SPOC threshold-crossing event that never became a TOI (decision record "
+        "0013)"
+    )
+
+
 def test_the_figures_and_references_are_the_papers_own(tmp_path, monkeypatch):
     _, repo = published(tmp_path, monkeypatch)
     text = paper(repo)
@@ -1023,8 +1192,11 @@ def test_the_figures_and_references_are_the_papers_own(tmp_path, monkeypatch):
         "Kipping, D. M. 2013, MNRAS, 435, 2152",
         "Bryson, S. T., Jenkins, J. M., Gilliland, R. L., et al. 2013, PASP, 125,",
         "Pont, F., Zucker, S., & Queloz, D. 2006, MNRAS, 373, 231",
+        "ModShift: Rowe, J. F., Coughlin, J. L., Antoci, V., et al. 2015, ApJS, 217, 16; Coughlin, J. L., Mullally, "
+        "F., Thompson, S. E., et al. 2016, ApJS, 224, 12",
     ):
-        assert cited in references
+        assert cited in " ".join(references.split())
+    assert "(Rowe et al. 2015; Coughlin et al. 2016)" in " ".join(text.split())
     # The fixture's light curve is SPOC's, whose flux is PDCSAP.
     assert preprint.PDCSAP_PAPERS in references
     available = " ".join(td.section(text, "Data and code availability").split())

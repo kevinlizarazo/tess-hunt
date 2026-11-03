@@ -9,9 +9,9 @@ $repository
 tess-hunt is an independent search for transiting planets in public light curves from NASA's TESS mission. In the
 TESS light curves of TIC $tic it found a periodic dip of about $depth_ppm ppm that lasts $duration_h hours and repeats
 every $period_short days. A transit-model fit gives the transiting body a radius of $rp_rearth Earth radii, for the
-star's radius in the TESS Input Catalog. The signal met every condition tess-hunt sets for a passed signal, which How
-tess-hunt works lists: among them, every check on its light curve passed, TRICERATOPS gives it a false-positive
-probability of $fpp, and the maintainer answered each objection an adversarial review raised that no one refuted. The
+star's radius in the TESS Input Catalog. The signal met every condition tess-hunt sets for a passed signal: among
+them, every check on its light curve passed, TRICERATOPS gives it a false-positive probability of $fpp, and the
+maintainer answered each objection an adversarial review raised that no one refuted. The
 project's maintainer, this paper's author, makes the call on each vetted signal, passed, held or killed, and called
 this one passed on $call_date.$summary_prereg It is a planet candidate. TESS light curves can't measure its mass, and
 they don't rule out every other star's light. Whether it is a planet needs other observations: photometry that
@@ -35,9 +35,10 @@ of the record (r2, r3 and so on) beside the earlier ones, which stay as they wer
 
 A signal passes only when (decision record 0028) every check of the vetting criteria passed, the novelty check among
 them, with a TOI or CTOI that ExoFOP listed only after tess-hunt made the signal public set aside (decision
-record 0042)$bar_promotion; no row of ExoFOP's planet parameters for the star matches its period; the literature search was
-complete and the maintainer read every paper the review flagged; TRICERATOPS and the pixel check passed; and the
-maintainer answered every confirmed review finding and gave one sentence on each of three questions.
+record 0042)$bar_promotion; no row of ExoFOP's planet parameters for the star matches its period, a row of a listing
+set aside that way apart; the literature search was complete and the maintainer read every paper the review flagged;
+TRICERATOPS and the pixel check passed; and the maintainer answered every confirmed review finding and gave one
+sentence on each of three questions.
 
 Decision records are numbered documents in `docs/decisions/` in tess-hunt's repository
 ($repository/tree/$commit/docs/decisions); this paper cites each by its number. A run is one execution of a tess-hunt
@@ -65,7 +66,7 @@ density with the TIC's.
 | Duration | $duration_h h |
 | Depth | $depth_ppm ppm |
 | Planet-to-star radius ratio Rp/R* | $rp_rs |
-| Radius | $rp_rearth Earth radii (16th to 84th percentile $rp_lo to $rp_hi, from Rp/R* and the TIC's stellar radius alone) |
+| Radius | $rp_rearth Earth radii (16th to 84th percentile $rp_lo to $rp_hi, from Rp/R* and the TIC radius alone) |
 | Impact parameter | $b |
 | Scaled semi-major axis a/R* | $a_rs |
 
@@ -75,12 +76,12 @@ $figures
 
 ## How it was found
 
-tess-hunt's search looked for periodic dips of $period_min to $period_max days, with box least squares (BLS; Kovács et
-al. 2002), in the light curves of its sample: $sample_stars stars from the TESS Input Catalog with an effective
-temperature above $teff_min K and up to $teff_max K, a TESS magnitude of $tmag_max or brighter, a surface gravity (log g)
-of $logg_min to $logg_max, a Gaia DR3 log g of at least $flame_logg_min where Gaia gives one (decision record 0009), and
-light curves in at least $min_sectors sectors, one of them in Sectors $recent_min to $recent_max. It found this signal
-at a signal detection efficiency (SDE) of $sde.
+tess-hunt's search looked for periodic dips of $period_min to $period_max days, with box least squares (BLS;
+Kovács et al. 2002), in the light curves of its sample: $sample_stars stars from the TESS Input Catalog with an
+effective temperature above $teff_min K and up to $teff_max K, a TESS magnitude of $tmag_max or brighter, a surface
+gravity (log g) of $logg_min to $logg_max, a Gaia DR3 log g of at least $flame_logg_min where Gaia gives one
+(decision record 0009), and light curves in at least $min_sectors sectors, one of them in Sectors $recent_min to
+$recent_max. It found this signal at a signal detection efficiency (SDE) of $sde.
 
 The detection threshold, SDE $threshold, comes from tess-hunt's own null search, which searched each sample star's
 light curve again after shuffling the segments between its data gaps within each sector, and then the sectors, so that
@@ -115,19 +116,18 @@ $modshift
 
 $red_noise
 
-The neighbour check lists every Gaia DR3 star near the target whose eclipse could make the dip if all its light fell in
-the photometric aperture: $hosts.
-TRICERATOPS (Giacalone et al. 2021) then weighed the scenarios that could make the dip: on the target, on companions and
-background stars too close to resolve, and on each nearby star in the TIC whose light its apertures take in.$tdepth_zero
-Over $triceratops_runs on $tric_data, its mean false-positive probability (FPP) is $fpp and its mean nearby
-false-positive probability (NFPP) is $nfpp, both under the thresholds Giacalone et al. (2021) give for a likely planet,
-FPP $fpp_pass and NFPP $nfpp_pass. $validated
+The neighbour check lists every Gaia DR3 star near the target whose eclipse could make the dip if all its light
+fell in the photometric aperture: $hosts. TRICERATOPS (Giacalone et al. 2021) then weighed the scenarios that could
+make the dip: on the target, on companions and background stars too close to resolve, and on each nearby star in the
+TIC whose light its apertures take in.$tdepth_zero Over $triceratops_runs on $tric_data, its mean false-positive
+probability (FPP) is $fpp and its mean nearby false-positive probability (NFPP) is $nfpp, both under the thresholds
+Giacalone et al. (2021) give for a likely planet, FPP $fpp_pass and NFPP $nfpp_pass. $validated
 
 The pixel check in the table is $pixel_check: it measures how far the dip's difference-image centroid (Bryson et al.
 2013) sits from the target in each sector, and passes when the offset in the best-quality sector is within $max_offset
 arcsec, LEO-Vetter's rule. Its offsets: $offsets. $rests_on An offset within $max_offset arcsec can't tell the target
-from a star closer than that: TOI-1399.01, whose dip comes from a nearby binary, passes the check at 11.6 arcsec
-(decision record 0032).
+from a star closer than that: TOI-1399.01, whose dip comes from a nearby binary inside that limit, passes the
+check (decision record 0032).
 
 The literature search looked for the star under each of its names, among them $names, in NASA ADS, arXiv, OpenAlex and
 Zenodo, and read ExoFOP's records for the star. It found $papers under those names. $exofop None of ExoFOP's
@@ -137,8 +137,8 @@ An adversarial review, assisted by an LLM and dated $review_date, looked for rea
 not a planet, or not real and new. It rates each finding kill (if the finding stands, the signal is not a planet
 candidate), hold (the signal can't pass until the finding is answered) or note (it needs no answer), and labels it
 with the question it bears on. A finding rated kill or hold counts as confirmed unless a refuter, a separate
-LLM-assisted check asked to disprove that finding, did so. Of its $findings, $fates. The maintainer's call answers each confirmed
-finding (What it can't rule out). $hits_read
+LLM-assisted check asked to disprove that finding, did so. Of its $findings, $fates. The maintainer's call answers
+each confirmed finding (What it can't rule out). $hits_read
 
 The call answers three questions in one sentence each: whether the dip could be an eclipsing binary on the star,
 another star's light, or an artefact or a known object. The sentences are quoted from the record's call in the
@@ -154,8 +154,8 @@ measures the left-out season's depth in the cores of the transits the refit pred
 transit's duration. The refit searches only near the search's period, which the search found with every season, the
 left-out one included, so the check tests that the seasons agree with each other; it is not a blind prediction, which
 only the preregistered test below is. A season that could be tested is predicted when its depth there is at least
-$min_sigma times its error and within $max_tension sigma of the depth the other seasons give; the check passes when at
-least two seasons could be tested and each was predicted. $holdout
+$min_sigma times its error and, in each light-curve product family, within $max_tension sigma of that family's depth
+in the other seasons; the check passes when at least two seasons could be tested and each was predicted. $holdout
 
 $prereg
 
@@ -242,6 +242,8 @@ and the citation it asks for.
 - TESS Input Catalog: Stassun et al. 2019, AJ, 158, 138; Paegert et al. 2021, arXiv:2108.04778$gaia_papers
 - BLS: Kovács, G., Zucker, S., & Mazeh, T. 2002, A&A, 391, 369
 - LEO-Vetter: Kunimoto, M., Bryson, S., Jaffee, D., et al. 2025, AJ, 170, 280
+- ModShift: Rowe, J. F., Coughlin, J. L., Antoci, V., et al. 2015, ApJS, 217, 16; Coughlin, J. L., Mullally, F.,
+  Thompson, S. E., et al. 2016, ApJS, 224, 12
 - TRICERATOPS: Giacalone, S., Dressing, C. D., Jensen, E. L. N., et al. 2021, AJ, 161, 24, and Giacalone, S., &
   Dressing, C. D. 2020, ascl:2002.004; PyTransit, which it runs: Parviainen, H. 2015, MNRAS, 450, 3233
 - Pixel check: difference-image centroids, Bryson, S. T., Jenkins, J. M., Gilliland, R. L., et al. 2013, PASP, 125,

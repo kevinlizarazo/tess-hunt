@@ -36,7 +36,9 @@ reviewed on a specimen and fixed before a real result can shape it.
   - a record holding a preregistered result whose deposit Zenodo published on or after the day TESS began observing
     the first sector it predicts (`benchmarks/tess_sectors.csv`): the paper says the prediction came first. Decision
     0040's lock start keeps a real package clear of it;
-  - an injection-recovery run without `completeness_snr.csv`, which the paper points to.
+  - an injection-recovery run without `completeness_snr.csv`, which the paper points to;
+  - a triage run whose `signals.csv` holds no row, or more than one, for the signal: the paper gives its SDE and
+    triage's steps from that row.
 
   A value the paper needs and its sources lack raises while the paper is rendered, which is also before the run
   starts.
@@ -71,13 +73,17 @@ reviewed on a specimen and fixed before a real result can shape it.
   - No provenance in a record names the injection-recovery run, so the paper takes the one published production
     `benchmark-inject` run made at the search's threshold run, and refuses unless exactly one is (the build's choice).
   - The claim date and record are `results/claims.toml`'s. Each listing the record's `claims.json` excepts under 0042
-    is named with the day ExoFOP first listed it and its dispositions. A `claims.json` that rests on another claim
-    than the committed file gives is refused, since the paper states one.
+    is named with its period, the day ExoFOP first listed it and its dispositions. 0042 excepts a later listing on
+    the star at any period, so only one the novelty check matched (its `evidence["matches"]`) is said to be at the
+    signal's period. A `claims.json` that rests on another claim than the committed file gives is refused, since the
+    paper states one.
+  - The novelty check's outcome is said as a verb, with the listings its evidence matched to the signal by name; where
+    its evidence lists no match, its reason is quoted.
   - The predictions DOI is `results/predictions/dois.toml`'s for the package the record's `prereg.json` names.
   - The summary says "planet candidate" and never "confirmed", "validated" or "discovered a planet".
   - The paper and its Zenodo form name no model: the review is "assisted by an LLM" and each refuter is "a separate
-    LLM-assisted check", as the maintainer's Use of LLMs paragraph (2026-11-02) describes them. His answer of the
-    same day.
+    LLM-assisted check", as the maintainer's Use of LLMs paragraph (2026-11-02) describes them. The maintainer
+    chose this on 2026-11-02.
   - The figures are the record's `transits.png`, `folds.png`, `odd_even.png` and `phase.png`, with the paper's own
     captions, which say what each plot draws: the dossier's assume a reader inside the project. The centroid plots
     draw Gaia DR3 stars, so they stay in the dataset under Gaia's terms. The paper names the star by its TIC number
@@ -106,8 +112,9 @@ reviewed on a specimen and fixed before a real result can shape it.
     directory, and the committed `manifest.json` gives the sha256 of each of its files.
   - `tess-hunt preprint zenodo --run RUN_ID` prints the deposit form's text from a finished production run's own
     files, and refuses any other run, since the deposited copy is the committed one: the title, Publication / Preprint
-    as the resource type, the creators from the author line the run recorded, the description, both licences (CC BY
-    4.0, and CC BY-NC 3.0 IGO for the files holding Gaia DR3 data, which the description names), the related
+    as the resource type, the creators from the author line the run recorded, the description, the licences (CC BY
+    4.0; CC BY-NC 3.0 IGO for the files holding Gaia DR3 data, which the description names; and ExoFOP's terms for
+    ExoFOP's rows in the dataset and the listings the paper names), the related
     identifiers (the repository's URL, and the predictions DOI when the record holds a preregistered result) and the
     files to upload, `dataset/` as one zip archive. The form is not a package file.
 - **The author line.** The template holds no name. The author line and the repository's URL come from
@@ -147,11 +154,14 @@ reviewed on a specimen and fixed before a real result can shape it.
   `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_confirmed_finding_no_refuter_ran_on_says_so`,
   `test_a_versions_paper_names_its_records` (an earlier record's call quoted, what the re-vet changed, the runs
   table and the dataset's guide),
-  `test_the_paper_names_the_claim_date_and_any_0042_listing` (and a `claims.json` resting on another claim is
-  refused), `test_the_paper_gives_the_ephemeris_with_uncertainties`, `test_credits_and_disclosure_are_present`,
-  `test_a_deposit_after_its_first_sector_is_refused`, `test_the_paper_says_how_the_signal_was_found` (and an
-  injection-recovery run without its completeness file is refused), `test_the_paper_says_what_vetting_leaves_open`,
-  `test_the_figures_and_references_are_the_papers_own`,
+  `test_the_paper_names_the_claim_date_and_any_0042_listing` (a later listing at another period named with no claim
+  of a match, and a `claims.json` resting on another claim is refused),
+  `test_the_paper_gives_the_ephemeris_with_uncertainties`, `test_credits_and_disclosure_are_present`,
+  `test_a_deposit_after_its_first_sector_is_refused` (and the pending, untested and missed results),
+  `test_the_paper_says_how_the_signal_was_found` (and an injection-recovery run without its completeness file, and a
+  triage run without the signal's row, are refused), `test_the_paper_says_what_vetting_leaves_open`,
+  `test_triage_and_the_novelty_check_are_said_in_words`, `test_what_a_revet_changed_is_said`,
+  `test_how_tess_hunt_works_is_said_once`, `test_the_figures_and_references_are_the_papers_own`,
   `test_the_dataset_lets_a_reader_recompute` (a file git ignores stays out),
   `test_a_versions_dataset_holds_each_record_up_to_it`, `test_the_author_line_comes_from_author_toml`,
   `test_a_production_run_reads_only_committed_results`, `test_run_refuses_before_starting_without_the_pdf_group`,

@@ -49,10 +49,10 @@ EXOFOP_STAR = "https://exofop.ipac.caltech.edu/tess/target.php?id={}"
 FIGURES = ("transits.png", "folds.png", "odd_even.png", "phase.png")
 # The paper's own captions for them, as plots.py draws them: the dossier's assume a reader inside the project.
 CAPTIONS = {
-    "transits.png": "Each transit the ephemeris predicts in the light curve, one panel per transit, titled with its "
-    "epoch (transits counted from t0) and its sector: flux in ppm against hours from the predicted mid-time. Grey points "
-    "are cadences, blue points their medians in bins an eighth of the transit's duration wide, and the shaded band "
-    "spans the duration. A panel with few points falls at the edge of a gap in the data",
+    "transits.png": "Each transit the ephemeris predicts in the light curve, one panel per transit, titled with "
+    "its epoch (transits counted from t0) and its sector: flux in ppm against hours from the predicted mid-time. Grey "
+    "points are cadences, blue points their medians in bins an eighth of the transit's duration wide, and the shaded "
+    "band spans the duration. A panel with few points falls at the edge of a gap in the data",
     "folds.png": "The light curve folded on the ephemeris, one panel per season and light-curve product family, titled "
     "with the family (`pdcsap` for SPOC's and TESS-SPOC's PDCSAP flux, `qlp` for QLP's), the season, counted from 0, "
     "and its sectors. Points and band as in Figure 1",
@@ -216,6 +216,8 @@ $description
 - Creative Commons Attribution-NonCommercial 3.0 IGO (CC BY-NC 3.0 IGO), ESA's terms for Gaia data
   (https://www.cosmos.esa.int/web/gaia-users/license): the dataset's files that hold Gaia DR3 data, which the
   description lists
+- ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php): ExoFOP's rows in the dataset's `literature.json`,
+  `claims.json` and `dossier.md`, and the ExoFOP listings the paper names
 
 ## Related identifiers
 
@@ -484,6 +486,25 @@ def _history(record: Path) -> str:
     return " ".join(said)
 
 
+def _matched(check: dict) -> list[str]:
+    """The listings a novelty check matched to the signal, by name."""
+    return [m["name"] for m in check["evidence"].get("matches") or []]
+
+
+def _novelty_said(check: dict) -> str:
+    """A novelty check's outcome as a verb with what it matched; its reason, quoted, where its evidence lists no
+    match."""
+    matched = _matched(check)
+    if check["outcome"] == "pass":
+        return "the novelty check passes: no known object matches the signal"
+    if matched:
+        return (
+            f"the novelty check {IS[check['outcome']]}: {_words(matched)} "
+            f"{'matches' if len(matched) == 1 else 'match'} the signal"
+        )
+    return f"the novelty check {IS[check['outcome']]} ({_quote(check['reason'])})"
+
+
 def _novelty(record: Path, checks: dict, call: dict) -> str:
     """What the checks table's novelty row leaves out: a rerun under decision 0042 and a promotion under 0013."""
     own = next(c for c in checks["checks"] if c["check"] == "novelty")
@@ -493,16 +514,15 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
     if excepted:
         them = "it" if len(excepted) == 1 else "them"
         said.append(
-            f"Against the catalogs the vetting run read, the novelty check {IS[own['outcome']]}: {own['reason']}. "
-            f"ExoFOP first listed {_words([r['name'] for r in excepted])} only after tess-hunt made the signal public, "
-            f"so decision record 0042 sets {them} aside (see When it was made public). Run again without {them}, the "
-            f"novelty check {IS[judged['outcome']]}: {judged['reason']}."
+            f"Against the catalogs the vetting run read, {_novelty_said(own)}. ExoFOP first listed "
+            f"{_words([r['name'] for r in excepted])} only after tess-hunt made the signal public, so decision record "
+            f"0042 sets {them} aside (see When it was made public). Run again without {them}, {_novelty_said(judged)}."
         )
     if judged["outcome"] != "pass":
         said.append(
-            f"The novelty check {IS[judged['outcome']]} ({judged['reason']}): the rows at the signal's period are SPOC "
-            "threshold-crossing events or ExoMiner rows that never became TOIs. The call promotes the signal, as "
-            f"decision record 0013 allows, in the maintainer's words: {_quote(call['promotion'])}"
+            f"T{_novelty_said(judged)[1:]}. The rows at the signal's period are SPOC threshold-crossing events "
+            "or ExoMiner rows that never became TOIs, and the call promotes the signal, as decision record 0013 "
+            f"allows, in the maintainer's words: {_quote(call['promotion'])}"
         )
     return "\n\n".join(said)
 
@@ -513,7 +533,8 @@ def _modshift(checks: dict) -> str:
         return f"The record holds no ModShift result ({checks['triage_reason']})."
     depth = None if m["dep_sec"] is None else m["dep_sec"] * 1e6
     return (
-        "ModShift, as LEO-Vetter (Kunimoto et al. 2025) runs it in triage, looks for a secondary eclipse at any phase: "
+        "ModShift, the model-shift uniqueness test (Rowe et al. 2015; Coughlin et al. 2016), as LEO-Vetter "
+        "(Kunimoto et al. 2025) runs it in triage, looks for a secondary eclipse at any phase: "
         f"its strongest is {_f(m['sig_sec'], '.3g')} sigma at phase {_f(m['phs_sec'], '.3g')} (depth "
         f"{_f(depth, '.0f')} ppm), against a primary of {_f(m['sig_pri'], '.3g')} sigma and a red-noise factor, Fred, "
         f"of {_f(m['Fred'], '.3g')}."
@@ -546,8 +567,8 @@ def _red_noise(checks: dict) -> str:
             "those errors assume white noise"
         )
     return (
-        "Each sector's depth errors are scaled by its red-noise factor, beta, measured from the residuals binned at the "
-        f"transit core's timescale (Pont et al. 2006; decision record 0006): {'; '.join(said)}."
+        "Each sector's depth errors are scaled by its red-noise factor, beta, measured from the residuals binned at "
+        f"the transit core's timescale (Pont et al. 2006; decision record 0006): {'; '.join(said)}."
     )
 
 
@@ -561,9 +582,9 @@ def _tdepth_zero(evidence: dict, hosts: list[dict]) -> str:
     it = "it" if one else "them"
     return (
         f" Its apertures take too little light from {len(zero)} of the neighbour table's "
-        f"{_count(len(hosts), 'possible host')} to make the dip, so it gave {'that star' if one else 'those stars'} zero "
-        f"depth and weighed no scenario on {it} (decision record 0026). For {it}, the case rests on TRICERATOPS's model "
-        "of the light in its apertures and on the pixel check, not on a probability."
+        f"{_count(len(hosts), 'possible host')} to make the dip, so it gave {'that star' if one else 'those stars'} "
+        f"zero depth and weighed no scenario on {it} (decision record 0026). For {it}, the case rests on TRICERATOPS's "
+        "model of the light in its apertures and on the pixel check, not on a probability."
     )
 
 
@@ -619,7 +640,10 @@ def _offsets(pixel: dict, suspect: set[int]) -> dict:
             )
         )
     else:
-        rests = f"Its {pixel['outcome']} rests on the best-quality sector's offset, which no single sector above reports."
+        rests = (
+            f"Its {pixel['outcome']} rests on the best-quality sector's offset, which no single sector above "
+            "reports."
+        )
     return {"offsets": offsets, "rests_on": rests}
 
 
@@ -707,7 +731,10 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         ["triceratops", triceratops["outcome"], triceratops["reason"]],
         ["literature", literature["outcome"], literature["reason"]],
     ]
-    excepted = _excepted(record)
+    # Only a listing the novelty check matched is at the signal's period: decision 0042 excepts later ones at any
+    # period.
+    own = next(c for c in checks["checks"] if c["check"] == "novelty")
+    at_period = [r["name"] for r in _excepted(record) if r["name"] in _matched(own)]
     second = checks["signal"]["kind"] == "second"
     exofop = literature["search"]["exofop"]
     limit = pixel["max_offset_arcsec"]
@@ -774,9 +801,9 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "papers": _count(len(literature["evidence"]["hits"]), "paper"),
         "exofop": _exofop(exofop),
         "excepted": ""
-        if not excepted
-        else f", apart from {_words([r['name'] for r in excepted])}, which decision record 0042 sets aside (see "
-        "When it was made public)",
+        if not at_period
+        else f", apart from {_words(at_period)}, which decision record 0042 sets aside (see When it was made "
+        "public)",
         "triceratops_runs": _count(len(tric["fpp"]), "run"),
         "companions": _companions(triceratops, exofop),
         "holdout": f"For this signal the check {WAS[holdout['outcome']]}: of its "
@@ -932,9 +959,15 @@ def _triage(row: pd.Series, made: dict, checks: dict) -> str:
             f"{said} This signal passed its novelty check, LEO-Vetter's false-alarm and flux-level tests "
             f"({row['leo_reason']}) and its pixel check, and was shortlisted."
         )
+    # Triage records a pixel check it never ran as inconclusive, "not run: ...".
+    pixels = (
+        "triage did not run its pixel check"
+        if str(row["pixels_reason"]).startswith("not run")
+        else f"its pixel check {WAS[row['pixels']]}"
+    )
     said += (
-        f" This signal's novelty check {WAS[row['novelty']]}, LEO-Vetter's tests {WAS[row['leo_flux']]} and its "
-        f"pixel check {WAS[row['pixels']]}, so triage did not shortlist it."
+        f" This signal's novelty check {WAS[row['novelty']]}, LEO-Vetter's tests {WAS[row['leo_flux']]} and "
+        f"{pixels}, so triage did not shortlist it."
     )
     if checks["signal"]["kind"] == "second":
         said += (
@@ -965,10 +998,15 @@ def _found(repo: Path, checks: dict, made: dict) -> dict:
     rank = int(checks["signal"]["name"].rsplit("-", 1)[1])
     rows = pd.read_csv(results / "triage" / made["triage_run"] / "signals.csv")
     row = rows[(rows["tic"] == int(checks["tic"])) & (rows["rank"] == rank)]
-    one = row.iloc[0] if len(row) == 1 else None
+    if len(row) != 1:
+        raise SystemExit(
+            f"triage run {made['triage_run']} holds {len(row)} rows for {checks['signal']['name']}, not one; the "
+            "paper gives the signal's SDE and triage's steps from it"
+        )
+    one = row.iloc[0]
     return {
         "search_run": made["search_run"],
-        "sde": None if one is None else _number(float(one["sde"]), ".2f"),
+        "sde": _number(float(one["sde"]), ".2f"),
         "sample_stars": str(search["summary"]["stars"]),
         "period_min": f"{cfg['period_min_days']:g}",
         "period_max": f"{cfg['period_max_days']:g}",
@@ -992,7 +1030,7 @@ def _found(repo: Path, checks: dict, made: dict) -> dict:
         "inject_stars": str(inject["summary"]["stars"]),
         "completeness": COMPLETENESS,
         "triage_run": made["triage_run"],
-        "triage": None if one is None else _triage(one, made, checks),
+        "triage": _triage(one, made, checks),
     }
 
 
@@ -1038,20 +1076,25 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
         where = f"in its predictions deposit (doi:{deposit['doi']})"
     else:
         where = f"in {claim.record}"
+    own = next(c for c in checks["checks"] if c["check"] == "novelty")
     listings = [
-        f" ExoFOP lists a signal at this period on the star as {r['name']} (period {r['period']:.6g} d), first listed "
-        f"on {r['first_listed']} with "
+        (
+            f" ExoFOP lists a signal at this period on the star as {r['name']} (period {r['period']:.6g} d),"
+            if r["name"] in _matched(own)
+            else f" ExoFOP lists {r['name']} on the star (period {r['period']:.6g} d),"
+        )
+        + f" first listed on {r['first_listed']} with "
         + (f"disposition {_words(r['dispositions'])}" if r["dispositions"] else "no disposition")
         + ", after tess-hunt made this signal public; the record does not say who submitted it."
         for r in found["excepted"]
     ]
     if listings:
         listings.append(
-            " A listing made after tess-hunt made a signal public, which the claim itself may have prompted, can't show "
-            "the signal was known before it. So tess-hunt does not count a TOI or CTOI on the signal's own star as "
-            "making the signal known when ExoFOP first listed it after that claim and each of its dispositions is PC "
-            "or empty (decision record 0042). The rule orders the public claims by date; it says nothing about when or "
-            f"how others found the signal. ExoFOP's page for the star is {EXOFOP_STAR.format(tic)}."
+            " A listing made after tess-hunt made a signal public, which the claim itself may have prompted, can't "
+            "show the signal was known before it. So tess-hunt does not count a TOI or CTOI on the signal's own star "
+            "as making the signal known when ExoFOP first listed it after that claim and each of its dispositions is "
+            "PC or empty (decision record 0042). The rule orders the public claims by date; it says nothing about when "
+            f"or how others found the signal. ExoFOP's page for the star is {EXOFOP_STAR.format(tic)}."
         )
     return {
         "claim_date": None if claim is None else claim.date.isoformat(),
@@ -1096,18 +1139,19 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
     )
     as_of = dt.date.fromisoformat(p["as_of"])
     if p["result"] == "pending":
-        said = f"As of {as_of} the test is pending: {p['reason']}."
+        said = f"As of {as_of} the test is pending ({_quote(p['reason'])})."
     elif p["result"] == "untested":
-        said = f"As of {as_of} the new data could not test it ({p['status']}): {p['reason']}."
+        said = f"As of {as_of} the new data could not test it ({_quote(p['reason'])})."
     else:
         depth, err = _ppm(p["depth"]), _ppm(p["err"])
         if depth is None or err is None:
             return {"summary_prereg": summary}
         tension = (
-            f"{p['tension']:.2f} sigma from the depth the earlier seasons give, which the deposit's `references.json` "
+            f"a tension of {p['tension']:.2f} sigma, the largest across the light-curve product families, each "
+            "family's depth here against its own depth in the earlier seasons, which the deposit's `references.json` "
             "holds"
             if "tension" in p
-            else f"with no tension measured: {p['tension_skipped']}"
+            else f"with no tension measured ({_quote(p['tension_skipped'])})"
         )
         verb = "replicate the signal" if p["result"] == "replicated" else "miss the prediction"
         said = (
