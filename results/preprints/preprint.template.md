@@ -10,12 +10,12 @@ tess-hunt is an independent search for transiting planets in public light curves
 TESS light curves of TIC $tic it found a periodic dip of about $depth_ppm ppm that lasts $duration_h hours and repeats
 every $period_short days. A transit-model fit gives the transiting body a radius of $rp_rearth Earth radii, using the
 star's radius in the TESS Input Catalog. The signal met every condition tess-hunt sets for a passed signal. Every
-check on its light curve passed, TRICERATOPS gives it a false-positive probability of $fpp, and the maintainer
-answered every confirmed finding of an adversarial review. This paper's author maintains tess-hunt and makes the call
-on each vetted signal: passed, held or killed. This one was called passed on $call_date.$summary_prereg It is a planet
-candidate. TESS light curves can't measure its mass or rule out light from every nearby star. Confirming it needs
-other observations: photometry that separates the stars near it, high-resolution imaging for companions too close to
-resolve, and radial velocities for its mass.
+check on its light curve passed, and TRICERATOPS gives it a false-positive probability of $fpp. An adversarial review
+looked for reasons it might not be a planet, and the maintainer answered every finding that held up. This paper's
+author maintains tess-hunt and makes the call on each vetted signal: passed, held or killed. This one was called passed
+on $call_date.$summary_prereg It is a planet candidate. TESS light curves can't measure its mass or rule out light
+from every nearby star. Confirming it needs other observations: photometry that separates the stars near it,
+high-resolution imaging for companions too close to resolve, and radial velocities for its mass.
 
 ## How tess-hunt works
 

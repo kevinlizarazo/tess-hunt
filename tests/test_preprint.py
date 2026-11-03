@@ -415,10 +415,9 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     assert "deposited the prediction on Zenodo" not in summary
     # It is the Zenodo description too, where no other section exists.
     assert "How tess-hunt works" not in summary
-    # "Confirmed" is said only of the review's findings, never of the signal.
-    said = summary.lower().replace("confirmed finding", "")
+    assert "the maintainer answered every finding that held up" in summary
     for claim in ("confirmed", "discovered a planet", "validated"):
-        assert claim not in said
+        assert claim not in summary.lower()
 
 
 def test_a_note_0037_added_sits_under_the_quoted_finding(tmp_path, monkeypatch):

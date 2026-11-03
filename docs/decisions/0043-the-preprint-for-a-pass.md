@@ -84,8 +84,7 @@ reviewed on a specimen and fixed before a real result can shape it.
   - The novelty check's outcome is said as a verb, with the listings its evidence matched to the signal by name; where
     its evidence lists no match, its reason is quoted.
   - The predictions DOI is `results/predictions/dois.toml`'s for the package the record's `prereg.json` names.
-  - The summary says "planet candidate" and never "validated" or "discovered a planet". It says "confirmed" only of
-    the review's findings, never of the signal.
+  - The summary says "planet candidate" and never "confirmed", "validated" or "discovered a planet".
   - The paper and its Zenodo form name no model: the review is "LLM-assisted" and refuters are "separate
     LLM-assisted checks", as the maintainer's Use of LLMs paragraph (2026-11-02) describes them. The maintainer
     chose this on 2026-11-02.
