@@ -378,7 +378,8 @@ from a run directory and writes its own.
   - **Zenodo preprint and dataset** (a held signal gets no preprint): each version is its own record with its own DOI,
     under one concept DOI; 50 GB per record; a license is required [T44][T45]. `tess-hunt preprint run --name NAME`
     renders the paper (Markdown and PDF) and its dataset from the signal's latest published record, and refuses unless
-    that record's call is a standing pass and the record is committed unchanged. `tess-hunt preprint publish` copies a
+    that record's call is a standing pass, the record is committed unchanged, and any preregistered prediction it
+    reports was published before TESS began observing the first sector it predicts. `tess-hunt preprint publish` copies a
     production run's paper, figures, manifest and provenance to `results/preprints/<run id>/`; the dataset holds a
     light curve, so it is deposited from the run directory, and the committed manifest gives each file's sha256.
     `tess-hunt preprint zenodo` prints the deposit form's text. The committed copy is the deposited copy, and a real

@@ -43,15 +43,30 @@ SIGNAL = {"period": 4.71836, "t0": 1326.4172, "duration": 0.126, "depth": 0.0016
 TYCHO = "TYC 9601-327-1"
 # A CTOI is named after its star's TIC, so this one can't be real either.
 LISTING = f"CTOI-{TIC}.01"
-# The claim is the predictions deposit, as for tess-hunt's real held signals; the DOI is the fixtures' made-up one.
-CLAIM = {"date": "2026-11-13", "record": f"https://doi.org/{tp.DOI}"}
+# The claim is the predictions deposit, as for tess-hunt's real held signals, published by decision 0040's deadline for
+# a lock before the predicted sectors; the DOI is the fixtures' made-up one.
+CLAIM = {"date": "2026-11-05", "record": f"https://doi.org/{tp.DOI}"}
+# The paper names the papers the literature search found and what ExoFOP lists on the star, so neither may be real. An
+# arXiv id's month runs to 12, so this one names no paper.
+HIT = tl.paper("A placeholder paper that names the star, for the specimen only", arxiv="2613.00001")
+EXOFOP = {
+    "status": "ok",
+    "error": None,
+    "tois": [],
+    "ctois": [],
+    "planets": [],
+    "confirmed_planets": None,
+    "imaging": [
+        {"itype": "Speckle", "itel": "Gemini (8 m)", "iinst": "'Alopeke", "icont": "4.49 @ 0.5"}
+    ],
+}
 AUTHOR = """\
 given_names = "Placeholder"
 family_names = "Author"
 affiliation = "Placeholder affiliation"
 repository = "https://github.com/kevinlizarazo/tess-hunt"
 """
-REVIEW = {**tc.REVIEW, "signal": NAME}
+REVIEW = {**tc.REVIEW, "signal": NAME, "hits_flagged": [HIT["arxiv"]]}
 # r2's review adds a confirmed finding no refuter ran on, beside F2, whose refuters did.
 REVIEW_R2 = {
     **REVIEW,
@@ -80,6 +95,7 @@ for old, new in (
         'follow-up work."\n',
     ),
     ("nobody lists it", "no listing before our claim names it"),
+    (tc.REVIEW["hits_flagged"][0], HIT["arxiv"]),
 ):
     PASSED = tc.edit(PASSED, old, new)
 # One note beside a confirmed finding and one beside a note, under decision 0037.
@@ -97,7 +113,8 @@ text = "The sector_depth check in checks.json finds the three sectors' depths ag
 PREREG = {
     **tp.PREREG,
     "signal": {"name": NAME, "tic": TIC},
-    "predicted_sectors": [110, 111],
+    # After the deposit, as the paper requires.
+    "predicted_sectors": [112, 113],
     "depth": 0.00161,
     "err": 0.00019,
     "sigma": 8.47,
@@ -179,11 +196,13 @@ def literature_record(run: Path, mp) -> dict:
     """td.literature_record for the made-up star, whose fixture names TIC 1 and HD 1, complete as a pass needs."""
     mp.setattr(literature.time, "sleep", lambda s: None)
     names = [f"TIC {TIC}", TYCHO]
-    web = tl.Web(names={TIC: names}, hits={("arxiv", TYCHO): [tl.AKANA]})
+    web = tl.Web(names={TIC: names}, hits={("arxiv", TYCHO): [HIT]})
     simbad = literature.simbad_record(TIC, web)
     search = {
         "simbad": simbad,
         **literature.search_all(TIC, names, web, None, tl.CFG, simbad=simbad),
+        # The fixture's ExoFOP answer is a real star's.
+        "exofop": EXOFOP,
     }
     return {
         "signal": {"name": NAME, "tic": TIC},
@@ -224,9 +243,8 @@ def made_from(tmp: Path, mp, run: Path, suspect: Path, tag: str) -> dict[str, Pa
 def judged(checks: dict) -> None:
     """r2's checks as a pass needs them, as test_preprint.published and td.claimed_pass set them: the held-out check
     passed, and novelty failed on a CTOI listed after the claim, which decision 0042 sets aside."""
+    tp.held_out_passed(checks)
     for c in checks["checks"]:
-        if c["check"] == "holdout":
-            c.update(outcome="pass", reason="every held-out season predicted")
         if c["check"] == "novelty":
             match = {"source": "CTOI", "name": LISTING, "period": SIGNAL["period"], "ratio": 1.0}
             c.update(

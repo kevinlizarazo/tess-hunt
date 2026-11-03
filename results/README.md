@@ -6,7 +6,7 @@ tables, the RUWE values the published controls quote, the Gaia DR3 values the pi
 neighbour-epoch measurements and the TIC-duplicate measurement quote or hold, the TIC-carried Gaia DR2 values the
 TIC-duplicate measurement holds (all under [Runs](#runs)), the Gaia DR3 parts of the vetting records and the Gaia DR2
 and DR3 values their reviews quote, listed under [Vetting](#vetting), and any such value a preprint quotes from a
-review or a call ([Preprints](#preprints)). They stay under ESA's CC BY-NC 3.0 IGO terms
+review or a call or gives in a note beside it ([Preprints](#preprints)). They stay under ESA's CC BY-NC 3.0 IGO terms
 (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 ExoFOP's rows in the vetting records' `literature.json` (TOIs, CTOIs, planet parameters, confirmed planets and imaging
@@ -403,8 +403,9 @@ confirmed planet.
   record's vetting run read, `lc/<tic>.npz`. The Zenodo deposit form's text is not a package file: `tess-hunt preprint
   zenodo --run RUN_ID` prints it from the run's files.
 
-The paper and its figures are CC BY 4.0, except any Gaia value in the text it quotes from a review or a call, which
-stays under ESA's terms (above). The dataset is CC BY 4.0 too, except the files that hold Gaia DR3 data, which stay
+The paper and its figures are CC BY 4.0, except any Gaia value in the text it quotes from a review or a call or in a
+note beside it, which stays under ESA's terms (above), and the ExoFOP listings it names, which stay under ExoFOP's
+terms (above). The dataset is CC BY 4.0 too, except the files that hold Gaia DR3 data, which stay
 under ESA's CC BY-NC 3.0 IGO terms ([decision 0026](../docs/decisions/0026-triceratops.md)): `checks.json`,
 `checks-with-suspect.json`, `neighbours.csv`, `triceratops.json`, `plots/centroids.png`, `pixels.png`, `review.json`,
 `review-scripts.tar.gz` and `dossier.md` in each record. ExoFOP's rows in its `literature.json`, `claims.json` and

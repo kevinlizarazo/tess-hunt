@@ -10,6 +10,8 @@ Telescope Science Institute (STScI). Funding for US Institutions for the TESS mi
 Explorer Program. STScI is operated by the Association of Universities for Research in Astronomy, Inc., under NASA
 contract NAS5–26555.
 
+Cite the mission paper too: Ricker et al. 2015 (JATIS 1, 014003).
+
 | Product | DOI | Also cite |
 |---|---|---|
 | SPOC 2-min light curves | 10.17909/t9-nmc8-f686 | Jenkins et al. 2016 |

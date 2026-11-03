@@ -6,7 +6,10 @@
   build's controller made on 2026-10-30 and 2026-11-02, also stated under Decision, are the controller's, with no
   acceptance by the maintainer recorded: the test of the PDF reads WeasyPrint's laid-out pages, not the written file,
   since the lock holds no PDF reader and only the new dependency group may change it; and
-  `results/preprints/author.toml` is committed on its own, once the maintainer approves its text.
+  `results/preprints/author.toml` is committed on its own, once the maintainer approves its text. The template's
+  changes after the specimen's pre-release review (2026-11-02), which made 60 findings and confirmed 57, follow the
+  controller's rulings on those findings, with no acceptance by the maintainer recorded: among them, the refusal of
+  a preregistered result whose deposit came on or after the start of the first sector it predicts.
 
 ## Context
 
@@ -29,26 +32,42 @@ reviewed on a specimen and fixed before a real result can shape it.
   - a run without WeasyPrint and Markdown importable, with a message naming `uv sync --group preprint`;
   - a missing or malformed `results/preprints/author.toml`;
   - in a production run, any change under `results/` that is not committed (the build's choice). `start_run` checks
-    the code, not the template, the author line, the claims file or the published runs the paper reads.
+    the code, not the template, the author line, the claims file or the published runs the paper reads;
+  - a record holding a preregistered result whose deposit Zenodo published on or after the day TESS began observing
+    the first sector it predicts (`benchmarks/tess_sectors.csv`): the paper says the prediction came first. Decision
+    0040's lock start keeps a real package clear of it;
+  - an injection-recovery run without `completeness_snr.csv`, which the paper points to.
 
   A value the paper needs and its sources lack raises while the paper is rendered, which is also before the run
   starts.
 - **The paper.** `preprint.md`, from `results/preprints/preprint.template.md`, and `preprint.pdf`, rendered from it.
-  Its sections follow the design: a title naming the star and the period; a summary that calls the signal a planet
-  candidate; the star and the signal, with the density-prior fit's period, epoch and duration, their standard
-  deviations, the radius with its percentiles and the depth of the search's box; how it was found; how it was vetted,
-  with every check's outcome and reason, TRICERATOPS's FPP and NFPP, the pixel check, the literature search and
-  ExoFOP, the review, and the call's three sentences quoted; the held-out check and any preregistered result with its
-  deposit's DOI; what it can't rule out; when it was made public; data and code availability with the licences; the
-  use of LLMs; acknowledgements; and references.
+  Its sections follow the design, with the specimen review's additions: a title naming the star and the period; a
+  summary that calls the signal a planet candidate, says who makes the call and its three outcomes, and says what the
+  light curves leave open; how tess-hunt works, which introduces its steps, the record and its versions, the call,
+  the "passed" bar of [0028](0028-outcomes-and-calls.md), decision records, runs and seasons once, in plain words; the
+  star and the signal, with the density-prior fit's period, epoch, duration and Rp/R*, their spreads, the radius with
+  its percentiles and what they leave out, and the depth of the search's box; how it was found, with the sample, the
+  null search's sizes, the injection-recovery run's `completeness_snr.csv` and triage's row for the signal; how it was
+  vetted, opening with each earlier record's call and what each re-vet changed, then every check's outcome and reason,
+  ModShift, the red-noise factors, TRICERATOPS's FPP and NFPP and any possible host it weighed no scenario on, the
+  pixel check's offset in each sector and the sector its outcome rests on, the literature search's hits and ExoFOP's
+  listings, the review with each finding's fate, and the call's three sentences quoted; the held-out check, what it
+  tests and its season counts, and any preregistered result with its deposit's DOI, its published date against the
+  first predicted sector's start, what the result shows and whether the call came before it; what it can't rule out;
+  when it was made public, with 0042's rule stated once; data and code availability, with a table of the runs it reads,
+  a guide to each record's files and the licences; the use of LLMs; acknowledgements; and references.
   - Every number is read by key, with `string.Template.substitute`, from the record, its runs' provenance and the
-    published runs they lead to: the search run's provenance, its threshold run's `threshold.json`, the triage run's
-    `signals.csv` for the signal's SDE, and the injection-recovery run. Numbers are formatted as the dossier and the
-    DDT proposal format them. The call's words and the review's are quoted under
-    [0037](0037-quoted-text-in-the-dossier.md), with machine paths and the maintainer's name written as the dossier
-    writes them ([0038](0038-literature-trim-and-username-scrub.md)). Each note `review-notes.toml` adds beside a
-    quoted finding under 0037 is given under that finding, worded as the dossier words it ("Note added on DATE under
-    decision 0037, not part of the review or the call").
+    published runs they lead to: the search run's provenance and the criteria file it recorded, its threshold run's
+    `threshold.json`, the triage run's `signals.csv` for the signal's row, the injection-recovery run, and
+    `benchmarks/tess_sectors.csv` for a predicted sector's start. Numbers are formatted as the dossier and the DDT
+    proposal format them. Where the record holds no number a reader would want, such as an uncertainty on the TIC's
+    stellar radius, the paper says so in words and computes nothing new. The call's words and the review's are quoted
+    under [0037](0037-quoted-text-in-the-dossier.md), in quotation marks, with machine paths and the maintainer's name
+    written as the dossier writes them ([0038](0038-literature-trim-and-username-scrub.md)). Every finding is given
+    with its fate: confirmed, with the call's answer; refuted, with each refuter's verdict; or rated note. Each note
+    `review-notes.toml` adds beside a quoted finding under 0037 is given under that finding, after its quoted lines,
+    worded as the dossier words it but for the decision's name ("Note added on DATE under decision record 0037, not
+    part of the review or the call").
   - No provenance in a record names the injection-recovery run, so the paper takes the one published production
     `benchmark-inject` run made at the search's threshold run, and refuses unless exactly one is (the build's choice).
   - The claim date and record are `results/claims.toml`'s. Each listing the record's `claims.json` excepts under 0042
@@ -56,12 +75,18 @@ reviewed on a specimen and fixed before a real result can shape it.
     than the committed file gives is refused, since the paper states one.
   - The predictions DOI is `results/predictions/dois.toml`'s for the package the record's `prereg.json` names.
   - The summary says "planet candidate" and never "confirmed", "validated" or "discovered a planet".
-  - The figures are the record's `transits.png`, `folds.png`, `odd_even.png` and `phase.png`, with the dossier's
-    captions. The centroid plots draw Gaia DR3 stars, so they stay in the dataset under Gaia's terms. The paper names
-    the star by its TIC number and its other names, never its Gaia DR3 source id, and its own text gives no Gaia
-    value, so the paper and its figures are CC BY 4.0 (the build's choice). A Gaia value in the text it quotes from
-    the review or the call stays under Gaia's terms, as `results/README.md` says of the reviews' quoted Gaia values,
-    and the paper says so.
+  - The paper and its Zenodo form name no model: the review is "assisted by an LLM" and each refuter is "a separate
+    LLM-assisted check", as the maintainer's Use of LLMs paragraph (2026-11-02) describes them. His answer of the
+    same day.
+  - The figures are the record's `transits.png`, `folds.png`, `odd_even.png` and `phase.png`, with the paper's own
+    captions, which say what each plot draws: the dossier's assume a reader inside the project. The centroid plots
+    draw Gaia DR3 stars, so they stay in the dataset under Gaia's terms. The paper names the star by its TIC number
+    and its other names, never its Gaia DR3 source id, and its own text gives no Gaia value: it counts the neighbour
+    table's possible hosts and leaves their separations and depths to `neighbours.csv`. So the paper and its figures
+    are CC BY 4.0 (the build's choice), with two exceptions the paper states. A Gaia value in the text it quotes from
+    the review or the call, or in a note beside it, stays under Gaia's terms, as `results/README.md` says of the
+    reviews' quoted Gaia values. The ExoFOP listings it names (TOIs, CTOIs, confirmed planets, imaging observations
+    and a listing 0042 sets aside) stay under ExoFOP's terms.
 - **The dataset.** The run's `dataset/` directory holds `vetting/NAME/`, every file git tracks in each published
   record of the signal from the M3 record to the one the paper is rendered from, as `results/vetting/` holds them (a
   file git ignores, such as macOS's `.DS_Store`, is no part of a record), and
@@ -107,7 +132,9 @@ reviewed on a specimen and fixed before a real result can shape it.
 ## Limitations
 
 - The prose around the numbers is fixed text, and a test can't check that it claims no more than the record shows.
-  The specimen's review checks it once; each real pass's review checks it again.
+  The specimen's review checked it once; each real pass's review checks it again.
+- The paper gives the tension of a preregistered result against the training seasons' depth in words: that depth is
+  in the deposited package's `references.json`, which the paper names and does not read.
 - A review may quote no Gaia value, but every `review.json` is listed under Gaia's terms, as `results/README.md` lists
   the reviews: when unsure, the narrower licence.
 - The paper names the vetting run's commit. The commit that rendered the paper is in its `provenance.json`.
@@ -118,9 +145,13 @@ reviewed on a specimen and fixed before a real result can shape it.
   (a held record, a passed M3 record with a held r2, a pass `calls.problems` refuses, an uncommitted change),
   `test_every_number_comes_from_the_record` (and a missing value raises), `test_the_paper_says_candidate_not_planet`,
   `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_confirmed_finding_no_refuter_ran_on_says_so`,
-  `test_a_versions_paper_names_its_records`,
+  `test_a_versions_paper_names_its_records` (an earlier record's call quoted, what the re-vet changed, the runs
+  table and the dataset's guide),
   `test_the_paper_names_the_claim_date_and_any_0042_listing` (and a `claims.json` resting on another claim is
   refused), `test_the_paper_gives_the_ephemeris_with_uncertainties`, `test_credits_and_disclosure_are_present`,
+  `test_a_deposit_after_its_first_sector_is_refused`, `test_the_paper_says_how_the_signal_was_found` (and an
+  injection-recovery run without its completeness file is refused), `test_the_paper_says_what_vetting_leaves_open`,
+  `test_the_figures_and_references_are_the_papers_own`,
   `test_the_dataset_lets_a_reader_recompute` (a file git ignores stays out),
   `test_a_versions_dataset_holds_each_record_up_to_it`, `test_the_author_line_comes_from_author_toml`,
   `test_a_production_run_reads_only_committed_results`, `test_run_refuses_before_starting_without_the_pdf_group`,
