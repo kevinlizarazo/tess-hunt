@@ -7,6 +7,7 @@ section 5.5). The PDF needs the optional `preprint` dependency group."""
 
 import datetime as dt
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -22,7 +23,6 @@ from tess_hunt.claims import CLAIMS, load_claims
 from tess_hunt.config import runs_dir
 from tess_hunt.ddt import _criteria, _from_triceratops, _number, _ppm
 from tess_hunt.dossier import (
-    PIXEL_CHECK,
     SENTENCES,
     _f,
     _paper_id,
@@ -49,19 +49,19 @@ EXOFOP_STAR = "https://exofop.ipac.caltech.edu/tess/target.php?id={}"
 FIGURES = ("transits.png", "folds.png", "odd_even.png", "phase.png")
 # The paper's own captions for them, as plots.py draws them: the dossier's assume a reader inside the project.
 CAPTIONS = {
-    "transits.png": "Each transit the ephemeris predicts in the light curve, one panel per transit, titled with "
-    "its epoch (transits counted from t0) and its sector: flux in ppm against hours from the predicted mid-time. Grey "
-    "points are cadences, blue points their medians in bins an eighth of the transit's duration wide, and the shaded "
-    "band spans the duration. A panel with few points falls at the edge of a gap in the data",
-    "folds.png": "The light curve folded on the ephemeris, one panel per season and light-curve product family, titled "
-    "with the family (`pdcsap` for SPOC's and TESS-SPOC's PDCSAP flux, `qlp` for QLP's), the season, counted from 0, "
-    "and its sectors. Points and band as in Figure 1",
-    "odd_even.png": "Odd-numbered (left) and even-numbered (right) transits folded apart. Points and band as in Figure "
-    "1; the red line is the median flux in each one's core, the central half of the transit",
-    "phase.png": "Flux against orbital phase over the whole orbit, the transit at phase 0. Grey points are cadences, "
-    "blue points their medians in bins half the transit's duration wide. The dashed line marks phase 0.5, where a "
-    "circular orbit puts a secondary eclipse; the red line marks the strongest secondary eclipse ModShift finds at any "
-    "phase, labelled with its phase and significance",
+    "transits.png": "Every predicted transit in the light curve, one panel each. Panel titles give the epoch (counted "
+    "from t0) and the sector. Flux in ppm against hours from the predicted mid-transit time. Grey points are cadences, "
+    "and blue points are their medians in bins an eighth of the transit's duration wide. The shaded band spans the "
+    "duration. A panel with few points falls at the edge of a gap in the data",
+    "folds.png": "The light curve folded on the ephemeris, one panel per season and light-curve product family. Panel "
+    "titles give the family (`pdcsap` for SPOC's and TESS-SPOC's PDCSAP flux, `qlp` for QLP's), the season (counted "
+    "from 0) and its sectors. Points and band as in Figure 1",
+    "odd_even.png": "Odd-numbered (left) and even-numbered (right) transits, folded separately. Points and band as in "
+    "Figure 1. The red line is the median flux in each one's core, the central half of the transit",
+    "phase.png": "Flux against orbital phase over the whole orbit, with the transit at phase 0. Grey points are "
+    "cadences, and blue points are their medians in bins half the transit's duration wide. The dashed line marks phase "
+    "0.5, where a circular orbit puts a secondary eclipse. The red line marks the strongest secondary eclipse ModShift "
+    "finds at any phase, labelled with its phase and significance",
 }
 PACKAGE = ["preprint.md", "preprint.pdf", "manifest.json", "provenance.json", *FIGURES]
 CC_BY = "CC BY 4.0"
@@ -98,7 +98,7 @@ CHECKS = {
     "triceratops": "TRICERATOPS's false-positive probabilities",
     "literature": "Papers and ExoFOP listings",
 }
-# The question each of the review's lenses bears on: the dossier's short labels read as verdicts beside a finding.
+# The question each of the review's lenses concerns: the dossier's short labels read as verdicts beside a finding.
 QUESTIONS = {
     "on_star": "whether the dip is on the star",
     "planet": "whether it is a planet",
@@ -106,17 +106,38 @@ QUESTIONS = {
 }
 IS = {"pass": "passes", "fail": "fails", "inconclusive": "is inconclusive"}
 WAS = {"pass": "passed", "fail": "failed", "inconclusive": "was inconclusive"}
+# Counts from one to nine are spelled out in the paper's prose; measured values stay numerals.
+SPELLED = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+ORDINALS = {
+    2: "second",
+    3: "third",
+    4: "fourth",
+    5: "fifth",
+    6: "sixth",
+    7: "seventh",
+    8: "eighth",
+    9: "ninth",
+}
+# How a listing's period relates to the signal's, by the novelty harmonic k it matched at (the signal's period is the
+# listing's times k).
+HARMONICS = {
+    1.0: "this period",
+    0.5: "twice this period",
+    2.0: "half this period",
+    1 / 3: "three times this period",
+    3.0: "a third of this period",
+}
 # Why the held-out check could not test a season whose record gives a status and no reason.
 UNTESTED = {
     "underpowered": "the depth expected there is too small against its error",
     "no_predicted_transit_in_data": "too few cadences fall in the predicted cores",
 }
-# The Summary's word on a preregistered result, after "...before TESS observed them;".
+# The Summary's word on a preregistered result, after the sentence on the deposit.
 SUMMARY_RESULT = {
-    "replicated": " the transits were found where predicted.",
-    "missed": " the transits were missing where predicted.",
-    "pending": " that test is not yet judged.",
-    "untested": " the new data could not test that prediction.",
+    "replicated": " The transits appeared where predicted.",
+    "missed": " The transits were missing where predicted.",
+    "pending": " That test is not yet judged.",
+    "untested": " The new data could not test that prediction.",
 }
 PDCSAP = ("SPOC 2-min", "TESS-SPOC")
 PDCSAP_PAPERS = (
@@ -155,12 +176,12 @@ GUIDE = (
     ("prereg.json", "the preregistered test's result"),
     ("merge.json", "what a re-vet's light curve changed"),
     ("review.json", "the review: each finding with its rating and its refuters' verdicts"),
-    ("review-notes.toml", "the dated notes beside the review's quoted text"),
+    ("review-notes.toml", "the dated notes on the review's quoted text"),
     ("review-scripts.tar.gz", "the scripts the review ran"),
     ("call.toml", "the call"),
     (
         "provenance-*.json",
-        "the run, its commit, its criteria and its command behind each file beside it",
+        "one run's commit, criteria and command, for the files that run wrote",
     ),
     ("plots/", "the record's figures, the centroid plot among them"),
     ("pixels.png", "the second list's centroid plot"),
@@ -231,9 +252,9 @@ $related
 
 ## Files
 
-`preprint.pdf`, `preprint.md`, the figures (`$figures`), `manifest.json` and `provenance.json` from the run directory,
-and its `dataset/` directory as one zip archive, which keeps its folders. `manifest.json` lists every file in
-`dataset/` with its sha256.
+Upload `preprint.pdf`, `preprint.md`, the figures (`$figures`), `manifest.json` and `provenance.json` from the run
+directory. Upload its `dataset/` directory as one zip archive, so its folders are kept. `manifest.json` lists every
+file in `dataset/` with its sha256.
 """)
 
 
@@ -360,8 +381,12 @@ def licence(path: str) -> dict[str, str]:
     return found
 
 
+def _spell(n: int) -> str:
+    return SPELLED[n] if 0 <= n < len(SPELLED) else str(n)
+
+
 def _count(n: int, word: str) -> str:
-    return f"{n} {word}" + ("" if n == 1 else "s")
+    return f"{_spell(n)} {word}" + ("" if n in (0, 1) else "s")
 
 
 def _quote(text: str) -> str:
@@ -371,13 +396,9 @@ def _quote(text: str) -> str:
 
 
 def _beside(notes: list[dict]) -> str:
-    """The notes added beside a quoted finding under decision 0037, each nested under the finding after its quoted
-    lines. Python-Markdown nests a list only at four spaces."""
-    return "".join(
-        f"\n    - **Note added on {n['date']} under decision record 0037, not part of the review or the call:** "
-        f"{_scrub(n['text'])}"
-        for n in notes
-    )
+    """The notes added on a quoted finding under decision 0037, each nested under the finding after its quoted lines.
+    Python-Markdown nests a list only at four spaces."""
+    return "".join(f"\n    - **Note ({n['date']}):** {_scrub(n['text'])}" for n in notes)
 
 
 def _claims(record: Path) -> dict | None:
@@ -395,12 +416,15 @@ def _excepted(record: Path) -> list[dict]:
 def _upcoming(upcoming: list[int] | None, vetted_on: str) -> str | None:
     if upcoming is None:
         return None
-    where = (
-        f"in TESS {prereg._sectors_words(upcoming)}, still to be observed then"
-        if upcoming
-        else "in no TESS sector still to come"
+    if not upcoming:
+        return (
+            f"At the time of the vetting run ({vetted_on}), tess-point (Burke et al. 2020) showed no TESS sector "
+            "still to come for the star."
+        )
+    return (
+        f"At the time of the vetting run ({vetted_on}), tess-point (Burke et al. 2020) showed TESS would observe the "
+        f"star in {prereg._sectors_words(upcoming)}."
     )
-    return f"As of the vetting run ({vetted_on}), tess-point (Burke et al. 2020) placed the star {where}."
 
 
 def _star(checks: dict, made: dict) -> dict:
@@ -445,21 +469,19 @@ def _changed(version: Path) -> str:
     added = [f"Sector {s} ({x['fresh']['provenance']})" for s, x in rows if x["status"] == "added"]
     if added:
         said.append(f"adds {_words(added)}")
-    redelivered = [f"Sector {s}" for s, x in rows if x["status"] == "redelivered"]
-    if redelivered:
-        said.append(
-            f"takes a newer delivery of {_words(redelivered)}, whose earlier one had suspect timestamps"
-        )
-    upgraded = [
-        f"Sector {s}'s {x['base']['provenance']} light curve with {x['fresh']['provenance']}'s"
+    said += [
+        f"replaces Sector {s}'s timing-suspect delivery with a newer one"
+        for s, x in rows
+        if x["status"] == "redelivered"
+    ]
+    said += [
+        f"replaces Sector {s}'s {x['base']['provenance']} light curve with {x['fresh']['provenance']}'s"
         for s, x in rows
         if x["status"] == "upgraded"
     ]
-    if upgraded:
-        said.append(f"replaces {_words(upgraded)}")
     if not said:
         return "a re-vet on the same light curve"
-    return f"a re-vet on a light curve that {_words(said)}"
+    return f"a re-vet whose light curve {_words(said)}"
 
 
 def _history(record: Path) -> str:
@@ -467,22 +489,23 @@ def _history(record: Path) -> str:
     curve changed."""
     versions = _versions(record)
     if len(versions) == 1:
-        return "This is the signal's only record, and this paper reports it."
-    said = [f"This signal has {len(versions)} records."]
-    for r in versions:
+        return "This paper reports the signal's only record."
+    said = [f"This signal has {_count(len(versions), 'record')}."]
+    for r in versions[:-1]:
         n = calls.version(r)
-        name = "The first record" if n is None else f"Version r{n}, {_changed(r)},"
-        if r == record:
-            said.append(f"{name} is the one this paper reports.")
-            continue
         call = calls.load(r / "call.toml")
-        line = (
-            f"{name} was called {call['outcome']} on {call['date']}, for these reasons, quoted from its call: "
-            f"{_quote(call['reasons'])}"
-        )
+        name = "The first" if n is None else f"Version r{n}, {_changed(r)},"
+        said.append(f"{name} was called {call['outcome']} on {call['date']}.")
+        gave = f"Its call gave the reason as {_quote(call['reasons'])}"
         if call["deciding_evidence"]:
-            line += f" The evidence it named as deciding: {_quote(call['deciding_evidence'])}"
-        said.append(line)
+            gave += (
+                f" and named the evidence that would decide it: {_quote(call['deciding_evidence'])}"
+            )
+        said.append(gave)
+    n = calls.version(record)
+    said.append(
+        f"This paper reports the {ORDINALS.get(n, 'latest')} version, r{n}, {_changed(record)}."
+    )
     return " ".join(said)
 
 
@@ -499,10 +522,21 @@ def _novelty_said(check: dict) -> str:
         return "the novelty check passes: no known object matches the signal"
     if matched:
         return (
-            f"the novelty check {IS[check['outcome']]}: {_words(matched)} "
+            f"the novelty check {IS[check['outcome']]}, because {_words(matched)} "
             f"{'matches' if len(matched) == 1 else 'match'} the signal"
         )
-    return f"the novelty check {IS[check['outcome']]} ({_quote(check['reason'])})"
+    return f"the novelty check {IS[check['outcome']]}, for the reason {_quote(check['reason'])}"
+
+
+def _novelty_against(check: dict) -> str:
+    """The vetting run's own novelty check, against the catalogs it read, said as _novelty_said says a check."""
+    head = f"The novelty check {IS[check['outcome']]} against the catalogs the vetting run read"
+    matched = _matched(check)
+    if check["outcome"] == "pass":
+        return f"{head}: no known object matches the signal."
+    if matched:
+        return f"{head}, because {_words(matched)} {'matches' if len(matched) == 1 else 'match'} the signal."
+    return f"{head}, for the reason {_quote(check['reason'])}."
 
 
 def _novelty(record: Path, checks: dict, call: dict) -> str:
@@ -512,17 +546,24 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
     excepted = _excepted(record)
     said = []
     if excepted:
-        them = "it" if len(excepted) == 1 else "them"
-        said.append(
-            f"Against the catalogs the vetting run read, {_novelty_said(own)}. ExoFOP first listed "
-            f"{_words([r['name'] for r in excepted])} only after tess-hunt made the signal public, so decision record "
-            f"0042 sets {them} aside (see When it was made public). Run again without {them}, {_novelty_said(judged)}."
+        line = _novelty_against(own)
+        one = len(excepted) == 1
+        which = (
+            f"that {excepted[0]['source']}"
+            if one and excepted[0]["name"] in _matched(own)
+            else _words([r["name"] for r in excepted])
         )
+        it = "it" if one else "them"
+        line += (
+            f" ExoFOP first listed {which} after tess-hunt made the signal public, so decision record 0042 sets {it} "
+            f'aside (see "When it was made public"). Without {it}, {_novelty_said(judged)}.'
+        )
+        said.append(line)
     if judged["outcome"] != "pass":
         said.append(
-            f"T{_novelty_said(judged)[1:]}. The rows at the signal's period are SPOC threshold-crossing events "
-            "or ExoMiner rows that never became TOIs, and the call promotes the signal, as decision record 0013 "
-            f"allows, in the maintainer's words: {_quote(call['promotion'])}"
+            f"T{_novelty_said(judged)[1:]}. The rows at the signal's period are SPOC threshold-crossing events or "
+            "ExoMiner rows that never became TOIs. Decision record 0013 lets the call promote such a signal, and this "
+            f"call does. It gives the reason as {_quote(call['promotion'])}"
         )
     return "\n\n".join(said)
 
@@ -530,27 +571,27 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
 def _modshift(checks: dict) -> str:
     m = checks["modshift"]
     if m is None:
-        return f"The record holds no ModShift result ({checks['triage_reason']})."
+        return f"The record holds no ModShift result ({_quote(checks['triage_reason'])})."
     depth = None if m["dep_sec"] is None else m["dep_sec"] * 1e6
     return (
-        "ModShift, the model-shift uniqueness test (Rowe et al. 2015; Coughlin et al. 2016), as LEO-Vetter "
-        "(Kunimoto et al. 2025) runs it in triage, looks for a secondary eclipse at any phase: "
-        f"its strongest is {_f(m['sig_sec'], '.3g')} sigma at phase {_f(m['phs_sec'], '.3g')} (depth "
-        f"{_f(depth, '.0f')} ppm), against a primary of {_f(m['sig_pri'], '.3g')} sigma and a red-noise factor, Fred, "
-        f"of {_f(m['Fred'], '.3g')}."
+        "ModShift, the model-shift uniqueness test (Rowe et al. 2015; Coughlin et al. 2016), looks for a secondary "
+        "eclipse at any phase. LEO-Vetter runs it during triage. The strongest secondary it finds is "
+        f"{_f(m['sig_sec'], '.3g')} sigma at phase {_f(m['phs_sec'], '.3g')} (depth {_f(depth, '.0f')} ppm). The "
+        f"primary is {_f(m['sig_pri'], '.3g')} sigma, and ModShift's red-noise factor, Fred, is {_f(m['Fred'], '.3g')}."
     )
 
 
 def _eccentric(checks: dict) -> str:
     m = checks["modshift"]
-    where = (
-        f"where only ModShift looks: its strongest secondary is at {_f(m['sig_sec'], '.3g')} sigma (How it was vetted)"
+    there = (
+        f"An eccentric orbit can put it elsewhere, and only ModShift looks there. Its strongest secondary is "
+        f"{_f(m['sig_sec'], '.3g')} sigma."
         if m is not None
-        else "and the record holds no ModShift result to look there"
+        else "An eccentric orbit can put it elsewhere, and the record holds no ModShift result."
     )
     return (
-        "The secondary check in the table looks only at phase 0.5, where a circular orbit puts an eclipsing binary's "
-        f"secondary eclipse; an eccentric orbit can put it elsewhere, {where}."
+        "The secondary check only looks at phase 0.5, where a circular orbit puts an eclipsing binary's secondary "
+        f"eclipse. {there}"
     )
 
 
@@ -558,18 +599,19 @@ def _red_noise(checks: dict) -> str:
     rows = sorted(checks["red_noise"].items(), key=lambda item: int(item[0]))
     measured = [f"{r['beta']:.2f} in Sector {s}" for s, r in rows if "note" not in r]
     unmeasured = [int(s) for s, r in rows if "note" in r]
-    said = []
+    said = [
+        "Each sector's depth errors are scaled by a red-noise factor, beta, measured from the residuals binned at the "
+        "timescale of the transit core (Pont et al. 2006; decision record 0006)."
+    ]
     if measured:
-        said.append(f"it is {_words(measured)}")
+        said.append(f"Beta is {_words(measured)}.")
     if unmeasured:
+        their = "its errors assume" if len(unmeasured) == 1 else "their errors assume"
         said.append(
-            f"in {prereg._sectors_words(unmeasured)} too few binned points could measure it, so it is 1 there and "
-            "those errors assume white noise"
+            f"{prereg._sectors_words(unmeasured)} had too few binned points to measure it, so beta is 1 there and "
+            f"{their} white noise."
         )
-    return (
-        "Each sector's depth errors are scaled by its red-noise factor, beta, measured from the residuals binned at "
-        f"the transit core's timescale (Pont et al. 2006; decision record 0006): {'; '.join(said)}."
-    )
+    return " ".join(said)
 
 
 def _tdepth_zero(evidence: dict, hosts: list[dict]) -> str:
@@ -579,50 +621,65 @@ def _tdepth_zero(evidence: dict, hosts: list[dict]) -> str:
     if not zero:
         return ""
     one = len(zero) == 1
-    it = "it" if one else "them"
+    if len(zero) == len(hosts):
+        which = (
+            "the neighbour table's one possible host"
+            if one
+            else f"all {_spell(len(hosts))} of the neighbour table's possible hosts"
+        )
+    else:
+        which = (
+            f"{_spell(len(zero))} of the neighbour table's {_count(len(hosts), 'possible host')}"
+        )
+    star, it = ("that star", "it") if one else ("those stars", "them")
     return (
-        f" Its apertures take too little light from {len(zero)} of the neighbour table's "
-        f"{_count(len(hosts), 'possible host')} to make the dip, so it gave {'that star' if one else 'those stars'} "
-        f"zero depth and weighed no scenario on {it} (decision record 0026). For {it}, the case rests on TRICERATOPS's "
-        "model of the light in its apertures and on the pixel check, not on a probability."
+        f" Its apertures take in too little light from {which} for {star} to make the dip. TRICERATOPS gave {it} "
+        f"zero depth and weighed no scenario on {it} (decision record 0026). Ruling {star} out depends on "
+        "TRICERATOPS's model of the light in its apertures and on the pixel check, not on a probability."
     )
 
 
 def _validated(record: Path, version: str, triceratops: dict) -> str:
-    """Why the FPP does or does not earn Giacalone et al.'s "validated planet" label, by decision 0026's conditions."""
+    """Whether Giacalone et al.'s "validated planet" label applies, by decision 0026's conditions."""
     limit = _criteria(record, "provenance-triceratops.json", version)["triceratops"][
         "fpp_validated"
     ]
     e = triceratops["evidence"]
-    conditions = f"an FPP under {limit:g}, a high-resolution contrast curve and 2-minute data"
+    said = (
+        'Giacalone et al. also define a "validated planet" label. Decision record 0026 allows it only with an FPP '
+        f"under {limit:g}, a high-resolution contrast curve and 2-minute data."
+    )
     if e["validated_label"]:
-        return (
-            f'The runs also meet the conditions decision record 0026 sets for Giacalone et al.\'s "validated planet" '
-            f"label, {conditions}; this paper still calls the signal a planet candidate."
-        )
+        return f"{said} These runs meet those conditions, but this paper still calls the signal a planet candidate."
     lacking = [
-        what
-        for what, met in (
-            (f"an FPP under {limit:g}", e["fpp_mean"] < limit),
-            ("a contrast curve", bool(triceratops["contrast"])),
-            ("2-minute data", e["exposure_s"] == TWO_MINUTES_S),
+        (a, no)
+        for a, no, met in (
+            (f"an FPP under {limit:g}", f"no FPP under {limit:g}", e["fpp_mean"] < limit),
+            ("a contrast curve", "no contrast curve", bool(triceratops["contrast"])),
+            ("2-minute data", "no 2-minute data", e["exposure_s"] == TWO_MINUTES_S),
         )
         if not met
     ]
-    return (
-        f'Giacalone et al. also give a "validated planet" label, which decision record 0026 grants only with '
-        f"{conditions}; these runs lack {_words(lacking)}, so their FPP does not earn it."
-    )
+    if len(lacking) == 2:
+        had = f"neither {lacking[0][0]} nor {lacking[1][0]}"
+    else:
+        had = _words([no for _, no in lacking])
+    return f"{said} These runs had {had}, so the label doesn't apply."
 
 
 def _offsets(pixel: dict, suspect: set[int]) -> dict:
-    """Each sector's centroid offset, and the sector the outcome rests on: the pixel check judges the best-quality
+    """Each sector's centroid offset, and the sector the outcome comes from: the pixel check judges the best-quality
     sector's offset, and the row holding that offset is its sector (as the dossier finds it)."""
     sectors = sorted(pixel["evidence"]["sectors"], key=lambda s: s["sector"])
-    offsets = "; ".join(
-        f"Sector {s['sector']}, {_f(s['offset_arcsec'], '.1f')} arcsec (quality {_f(s['quality'], '.2f')})"
-        + (", a timing-suspect sector the vetting run left out" if s["sector"] in suspect else "")
-        for s in sectors
+    offsets = (
+        "The offsets were "
+        + _words(
+            [
+                f"{_f(s['offset_arcsec'], '.1f')} arcsec in Sector {s['sector']} (quality {_f(s['quality'], '.2f')})"
+                for s in sectors
+            ]
+        )
+        + "."
     )
     judged_offset = pixel["evidence"]["offset_qual_arcsec"]
     judged = [
@@ -630,21 +687,23 @@ def _offsets(pixel: dict, suspect: set[int]) -> dict:
         for s in sectors
         if judged_offset is not None and s["offset_arcsec"] == judged_offset
     ]
+    outcome = pixel["outcome"]
     if len(judged) == 1:
-        rests = (
-            f"Its {pixel['outcome']} rests on Sector {judged[0]}'s offset, the best-quality sector's"
-            + (
-                ", from a sector the vetting run left out for suspect timestamps."
-                if judged[0] in suspect
-                else "."
-            )
+        n = judged[0]
+        said = f"Sector {n} has the best quality, so the {outcome} comes from it"
+        said += (
+            f", though the vetting run left Sector {n} out for suspect timestamps."
+            if n in suspect
+            else "."
         )
     else:
-        rests = (
-            f"Its {pixel['outcome']} rests on the best-quality sector's offset, which no single sector above "
-            "reports."
-        )
-    return {"offsets": offsets, "rests_on": rests}
+        said = f"The {outcome} comes from the best-quality offset, which no single sector above reports."
+    others = sorted(
+        s["sector"] for s in sectors if s["sector"] in suspect and s["sector"] not in judged
+    )
+    if others:
+        said += f" The vetting run left {prereg._sectors_words(others)} out for suspect timestamps."
+    return {"offsets": offsets, "rests_on": said}
 
 
 def _blends(hosts: list[dict], limit: float, zero: list) -> str:
@@ -652,26 +711,35 @@ def _blends(hosts: list[dict], limit: float, zero: list) -> str:
     Gaia values."""
     if not hosts:
         return "The neighbour table lists no star that could make the dip."
-    listed = _count(len(hosts), "possible host")
     inside = [h for h in hosts if h["sep_arcsec"] is not None and h["sep_arcsec"] < limit]
-    if inside:
-        one = len(inside) == 1
+    within = f"within {limit:g} arcsec of the target, too close for the pixel check to tell apart"
+    if len(hosts) == 1:
         said = (
-            f"{len(inside)} of the neighbour table's {listed} {'lies' if one else 'lie'} within the pixel check's "
-            f"{limit:g} arcsec of the target, where the pixel check can't tell {'that star' if one else 'them'} from "
-            "the target."
+            f"The neighbour table's one possible host is {within}"
+            if inside
+            else f"The neighbour table's one possible host is not within {limit:g} arcsec of the target"
         )
+        said += ", and TRICERATOPS weighed no scenario on it." if zero else "."
     else:
-        said = f"None of the neighbour table's {listed} lies within the pixel check's {limit:g} arcsec of the target."
-    if zero:
-        on = (
-            ("it" if len(hosts) == 1 else "any of them")
-            if len(zero) == len(hosts)
-            else f"{len(zero)} of them"
-        )
-        said += f" TRICERATOPS weighed no scenario on {on}."
+        if not inside:
+            said = (
+                f"None of the neighbour table's {_spell(len(hosts))} possible hosts is within {limit:g} arcsec of the "
+                "target."
+            )
+        elif len(inside) == len(hosts):
+            said = f"All {_spell(len(hosts))} of the neighbour table's possible hosts are {within}."
+        else:
+            are = "is" if len(inside) == 1 else "are"
+            said = (
+                f"{_spell(len(inside)).capitalize()} of the neighbour table's {_spell(len(hosts))} possible hosts "
+                f"{are} {within}."
+            )
+        if zero:
+            on = "any of them" if len(zero) == len(hosts) else f"{_spell(len(zero))} of them"
+            said += f" TRICERATOPS weighed no scenario on {on}."
     if inside or zero:
-        said += " Photometry that resolves the stars near the target could rule them out."
+        them = "it" if len(hosts) == 1 else "them"
+        said += f" Photometry that resolves the stars near the target could rule {them} out."
     return said
 
 
@@ -679,37 +747,54 @@ def _companions(triceratops: dict, exofop: dict) -> str:
     contrast = triceratops["contrast"]
     if contrast:
         return (
-            "TRICERATOPS weighed companions and background stars too close to resolve by its priors, limited by "
+            "TRICERATOPS judged unresolved companions and background stars from its priors, limited by "
             f"{_count(len(contrast), 'high-resolution contrast curve')} of the star from ExoFOP."
         )
     said = (
-        "TRICERATOPS weighed companions and background stars too close to resolve by its priors alone: no "
-        "high-resolution contrast curve of the star went into it."
+        "TRICERATOPS judged unresolved companions and background stars from its priors alone, because no "
+        "high-resolution contrast curve went into it."
     )
     if exofop["imaging"]:
         said += (
             f" ExoFOP lists {_count(len(exofop['imaging']), 'high-resolution imaging observation')} of the star, "
-            "which did not go into it."
+            "which TRICERATOPS did not use."
         )
     return said
+
+
+def _listing(raw: str, kind: str) -> str:
+    """An ExoFOP TOI or CTOI by the name the novelty check gives it (catalogs.py): "TOI 266.01" is "TOI-266.01" and "TIC
+    164767175.03" is "CTOI-164767175.03"."""
+    if kind == "TOI":
+        return re.sub(r"^TOI[ -]?", "TOI-", raw.strip())
+    return re.sub(r"^(TIC|CTOI)[ -]?", "CTOI-", raw.strip())
+
+
+def _listed(rows: list[dict], kind: str, field: str, disposition: str) -> str:
+    """ExoFOP's TOIs or CTOIs on the star, counted and named, each with its disposition."""
+    if not rows:
+        return f"no {kind}"
+    named = [
+        f"{_listing(r[field], kind)}, disposition {r.get(disposition) or 'none'}"
+        if len(rows) == 1
+        else f"{_listing(r[field], kind)} with disposition {r.get(disposition) or 'none'}"
+        for r in rows
+    ]
+    return f"{_count(len(rows), kind)} ({_words(named)})"
 
 
 def _exofop(exofop: dict) -> str:
     """What ExoFOP lists on the star besides the planet-parameter rows: TOIs, CTOIs, confirmed planets and imaging."""
     if exofop["status"] != "ok":
-        return f"ExoFOP's records for the star could not be read ({exofop['error']})."
-    tois = [f"{t['toi']} ({t.get('disp_tfop') or 'no disposition'})" for t in exofop["tois"]]
-    ctois = [f"{t['ctoi']} ({t.get('cdisp') or 'no disposition'})" for t in exofop["ctois"]]
-    imaging = len(exofop["imaging"])
+        return f"ExoFOP's records for the star could not be read ({_quote(exofop['error'])})."
+    planets = [p.strip() for p in (exofop["confirmed_planets"] or "").split(",") if p.strip()]
     parts = [
-        f"{'TOI' if len(tois) == 1 else 'TOIs'} {_words(tois)}" if tois else "no TOI",
-        f"{'CTOI' if len(ctois) == 1 else 'CTOIs'} {_words(ctois)}" if ctois else "no CTOI",
-        f"the confirmed planets {exofop['confirmed_planets']}"
-        if exofop["confirmed_planets"]
+        _listed(exofop["tois"], "TOI", "toi", "disp_tfop"),
+        _listed(exofop["ctois"], "CTOI", "ctoi", "cdisp"),
+        f"{_count(len(planets), 'confirmed planet')} ({_words(planets)})"
+        if planets
         else "no confirmed planet",
-        _count(imaging, "high-resolution imaging observation")
-        if imaging
-        else "no high-resolution imaging observation",
+        _count(len(exofop["imaging"]), "high-resolution imaging observation"),
     ]
     return f"ExoFOP lists {_words(parts)} for the star."
 
@@ -731,8 +816,8 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         ["triceratops", triceratops["outcome"], triceratops["reason"]],
         ["literature", literature["outcome"], literature["reason"]],
     ]
-    # Only a listing the novelty check matched is at the signal's period: decision 0042 excepts later ones at any
-    # period.
+    # Only a listing the novelty check matched is at the signal's period or a harmonic of it: decision 0042 excepts
+    # later ones at any period.
     own = next(c for c in checks["checks"] if c["check"] == "novelty")
     at_period = [r["name"] for r in _excepted(record) if r["name"] in _matched(own)]
     second = checks["signal"]["kind"] == "second"
@@ -743,8 +828,12 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
     tested = [s for s in seasons if s["status"] in ("predicted", "missed")]
     predicted = sum(s["status"] == "predicted" for s in tested)
     untested = "".join(
-        f" The season from BTJD {s['start']:.1f} to {s['end']:.1f} could not be tested: "
-        f"{s.get('reason') or UNTESTED.get(s['status'], s['status'])}."
+        f" The season from BTJD {s['start']:.1f} to {s['end']:.1f} was not testable"
+        + (
+            f" ({_quote(s['reason'])})."
+            if s.get("reason")
+            else f", because {UNTESTED.get(s['status'], s['status'])}."
+        )
         for s in seasons
         if s not in tested
     )
@@ -755,24 +844,23 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "core": f"{100 * vet['depth']['core_fraction']:g}%",
         "min_sigma": f"{vet['holdout']['min_sigma']:g}",
         "max_tension": f"{vet['holdout']['max_depth_tension']:g}",
-        "bar_promotion": ", or the maintainer promoted a SPOC threshold-crossing event that never became a TOI "
-        "(decision record 0013)"
+        "bar_promotion": " For a SPOC threshold-crossing event that never became a TOI, the maintainer's promotion "
+        "can stand in for the novelty check (decision record 0013)."
         if second
         else "",
         "vetted_products": _words(
             sorted({prereg.PRODUCTS[sources[str(s)]["provenance"]] for s in vetted})
         ),
         "vetted_sectors": prereg._sectors_words(vetted),
-        "suspect": f" It left out {prereg._sectors_words(dropped)}, flagged for suspect timestamps (decision record "
-        "0022)."
+        "suspect": f" It left out {prereg._sectors_words(dropped)} for suspect timestamps (decision record 0022)."
         if dropped
         else "",
         "checks": _table(
-            ["Check", "Outcome", "Reason"],
+            ["Check", "Outcome", "Reason, as the record gives it"],
             [
                 [
                     f"{CHECKS[name]} (`{name}`"
-                    + ("; see below the table)" if name == "novelty" and novelty else ")"),
+                    + (", see below the table)" if name == "novelty" and novelty else ")"),
                     outcome,
                     reason,
                 ]
@@ -783,15 +871,15 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "modshift": _modshift(checks),
         "eccentric": _eccentric(checks),
         "red_noise": _red_noise(checks),
-        "hosts": f"{_count(len(hosts), 'such star')} here, each with the eclipse depth it would need, in "
-        "`neighbours.csv` in the dataset"
+        "hosts": f"It found {_count(len(hosts), 'such star')}. The dataset's `neighbours.csv` gives the eclipse depth "
+        f"{'it' if len(hosts) == 1 else 'each'} would need."
         if hosts
-        else "no such star here",
+        else "It found no such star.",
         "tdepth_zero": _tdepth_zero(tric, hosts),
         "tric_data": f"{prereg._sectors_words(tric['sectors'])} at {tric['exposure_s']:g}-s exposures"
         + (", folded and binned in phase" if tric["bin_phase"] else ""),
         "validated": _validated(record, version, triceratops),
-        "pixel_check": PIXEL_CHECK[second][0] + (", run as triage runs it" if second else ""),
+        "pixel_check": "the second list's, run as triage runs it" if second else "triage's",
         "max_offset": f"{limit:g}",
         **_offsets(pixel, set(dropped)),
         "blends": _blends(hosts, limit, tric["hosts_tdepth_zero"]),
@@ -800,37 +888,61 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "names": _words([n for n in literature["search"]["names"] if not n.startswith("Gaia ")]),
         "papers": _count(len(literature["evidence"]["hits"]), "paper"),
         "exofop": _exofop(exofop),
-        "excepted": ""
+        "exofop_rows": "None of ExoFOP's planet-parameter rows for the star matches the signal's period or a "
+        "harmonic of it."
         if not at_period
-        else f", apart from {_words(at_period)}, which decision record 0042 sets aside (see When it was made "
-        "public)",
-        "triceratops_runs": _count(len(tric["fpp"]), "run"),
+        else f"Apart from {_words(at_period)}, which decision record 0042 sets aside, none of ExoFOP's "
+        "planet-parameter rows for the star matches the signal's period or a harmonic of it.",
+        "tric_times": {1: "once", 2: "twice"}.get(
+            len(tric["fpp"]), f"{_spell(len(tric['fpp']))} times"
+        ),
         "companions": _companions(triceratops, exofop),
-        "holdout": f"For this signal the check {WAS[holdout['outcome']]}: of its "
-        f"{_count(len(seasons), 'season')}, {len(tested)} could be tested and {predicted} "
-        f"{'was' if predicted == 1 else 'were'} predicted.{untested}",
+        "holdout": f"For this signal the check {WAS[holdout['outcome']]}. "
+        + _seasons(len(seasons), len(tested), predicted)
+        + untested,
     }
 
 
+def _seasons(n: int, testable: int, predicted: int) -> str:
+    """How many of the signal's seasons the held-out check could test, and how many it predicted."""
+    if n == 1:
+        if not testable:
+            return "Its one season was not testable."
+        return f"Its one season was testable and was{'' if predicted else ' not'} predicted."
+    if n == testable == predicted == 2:
+        return "Both seasons were testable and both were predicted."
+
+    def were(k: int) -> str:
+        return f"{'none' if k == 0 else _spell(k)} {'was' if k in (0, 1) else 'were'}"
+
+    return f"Of its {_spell(n)} seasons, {were(testable)} testable and {were(predicted)} predicted."
+
+
 def _label(finding: dict, confirmed: list[str]) -> str:
-    """A finding's id, the question it bears on, its rating and what its refuters did."""
-    question = QUESTIONS[finding["lens"]]
+    """A finding's id, the question it concerns, its rating and what its refuters did."""
+    head = f"{finding['id']}, on {QUESTIONS[finding['lens']]}."
     if finding["rating"] == "note":
-        return f"{finding['id']}, on {question} (rated note)"
+        return f"{head} Rated note."
     n = len(finding["refuters"])
     if finding["id"] not in confirmed:
-        refuted = sum(v["refuted"] for v in finding["refuters"])
-        said = f"refuted by {refuted} of its {_count(n, 'refuter')}"
-    # Confirmed only because nothing refuted it, as the dossier says: the reader should not take it for tested.
+        k = sum(v["refuted"] for v in finding["refuters"])
+        if n == 1:
+            who = "its one refuter"
+        elif k == n:
+            who = "both of its refuters" if n == 2 else f"all {_spell(n)} of its refuters"
+        else:
+            who = f"{_spell(k)} of its {_spell(n)} refuters"
+        said = f"{who} disproved it"
+    # Confirmed only because nothing tested it, as the dossier says: the reader should not take it for tested.
     elif n == 0:
-        said = "no refuter tested it, so it counts as confirmed by default"
+        said = "no refuter tested it, so it counts as confirmed"
     elif n == 1:
-        said = "its one refuter did not refute it"
+        said = "its one refuter did not disprove it"
     elif n == 2:
-        said = "neither of its 2 refuters refuted it"
+        said = "neither of its two refuters disproved it"
     else:
-        said = f"none of its {n} refuters refuted it"
-    return f"{finding['id']}, on {question} (rated {finding['rating']}; {said})"
+        said = f"none of its {_spell(n)} refuters disproved it"
+    return f"{head} Rated {finding['rating']}; {said}."
 
 
 def _fates(findings: list[dict], confirmed: list[str]) -> str:
@@ -840,19 +952,21 @@ def _fates(findings: list[dict], confirmed: list[str]) -> str:
         else ("confirmed" if f["id"] in confirmed else "refuted", f["rating"])
         for f in findings
     )
+
+    def told(k: int, rating: str, fate: str) -> str:
+        return f"{_spell(k)} rated {rating} {'was' if k == 1 else 'were'} {fate}"
+
     said = [
-        f"{counts['confirmed', rating]} rated {rating} stood as confirmed"
+        told(k, rating, fate)
+        for fate in ("confirmed", "refuted")
         for rating in ("kill", "hold")
-        if counts["confirmed", rating]
+        if (k := counts[fate, rating])
     ]
-    said += [
-        f"{n} rated {rating} {'was' if n == 1 else 'were'} refuted"
-        for rating in ("kill", "hold")
-        if (n := counts["refuted", rating])
-    ]
-    if n := counts["note", "note"]:
-        said.append(f"{n} {'was' if n == 1 else 'were'} rated note")
-    return _words(said) or "none stood as confirmed"
+    if k := counts["note", "note"]:
+        said.append("one was a note" if k == 1 else f"{_spell(k)} were notes")
+    if not said:
+        return "none was confirmed"
+    return said[0] if len(said) == 1 else ", ".join(said[:-1]) + ", and " + said[-1]
 
 
 def _flagged(review: dict, literature: dict) -> str:
@@ -868,10 +982,10 @@ def _flagged(review: dict, literature: dict) -> str:
             return ident
         return f'"{hit["title"]}" ({_paper_id(hit)})' if hit["title"] else _paper_id(hit)
 
+    one = len(flagged) == 1
     return (
-        f"The review flagged {_count(len(flagged), 'paper')} for the maintainer to read, "
-        f"{_words([paper(i) for i in flagged])}, and the call records that the maintainer read "
-        f"{'it' if len(flagged) == 1 else 'each'}."
+        f"The review flagged {_count(len(flagged), 'paper')} for the maintainer to read{',' if one else ':'} "
+        f"{_words([paper(i) for i in flagged])}. The call records that the maintainer read {'it' if one else 'each'}."
     )
 
 
@@ -902,7 +1016,7 @@ def _review(record: Path, review: dict, call: dict, literature: dict) -> dict:
         quoted(
             f,
             [
-                f"Refuter {i} {'refuted it' if v['refuted'] else 'did not refute it'}: {_quote(v['reason'])}"
+                f"Refuter {i} {'disproved it' if v['refuted'] else 'did not disprove it'}: {_quote(v['reason'])}"
                 for i, v in enumerate(f["refuters"], 1)
             ],
         )
@@ -915,11 +1029,11 @@ def _review(record: Path, review: dict, call: dict, literature: dict) -> dict:
         "n_confirmed": str(len(confirmed)),
         "fates": _fates(findings, confirmed),
         "hits_read": _flagged(review, literature),
-        "answers": answers or "None: the review confirmed no finding.",
-        "refuted": "Findings a refuter refuted, quoted with each refuter's verdict:\n\n" + verdicts
+        "answers": answers or "The review confirmed no finding.",
+        "refuted": "Refuted findings, with each refuter's verdict:\n\n" + verdicts
         if refuted
-        else "No refuter refuted any finding.",
-        "notes": "Findings the review rated note, which need no answer, quoted:\n\n"
+        else "No refuter disproved any finding.",
+        "notes": "Findings rated note, which need no answer:\n\n"
         + "\n".join(quoted(f, []) for f in noted)
         if noted
         else "The review rated no finding note.",
@@ -952,12 +1066,12 @@ def _triage(row: pd.Series, made: dict, checks: dict) -> str:
     """What triage made of the signal, from its row in the triage run's signals.csv."""
     used = made["inputs"].get("triage_criteria")
     # A vetting run made before M4's deferred minors recorded no triage criteria file.
-    under = f", under its criteria {Path(used['file']).stem}" if used else ""
-    said = f"Triage then screened every signal at or above the threshold{under}."
+    under = f" (criteria {Path(used['file']).stem})" if used else ""
+    said = f"Triage{under} screened every signal at or above the threshold."
     if bool(row["shortlisted"]):
         return (
-            f"{said} This signal passed its novelty check, LEO-Vetter's false-alarm and flux-level tests "
-            f"({row['leo_reason']}) and its pixel check, and was shortlisted."
+            f"{said} This signal passed the novelty check, LEO-Vetter's false-alarm and flux-level tests (LEO-Vetter "
+            f"calls it {_quote(row['leo_reason'])}) and the pixel check, so it was shortlisted."
         )
     # Triage records a pixel check it never ran as inconclusive, "not run: ...".
     pixels = (
@@ -971,7 +1085,7 @@ def _triage(row: pd.Series, made: dict, checks: dict) -> str:
     )
     if checks["signal"]["kind"] == "second":
         said += (
-            " It came to vetting on tess-hunt's second list, of SPOC threshold-crossing events that never became TOIs "
+            " It came to vetting on tess-hunt's second list of SPOC threshold-crossing events that never became TOIs "
             "(decision record 0028)."
         )
     return said
@@ -1077,30 +1191,50 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
     else:
         where = f"in {claim.record}"
     own = next(c for c in checks["checks"] if c["check"] == "novelty")
-    listings = [
-        (
-            f" ExoFOP lists a signal at this period on the star as {r['name']} (period {r['period']:.6g} d),"
-            if r["name"] in _matched(own)
-            else f" ExoFOP lists {r['name']} on the star (period {r['period']:.6g} d),"
+    ratios = {m["name"]: m.get("ratio") for m in own["evidence"].get("matches") or []}
+    listings = []
+    for r in found["excepted"]:
+        dispositions = r["dispositions"]
+        disposition = (
+            f"disposition{'s' if len(dispositions) > 1 else ''} {_words(dispositions)}"
+            if dispositions
+            else "no disposition"
         )
-        + f" first listed on {r['first_listed']} with "
-        + (f"disposition {_words(r['dispositions'])}" if r["dispositions"] else "no disposition")
-        + ", after tess-hunt made this signal public; the record does not say who submitted it."
-        for r in found["excepted"]
-    ]
-    if listings:
+        if r["name"] in ratios:
+            listings.append(
+                f" ExoFOP lists a signal at {_harmonic(ratios[r['name']])} on the star as {r['name']} (period "
+                f"{r['period']:.6g} d, {disposition})."
+            )
+        else:
+            also = " also" if listings else ""
+            listings.append(
+                f" ExoFOP{also} lists {r['name']} on the star (period {r['period']:.6g} d, {disposition})."
+            )
         listings.append(
-            " A listing made after tess-hunt made a signal public, which the claim itself may have prompted, can't "
-            "show the signal was known before it. So tess-hunt does not count a TOI or CTOI on the signal's own star "
-            "as making the signal known when ExoFOP first listed it after that claim and each of its dispositions is "
-            "PC or empty (decision record 0042). The rule orders the public claims by date; it says nothing about when "
-            f"or how others found the signal. ExoFOP's page for the star is {EXOFOP_STAR.format(tic)}."
+            f" ExoFOP first listed it on {r['first_listed']}, after tess-hunt made the signal public."
+        )
+    if listings:
+        them = "it" if len(found["excepted"]) == 1 else "them"
+        listings.append(
+            f" The record doesn't say who submitted {them}. A listing made after tess-hunt's claim, possibly prompted "
+            "by it, can't show the signal was known before the claim. So tess-hunt doesn't count a TOI or CTOI on the "
+            "same star as already known when ExoFOP first listed it after the claim and its dispositions are all PC or "
+            "empty (decision record 0042). The rule only compares public dates. It says nothing about when or how "
+            f"anyone else found the signal. ExoFOP's page for the star is {EXOFOP_STAR.format(tic)}."
         )
     return {
         "claim_date": None if claim is None else claim.date.isoformat(),
         "claim_where": where,
         "listings": "".join(listings),
     }
+
+
+def _harmonic(ratio: float | None) -> str:
+    """Where a listing the novelty check matched lies against the signal's period, by the harmonic it matched at."""
+    return next(
+        (said for k, said in HARMONICS.items() if ratio is not None and abs(ratio - k) < 1e-6),
+        "a harmonic of this period",
+    )
 
 
 def _sector_start(repo: Path, sector: int) -> dt.date:
@@ -1133,47 +1267,47 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
             f"observing Sector {first} on {start}; the paper would say the prediction came before the data"
         )
     them = "it" if len(sectors) == 1 else "them"
-    summary = (
-        f" tess-hunt predicted the signal's transits in TESS {prereg._sectors_words(sectors)} and deposited the "
-        f"prediction on Zenodo before TESS observed {them};" + SUMMARY_RESULT[p["result"]]
+    deposited = (
+        f"Before TESS observed {prereg._sectors_words(sectors)}, tess-hunt deposited on Zenodo a prediction of the "
+        f"signal's transits in {them}"
     )
+    summary = f" {deposited}." + SUMMARY_RESULT[p["result"]]
     as_of = dt.date.fromisoformat(p["as_of"])
     if p["result"] == "pending":
-        said = f"As of {as_of} the test is pending ({_quote(p['reason'])})."
+        said = f"As of {as_of}, the test is pending ({_quote(p['reason'])})."
     elif p["result"] == "untested":
-        said = f"As of {as_of} the new data could not test it ({_quote(p['reason'])})."
+        said = f"As of {as_of}, the new data could not test the prediction ({_quote(p['reason'])})."
     else:
         depth, err = _ppm(p["depth"]), _ppm(p["err"])
         if depth is None or err is None:
             return {"summary_prereg": summary}
-        tension = (
-            f"a tension of {p['tension']:.2f} sigma, the largest across the light-curve product families, each "
-            "family's depth here against its own depth in the earlier seasons, which the deposit's `references.json` "
-            "holds"
-            if "tension" in p
-            else f"with no tension measured ({_quote(p['tension_skipped'])})"
-        )
         verb = "replicate the signal" if p["result"] == "replicated" else "miss the prediction"
         said = (
-            f"As of {as_of} the new sectors {verb}: in the cores of the predicted transits, {p['n']} cadences give a "
+            f"As of {as_of}, the new sectors {verb}. In the cores of the predicted transits, {p['n']} cadences give a "
             f"depth of {depth} ± {err} ppm, {p['sigma']:.2f} times its error, where the test expected "
-            f"{p['expected_snr']:.2f} times it, and {tension}."
+            f"{p['expected_snr']:.2f} times it."
         )
+        if "tension" in p:
+            said += (
+                f" The tension with the earlier seasons is {p['tension']:.2f} sigma. That is the largest across the "
+                "light-curve product families, each compared with its own depth in the earlier seasons, as the "
+                "deposit's `references.json` records."
+            )
+        else:
+            said += f" No tension was measured ({_quote(p['tension_skipped'])})."
         if p["result"] == "replicated":
             said += (
-                " A replicated season shows the dip is real, periodic and where the prediction put it; it does not "
-                "show that the dip is on the target."
+                " Replication shows the dip is real, periodic and where the prediction put it. It doesn't show the dip "
+                "is on the target."
             )
     order = (
         "before" if call["date"] < as_of else "after" if call["date"] > as_of else "on the day of"
     )
     return {
-        "prereg": f"Before TESS observed {prereg._sectors_words(sectors)}, tess-hunt deposited on Zenodo "
-        f"(doi:{deposit['doi']}) a prediction of the signal's transits in "
-        f"{'that sector' if len(sectors) == 1 else 'those sectors'} and the test that would judge {them}: the held-out "
-        "check's test, applied to the deposited prediction (decision record 0040). Zenodo published the deposit on "
-        f"{published}, and TESS began observing Sector {first} on {start}. {said} The maintainer's call "
-        f"({call['date']}) came {order} this result.",
+        "prereg": f"{deposited} (doi:{deposit['doi']}). The deposit also fixed the test that would judge the "
+        "prediction: the held-out check's test, applied to the predicted transits (decision record 0040). Zenodo "
+        f"published the deposit on {published}, and TESS began observing Sector {first} on {start}. {said} The "
+        f"maintainer's call ({call['date']}) came {order} this result.",
         "summary_prereg": summary,
     }
 
@@ -1193,6 +1327,19 @@ def _files(record: Path) -> str:
     return _table(
         ["File", "What it holds"],
         [[f"`{pattern}`", what] for pattern, what in GUIDE if held(pattern)],
+    )
+
+
+def _records(signal: str, version: int | None) -> str:
+    """Where the dataset holds each record: the first at the top of the signal's directory, each version below it."""
+    if version is None:
+        return f"The record is in `dataset/vetting/{signal}/`."
+    if version == 2:
+        return f"The first record is in `dataset/vetting/{signal}/` and version r2 in its `r2/` subdirectory."
+    later = range(2, version + 1)
+    return (
+        f"The first record is in `dataset/vetting/{signal}/`, and versions {_words([f'r{n}' for n in later])} are in "
+        f"its {_words([f'`r{n}/`' for n in later])} subdirectories."
     )
 
 
@@ -1220,10 +1367,7 @@ def _data(record: Path, checks: dict, made: dict) -> dict:
             for p in used
         ),
         "pdcsap_papers": PDCSAP_PAPERS if any(p in PDCSAP for p in used) else "",
-        "records": f"The record is in `dataset/vetting/{signal}/`."
-        if version is None
-        else f"The first record is in `dataset/vetting/{signal}/`, and each later version is in its own subdirectory "
-        f"there, {_words([f'`r{n}/`' for n in range(2, version + 1)])}; this paper reports version r{version}.",
+        "records": _records(signal, version),
         "rendered_from": "that record" if version is None else f"version r{version}",
         "files": _files(record),
         "tess_credit": prereg.TESS_CREDIT,
@@ -1460,13 +1604,13 @@ def deposit_form(run: Path) -> str:
         )
     description = [
         _section(text, "Summary"),
-        "The deposit holds the paper (`preprint.pdf`, rendered from `preprint.md`), its figures and its dataset: the "
-        "signal's published vetting records and the light curve the vetting run of the paper's record read, which "
-        "`manifest.json` lists with each file's sha256 and licence. The files are CC BY 4.0, except the dataset's "
-        f"files that hold Gaia DR3 data ({_words([f'`{name}`' for name in gaia])}, in each record's directory) and "
-        "any Gaia value in the paper's quoted text or in a note beside it, which stay under ESA's CC BY-NC 3.0 IGO "
-        "terms, and ExoFOP's rows in the dataset and the ExoFOP listings the paper names, which stay under ExoFOP's "
-        "terms.",
+        "The deposit holds the paper (`preprint.pdf`, made from `preprint.md`), its figures and its dataset. The "
+        "dataset holds the signal's published vetting records and the light curve that the vetting run of the paper's "
+        "record read. `manifest.json` lists each of its files with its sha256 and licence. The files are CC BY 4.0, "
+        "with two exceptions. The dataset's files that hold Gaia DR3 data "
+        f"({_words([f'`{name}`' for name in gaia])}, in each record's directory) stay under ESA's CC BY-NC 3.0 IGO "
+        "terms, as does any Gaia value in the paper's quoted text or notes. ExoFOP's rows in the dataset stay under "
+        "ExoFOP's terms, as do the ExoFOP listings the paper names.",
         _section(text, "Use of LLMs"),
     ]
     return ZENODO.substitute(

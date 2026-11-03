@@ -67,22 +67,27 @@ reviewed on a specimen and fixed before a real result can shape it.
     under [0037](0037-quoted-text-in-the-dossier.md), in quotation marks, with machine paths and the maintainer's name
     written as the dossier writes them ([0038](0038-literature-trim-and-username-scrub.md)). Every finding is given
     with its fate: confirmed, with the call's answer; refuted, with each refuter's verdict; or rated note. Each note
-    `review-notes.toml` adds beside a quoted finding under 0037 is given under that finding, after its quoted lines,
-    worded as the dossier words it but for the decision's name ("Note added on DATE under decision record 0037, not
-    part of the review or the call").
+    `review-notes.toml` adds on a quoted finding under 0037 is given under that finding, after its quoted lines, as
+    "Note (DATE)". The paragraph above the findings says once that a note is the maintainer's, added later, and part
+    of neither the review nor the call.
+  - The prose follows the maintainer's read of the specimen (2026-11-03): one idea per sentence, one word per thing,
+    a section named by its quoted heading, counts from one to nine spelled out, each limit stated once, plain verbs,
+    and one name per object. A TOI or CTOI from ExoFOP's own rows is named as the novelty check names it (`TOI-266.01`,
+    `CTOI-164767175.03`).
   - No provenance in a record names the injection-recovery run, so the paper takes the one published production
     `benchmark-inject` run made at the search's threshold run, and refuses unless exactly one is (the build's choice).
   - The claim date and record are `results/claims.toml`'s. Each listing the record's `claims.json` excepts under 0042
     is named with its period, the day ExoFOP first listed it and its dispositions. 0042 excepts a later listing on
-    the star at any period, so only one the novelty check matched (its `evidence["matches"]`) is said to be at the
-    signal's period. A `claims.json` that rests on another claim than the committed file gives is refused, since the
-    paper states one.
+    the star at any period, so only one the novelty check matched (its `evidence["matches"]`) is placed against the
+    signal's period: "at this period" at ratio 1, and at the harmonic it matched otherwise ("at twice this period").
+    A `claims.json` that rests on another claim than the committed file gives is refused, since the paper states one.
   - The novelty check's outcome is said as a verb, with the listings its evidence matched to the signal by name; where
     its evidence lists no match, its reason is quoted.
   - The predictions DOI is `results/predictions/dois.toml`'s for the package the record's `prereg.json` names.
-  - The summary says "planet candidate" and never "confirmed", "validated" or "discovered a planet".
-  - The paper and its Zenodo form name no model: the review is "assisted by an LLM" and each refuter is "a separate
-    LLM-assisted check", as the maintainer's Use of LLMs paragraph (2026-11-02) describes them. The maintainer
+  - The summary says "planet candidate" and never "validated" or "discovered a planet". It says "confirmed" only of
+    the review's findings, never of the signal.
+  - The paper and its Zenodo form name no model: the review is "LLM-assisted" and refuters are "separate
+    LLM-assisted checks", as the maintainer's Use of LLMs paragraph (2026-11-02) describes them. The maintainer
     chose this on 2026-11-02.
   - The figures are the record's `transits.png`, `folds.png`, `odd_even.png` and `phase.png`, with the paper's own
     captions, which say what each plot draws: the dossier's assume a reader inside the project. The centroid plots

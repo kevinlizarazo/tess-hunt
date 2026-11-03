@@ -351,8 +351,8 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "fpp_pass": f"{bars['fpp_pass']:g}",
         "nfpp_pass": f"{bars['nfpp_pass']:g}",
         "tric_runs": str(len(tric["fpp"])),
-        "triceratops_runs": f"{len(tric['fpp'])} runs",
-        "findings": f"{len(review['findings'])} findings",
+        "tric_times": "three times",
+        "findings": "three findings",
         "n_confirmed": str(len(calls.confirmed(review))),
         "vetting_run": made["run_id"],
         "commit": made["git"]["commit"],
@@ -404,16 +404,21 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     assert "planet candidate" in summary
     assert "In the TESS light curves of TIC 1 it found a periodic dip" in summary
     assert (
-        "this paper's author, makes the call on each vetted signal, passed, held or killed"
+        "This paper's author maintains tess-hunt and makes the call on each vetted signal: passed, held or killed."
         in summary
     )
-    assert "they don't rule out every other star's light" in summary
+    assert (
+        "TESS light curves can't measure its mass or rule out light from every nearby star."
+        in summary
+    )
     # Only a record holding a preregistered result says so here.
     assert "deposited the prediction on Zenodo" not in summary
     # It is the Zenodo description too, where no other section exists.
     assert "How tess-hunt works" not in summary
+    # "Confirmed" is said only of the review's findings, never of the signal.
+    said = summary.lower().replace("confirmed finding", "")
     for claim in ("confirmed", "discovered a planet", "validated"):
-        assert claim not in summary.lower()
+        assert claim not in said
 
 
 def test_a_note_0037_added_sits_under_the_quoted_finding(tmp_path, monkeypatch):
@@ -422,27 +427,34 @@ def test_a_note_0037_added_sits_under_the_quoted_finding(tmp_path, monkeypatch):
     (record / "review-notes.toml").write_text(NOTES)
     commit(repo)
     text = td.section(paper(repo), "What it can't rule out")
-    note = "    - **Note added on {} under decision record 0037, not part of the review or the call:** {}"
+    note = "    - **Note ({}):** {}"
     f2 = note.format("2026-10-26", "The star is 12.4 arcsec away; the review rounds up.")
     f1 = note.format("2026-10-27", "Sector 2 carries most of it.")
     # Under the confirmed finding, after its quoted claim and the call's answer, which does not reply to it.
     assert (
-        "- F2, on whether the dip is on the star (rated hold; neither of its 2 refuters refuted it)\n"
+        "- F2, on whether the dip is on the star. Rated hold; neither of its two refuters disproved it.\n"
         '    - Finding: "a star 12.5 arcsec away could host the dip"\n'
         '    - Answer: "TRICERATOPS weighed that star and the centroids sit on the target."\n'
         f"{f2}"
     ) in text
     assert (
-        "- F1, on whether it is real and new (rated note)\n"
+        "- F1, on whether it is real and new. Rated note.\n"
         f'    - Finding: "one sector carries most of the depth"\n{f1}'
     ) in text
-    assert "tess-hunt never edits quoted text" in " ".join(text.split())
-    # Worded as the dossier words a note, but for its link to the decision.
+    # The paragraph above the findings says once what a note is.
+    assert (
+        "tess-hunt never edits quoted text. Where the maintainer later found a mistake in a quote, a dated note "
+        "follows it. The note is not part of the review or the call (decision record 0037)."
+        in " ".join(text.split())
+    )
+    # Each note's text is the one the dossier shows beside the same finding.
     review = calls.load_review(record / "review.json")
     quoted = dossier.render_review(review, calls.load_notes(record / "review-notes.toml", review))
-    said = re.sub(r"\[decision (0037)\]\([^)]*\)", r"decision record \1", quoted)
-    for line in (f1, f2):
-        assert line.removeprefix("    - ") in said
+    for text_ in (
+        "The star is 12.4 arcsec away; the review rounds up.",
+        "Sector 2 carries most of it.",
+    ):
+        assert text_ in quoted
 
 
 def test_a_confirmed_finding_no_refuter_ran_on_says_so(tmp_path, monkeypatch):
@@ -466,32 +478,34 @@ def test_a_confirmed_finding_no_refuter_ran_on_says_so(tmp_path, monkeypatch):
     left = td.section(text, "What it can't rule out")
     # Confirmed only because nothing refuted it, as the dossier marks it; F2's refuters ran.
     assert (
-        "- F4, on whether it is a planet (rated hold; no refuter tested it, so it counts as confirmed by "
-        'default)\n    - Finding: "the depth'
+        "- F4, on whether it is a planet. Rated hold; no refuter tested it, so it counts as confirmed.\n"
+        '    - Finding: "the depth'
     ) in left
-    assert "- F2, on whether the dip is on the star (rated hold; neither of its 2 refuters" in left
+    assert (
+        "- F2, on whether the dip is on the star. Rated hold; neither of its two refuters" in left
+    )
     # The refuted kill is quoted with each refuter's verdict.
     assert (
-        "- F3, on whether it is a planet (rated kill; refuted by 1 of its 2 refuters)\n"
+        "- F3, on whether it is a planet. Rated kill; one of its two refuters disproved it.\n"
         '    - Finding: "the secondary at phase 0.76 is an eccentric eclipse"\n'
-        '    - Refuter 1 did not refute it: "reproduced from the run"\n'
-        '    - Refuter 2 refuted it: "the offset is the PSF\'s, not a shift"'
+        '    - Refuter 1 did not disprove it: "reproduced from the run"\n'
+        '    - Refuter 2 disproved it: "the offset is the PSF\'s, not a shift"'
     ) in left
     vetted = " ".join(td.section(text, "How it was vetted").split())
     assert (
-        "Of its 4 findings, 2 rated hold stood as confirmed, 1 rated kill was refuted and 1 was rated note."
-        in vetted
+        "Of the review's four findings, two rated hold were confirmed, one rated kill was refuted, and one was a "
+        "note." in vetted
     )
     # The flagged paper by its title and id, from the literature search's hits.
     assert (
-        'The review flagged 1 paper for the maintainer to read, "The TESS-Keck Survey. XVI. Mass Measurements for '
-        '12 Planets in Eight Systems" (arXiv 2306.16587), and the call records that the maintainer read it.'
+        'The review flagged one paper for the maintainer to read, "The TESS-Keck Survey. XVI. Mass Measurements for '
+        '12 Planets in Eight Systems" (arXiv 2306.16587). The call records that the maintainer read it.'
         in vetted
     )
     # A review with no refuted finding says so.
     review["findings"] = [f for f in review["findings"] if f["id"] != "F3"]
     (record / "review.json").write_text(json.dumps(review))
-    assert "No refuter refuted any finding." in paper(repo)
+    assert "No refuter disproved any finding." in paper(repo)
 
 
 def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
@@ -505,15 +519,15 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
     text = preprint.render(r2, preprint.load_author(repo / preprint.AUTHOR), repo)
     vetted = " ".join(td.section(text, "How it was vetted").split())
     assert vetted.startswith(
-        "This signal has 2 records. The first record was called held on 2026-10-28, for these reasons, quoted from "
-        'its call: "The public data can\'t tell the two stars apart." The evidence it named as deciding: '
-        '"High-resolution imaging of the 12.5 arcsec companion." Version r2, a re-vet on a light curve that adds '
-        "Sector 65 (SPOC), is the one this paper reports."
+        "This signal has two records. The first was called held on 2026-10-28. Its call gave the reason as "
+        '"The public data can\'t tell the two stars apart." and named the evidence that would decide it: '
+        '"High-resolution imaging of the 12.5 arcsec companion." This paper reports the second version, r2, a '
+        "re-vet whose light curve adds Sector 65 (SPOC)."
     )
     m3 = json.loads((r2.parent / "provenance-checks.json").read_text())
     made = json.loads((r2 / "provenance-checks.json").read_text())
     available = td.section(text, "Data and code availability")
-    assert f"at commit {made['git']['commit']}" in available
+    assert f"used commit {made['git']['commit']}." in available
     assert (
         f"| Vetting, the first record | {m3['run_id']} | `dataset/vetting/{NAME}/provenance-checks.json` |"
         in available
@@ -523,8 +537,8 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
         in available
     )
     assert (
-        f"The first record is in `dataset/vetting/{NAME}/`, and each later version is in its own subdirectory "
-        "there, `r2/`; this paper reports version r2." in " ".join(available.split())
+        f"The first record is in `dataset/vetting/{NAME}/` and version r2 in its `r2/` subdirectory."
+        in " ".join(available.split())
     )
     assert "the one the vetting run of version r2 read" in " ".join(available.split())
     # The dataset's guide lists a re-vet's merge record.
@@ -533,7 +547,7 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
     single = tmp_path / "single"
     single.mkdir()
     one = paper(published(single, monkeypatch)[1])
-    assert "This is the signal's only record, and this paper reports it." in one
+    assert "This paper reports the signal's only record." in one
     assert "`merge.json`" not in one
 
 
@@ -562,13 +576,13 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
     public = " ".join(td.section(text, "When it was made public").split())
     assert "tess-hunt first made this signal public on 2026-10-28" in public
     assert (
-        "ExoFOP lists a signal at this period on the star as TOI-7001.01 (period 5 d), first listed on 2027-03-01 "
-        "with disposition PC, after tess-hunt made this signal public; the record does not say who submitted it."
-        in public
+        "ExoFOP lists a signal at this period on the star as TOI-7001.01 (period 5 d, disposition PC). ExoFOP first "
+        "listed it on 2027-03-01, after tess-hunt made the signal public." in public
     )
     assert (
-        "ExoFOP lists TOI-7001.02 on the star (period 12.1 d), first listed on 2027-04-01 with disposition PC, after "
-        "tess-hunt made this signal public" in public
+        "ExoFOP also lists TOI-7001.02 on the star (period 12.1 d, disposition PC). ExoFOP first listed it on "
+        "2027-04-01, after tess-hunt made the signal public. The record doesn't say who submitted them."
+        in public
     )
     assert "as TOI-7001.02" not in public
     assert "decision record 0042" in public
@@ -577,21 +591,20 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
         in public
     )
     # The rule is stated once.
-    assert " ".join(text.split()).count("does not count a TOI or CTOI") == 1
+    assert " ".join(text.split()).count("doesn't count a TOI or CTOI") == 1
     # The paper says novelty failed on the snapshot and passed without the later listing.
     vetted = " ".join(td.section(text, "How it was vetted").split())
-    assert "| Known objects at the period (`novelty`; see below the table) | fail |" in vetted
+    assert "| Known objects at the period (`novelty`, see below the table) | fail |" in vetted
     assert (
-        "Against the catalogs the vetting run read, the novelty check fails: TOI-7001.01 matches the signal. ExoFOP "
-        "first listed TOI-7001.01 and TOI-7001.02 only after tess-hunt made the signal public, so decision record "
-        "0042 sets them aside" in vetted
+        "The novelty check fails against the catalogs the vetting run read, because TOI-7001.01 matches the signal. "
+        "ExoFOP first listed TOI-7001.01 and TOI-7001.02 after tess-hunt made the signal public, so decision record "
+        '0042 sets them aside (see "When it was made public").' in vetted
     )
-    assert (
-        "Run again without them, the novelty check passes: no known object matches the signal."
-        in vetted
-    )
+    assert "Without them, the novelty check passes: no known object matches the signal." in vetted
     # Only the listing at the signal's period is named against ExoFOP's rows at the period.
-    assert ", apart from TOI-7001.01, which decision record 0042 sets aside" in vetted
+    assert (
+        "Apart from TOI-7001.01, which decision record 0042 sets aside, none of ExoFOP's" in vetted
+    )
     assert "TOI-7001.02, which" not in vetted
     # The claim the exception rests on must be the committed one.
     claims = repo / "results" / "claims.toml"
@@ -630,10 +643,9 @@ def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
     )
     # The review and its refuters are described as the disclosure describes them, and no model is named.
     assert (
-        f"An adversarial review, assisted by an LLM and dated {td.REVIEW['date']}, looked for reasons"
-        in text
+        f"An LLM-assisted adversarial review, dated {td.REVIEW['date']}, looked for reasons" in text
     )
-    assert "a separate LLM-assisted check asked to disprove that finding" in text
+    assert "Refuters are separate LLM-assisted checks, each asked to disprove one finding." in text
     assert td.REVIEW["model"] not in text
     record = repo / "results" / "vetting" / NAME
     found = preprint.values(record, preprint.load_author(repo / preprint.AUTHOR), repo)
@@ -803,26 +815,26 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     )
     text = " ".join(text.split())
     assert (
-        f"Before TESS observed Sectors 112 and 113, tess-hunt deposited on Zenodo (doi:{DOI}) a prediction"
-        in text
+        "Before TESS observed Sectors 112 and 113, tess-hunt deposited on Zenodo a prediction of the signal's "
+        f"transits in them (doi:{DOI})." in text
     )
     assert (
         "Zenodo published the deposit on 2026-11-05, and TESS began observing Sector 112 on 2026-12-22."
         in text
     )
     assert (
-        "As of 2027-02-20 the new sectors replicate the signal: in the cores of the predicted transits, 412 "
-        "cadences give a depth of 500 ± 100 ppm, 5.00 times its error, where the test expected 4.80 times it, and "
-        "a tension of 0.40 sigma, the largest across the light-curve product families, each family's depth here "
-        "against its own depth in the earlier seasons" in text
+        "As of 2027-02-20, the new sectors replicate the signal. In the cores of the predicted transits, 412 "
+        "cadences give a depth of 500 ± 100 ppm, 5.00 times its error, where the test expected 4.80 times it. The "
+        "tension with the earlier seasons is 0.40 sigma. That is the largest across the light-curve product "
+        "families, each compared with its own depth in the earlier seasons" in text
     )
-    assert "it does not show that the dip is on the target" in text
+    assert "It doesn't show the dip is on the target." in text
     assert "The maintainer's call (2026-10-28) came before this result." in text
     assert PACKAGE not in text
     summary = " ".join(td.section((second / "preprint.md").read_text(), "Summary").split())
     assert (
-        "tess-hunt predicted the signal's transits in TESS Sectors 112 and 113 and deposited the prediction on "
-        "Zenodo before TESS observed them; the transits were found where predicted." in summary
+        "Before TESS observed Sectors 112 and 113, tess-hunt deposited on Zenodo a prediction of the signal's "
+        "transits in them. The transits appeared where predicted." in summary
     )
     # The claim made in the predictions deposit is named as that deposit.
     claims = repo / "results" / "claims.toml"
@@ -869,7 +881,7 @@ def test_the_pdf_renders(tmp_path, monkeypatch):
     # The review's finding keeps its quoted claim and the call's answer nested under it.
     page = preprint.html(paper(repo), specimen=False)
     assert re.search(
-        r"<li>F2, on whether the dip is on the star \(rated hold; [^)]*\)\s*<ul>\s*<li>Finding: ",
+        r"<li>F2, on whether the dip is on the star\. Rated hold; [^<]*<ul>\s*<li>Finding: ",
         page,
     )
 
@@ -903,8 +915,8 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
                 "status": "pending",
                 "reason": "no light curve the test can use yet in S112",
             },
-            'As of 2027-02-20 the test is pending ("no light curve the test can use yet in S112").',
-            "that test is not yet judged.",
+            'As of 2027-02-20, the test is pending ("no light curve the test can use yet in S112").',
+            "That test is not yet judged.",
         ),
         (
             {
@@ -912,19 +924,19 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
                 "status": "untestable",
                 "reason": "1 training season(s), need 2",
             },
-            'As of 2027-02-20 the new data could not test it ("1 training season(s), need 2").',
-            "the new data could not test that prediction.",
+            'As of 2027-02-20, the new data could not test the prediction ("1 training season(s), need 2").',
+            "The new data could not test that prediction.",
         ),
         (
             {"result": "missed", "status": "missed"},
-            "As of 2027-02-20 the new sectors miss the prediction: in the cores of the predicted transits",
-            "the transits were missing where predicted.",
+            "As of 2027-02-20, the new sectors miss the prediction. In the cores of the predicted transits",
+            "The transits were missing where predicted.",
         ),
     ):
         (record / "prereg.json").write_text(json.dumps({**PREREG, **result}))
         text = " ".join(paper(repo).split())
         assert said in text and summary in text
-        assert "untestable" not in text and "A replicated season" not in text
+        assert "untestable" not in text and "Replication shows" not in text
 
 
 def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
@@ -933,17 +945,23 @@ def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
     found = " ".join(td.section(text, "How it was found").split())
     sample = tomllib.loads(tv.SEARCH.read_text())["sample"]
     assert (
-        f"in the light curves of its sample: {SAMPLE} stars from the TESS Input Catalog with an effective "
-        f"temperature above {sample['teff_min']:g} K and up to {sample['teff_max']:g} K" in found
+        f"to look for periodic dips of 1 to 40 days in {SAMPLE} stars from the TESS Input Catalog."
+        in found
     )
-    assert f"the sample's {SAMPLE} stars to the {NULL_STARS} stars the null search covered" in found
-    assert "gives an expected 1.03 false alarms at or above the threshold" in found
+    assert (
+        f"Each star has: - an effective temperature above {sample['teff_min']:g} K and up to "
+        f"{sample['teff_max']:g} K;" in found
+    )
+    assert (
+        f"Scaled by the ratio of the sample's {SAMPLE} stars to the {NULL_STARS} stars the null search covered, that "
+        "one null signal gives an expected 1.03 false alarms at or above the threshold." in found
+    )
     assert f"`results/benchmarks/{INJECT_RUN}/completeness_snr.csv`" in found
     # Triage's row for the signal, under the criteria the vetting run recorded for it.
     assert (
-        "Triage then screened every signal at or above the threshold, under its criteria triage-v1. This signal "
-        "passed its novelty check, LEO-Vetter's false-alarm and flux-level tests (planet candidate at flux level) "
-        "and its pixel check, and was shortlisted." in found
+        "Triage (criteria triage-v1) screened every signal at or above the threshold. This signal passed the novelty "
+        'check, LEO-Vetter\'s false-alarm and flux-level tests (LEO-Vetter calls it "planet candidate at flux level") '
+        "and the pixel check, so it was shortlisted." in found
     )
     # Run ids sit in the runs table, not in the prose.
     assert tv.SEARCH_RUN not in found and NULL_RUN not in found
@@ -987,14 +1005,14 @@ def test_triage_and_the_novelty_check_are_said_in_words(tmp_path):
     )
     said = preprint._triage(row, made, {"signal": {"kind": "candidate"}})
     assert said == (
-        "Triage then screened every signal at or above the threshold. This signal's novelty check passed, "
+        "Triage screened every signal at or above the threshold. This signal's novelty check passed, "
         "LEO-Vetter's tests failed and triage did not run its pixel check, so triage did not shortlist it."
     )
     ran = pd.Series({**row, "pixels": "fail", "pixels_reason": 'centroid offset 20.1" beyond 15"'})
     second = preprint._triage(ran, made, {"signal": {"kind": "second"}})
     assert "and its pixel check failed, so triage did not shortlist it." in second
     assert second.endswith(
-        "It came to vetting on tess-hunt's second list, of SPOC threshold-crossing events that never became TOIs "
+        "It came to vetting on tess-hunt's second list of SPOC threshold-crossing events that never became TOIs "
         "(decision record 0028)."
     )
     # A novelty check's outcome as a verb with what it matched; its reason quoted where it lists no match.
@@ -1008,15 +1026,31 @@ def test_triage_and_the_novelty_check_are_said_in_words(tmp_path):
         "reason": "matches A",
         "evidence": {"matches": [{"name": "A"}, {"name": "B"}]},
     }
-    assert preprint._novelty_said(two) == "the novelty check fails: A and B match the signal"
+    assert (
+        preprint._novelty_said(two) == "the novelty check fails, because A and B match the signal"
+    )
+    assert preprint._novelty_against(two) == (
+        "The novelty check fails against the catalogs the vetting run read, because A and B match the signal."
+    )
     spoc = {
         "outcome": "inconclusive",
         "reason": "known to SPOC only",
         "evidence": {"category": "known_to_spoc"},
     }
     assert (
-        preprint._novelty_said(spoc) == 'the novelty check is inconclusive ("known to SPOC only")'
+        preprint._novelty_said(spoc)
+        == 'the novelty check is inconclusive, for the reason "known to SPOC only"'
     )
+    # A listing the novelty check matched at a harmonic is placed against the signal's period.
+    for ratio, said in (
+        (1.0, "this period"),
+        (0.5, "twice this period"),
+        (2.0, "half this period"),
+        (1 / 3, "three times this period"),
+        (3.0, "a third of this period"),
+        (None, "a harmonic of this period"),
+    ):
+        assert preprint._harmonic(ratio) == said
 
 
 def test_what_a_revet_changed_is_said(tmp_path):
@@ -1038,8 +1072,8 @@ def test_what_a_revet_changed_is_said(tmp_path):
     }
     (version / "merge.json").write_text(json.dumps({"1": {"sectors": sectors}}))
     assert preprint._changed(version) == (
-        "a re-vet on a light curve that adds Sector 66 (SPOC), takes a newer delivery of Sector 64, whose earlier "
-        "one had suspect timestamps and replaces Sector 65's QLP light curve with TESS-SPOC's"
+        "a re-vet whose light curve adds Sector 66 (SPOC), replaces Sector 64's timing-suspect delivery with a newer "
+        "one and replaces Sector 65's QLP light curve with TESS-SPOC's"
     )
     (version / "merge.json").write_text(json.dumps({"1": {"sectors": {"64": {"status": "kept"}}}}))
     assert preprint._changed(version) == "a re-vet on the same light curve"
@@ -1053,58 +1087,68 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     left = " ".join(td.section(text, "What it can't rule out").split())
     # TRICERATOPS gave the neighbour table's one possible host zero depth (decision 0026, Ruling M).
     assert (
-        "Its apertures take too little light from 1 of the neighbour table's 1 possible host to make the dip, so "
-        "it gave that star zero depth and weighed no scenario on it (decision record 0026)."
+        "It found one such star. The dataset's `neighbours.csv` gives the eclipse depth it would need."
         in vetted
     )
     assert (
-        "Over 3 runs on Sectors 1 and 2 at 1800-s exposures, folded and binned in phase," in vetted
-    )
-    assert (
-        "these runs lack a contrast curve and 2-minute data, so their FPP does not earn it."
-        in vetted
-    )
-    # Each sector's offset, and the timing-suspect sector the pass rests on.
-    assert (
-        "Sector 64, 9.7 arcsec (quality 0.95), a timing-suspect sector the vetting run left out."
+        "Its apertures take in too little light from the neighbour table's one possible host for that star to make "
+        "the dip. TRICERATOPS gave it zero depth and weighed no scenario on it (decision record 0026)."
         in vetted
     )
     assert (
-        "Its pass rests on Sector 64's offset, the best-quality sector's, from a sector the vetting run left out "
-        "for suspect timestamps." in vetted
+        "TRICERATOPS ran three times on Sectors 1 and 2 at 1800-s exposures, folded and binned in phase."
+        in vetted
     )
     assert (
-        "TOI-1399.01, whose dip comes from a nearby binary inside that limit, passes the check (decision record "
+        "These runs had neither a contrast curve nor 2-minute data, so the label doesn't apply."
+        in vetted
+    )
+    # Each sector's offset, and the timing-suspect sector the pass comes from.
+    assert (
+        "The offsets were 10.9 arcsec in Sector 1 (quality 0.92), 12.8 arcsec in Sector 2 (quality 0.84) and 9.7 "
+        "arcsec in Sector 64 (quality 0.95)." in vetted
+    )
+    assert (
+        "Sector 64 has the best quality, so the pass comes from it, though the vetting run left Sector 64 out for "
+        "suspect timestamps." in vetted
+    )
+    assert (
+        "TOI-1399.01's dip comes from a nearby binary inside that limit, and it passes the check (decision record "
         "0032)." in vetted
     )
     assert "11.6" not in vetted
     assert (
-        "1 of the neighbour table's 1 possible host lies within the pixel check's 15 arcsec of the target"
-        in left
+        "The neighbour table's one possible host is within 15 arcsec of the target, too close for the pixel check "
+        "to tell apart, and TRICERATOPS weighed no scenario on it. Photometry that resolves the stars near the "
+        "target could rule it out." in left
     )
-    assert "TRICERATOPS weighed no scenario on it." in left
     # ModShift's secondary at any phase, from triage's evidence.
     m = tv.MODSHIFT
     assert (
-        f"its strongest is {m['sig_sec']:.3g} sigma at phase {m['phs_sec']:.3g} (depth {m['dep_sec'] * 1e6:.0f} "
-        f"ppm), against a primary of {m['sig_pri']:.3g} sigma and a red-noise factor, Fred, of {m['Fred']:.3g}."
-        in vetted
+        f"The strongest secondary it finds is {m['sig_sec']:.3g} sigma at phase {m['phs_sec']:.3g} (depth "
+        f"{m['dep_sec'] * 1e6:.0f} ppm). The primary is {m['sig_pri']:.3g} sigma, and ModShift's red-noise factor, "
+        f"Fred, is {m['Fred']:.3g}." in vetted
     )
     assert (
-        f"where only ModShift looks: its strongest secondary is at {m['sig_sec']:.3g} sigma" in left
+        "An eccentric orbit can put it elsewhere, and only ModShift looks there. Its strongest secondary is "
+        f"{m['sig_sec']:.3g} sigma." in left
     )
-    assert "Each sector's depth errors are scaled by its red-noise factor, beta" in vetted
-    # ExoFOP's listings on the star, and the imaging that did not go into TRICERATOPS.
-    # The fixture's ExoFOP rows, as the literature search keeps them.
+    assert "Each sector's depth errors are scaled by a red-noise factor, beta" in vetted
+    # ExoFOP's listings on the star, by the names the novelty check uses, and the imaging that did not go into
+    # TRICERATOPS. The fixture's ExoFOP rows, as the literature search keeps them.
     assert (
-        "ExoFOP lists TOIs TOI 266.01 (CP) and TOI 266.02 (CP), CTOI TIC 164767175.03 (PC), the confirmed planets "
-        "HIP 8152 b, HIP 8152 c and 1 high-resolution imaging observation for the star." in vetted
+        "ExoFOP lists two TOIs (TOI-266.01 with disposition CP and TOI-266.02 with disposition CP), one CTOI "
+        "(CTOI-164767175.03, disposition PC), two confirmed planets (HIP 8152 b and HIP 8152 c) and one "
+        "high-resolution imaging observation for the star." in vetted
     )
-    assert "1 high-resolution imaging observation of the star, which did not go into it." in left
+    assert (
+        "ExoFOP lists one high-resolution imaging observation of the star, which TRICERATOPS did not use."
+        in left
+    )
     held_out = " ".join(td.section(text, "The held-out seasons and the preregistered test").split())
     # The fixture's light curve gives one season.
     assert (
-        "For this signal the check passed: of its 1 season, 1 could be tested and 1 was predicted."
+        "For this signal the check passed. Its one season was testable and was predicted."
         in held_out
     )
     assert (
@@ -1113,8 +1157,8 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     )
     made = json.loads((record / "provenance-checks.json").read_text())
     assert (
-        f"As of the vetting run ({made['started_at'][:10]}), tess-point (Burke et al. 2020) placed the star in "
-        "TESS Sectors 110, 111 and 115, still to be observed then." in " ".join(text.split())
+        f"At the time of the vetting run ({made['started_at'][:10]}), tess-point (Burke et al. 2020) showed TESS "
+        "would observe the star in Sectors 110, 111 and 115." in " ".join(text.split())
     )
 
     # Measured red noise, a season that could not be tested, no zero-depth host, a host outside the pixel check's
@@ -1138,23 +1182,24 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     )
     text = " ".join(paper(repo).split())
     assert (
-        "Its pass rests on the best-quality sector's offset, which no single sector above reports."
-        in text
+        "The pass comes from the best-quality offset, which no single sector above reports. The vetting run left "
+        "Sector 64 out for suspect timestamps." in text
     )
-    assert "it is 1.30 in Sector 1." in text
-    assert "of its 1 season, 0 could be tested and 0 were predicted." in text
-    assert "could not be tested: the depth expected there is too small against its error." in text
+    assert "Beta is 1.30 in Sector 1." in text
+    assert "Its one season was not testable." in text
+    assert (
+        "was not testable, because the depth expected there is too small against its error." in text
+    )
     assert "weighed no scenario" not in text
+    assert "The neighbour table's one possible host is not within 15 arcsec of the target." in text
     assert (
-        "None of the neighbour table's 1 possible host lies within the pixel check's 15 arcsec"
+        "These runs meet those conditions, but this paper still calls the signal a planet candidate."
         in text
     )
+    assert 'The record holds no ModShift result ("no --triage-run given").' in text
     assert (
-        "The runs also meet the conditions decision record 0026 sets for Giacalone et al.'s \"validated"
-        in text
+        "An eccentric orbit can put it elsewhere, and the record holds no ModShift result." in text
     )
-    assert "The record holds no ModShift result (no --triage-run given)." in text
-    assert "and the record holds no ModShift result to look there." in text
 
 
 def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
@@ -1163,21 +1208,24 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
     made = json.loads((record / "provenance-checks.json").read_text())
     works = " ".join(td.section(paper(repo), "How tess-hunt works").split())
     assert (
-        f"(https://example.org/tess-hunt/tree/{made['git']['commit']}/docs/decisions); this paper cites each by its "
-        "number" in works
+        f"(https://example.org/tess-hunt/tree/{made['git']['commit']}/docs/decisions). This paper cites each by its "
+        "number." in works
     )
     holdout = tomllib.loads(tv.VET3.read_text())["holdout"]
     assert f"no gap longer than {holdout['season_gap_days']:g} days between them." in works
-    assert "set aside (decision record 0042); no row of ExoFOP's planet parameters" in works
-    assert "a row of a listing set aside that way apart" in works
+    assert "- no row of ExoFOP's planet parameters for the star matches its period;" in works
+    assert (
+        "For the novelty check and for ExoFOP's rows, a TOI or CTOI that ExoFOP first listed after tess-hunt made "
+        "the signal public does not count (decision record 0042)." in works
+    )
     # A second-list row's bar names its promotion (decision 0013).
     pixels = json.loads((record / "checks.json").read_text())["pixels"]
     (record / "pixels.json").write_text(json.dumps(pixels))
     td.edit_json(record / "checks.json", lambda c: c["signal"].update(kind="second"))
     found = preprint.values(record, preprint.load_author(repo / preprint.AUTHOR), repo)
     assert found["bar_promotion"] == (
-        ", or the maintainer promoted a SPOC threshold-crossing event that never became a TOI (decision record "
-        "0013)"
+        " For a SPOC threshold-crossing event that never became a TOI, the maintainer's promotion can stand in for "
+        "the novelty check (decision record 0013)."
     )
 
 
@@ -1201,7 +1249,7 @@ def test_the_figures_and_references_are_the_papers_own(tmp_path, monkeypatch):
     assert preprint.PDCSAP_PAPERS in references
     available = " ".join(td.section(text, "Data and code availability").split())
     assert "tess-hunt's code, under the MIT licence," in available
-    assert "or in a note beside it, stays under ESA's CC BY-NC 3.0 IGO terms" in available
+    assert "or in a note, stays under ESA's CC BY-NC 3.0 IGO terms" in available
     assert "the ExoFOP listings the paper names stay under ExoFOP's terms" in available
     assert "| `checks.json` | each vetting check's outcome" in td.section(
         text, "Data and code availability"
