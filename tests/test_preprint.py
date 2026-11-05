@@ -1889,6 +1889,8 @@ def test_the_figures_and_references_are_the_papers_own(tmp_path, monkeypatch):
     )
     assert order == ["caldwell2020a", "caldwell2020b", "huang2020", "huang2020a"]
     assert '<span class="id">doi: 10.1117/1.JATIS.1.1.014003</span>' in references
+    assert 'Catalog for <span class="id">2-Minute</span> TESS Data' in references
+    assert '<span class="id">Price-Whelan</span>, A. M.' in references
     for cited in (
         "Ricker, G. R., Winn, J. N., Vanderspek, R., et al. 2015, JATIS, 1, 014003, doi: 10.1117/1.JATIS.1.1.014003",
         "Kipping, D. M. 2013, MNRAS, 435, 2152, doi: 10.1093/mnras/stt1435",

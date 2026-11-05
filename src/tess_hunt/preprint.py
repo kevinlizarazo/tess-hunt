@@ -1974,20 +1974,17 @@ def _reference_order(key: str) -> tuple:
     return (first.casefold(), rank, year)
 
 
+def _reference(entry: str) -> str:
+    """One entry as HTML, with its DOI and its hyphenated words ("2-Minute", "Price-Whelan") each kept on one line."""
+    work, has_doi, doi = escape(entry, quote=False).partition(", doi: ")
+    work = re.sub(r"\w+(?:-\w+)+", lambda m: _id(m[0]), work)
+    return f"<p>{work}, {_id(f'doi: {doi}')}</p>" if has_doi else f"<p>{work}</p>"
+
+
 def _references(keys) -> str:
-    """The reference list, one entry per paragraph with no labels, as HTML so the list keeps its hanging indent. A
-    DOI is kept on one line."""
-    entries = [REFERENCES[k][1] for k in sorted(set(keys), key=_reference_order)]
-    return (
-        '<div class="references">\n'
-        + "\n".join(
-            "<p>"
-            + re.sub(r"doi: (\S+)$", r'<span class="id">doi: \1</span>', escape(e, quote=False))
-            + "</p>"
-            for e in entries
-        )
-        + "\n</div>"
-    )
+    """The reference list, one entry per paragraph with no labels, as HTML so the list keeps its hanging indent."""
+    entries = [_reference(REFERENCES[k][1]) for k in sorted(set(keys), key=_reference_order)]
+    return '<div class="references">\n' + "\n".join(entries) + "\n</div>"
 
 
 def _data(record: Path, checks: dict, made: dict) -> dict:
