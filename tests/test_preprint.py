@@ -8,6 +8,7 @@ import sys
 import tomllib
 from pathlib import Path
 
+import batman
 import numpy as np
 import pandas as pd
 import pytest
@@ -373,16 +374,25 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "plus": rp["p84"] - rp["median"],
         "minus": rp["median"] - rp["p16"],
     }
-    # The depth and the duration come from the reproduced density-prior posterior: the duration's median is the one
-    # the record keeps, and each depth is the model's at mid-transit, over the fit's 30-minute cadence.
+    # The depth, the duration and the radius come from the reproduced density-prior posterior. The duration's median
+    # is the one the record keeps, and each depth is the model's at mid-transit with no exposure smearing. The fixture's
+    # star has no TIC error on its radius, so Rp's percentiles are the record's own.
     posterior = preprint.reproduce(record)
     assert np.median(posterior["t14_days"]) == checks["window_duration"]["days"]
-    assert posterior["fit_exposures_days"].tolist() == [30 / 1440]
     t0, period, rp_rs, b, log_rho, q1, q2 = posterior["samples"][0]
     u1, u2 = 2 * np.sqrt(q1) * q2, np.sqrt(q1) * (1 - 2 * q2)
     a_rs = transit.a_rs_from_density(10**log_rho, period)
-    depth = 1 - transit.light_curve([t0], [30 / 1440], t0, period, rp_rs, a_rs, b, u1, u2)[0]
-    assert posterior["depth"][0] == depth
+    unsmeared = batman.TransitParams()
+    unsmeared.t0, unsmeared.per, unsmeared.rp, unsmeared.a = t0, period, rp_rs, a_rs
+    unsmeared.inc, unsmeared.ecc, unsmeared.w = np.degrees(np.arccos(b / a_rs)), 0.0, 90.0
+    unsmeared.u, unsmeared.limb_dark = [u1, u2], "quadratic"
+    model = batman.TransitModel(unsmeared, np.array([t0]))
+    assert posterior["depth"][0] == pytest.approx(1 - model.light_curve(unsmeared)[0], rel=1e-12)
+    assert np.percentile(posterior["rp_rearth"], [16, 50, 84]).tolist() == [
+        rp["p16"],
+        rp["median"],
+        rp["p84"],
+    ]
 
     def percentiles(values) -> dict:
         p16, median, p84 = np.percentile(values, [16, 50, 84])
@@ -393,12 +403,14 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "tmag": f"{star['tmag']:.2f}",
         "teff": f"{star['teff']:.0f}",
         "radius_sun": f"{star['rad']:.2f}",
+        "radius_error": " The TIC gives no error for the star's radius.",
         # Value ± error in the value's own unit: the posterior sd in days, not seconds or minutes.
         "period_pm": f"{eph['period']['median']:.6f} ± {eph['period']['sd']:.6f}",
         "t0_pm": f"{eph['t0']['median']:.4f} ± {eph['t0']['sd']:.4f}",
         "duration_pm": spread(percentiles(posterior["t14_days"] * 24)),
         "depth_pm": spread(percentiles(posterior["depth"] * 1e6), ".0f"),
         "rp_pm": spread(radius),
+        "rp_from": "",
         "rp_rs": spread(prior["rp_rs"], ".4f"),
         "b": spread(prior["b"]),
         "a_rs": spread(prior["a_rs"]),
@@ -462,6 +474,33 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
     eph = checks["ephemeris"]
     assert f"{eph['depth'] * 1e6:.0f} ppm" not in text
     assert f"{eph['duration'] * 24:.2f} h" not in text
+    # Without a TIC error on the star's radius, Section 3 says so once, and Table 1's note gives Rp from the radius.
+    assert text.count("The TIC gives no error for the star's radius.") == 1
+    assert "times the TIC radius (Section 3)." in text
+    # With the TIC's errors, Section 3 gives them, and Rp takes the radius's error through a draw per sample, seeded
+    # by the criteria, so each render gives the same Rp.
+    td.edit_json(record / "checks.json", lambda c: c["star"].update(e_rad=0.05, e_teff=120.0))
+    drawn = preprint.reproduce(record)
+    found = preprint.values(
+        record, preprint.load_author(repo / preprint.AUTHOR), repo, posterior=drawn
+    )
+    assert found["radius_sun"] == f"{star['rad']:.2f} ± 0.05"
+    assert found["teff"] == f"{star['teff']:.0f} ± 120"
+    assert found["radius_error"] == ""
+    seed = tomllib.loads(tv.VET3.read_text())["fit"]["seed"]
+    radii = np.random.default_rng(seed).normal(star["rad"], 0.05, len(drawn["samples"]))
+    assert np.array_equal(drawn["rad_rsun"], radii)
+    rp_rs = drawn["samples"][:, preprint.NAMES.index("rp_rs")]
+    assert np.array_equal(drawn["rp_rearth"], rp_rs * radii * preprint.R_EARTH_PER_R_SUN)
+    assert np.array_equal(preprint.reproduce(record)["rp_rearth"], drawn["rp_rearth"])
+    assert found["rp_pm"] == spread(percentiles(drawn["rp_rearth"]))
+    assert found["rp_pm"] != expected["rp_pm"]
+    text = paper(repo)
+    host = " ".join(td.section(text, "Host Star").split())
+    assert f"a radius of {star['rad']:.2f} ± 0.05 R⊙ in the TESS" in host and "no error" not in text
+    assert (
+        "times the TIC radius, drawn for each sample from its value and error (Section 3)." in text
+    )
     # A value the record does not hold raises instead of rendering.
     td.edit_json(record / "checks.json", lambda c: c["fit_prior"].update(rp_rearth=None))
     assert "rp_pm" not in preprint.values(
@@ -531,13 +570,14 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
         assert claim not in summary.lower()
     # The body says "we"; "the maintainer" is named once, for a reader following a decision record.
     assert " ".join(text.split()).count("the maintainer") == 1
-    # The radius error is said to leave out the stellar radius's wherever the radius is given.
+    # Every value carries its error, and no sentence says one lacks it: the TIC's missing radius error is said once, in
+    # Section 3, as a fact of the catalogue.
     conclusions = " ".join(td.section(text, "Conclusions").split())
-    assert (
-        "R⊕ for the transiting body, an error that omits the uncertainty of the stellar radius."
-        in summary
-    )
-    assert "R⊕, without the stellar-radius uncertainty." in conclusions
+    assert "R⊕ for the transiting body." in summary
+    assert "R⊕. We passed the signal" in conclusions
+    flat = " ".join(text.split())
+    for gap in ("omits", "no uncertainty", "without the stellar-radius", "carries no"):
+        assert gap not in flat, gap
     # A paper with no preregistered test still says that we passed the signal, and when.
     assert not (repo / "results" / "vetting" / NAME / "prereg.json").exists()
     vetted = " ".join(td.section(text, "Vetting").split())
@@ -813,29 +853,23 @@ def test_the_paper_gives_the_ephemeris_with_uncertainties(tmp_path, monkeypatch)
         f"| Mid-transit time, <i>T</i><sub>0</sub> (BTJD) | {t0['median']:.4f} ± {t0['sd']:.4f} |"
         in text
     )
-    note = " ".join(text.split("*Note.*")[1].split())
+    note = " ".join(text.split("*Note.*")[1].split("\n\n")[0].split())
     assert note.startswith(
         "The <i>P</i> and <i>T</i><sub>0</sub> uncertainties are posterior standard deviations. For the other "
         "parameters, the value is the posterior median with its differences from the 16th and 84th percentiles."
     )
+    # The depth is the model's, a property of the transit, so the note names no cadence's exposure.
     assert (
-        "The depth is the transit model's at mid-transit, integrated over the fit's exposure of 1800 s. Both come "
-        "from the density-prior fit's posterior, which this paper's run reproduced from the record's light curve, "
-        "criteria and seed and checked against the record's summary of the fit." in note
+        "<i>T</i><sub>14</sub> runs from first to fourth contact, and the depth is the transit model's at "
+        "mid-transit. Both come from the density-prior fit's posterior, which this paper's run reproduced from the "
+        "record's light curve, criteria and seed and checked against the record's summary of the fit."
+        in note
     )
+    assert "exposure" not in note
     assert "(Section 3). BTJD = BJD<sub>TDB</sub> − 2457000." in note
     # No sentence says a value of Table 1 lacks an uncertainty.
     assert "no uncertainty" not in text and "BLS" not in text
     assert text.index("Table 1 gives") < text.index("**Table 1.**")
-    # A fit over several exposures gives the depth at the shortest, and says so.
-    posterior = preprint.reproduce(record)
-    posterior["fit_exposures_days"] = np.array([200 / 86400, 600 / 86400])
-    posterior["exposure_days"] = posterior["fit_exposures_days"][0]
-    checks = json.loads((record / "checks.json").read_text())
-    assert (
-        "integrated over an exposure of 200 s, the shortest in the fit."
-        in preprint._star(checks, posterior)["parameters"]
-    )
 
 
 def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
@@ -955,10 +989,16 @@ def test_the_dataset_lets_a_reader_recompute(tmp_path, monkeypatch, no_pdf):
     # The paper names the dataset's files and the record's commit.
     text = (run / "preprint.md").read_text()
     assert f"`dataset/vetting/{NAME}/`" in text and "`dataset/lc/1.npz`" in text
-    assert f"`dataset/{preprint.POSTERIOR}` holds the samples of the density-prior fit" in text
+    guide = " ".join(td.section(text, "Appendix B. Dataset Files").split())
+    assert (
+        f"`dataset/{preprint.POSTERIOR}` holds the samples of the density-prior fit that this paper's run reproduced "
+        "from that light curve, with each sample's depth at mid-transit, total duration, draw of the stellar radius "
+        "and radius (Table 1)." in guide
+    )
     available = " ".join(td.section(text, "Data Availability").split())
     assert (
-        "and the samples of the density-prior fit behind Table 1's depth and duration." in available
+        "and the samples of the density-prior fit behind Table 1's depth, duration and radius."
+        in available
     )
     assert made["git"]["commit"] in text
 

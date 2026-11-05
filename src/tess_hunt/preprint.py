@@ -24,6 +24,7 @@ import pandas as pd
 
 from tess_hunt import calls, prereg, vet, vetting
 from tess_hunt.checks.families import good_timestamps, split
+from tess_hunt.checks.physical import R_EARTH_PER_R_SUN
 from tess_hunt.claims import CLAIMS, load_claims
 from tess_hunt.config import runs_dir
 from tess_hunt.ddt import _criteria, _from_triceratops, _number, _ppm
@@ -36,7 +37,7 @@ from tess_hunt.dossier import (
     _table,
     _words,
 )
-from tess_hunt.ephemeris import Ephemeris, phase_days
+from tess_hunt.ephemeris import Ephemeris
 from tess_hunt.fit import NAMES
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import publish_run, repo_root, sha256_file, start_run
@@ -605,7 +606,7 @@ figcaption {{ font-size: 9pt; }}
 code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; hyphens: none; overflow-wrap: anywhere; }}
 .id {{ hyphens: none; white-space: nowrap; }}
 .names {{ hyphens: manual; text-align: left; }}
-.references p {{ padding-left: 1.5em; text-indent: -1.5em; margin: 0 0 2pt; font-size: 9pt; text-align: left;
+.references p {{ padding-left: 1.5em; text-indent: -1.5em; margin: 0 0 1pt; font-size: 9pt; text-align: left;
   hyphens: none; }}
 """
 SPECIMEN_STYLE = f"""
@@ -900,22 +901,27 @@ def _same_fit(made: dict, recorded: dict) -> None:
             )
 
 
-def _depths(samples: np.ndarray, exposure: float) -> np.ndarray:
-    """Each sample's transit depth at mid-transit: the transit model's, with the sample's limb darkening, integrated
-    over `exposure` (days) as the fit integrates its model."""
+def _depths(samples: np.ndarray) -> np.ndarray:
+    """Each sample's transit depth at mid-transit: the transit model's, with the sample's limb darkening and no
+    exposure smearing, which belongs to a cadence and not to the transit."""
     out = np.empty(len(samples))
     for i, (t0, period, rp_rs, b, log_rho, q1, q2) in enumerate(samples):
         # Kipping's q1 and q2 as fit_transit turns them into quadratic coefficients.
         u1, u2 = 2.0 * np.sqrt(q1) * q2, np.sqrt(q1) * (1.0 - 2.0 * q2)
         a_rs = a_rs_from_density(10.0**log_rho, period)
-        out[i] = 1.0 - light_curve([t0], [exposure], t0, period, rp_rs, a_rs, b, u1, u2)[0]
+        out[i] = 1.0 - light_curve([t0], [0.0], t0, period, rp_rs, a_rs, b, u1, u2)[0]
     return out
+
+
+def _known(value) -> bool:
+    """An error the record keeps: a positive number, not a null or a NaN."""
+    return value is not None and math.isfinite(value) and value > 0
 
 
 def reproduce(record: Path) -> dict[str, np.ndarray] | None:
     """The record's density-prior fit, reproduced by vet's own fit from the light curve its vetting run read, the
-    criteria that run recorded and their seed, with each sample's depth at mid-transit and full duration; None when the
-    record has no such fit. Refuses unless the reproduction gives the record's summary of the fit."""
+    criteria that run recorded and their seed, with each sample's depth at mid-transit, full duration and radius; None
+    when the record has no such fit. Refuses unless the reproduction gives the record's summary of the fit."""
     checks = json.loads((record / "checks.json").read_text())
     if checks["fit_prior"] is None:
         return None
@@ -936,16 +942,20 @@ def reproduce(record: Path) -> dict[str, np.ndarray] | None:
     prior = vet.density_prior(checks["star"], crit_vet["density"]["default_log_rho_error"])
     fit = vet.fit_transit(fit_lc, eph, cfg, rho_prior=prior, seed=cfg["seed"])
     _same_fit(fit.summary(), checks["fit_prior"])
-    # The cadences fit_transit read: its window around each transit.
-    near = np.abs(phase_days(fit_lc.time, eph)) < cfg["window_half_width_durations"] * eph.duration
-    exposures = np.unique(fit_lc.exposure_days()[near])
+    # The TIC radius enters each sample's Rp as a draw from its value and error, seeded by the criteria; a star the TIC
+    # gives no error for keeps its value, and Rp the spread of Rp/R⋆ alone, as the record's fit summary has it.
+    star = checks["star"]
+    rad, e_rad = (np.nan if star.get(k) is None else float(star[k]) for k in ("rad", "e_rad"))
+    radii = np.random.default_rng(cfg["seed"]).normal(
+        rad, e_rad if _known(e_rad) else 0.0, len(fit.samples)
+    )
     return {
         "names": np.array(NAMES),
         "samples": fit.samples,
-        "depth": _depths(fit.samples, exposures[0]),
+        "depth": _depths(fit.samples),
         "t14_days": vetting.fit_durations(fit),
-        "exposure_days": exposures[0],
-        "fit_exposures_days": exposures,
+        "rad_rsun": radii,
+        "rp_rearth": fit.column("rp_rs") * radii * R_EARTH_PER_R_SUN,
     }
 
 
@@ -971,51 +981,48 @@ def _parameters(found: dict) -> str:
         + _table(["Parameter", "Value"], rows)
         + "\n\n*Note.* The <i>P</i> and <i>T</i><sub>0</sub> uncertainties are posterior standard deviations. For the "
         "other parameters, the value is the posterior median with its differences from the 16th and 84th percentiles. "
-        "<i>T</i><sub>14</sub> runs from first to fourth contact. The depth is the transit model's at mid-transit, "
-        f"integrated over {found['exposure']}. Both come from the density-prior fit's posterior, which this paper's "
-        "run reproduced from the record's light curve, criteria and seed and checked against the record's summary of "
-        "the fit. <i>R</i><sub>p</sub> is the median with its 16th and 84th percentiles from "
-        "<i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub> and the TIC radius alone (Section 3). BTJD = BJD<sub>TDB</sub> "
-        f"{MINUS} 2457000."
+        "<i>T</i><sub>14</sub> runs from first to fourth contact, and the depth is the transit model's at mid-transit. "
+        "Both come from the density-prior fit's posterior, which this paper's run reproduced from the record's light "
+        "curve, criteria and seed and checked against the record's summary of the fit. <i>R</i><sub>p</sub> is "
+        f"<i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub> times the TIC radius{found['rp_from']} (Section 3). BTJD = "
+        f"BJD<sub>TDB</sub> {MINUS} 2457000."
     )
+
+
+def _with_error(value, error, fmt: str) -> str | None:
+    """A TIC value with the TIC's error when the record keeps one."""
+    shown = _number(value, fmt)
+    return f"{shown} ± {error:{fmt}}" if shown is not None and _known(error) else shown
 
 
 def _star(checks: dict, posterior: dict | None) -> dict:
     star, prior = checks["star"], checks["fit_prior"]
+    with_rad_error = _known(star.get("e_rad"))
     found = {
         "tic": str(checks["tic"]),
         "tmag": _number(star["tmag"], ".2f"),
-        "teff": _number(star["teff"], ".0f"),
-        "radius_sun": _number(star["rad"], ".2f"),
+        "teff": _with_error(star["teff"], star.get("e_teff"), ".0f"),
+        "radius_sun": _with_error(star["rad"], star.get("e_rad"), ".2f"),
+        "radius_error": "" if with_rad_error else " The TIC gives no error for the star's radius.",
     }
     if prior is None:
         return found
-    fit, rp = prior["ephemeris"], prior["rp_rearth"]
-    seconds = f"{posterior['exposure_days'] * 86400:.0f} s"
+    fit = prior["ephemeris"]
     found |= {
         "period_pm": f"{fit['period']['median']:.6f} ± {fit['period']['sd']:.6f}",
         "period_short": _number(fit["period"]["median"], ".1f"),
         "t0_pm": f"{fit['t0']['median']:.4f} ± {fit['t0']['sd']:.4f}",
         "duration_pm": _spread(_percentiles(posterior["t14_days"] * 24), ".2f"),
         "depth_pm": _spread(_percentiles(posterior["depth"] * 1e6), ".0f"),
-        # The depth a cadence records shrinks with its exposure, so a fit to several gives the shortest's.
-        "exposure": f"the fit's exposure of {seconds}"
-        if len(posterior["fit_exposures_days"]) == 1
-        else f"an exposure of {seconds}, the shortest in the fit",
         "rp_rs": _spread(prior["rp_rs"], ".4f"),
         "b": _spread(prior["b"], ".2f"),
         "a_rs": _spread(prior["a_rs"], ".2f"),
+        "rp_from": ", drawn for each sample from its value and error" if with_rad_error else "",
     }
-    # The radius needs the TIC's stellar radius; a paper without it leaves its placeholders unfilled.
-    if rp is not None:
-        found["rp_pm"] = _spread(
-            {
-                "median": rp["median"],
-                "plus": rp["p84"] - rp["median"],
-                "minus": rp["median"] - rp["p16"],
-            },
-            ".2f",
-        )
+    # The radius needs the TIC's stellar radius, which the record's fit summary says it had; a paper without it leaves
+    # its placeholders unfilled.
+    if prior["rp_rearth"] is not None:
+        found["rp_pm"] = _spread(_percentiles(posterior["rp_rearth"]), ".2f")
         found["parameters"] = _parameters(found)
     return found
 

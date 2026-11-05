@@ -8,7 +8,7 @@ We report a transiting planet candidate around TIC $tic, a star with a TESS magn
 temperature of $teff K and a radius of $radius_sun R⊙ in the TESS Input Catalog. We searched public TESS light curves
 and found a periodic transit signal with a period of $period_pm d, a depth of $depth_pm ppm and a duration of
 $duration_pm h. A transit-model fit, with the stellar radius from the TESS Input Catalog, gives a radius of $rp_pm R⊕
-for the transiting body, an error that omits the uncertainty of the stellar radius. $abstract_checks TRICERATOPS
+for the transiting body. $abstract_checks TRICERATOPS
 gives a mean false-positive probability of $fpp_pm. An LLM-assisted adversarial review looked for reasons the signal
 might not be a planet, and we answered every finding that its refuters did not disprove.$summary_prereg The signal
 remains a planet candidate. The TESS light curves cannot measure the transiting body's mass, and they cannot exclude
@@ -78,9 +78,7 @@ days.
 ## Host Star
 
 TIC $tic has a TESS magnitude of $tmag, an effective temperature of $teff K and a radius of $radius_sun R⊙ in the TESS
-Input Catalog v8.2 (Stassun et al. 2019; Paegert et al. 2021; TESS Team 2018). The vetting record carries no
-uncertainty for that radius, so the uncertainty on the transiting body's radius in Table 1 omits the stellar-radius
-term.
+Input Catalog v8.2 (Stassun et al. 2019; Paegert et al. 2021; TESS Team 2018).$radius_error
 
 ## Detection
 
@@ -220,8 +218,7 @@ $prereg
 
 ## Discussion
 
-Photometry alone does not measure the transiting body's mass. $companions $blends $eccentric The radius depends on
-the TIC stellar radius, which has no uncertainty in the record.
+Photometry alone does not measure the transiting body's mass. $companions $blends $eccentric
 
 Each upheld finding is quoted below with our answer from the call, and quoted text is reproduced without edits. Where
 we later found a mistake in a quote, a dated note follows it. The note is not part of the review or the call (DR 0037).
@@ -230,8 +227,8 @@ $answers
 
 ## Conclusions
 
-We report a planet candidate around TIC $tic with a period of $period_pm d and a radius of $rp_pm R⊕, without the
-stellar-radius uncertainty. We passed the signal on $call_date, and TRICERATOPS gives it a mean false-positive
+We report a planet candidate around TIC $tic with a period of $period_pm d and a radius of $rp_pm R⊕. We passed the
+signal on $call_date, and TRICERATOPS gives it a mean false-positive
 probability of $fpp_pm.$conclusion_prereg The signal remains a candidate until photometry that resolves the stars near
 the target, high-resolution imaging and radial velocities show whether it is a planet and measure its mass.
 
@@ -273,12 +270,11 @@ S. Bryson, is at $diffimage at commit 2b13199. ExoFOP's page for the star is $ex
 the record reported here used commit $commit, and the commit that generated this paper is named in its
 `provenance.json`. The decision records are in the repository's `docs/decisions/` directory at the vetting run's
 commit. The dataset deposited with this paper holds the signal's published records, the light curve that was the
-input to the vetting run of $rendered_from, and the samples of the density-prior fit behind Table 1's depth and
-duration. Appendix B describes its files and Appendix D their licences. The
-remaining numbers come from the search, threshold, injection-recovery and triage runs listed in Appendix A, published
-in the repository under `results/`. The text of this paper is generated from a fixed template, and tess-hunt's code
-filled in every number from those files and runs, except in quoted text and the dated notes. The author typed the
-notes by hand and proofread them (DR 0037).
+input to the vetting run of $rendered_from, and the samples of the density-prior fit behind Table 1's depth, duration
+and radius. Appendix B describes its files and Appendix D their licences. The remaining numbers come from the search,
+threshold, injection-recovery and triage runs listed in Appendix A, published in the repository under `results/`. The
+text of this paper is generated from a fixed template, and tess-hunt's code filled in every number from those files
+and runs, except in quoted text and the dated notes. The author typed the notes by hand and proofread them (DR 0037).
 
 ## References
 
@@ -293,8 +289,9 @@ $runs
 The dataset deposited with this paper holds the signal's published records, one light curve and one posterior.
 $records The light curve, `dataset/$light_curve`, is the input to the vetting run of $rendered_from.
 `dataset/$posterior_file` holds the samples of the density-prior fit that this paper's run reproduced from that light
-curve, with each sample's depth at mid-transit and total duration (Table 1). `manifest.json` lists each file in the
-dataset with its SHA-256 hash and licence. Table 4 lists what each record holds.
+curve, with each sample's depth at mid-transit, total duration, draw of the stellar radius and radius (Table 1).
+`manifest.json` lists each file in the dataset with its SHA-256 hash and licence. Table 4 lists what each record
+holds.
 
 $files
 
