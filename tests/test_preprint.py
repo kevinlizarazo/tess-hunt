@@ -8,13 +8,14 @@ import sys
 import tomllib
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 import test_calls as tc
 import test_dossier as td
 import test_vetting as tv
 
-from tess_hunt import calls, dossier, preprint, prereg, provenance
+from tess_hunt import calls, dossier, preprint, prereg, provenance, transit
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.provenance import sha256_file
@@ -294,6 +295,27 @@ def uncommitted(tmp_path, monkeypatch) -> Path:
     return repo
 
 
+def unreproduced(tmp_path, monkeypatch) -> Path:
+    _, repo = published(tmp_path, monkeypatch)
+    # A record whose density-prior summary its own light curve, criteria and seed don't give.
+    td.edit_json(
+        repo / "results" / "vetting" / NAME / "checks.json",
+        lambda c: c["fit_prior"]["b"].update(median=0.31),
+    )
+    commit(repo)
+    return repo
+
+
+def unaccepted(tmp_path, monkeypatch) -> Path:
+    _, repo = published(tmp_path, monkeypatch)
+    td.edit_json(
+        repo / "results" / "vetting" / NAME / "checks.json",
+        lambda c: c["fit_prior"].update(acceptance=0.31),
+    )
+    commit(repo)
+    return repo
+
+
 @pytest.mark.parametrize(
     "case, message",
     [
@@ -301,6 +323,14 @@ def uncommitted(tmp_path, monkeypatch) -> Path:
         (held_r2, f"{NAME}'s latest record, r2, is held"),
         (pass_problems_refuse, "confirmed finding F2 has no answer"),
         (uncommitted, f"results/vetting/{NAME} has changes that are not committed"),
+        (
+            unreproduced,
+            "the reproduced density-prior fit gives b median 0.3, not the record's 0.31",
+        ),
+        (
+            unaccepted,
+            "the reproduced density-prior fit gives acceptance 0.3, not the record's 0.31",
+        ),
     ],
 )
 def test_preprint_refuses_unless_the_latest_version_is_a_standing_pass(
@@ -343,6 +373,21 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "plus": rp["p84"] - rp["median"],
         "minus": rp["median"] - rp["p16"],
     }
+    # The depth and the duration come from the reproduced density-prior posterior: the duration's median is the one
+    # the record keeps, and each depth is the model's at mid-transit, over the fit's 30-minute cadence.
+    posterior = preprint.reproduce(record)
+    assert np.median(posterior["t14_days"]) == checks["window_duration"]["days"]
+    assert posterior["fit_exposures_days"].tolist() == [30 / 1440]
+    t0, period, rp_rs, b, log_rho, q1, q2 = posterior["samples"][0]
+    u1, u2 = 2 * np.sqrt(q1) * q2, np.sqrt(q1) * (1 - 2 * q2)
+    a_rs = transit.a_rs_from_density(10**log_rho, period)
+    depth = 1 - transit.light_curve([t0], [30 / 1440], t0, period, rp_rs, a_rs, b, u1, u2)[0]
+    assert posterior["depth"][0] == depth
+
+    def percentiles(values) -> dict:
+        p16, median, p84 = np.percentile(values, [16, 50, 84])
+        return {"median": median, "minus": median - p16, "plus": p84 - median}
+
     expected = {
         "tic": str(checks["tic"]),
         "tmag": f"{star['tmag']:.2f}",
@@ -351,8 +396,8 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         # Value ± error in the value's own unit: the posterior sd in days, not seconds or minutes.
         "period_pm": f"{eph['period']['median']:.6f} ± {eph['period']['sd']:.6f}",
         "t0_pm": f"{eph['t0']['median']:.4f} ± {eph['t0']['sd']:.4f}",
-        "duration_h": f"{checks['window_duration']['days'] * 24:.2f}",
-        "depth_ppm": f"{checks['ephemeris']['depth'] * 1e6:.0f}",
+        "duration_pm": spread(percentiles(posterior["t14_days"] * 24)),
+        "depth_pm": spread(percentiles(posterior["depth"] * 1e6), ".0f"),
         "rp_pm": spread(radius),
         "rp_rs": spread(prior["rp_rs"], ".4f"),
         "b": spread(prior["b"]),
@@ -402,6 +447,8 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
     for key in (
         "period_pm",
         "t0_pm",
+        "duration_pm",
+        "depth_pm",
         "fpp_pm",
         "sde",
         "threshold",
@@ -411,6 +458,10 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "rp_pm",
     ):
         assert expected[key] in text
+    # One depth and one duration: the search's box values appear nowhere.
+    eph = checks["ephemeris"]
+    assert f"{eph['depth'] * 1e6:.0f} ppm" not in text
+    assert f"{eph['duration'] * 24:.2f} h" not in text
     # A value the record does not hold raises instead of rendering.
     td.edit_json(record / "checks.json", lambda c: c["fit_prior"].update(rp_rearth=None))
     assert "rp_pm" not in preprint.values(
@@ -764,12 +815,27 @@ def test_the_paper_gives_the_ephemeris_with_uncertainties(tmp_path, monkeypatch)
     )
     note = " ".join(text.split("*Note.*")[1].split())
     assert note.startswith(
-        "The <i>P</i> and <i>T</i><sub>0</sub> uncertainties are posterior standard deviations."
+        "The <i>P</i> and <i>T</i><sub>0</sub> uncertainties are posterior standard deviations. For the other "
+        "parameters, the value is the posterior median with its differences from the 16th and 84th percentiles."
     )
     assert (
-        "The record carries no uncertainty for either. BTJD = BJD<sub>TDB</sub> − 2457000." in note
+        "The depth is the transit model's at mid-transit, integrated over the fit's exposure of 1800 s. Both come "
+        "from the density-prior fit's posterior, which this paper's run reproduced from the record's light curve, "
+        "criteria and seed and checked against the record's summary of the fit." in note
     )
+    assert "(Section 3). BTJD = BJD<sub>TDB</sub> − 2457000." in note
+    # No sentence says a value of Table 1 lacks an uncertainty.
+    assert "no uncertainty" not in text and "BLS" not in text
     assert text.index("Table 1 gives") < text.index("**Table 1.**")
+    # A fit over several exposures gives the depth at the shortest, and says so.
+    posterior = preprint.reproduce(record)
+    posterior["fit_exposures_days"] = np.array([200 / 86400, 600 / 86400])
+    posterior["exposure_days"] = posterior["fit_exposures_days"][0]
+    checks = json.loads((record / "checks.json").read_text())
+    assert (
+        "integrated over an exposure of 200 s, the shortest in the fit."
+        in preprint._star(checks, posterior)["parameters"]
+    )
 
 
 def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
@@ -867,6 +933,14 @@ def test_the_dataset_lets_a_reader_recompute(tmp_path, monkeypatch, no_pdf):
     # The light curve the vetting run read, under the sha256 it recorded.
     made = json.loads((signal / "provenance-checks.json").read_text())
     expected["dataset/lc/1.npz"] = made["inputs"]["light_curve_1"]["sha256"]
+    # The density-prior posterior the paper's depth and duration come from, as the run reproduced it.
+    posterior = run / "dataset" / preprint.POSTERIOR
+    expected[f"dataset/{preprint.POSTERIOR}"] = sha256_file(posterior)
+    with np.load(posterior) as saved:
+        reproduced = preprint.reproduce(signal)
+        assert set(saved.files) == set(reproduced)
+        assert all(np.array_equal(saved[key], reproduced[key]) for key in saved.files)
+        assert saved["names"].tolist() == list(preprint.NAMES)
     manifest = json.loads((run / "manifest.json").read_text())["files"]
     assert {f["path"]: f["sha256"] for f in manifest} == expected
     assert all(sha256_file(run / f["path"]) == f["sha256"] for f in manifest)
@@ -881,6 +955,11 @@ def test_the_dataset_lets_a_reader_recompute(tmp_path, monkeypatch, no_pdf):
     # The paper names the dataset's files and the record's commit.
     text = (run / "preprint.md").read_text()
     assert f"`dataset/vetting/{NAME}/`" in text and "`dataset/lc/1.npz`" in text
+    assert f"`dataset/{preprint.POSTERIOR}` holds the samples of the density-prior fit" in text
+    available = " ".join(td.section(text, "Data Availability").split())
+    assert (
+        "and the samples of the density-prior fit behind Table 1's depth and duration." in available
+    )
     assert made["git"]["commit"] in text
 
 

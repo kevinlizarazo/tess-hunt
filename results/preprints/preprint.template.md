@@ -6,8 +6,8 @@ $author_block
 
 We report a transiting planet candidate around TIC $tic, a star with a TESS magnitude of $tmag, an effective
 temperature of $teff K and a radius of $radius_sun R⊙ in the TESS Input Catalog. We searched public TESS light curves
-and found a periodic transit signal with a period of $period_pm d, a depth of $depth_ppm ppm and a duration of
-$duration_h h. A transit-model fit, with the stellar radius from the TESS Input Catalog, gives a radius of $rp_pm R⊕
+and found a periodic transit signal with a period of $period_pm d, a depth of $depth_pm ppm and a duration of
+$duration_pm h. A transit-model fit, with the stellar radius from the TESS Input Catalog, gives a radius of $rp_pm R⊕
 for the transiting body, an error that omits the uncertainty of the stellar radius. $abstract_checks TRICERATOPS
 gives a mean false-positive probability of $fpp_pm. An LLM-assisted adversarial review looked for reasons the signal
 might not be a planet, and we answered every finding that its refuters did not disprove.$summary_prereg The signal
@@ -113,9 +113,9 @@ $triage
 
 ## Transit Parameters
 
-Table 1 gives the transit parameters. The depth is that of the search's BLS box model. The other values come from a
-transit model (batman; Kreidberg 2015), with limb darkening parametrised as in Kipping (2013), fitted to the light curve
-with the TIC stellar density as a prior (the density-prior fit). Because of the prior, <i>b</i> and
+Table 1 gives the transit parameters, from a transit model (batman; Kreidberg 2015), with limb darkening parametrised
+as in Kipping (2013), fitted to the light curve with the TIC stellar density as a prior (the density-prior fit).
+Because of the prior, <i>b</i> and
 <i>a</i>/<i>R</i><sub>⋆</sub> partly reflect the TIC density. The shape, density and radius checks use a second fit
 without the density prior, so the density check compares the density the transit implies with the TIC density.
 
@@ -272,8 +272,9 @@ queries MAST and the Gaia archive through astroquery (Ginsburg et al. 2019). The
 S. Bryson, is at $diffimage at commit 2b13199. ExoFOP's page for the star is $exofop_page.$claim_at The vetting run for
 the record reported here used commit $commit, and the commit that generated this paper is named in its
 `provenance.json`. The decision records are in the repository's `docs/decisions/` directory at the vetting run's
-commit. The dataset deposited with this paper holds the signal's published records and the light curve that was the
-input to the vetting run of $rendered_from. Appendix B describes its files and Appendix D their licences. The
+commit. The dataset deposited with this paper holds the signal's published records, the light curve that was the
+input to the vetting run of $rendered_from, and the samples of the density-prior fit behind Table 1's depth and
+duration. Appendix B describes its files and Appendix D their licences. The
 remaining numbers come from the search, threshold, injection-recovery and triage runs listed in Appendix A, published
 in the repository under `results/`. The text of this paper is generated from a fixed template, and tess-hunt's code
 filled in every number from those files and runs, except in quoted text and the dated notes. The author typed the
@@ -289,9 +290,11 @@ $runs
 
 ## Appendix B. Dataset Files
 
-The dataset deposited with this paper holds the signal's published records and one light curve. $records The light
-curve, `dataset/$light_curve`, is the input to the vetting run of $rendered_from. `manifest.json` lists each file in
-the dataset with its SHA-256 hash and licence. Table 4 lists what each record holds.
+The dataset deposited with this paper holds the signal's published records, one light curve and one posterior.
+$records The light curve, `dataset/$light_curve`, is the input to the vetting run of $rendered_from.
+`dataset/$posterior_file` holds the samples of the density-prior fit that this paper's run reproduced from that light
+curve, with each sample's depth at mid-transit and total duration (Table 1). `manifest.json` lists each file in the
+dataset with its SHA-256 hash and licence. Table 4 lists what each record holds.
 
 $files
 

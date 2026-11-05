@@ -1,9 +1,10 @@
 """The preprint and dataset for a passed signal (decision 0043; M5 design, section 4.4). `tess-hunt preprint run`
 renders a short paper from the signal's latest published record, whose call must be a pass that stands on it, and
-lays beside it the dataset its numbers come from: each published record of the signal up to that one and the light
-curve the passing vet read. The template is filled with `substitute`, each value read by its key from the record, its
-runs' provenance and the published runs they name, so a value they lack raises instead of rendering (docs/design.md,
-section 5.5). The PDF needs the optional `preprint` dependency group."""
+lays beside it the dataset its numbers come from: each published record of the signal up to that one, the light curve
+the passing vet read, and the density-prior posterior the run reproduces from it. The template is filled with
+`substitute`, each value read by its key from the record, its runs' provenance and the published runs they name, so a
+value they lack raises instead of rendering (docs/design.md, section 5.5). The PDF needs the optional `preprint`
+dependency group."""
 
 import datetime as dt
 import json
@@ -18,12 +19,15 @@ from html import escape
 from pathlib import Path
 from string import Template
 
+import numpy as np
 import pandas as pd
 
-from tess_hunt import calls, prereg, vetting
+from tess_hunt import calls, prereg, vet, vetting
+from tess_hunt.checks.families import good_timestamps, split
 from tess_hunt.claims import CLAIMS, load_claims
 from tess_hunt.config import runs_dir
 from tess_hunt.ddt import _criteria, _from_triceratops, _number, _ppm
+from tess_hunt.detrend import detrend
 from tess_hunt.dossier import (
     SENTENCES,
     _f,
@@ -32,7 +36,11 @@ from tess_hunt.dossier import (
     _table,
     _words,
 )
+from tess_hunt.ephemeris import Ephemeris, phase_days
+from tess_hunt.fit import NAMES
+from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import publish_run, repo_root, sha256_file, start_run
+from tess_hunt.transit import a_rs_from_density, light_curve
 from tess_hunt.tricera import TWO_MINUTES_S
 
 TEMPLATE = "results/preprints/preprint.template.md"
@@ -69,6 +77,8 @@ CAPTIONS = {
     "at any phase, labelled with its phase and significance",
 }
 PACKAGE = ["preprint.md", "preprint.pdf", "manifest.json", "provenance.json", *FIGURES]
+# The density-prior posterior the run reproduces, in the dataset: Table 1's depth and duration come from its samples.
+POSTERIOR = "posterior-prior.npz"
 CC_BY = "CC BY 4.0"
 GAIA = "CC BY-NC 3.0 IGO"
 # A record's files that hold Gaia DR3 data, as results/README.md lists them, by their path in the record.
@@ -874,13 +884,83 @@ def _upcoming(record: Path) -> str:
     return f" {when} that TESS would observe the star in {prereg._sectors_words(upcoming)}."
 
 
+def _same_fit(made: dict, recorded: dict) -> None:
+    """Refuses unless a reproduced fit's summary is the record's: each parameter's median and its distances to the
+    16th and 84th percentiles, and the acceptance."""
+    pairs = [
+        (f"{name} {part}", made[name][part], recorded[name][part])
+        for name in NAMES
+        for part in ("median", "minus", "plus")
+    ]
+    for what, value, kept in [*pairs, ("acceptance", made["acceptance"], recorded["acceptance"])]:
+        if not math.isclose(value, kept, rel_tol=1e-9):
+            raise SystemExit(
+                f"the reproduced density-prior fit gives {what} {value!r}, not the record's {kept!r}: the paper's "
+                "depth and duration need the record's posterior"
+            )
+
+
+def _depths(samples: np.ndarray, exposure: float) -> np.ndarray:
+    """Each sample's transit depth at mid-transit: the transit model's, with the sample's limb darkening, integrated
+    over `exposure` (days) as the fit integrates its model."""
+    out = np.empty(len(samples))
+    for i, (t0, period, rp_rs, b, log_rho, q1, q2) in enumerate(samples):
+        # Kipping's q1 and q2 as fit_transit turns them into quadratic coefficients.
+        u1, u2 = 2.0 * np.sqrt(q1) * q2, np.sqrt(q1) * (1.0 - 2.0 * q2)
+        a_rs = a_rs_from_density(10.0**log_rho, period)
+        out[i] = 1.0 - light_curve([t0], [exposure], t0, period, rp_rs, a_rs, b, u1, u2)[0]
+    return out
+
+
+def reproduce(record: Path) -> dict[str, np.ndarray] | None:
+    """The record's density-prior fit, reproduced by vet's own fit from the light curve its vetting run read, the
+    criteria that run recorded and their seed, with each sample's depth at mid-transit and full duration; None when the
+    record has no such fit. Refuses unless the reproduction gives the record's summary of the fit."""
+    checks = json.loads((record / "checks.json").read_text())
+    if checks["fit_prior"] is None:
+        return None
+    made = json.loads((record / "provenance-checks.json").read_text())
+    version = checks["criteria_version"]
+    (search,) = {Path(c["file"]).stem for c in made["criteria"]} - {version}
+    crit_search = _criteria(record, "provenance-checks.json", search).values
+    crit_vet = _criteria(record, "provenance-checks.json", version).values
+    eph = Ephemeris(**checks["ephemeris"])
+    lc = LightCurve.load(_light_curve(record)[1])
+    # vet.prepare's light curve, rebuilt from the record: the catalogues its masks came from are no part of it, so the
+    # rows it masked are read back from checks.json. The summary check below holds the rebuild to the fit.
+    good = good_timestamps(lc) if crit_vet["timing"]["exclude_timing_suspect"] else lc
+    flat = detrend(good, crit_search["detrend"], [Ephemeris(**m) for m in checks["masked"]])
+    families = crit_vet["families"]
+    fit_lc = split(flat, families)[families["fit"]]
+    cfg = crit_vet["fit"]
+    prior = vet.density_prior(checks["star"], crit_vet["density"]["default_log_rho_error"])
+    fit = vet.fit_transit(fit_lc, eph, cfg, rho_prior=prior, seed=cfg["seed"])
+    _same_fit(fit.summary(), checks["fit_prior"])
+    # The cadences fit_transit read: its window around each transit.
+    near = np.abs(phase_days(fit_lc.time, eph)) < cfg["window_half_width_durations"] * eph.duration
+    exposures = np.unique(fit_lc.exposure_days()[near])
+    return {
+        "names": np.array(NAMES),
+        "samples": fit.samples,
+        "depth": _depths(fit.samples, exposures[0]),
+        "t14_days": vetting.fit_durations(fit),
+        "exposure_days": exposures[0],
+        "fit_exposures_days": exposures,
+    }
+
+
+def _percentiles(values: np.ndarray) -> dict:
+    p16, median, p84 = np.percentile(values, [16, 50, 84])
+    return {"median": median, "minus": median - p16, "plus": p84 - median}
+
+
 def _parameters(found: dict) -> str:
     """Table 1, with its caption above and its note below (AAS)."""
     rows = [
         ["Period, <i>P</i> (d)", found["period_pm"]],
         ["Mid-transit time, <i>T</i><sub>0</sub> (BTJD)", found["t0_pm"]],
-        ["Duration (h)", found["duration_h"]],
-        ["Depth (ppm)", found["depth_ppm"]],
+        ["Total duration, <i>T</i><sub>14</sub> (h)", found["duration_pm"]],
+        ["Depth at mid-transit (ppm)", found["depth_pm"]],
         ["Planet-to-star radius ratio, <i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub>", found["rp_rs"]],
         ["Radius, <i>R</i><sub>p</sub> (R⊕)", found["rp_pm"]],
         ["Impact parameter, <i>b</i>", found["b"]],
@@ -889,38 +969,44 @@ def _parameters(found: dict) -> str:
     return (
         f"**Table 1.** Transit parameters of TIC {found['tic']} from the density-prior fit\n\n"
         + _table(["Parameter", "Value"], rows)
-        + "\n\n*Note.* The <i>P</i> and <i>T</i><sub>0</sub> uncertainties are posterior standard deviations. For "
-        "<i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub>, <i>b</i> and <i>a</i>/<i>R</i><sub>⋆</sub>, the value is the "
-        "posterior median with its differences from the 16th and 84th percentiles. <i>R</i><sub>p</sub> is the median "
-        "with its 16th and 84th percentiles from <i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub> and the TIC radius alone "
-        "(Section 3). The depth is the BLS box depth, and the duration comes from the density-prior fit's medians. The "
-        f"record carries no uncertainty for either. BTJD = BJD<sub>TDB</sub> {MINUS} 2457000."
+        + "\n\n*Note.* The <i>P</i> and <i>T</i><sub>0</sub> uncertainties are posterior standard deviations. For the "
+        "other parameters, the value is the posterior median with its differences from the 16th and 84th percentiles. "
+        "<i>T</i><sub>14</sub> runs from first to fourth contact. The depth is the transit model's at mid-transit, "
+        f"integrated over {found['exposure']}. Both come from the density-prior fit's posterior, which this paper's "
+        "run reproduced from the record's light curve, criteria and seed and checked against the record's summary of "
+        "the fit. <i>R</i><sub>p</sub> is the median with its 16th and 84th percentiles from "
+        "<i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub> and the TIC radius alone (Section 3). BTJD = BJD<sub>TDB</sub> "
+        f"{MINUS} 2457000."
     )
 
 
-def _star(checks: dict, made: dict) -> dict:
-    star, eph, prior = checks["star"], checks["ephemeris"], checks["fit_prior"]
+def _star(checks: dict, posterior: dict | None) -> dict:
+    star, prior = checks["star"], checks["fit_prior"]
     found = {
         "tic": str(checks["tic"]),
         "tmag": _number(star["tmag"], ".2f"),
         "teff": _number(star["teff"], ".0f"),
         "radius_sun": _number(star["rad"], ".2f"),
-        "depth_ppm": _ppm(eph["depth"]),
     }
     if prior is None:
         return found
     fit, rp = prior["ephemeris"], prior["rp_rearth"]
-    duration = checks["window_duration"]
+    seconds = f"{posterior['exposure_days'] * 86400:.0f} s"
     found |= {
         "period_pm": f"{fit['period']['median']:.6f} ± {fit['period']['sd']:.6f}",
         "period_short": _number(fit["period"]["median"], ".1f"),
         "t0_pm": f"{fit['t0']['median']:.4f} ± {fit['t0']['sd']:.4f}",
+        "duration_pm": _spread(_percentiles(posterior["t14_days"] * 24), ".2f"),
+        "depth_pm": _spread(_percentiles(posterior["depth"] * 1e6), ".0f"),
+        # The depth a cadence records shrinks with its exposure, so a fit to several gives the shortest's.
+        "exposure": f"the fit's exposure of {seconds}"
+        if len(posterior["fit_exposures_days"]) == 1
+        else f"an exposure of {seconds}, the shortest in the fit",
         "rp_rs": _spread(prior["rp_rs"], ".4f"),
         "b": _spread(prior["b"], ".2f"),
         "a_rs": _spread(prior["a_rs"], ".2f"),
     }
-    # The radius needs the TIC's stellar radius, and the duration is the density-prior fit's only when the record
-    # says so; a paper without either leaves its placeholders unfilled.
+    # The radius needs the TIC's stellar radius; a paper without it leaves its placeholders unfilled.
     if rp is not None:
         found["rp_pm"] = _spread(
             {
@@ -930,9 +1016,6 @@ def _star(checks: dict, made: dict) -> dict:
             },
             ".2f",
         )
-    if duration["from"] == "fit_prior":
-        found["duration_h"] = _number(duration["days"] * 24, ".2f")
-    if all(found.get(key) is not None for key in ("rp_pm", "duration_h", "depth_ppm")):
         found["parameters"] = _parameters(found)
     return found
 
@@ -2012,6 +2095,7 @@ def _data(record: Path, checks: dict, made: dict) -> dict:
     return {
         "commit": made["git"]["commit"],
         "light_curve": f"lc/{int(checks['tic'])}.npz",
+        "posterior_file": POSTERIOR,
         "products": products,
         "references": _references(cited),
         "facilities": "TESS, Gaia" if gaia else "TESS",
@@ -2102,20 +2186,25 @@ def _author(author: dict, version: dt.date) -> dict:
 
 
 def values(
-    record: Path, author: dict, repo: Path, version: dt.date | None = None
+    record: Path,
+    author: dict,
+    repo: Path,
+    version: dt.date | None = None,
+    posterior: dict | None = None,
 ) -> dict[str, str]:
     """Every placeholder of the template, read by key from the record, its runs' provenance, the published runs they
-    name, results/claims.toml, results/predictions/dois.toml, benchmarks/tess_sectors.csv and `author`, formatted as the
-    dossier formats them, with `version` as the paper's date (today by default). A value they don't hold is left out,
-    so its placeholder raises."""
+    name, results/claims.toml, results/predictions/dois.toml, benchmarks/tess_sectors.csv, `author` and the record's
+    reproduced `posterior` (reproduced here when not given), formatted as the dossier formats them, with `version` as
+    the paper's date (today by default). A value they don't hold is left out, so its placeholder raises."""
     version = version or dt.datetime.now(dt.UTC).date()
+    posterior = posterior or reproduce(record)
     checks = json.loads((record / "checks.json").read_text())
     made = json.loads((record / "provenance-checks.json").read_text())
     call = calls.load(record / "call.toml")
     literature = json.loads((record / "literature.json").read_text())
     found = _found(repo, checks, made)
     out = (
-        _star(checks, made)
+        _star(checks, posterior)
         | _vetting(record, checks, call, literature)
         | _from_triceratops(record, checks["criteria_version"])
         | _review(record, calls.load_review(record / "review.json"), call, literature)
@@ -2134,11 +2223,18 @@ def values(
 
 
 def render(
-    record: Path, author: dict, repo: Path, specimen: bool = False, version: dt.date | None = None
+    record: Path,
+    author: dict,
+    repo: Path,
+    specimen: bool = False,
+    version: dt.date | None = None,
+    posterior: dict | None = None,
 ) -> str:
     """The paper in Markdown, dated `version` (the day it is rendered by default, the day its run starts). A
     specimen opens with a line saying it is one."""
-    text = Template((repo / TEMPLATE).read_text()).substitute(values(record, author, repo, version))
+    text = Template((repo / TEMPLATE).read_text()).substitute(
+        values(record, author, repo, version, posterior)
+    )
     if specimen:
         return f"**{SPECIMEN}.** Rendered from a made-up record to review this template; it is never deposited.\n\n{text}"
     return text
@@ -2196,7 +2292,8 @@ def cmd_run(args) -> int:
             "results/ has changes that are not committed; a production run needs them committed"
         )
     author = load_author(repo / AUTHOR)
-    text = render(record, author, repo)
+    posterior = reproduce(record)
+    text = render(record, author, repo, posterior=posterior)
     files = dataset(record)
     run = start_run("preprint", [], args.production, sys.argv)
     run.record("signal", args.name)
@@ -2214,6 +2311,7 @@ def cmd_run(args) -> int:
         target = run.path / "dataset" / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
+    np.savez_compressed(run.path / "dataset" / POSTERIOR, **posterior)
     to_pdf(text, run.path, run.path / "preprint.pdf", specimen=False)
     manifest = [
         {
@@ -2221,7 +2319,7 @@ def cmd_run(args) -> int:
             "sha256": sha256_file(run.path / "dataset" / name),
             **licence(name),
         }
-        for name in files
+        for name in [*files, POSTERIOR]
     ]
     run.write_json("manifest.json", {"signal": args.name, "files": manifest})
     run.finish(

@@ -97,9 +97,9 @@ def _known(value) -> bool:
     return value is not None and not pd.isna(value)
 
 
-def fit_duration(fit: FitResult) -> float:
-    """The posterior median of the full transit duration, first to fourth contact, for a circular
-    orbit (Winn 2010, eq. 14)."""
+def fit_durations(fit: FitResult) -> np.ndarray:
+    """Each posterior sample's full transit duration, first to fourth contact, for a circular orbit
+    (Winn 2010, eq. 14)."""
     period, rp_rs, b = fit.column("period"), fit.column("rp_rs"), fit.column("b")
     a_rs = np.array(
         [
@@ -109,8 +109,12 @@ def fit_duration(fit: FitResult) -> float:
     )
     sin_i = np.sqrt(1.0 - (b / a_rs) ** 2)
     chord = np.sqrt(np.clip((1.0 + rp_rs) ** 2 - b**2, 0.0, None))
-    t14 = period / np.pi * np.arcsin(np.clip(chord / (a_rs * sin_i), 0.0, 1.0))
-    return float(np.median(t14))
+    return period / np.pi * np.arcsin(np.clip(chord / (a_rs * sin_i), 0.0, 1.0))
+
+
+def fit_duration(fit: FitResult) -> float:
+    """The posterior median of the full transit duration."""
+    return float(np.median(fit_durations(fit)))
 
 
 def _neighbours(star: dict, depth: float, cfg: dict) -> tuple[dict, pd.DataFrame | None]:
