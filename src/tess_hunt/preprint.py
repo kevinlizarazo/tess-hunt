@@ -7,12 +7,14 @@ section 5.5). The PDF needs the optional `preprint` dependency group."""
 
 import datetime as dt
 import json
+import math
 import re
 import shutil
 import subprocess
 import sys
 import tomllib
 from collections import Counter
+from html import escape
 from pathlib import Path
 from string import Template
 
@@ -27,7 +29,6 @@ from tess_hunt.dossier import (
     _f,
     _paper_id,
     _scrub,
-    _summary,
     _table,
     _words,
 )
@@ -47,21 +48,24 @@ EXOFOP_STAR = "https://exofop.ipac.caltech.edu/tess/target.php?id={}"
 # The record's plots the paper shows. Its centroid plots draw Gaia DR3 stars, so they stay in the dataset under Gaia's
 # terms and the paper is CC BY 4.0 whole.
 FIGURES = ("transits.png", "folds.png", "odd_even.png", "phase.png")
-# The paper's own captions for them, as plots.py draws them: the dossier's assume a reader inside the project.
+# The paper's own captions for them, as plots.py draws them: the dossier's assume a reader inside the project. Each
+# opens with a phrase and no article (AAS).
 CAPTIONS = {
-    "transits.png": "Every predicted transit in the light curve, one panel each. Panel titles give the epoch (counted "
-    "from t0) and the sector. Flux in ppm against hours from the predicted mid-transit time. Grey points are cadences, "
-    "and blue points are their medians in bins an eighth of the transit's duration wide. The shaded band spans the "
-    "duration. A panel with few points falls at the edge of a gap in the data",
-    "folds.png": "The light curve folded on the ephemeris, one panel per season and light-curve product family. Panel "
-    "titles give the family (`pdcsap` for SPOC's and TESS-SPOC's PDCSAP flux, `qlp` for QLP's), the season (counted "
-    "from 0) and its sectors. Points and band are as in Figure 1",
+    "transits.png": "Each predicted transit in the light curve, one panel per transit, as relative flux against time "
+    "from the predicted mid-transit time. Panel titles give the epoch (counted from T<sub>0</sub>) and the sector. "
+    "Grey points are individual cadences, and blue points are medians in bins one-eighth of the transit duration wide. "
+    "The shaded band spans the transit duration. Panels with few points lie at the edge of a data gap",
+    "folds.png": "Light curve folded on the ephemeris, one panel per season and light-curve family. Panel titles give "
+    "the family (`pdcsap` for PDCSAP flux from SPOC or TESS-SPOC, `qlp` for QLP flux), the season (counted from 0) and "
+    "its sectors. Points and band are as in Figure 1",
     "odd_even.png": "Odd-numbered (left) and even-numbered (right) transits, folded separately. Points and band are "
-    "as in Figure 1. The red line is the median flux in each one's core, the central half of the transit",
-    "phase.png": "Flux against orbital phase over the whole orbit, with the transit at phase 0. Grey points are "
-    "cadences, and blue points are their medians in bins half the transit's duration wide. The dashed line marks phase "
-    "0.5, where a circular orbit puts a secondary eclipse. The red line marks the strongest secondary eclipse ModShift "
-    "finds at any phase, labelled with its phase and significance",
+    "as in Figure 1. The red line marks the median flux in the transit core (the central half of the transit), taken "
+    "separately for the odd and the even transits",
+    "phase.png": "Relative flux vs. orbital phase over the whole orbit, with the transit at phase 0 and phases from "
+    "−0.25 to 0.75. Grey points are individual cadences, and blue points are medians in bins half the transit "
+    "duration wide. The dashed line marks phase 0.5, where a secondary eclipse falls if the orbit is circular. The red "
+    "line marks the most significant secondary event ModShift finds at any phase, labelled with its phase and "
+    "significance",
 }
 PACKAGE = ["preprint.md", "preprint.pdf", "manifest.json", "provenance.json", *FIGURES]
 CC_BY = "CC BY 4.0"
@@ -100,14 +104,31 @@ CHECKS = {
 }
 # The question each of the review's lenses concerns: the dossier's short labels read as verdicts beside a finding.
 QUESTIONS = {
-    "on_star": "whether the dip is on the star",
-    "planet": "whether it is a planet",
-    "real_new": "whether it is real and new",
+    "on_star": "whether the signal is on the star",
+    "planet": "whether the signal is a planet",
+    "real_new": "whether the signal is real and new",
 }
 IS = {"pass": "passes", "fail": "fails", "inconclusive": "is inconclusive"}
 WAS = {"pass": "passed", "fail": "failed", "inconclusive": "was inconclusive"}
 # Counts from one to nine are spelled out in the paper's prose; measured values stay numerals.
 SPELLED = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+MONTHS = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
+MINUS = "−"
+# What we did with a signal at an earlier record, by its call's outcome.
+CALLED = {"passed": "passed", "held": "held", "killed": "killed"}
 ORDINALS = {
     2: "second",
     3: "third",
@@ -132,17 +153,350 @@ UNTESTED = {
     "underpowered": "the depth expected there is too small against its error",
     "no_predicted_transit_in_data": "too few cadences fall in the predicted cores",
 }
-# The Summary's word on a preregistered result, after the sentence on the deposit.
+# The Abstract's word on a preregistered result, after the sentence on the deposit, and the Conclusions'.
 SUMMARY_RESULT = {
-    "replicated": " The transits appeared where predicted.",
-    "missed": " The transits were missing where predicted.",
+    "replicated": " The transits appeared at the predicted times.",
+    "missed": " The transits were absent at the predicted times.",
     "pending": " The preregistered test of that prediction is not yet judged.",
     "untested": " The new data could not test that prediction.",
 }
+CONCLUSION_RESULT = {
+    "replicated": " Its transits recurred at the times we preregistered.",
+    "missed": " Its transits were absent at the times we preregistered.",
+    "pending": " The preregistered test of its transits in later sectors is not yet judged.",
+    "untested": " The later sectors could not test our preregistered prediction.",
+}
+# The products' names in prose, where they differ from prereg.PRODUCTS.
+PRODUCT_NAMES = {"SPOC 2-min": "SPOC 2-minute"}
 PDCSAP = ("SPOC 2-min", "TESS-SPOC")
-PDCSAP_PAPERS = (
-    "\n- PDCSAP flux: Smith, J. C., et al. 2012, PASP, 124, 1000; Stumpe, M. C., et al. 2012, PASP, 124, 985; "
-    "Stumpe, M. C., et al. 2014, PASP, 126, 100"
+# Every work the paper cites, by key: the citation it takes in the text and its entry in AAS form, each checked in NASA
+# ADS (the MAST and ExoFOP data DOIs, which ADS does not index, in DataCite) on 2026-11-05. The references list holds
+# the ones a record's paper cites, sorted as AAS sorts them.
+REFERENCES = {
+    "acton1996": (
+        "Acton 1996",
+        "Acton, C. H. 1996, P&SS, 44, 65, doi: 10.1016/0032-0633(95)00107-7",
+    ),
+    "acton2018": (
+        "Acton et al. 2018",
+        "Acton, C., Bachman, N., Semenov, B., & Wright, E. 2018, P&SS, 150, 9, doi: 10.1016/j.pss.2017.02.013",
+    ),
+    "annex2020": (
+        "Annex et al. 2020",
+        "Annex, A., Pearson, B., Seignovert, B., et al. 2020, JOSS, 5, 2050, doi: 10.21105/joss.02050",
+    ),
+    "astropy2013": (
+        "Astropy Collaboration et al. 2013",
+        "Astropy Collaboration, Robitaille, T. P., Tollerud, E. J., et al. 2013, A&A, 558, A33, doi: "
+        "10.1051/0004-6361/201322068",
+    ),
+    "astropy2018": (
+        "Astropy Collaboration et al. 2018",
+        "Astropy Collaboration, Price-Whelan, A. M., Sipőcz, B. M., et al. 2018, AJ, 156, 123, doi: "
+        "10.3847/1538-3881/aabc4f",
+    ),
+    "astropy2022": (
+        "Astropy Collaboration et al. 2022",
+        "Astropy Collaboration, Price-Whelan, A. M., Lim, P. L., et al. 2022, ApJ, 935, 167, doi: "
+        "10.3847/1538-4357/ac7c74",
+    ),
+    "boch2012": ("Boch et al. 2012", "Boch, T., Pineau, F., & Derriere, S. 2012, ASPC, 461, 291"),
+    "brasseur2019": (
+        "Brasseur et al. 2019",
+        "Brasseur, C. E., Phillip, C., Fleming, S. W., Mullally, S. E., & White, R. L. 2019, Astrocut: Tools for "
+        "creating cutouts of TESS images, Astrophysics Source Code Library, record ascl:1905.007",
+    ),
+    "bryson2013": (
+        "Bryson et al. 2013",
+        "Bryson, S. T., Jenkins, J. M., Gilliland, R. L., et al. 2013, PASP, 125, 889, doi: 10.1086/671767",
+    ),
+    "burke2020": (
+        "Burke et al. 2020",
+        "Burke, C. J., Levine, A., Fausnaugh, M., et al. 2020, TESS-Point: High precision TESS pointing tool, "
+        "Astrophysics Source Code Library, record ascl:2003.001",
+    ),
+    "caldwell2020a": (
+        "Caldwell et al. 2020a",
+        "Caldwell, D. A., Tenenbaum, P., Twicken, J. D., et al. 2020a, RNAAS, 4, 201, doi: 10.3847/2515-5172/abc9b3",
+    ),
+    "caldwell2020b": (
+        "Caldwell et al. 2020b",
+        'Caldwell, D. A., Jenkins, J. M., & Ting, E. B. 2020b, TESS Light Curves From Full Frame Images ("TESS-SPOC"), '
+        "STScI/MAST, doi: 10.17909/t9-wpz1-8s54",
+    ),
+    "christiansen2025": (
+        "Christiansen et al. 2025",
+        "Christiansen, J. L., McElroy, D. L., Harbut, M., et al. 2025, PSJ, 6, 186, doi: 10.3847/PSJ/ade3c2",
+    ),
+    "coughlin2016": (
+        "Coughlin et al. 2016",
+        "Coughlin, J. L., Mullally, F., Thompson, S. E., et al. 2016, ApJS, 224, 12, doi: 10.3847/0067-0049/224/1/12",
+    ),
+    "creevey2023": (
+        "Creevey et al. 2023",
+        "Creevey, O. L., Sordo, R., Pailler, F., et al. 2023, A&A, 674, A26, doi: 10.1051/0004-6361/202243688",
+    ),
+    "foremanmackey2013": (
+        "Foreman-Mackey et al. 2013",
+        "Foreman-Mackey, D., Hogg, D. W., Lang, D., & Goodman, J. 2013, PASP, 125, 306, doi: 10.1086/670067",
+    ),
+    "gaia2016": (
+        "Gaia Collaboration et al. 2016",
+        "Gaia Collaboration, Prusti, T., de Bruijne, J. H. J., et al. 2016, A&A, 595, A1, doi: "
+        "10.1051/0004-6361/201629272",
+    ),
+    "gaia2023": (
+        "Gaia Collaboration et al. 2023",
+        "Gaia Collaboration, Vallenari, A., Brown, A. G. A., et al. 2023, A&A, 674, A1, doi: "
+        "10.1051/0004-6361/202243940",
+    ),
+    "giacalone2020": (
+        "Giacalone & Dressing 2020",
+        "Giacalone, S., & Dressing, C. D. 2020, triceratops: Candidate exoplanet rating tool, Astrophysics Source Code "
+        "Library, record ascl:2002.004",
+    ),
+    "giacalone2021": (
+        "Giacalone et al. 2021",
+        "Giacalone, S., Dressing, C. D., Jensen, E. L. N., et al. 2021, AJ, 161, 24, doi: 10.3847/1538-3881/abc6af",
+    ),
+    "ginsburg2019": (
+        "Ginsburg et al. 2019",
+        "Ginsburg, A., Sipőcz, B. M., Brasseur, C. E., et al. 2019, AJ, 157, 98, doi: 10.3847/1538-3881/aafc33",
+    ),
+    "guerrero2021": (
+        "Guerrero et al. 2021",
+        "Guerrero, N. M., Seager, S., Huang, C. X., et al. 2021, ApJS, 254, 39, doi: 10.3847/1538-4365/abefe1",
+    ),
+    "hippke2019a": (
+        "Hippke & Heller 2019",
+        "Hippke, M., & Heller, R. 2019, A&A, 623, A39, doi: 10.1051/0004-6361/201834672",
+    ),
+    "hippke2019b": (
+        "Hippke et al. 2019",
+        "Hippke, M., David, T. J., Mulders, G. D., & Heller, R. 2019, AJ, 158, 143, doi: 10.3847/1538-3881/ab3984",
+    ),
+    "huang2020": (
+        "Huang 2020",
+        'Huang, C. X. 2020, TESS Lightcurves From The MIT Quick-Look Pipeline ("QLP"), STScI/MAST, doi: '
+        "10.17909/t9-r086-e880",
+    ),
+    "huang2020a": (
+        "Huang et al. 2020a",
+        "Huang, C. X., Vanderburg, A., Pál, A., et al. 2020a, RNAAS, 4, 204, doi: 10.3847/2515-5172/abca2e",
+    ),
+    "huang2020b": (
+        "Huang et al. 2020b",
+        "Huang, C. X., Vanderburg, A., Pál, A., et al. 2020b, RNAAS, 4, 206, doi: 10.3847/2515-5172/abca2d",
+    ),
+    "hunter2007": ("Hunter 2007", "Hunter, J. D. 2007, CSE, 9, 90, doi: 10.1109/MCSE.2007.55"),
+    "jenkins2016": (
+        "Jenkins et al. 2016",
+        "Jenkins, J. M., Twicken, J. D., McCauliff, S., et al. 2016, Proc. SPIE, 9913, 99133E, doi: 10.1117/12.2233418",
+    ),
+    "justesen2021": (
+        "Justesen & Albrecht 2021",
+        "Justesen, A. B., & Albrecht, S. 2021, ApJ, 912, 123, doi: 10.3847/1538-4357/abefcd",
+    ),
+    "kipping2013": (
+        "Kipping 2013",
+        "Kipping, D. M. 2013, MNRAS, 435, 2152, doi: 10.1093/mnras/stt1435",
+    ),
+    "kostov2025": (
+        "Kostov et al. 2025",
+        "Kostov, V. B., Powell, B. P., Fornear, A. U., et al. 2025, ApJS, 279, 50, doi: 10.3847/1538-4365/ade2d8",
+    ),
+    "kovacs2002": (
+        "Kovács et al. 2002",
+        "Kovács, G., Zucker, S., & Mazeh, T. 2002, A&A, 391, 369, doi: 10.1051/0004-6361:20020802",
+    ),
+    "kreidberg2015": ("Kreidberg 2015", "Kreidberg, L. 2015, PASP, 127, 1161, doi: 10.1086/683602"),
+    "kunimoto2021": (
+        "Kunimoto et al. 2021",
+        "Kunimoto, M., Huang, C., Tey, E., et al. 2021, RNAAS, 5, 234, doi: 10.3847/2515-5172/ac2ef0",
+    ),
+    "kunimoto2022": (
+        "Kunimoto et al. 2022",
+        "Kunimoto, M., Tey, E., Fong, W., et al. 2022, RNAAS, 6, 236, doi: 10.3847/2515-5172/aca158",
+    ),
+    "kunimoto2025": (
+        "Kunimoto et al. 2025",
+        "Kunimoto, M., Bryson, S., Jaffee, D., et al. 2025, AJ, 170, 280, doi: 10.3847/1538-3881/ae070a",
+    ),
+    "lightkurve2018": (
+        "Lightkurve Collaboration et al. 2018",
+        "Lightkurve Collaboration, Cardoso, J. V. d. M., Hedges, C., et al. 2018, Lightkurve: Kepler and TESS time "
+        "series analysis in Python, Astrophysics Source Code Library, record ascl:1812.013",
+    ),
+    "lindegren2021": (
+        "Lindegren et al. 2021",
+        "Lindegren, L., Klioner, S. A., Hernández, J., et al. 2021, A&A, 649, A2, doi: 10.1051/0004-6361/202039709",
+    ),
+    "martinho2025a": (
+        "Martinho & Valizadegan 2025a",
+        "Martinho, M., & Valizadegan, H. 2025a, ExoMiner++: Enhanced Transit Classification and a New Vetting Catalog "
+        "for 2-Minute TESS Data, Zenodo, doi: 10.5281/zenodo.15466293",
+    ),
+    "martinho2025b": (
+        "Martinho & Valizadegan 2025b",
+        "Martinho, M., & Valizadegan, H. 2025b, ExoMiner++ 2.0: Vetting TESS Full-Frame Image Transit Signals, Zenodo, "
+        "doi: 10.5281/zenodo.17707413",
+    ),
+    "mowlavi2023": (
+        "Mowlavi et al. 2023",
+        "Mowlavi, N., Holl, B., Lecoeur-Taïbi, I., et al. 2023, A&A, 674, A16, doi: 10.1051/0004-6361/202245330",
+    ),
+    "nexsci2022": (
+        "NExScI 2022",
+        "NExScI 2022, Exoplanet Follow-up Observing Program Web Service, IPAC, doi: 10.26134/ExoFOP5",
+    ),
+    "ochsenbein2000": (
+        "Ochsenbein et al. 2000",
+        "Ochsenbein, F., Bauer, P., & Marcout, J. 2000, A&AS, 143, 23, doi: 10.1051/aas:2000169",
+    ),
+    "paegert2021": (
+        "Paegert et al. 2021",
+        "Paegert, M., Stassun, K. G., Collins, K. A., et al. 2021, arXiv e-prints, arXiv:2108.04778, doi: "
+        "10.48550/arXiv.2108.04778",
+    ),
+    "parviainen2015": (
+        "Parviainen 2015",
+        "Parviainen, H. 2015, MNRAS, 450, 3233, doi: 10.1093/mnras/stv894",
+    ),
+    "pineau2020": (
+        "Pineau et al. 2020",
+        "Pineau, F.-X., Boch, T., Derrière, S., & Schaaff, A. 2020, ASPC, 522, 125",
+    ),
+    "pont2006": (
+        "Pont et al. 2006",
+        "Pont, F., Zucker, S., & Queloz, D. 2006, MNRAS, 373, 231, doi: 10.1111/j.1365-2966.2006.11012.x",
+    ),
+    "priem2022": (
+        "Priem et al. 2022",
+        "Priem, J., Piwowar, H., & Orr, R. 2022, arXiv e-prints, arXiv:2205.01833, doi: 10.48550/arXiv.2205.01833",
+    ),
+    "prsa2022a": (
+        "Prša et al. 2022a",
+        "Prša, A., Kochoska, A., Conroy, K. E., et al. 2022a, ApJS, 258, 16, doi: 10.3847/1538-4365/ac324a",
+    ),
+    "prsa2022b": (
+        "Prša et al. 2022b",
+        'Prša, A., Kochoska, A., Conroy, K., et al. 2022b, TESS Eclipsing Binaries ("TESS-EBs"), STScI/MAST, doi: '
+        "10.17909/t9-9gm4-fx30",
+    ),
+    "ricker2015": (
+        "Ricker et al. 2015",
+        "Ricker, G. R., Winn, J. N., Vanderspek, R., et al. 2015, JATIS, 1, 014003, doi: 10.1117/1.JATIS.1.1.014003",
+    ),
+    "riello2021": (
+        "Riello et al. 2021",
+        "Riello, M., De Angeli, F., Evans, D. W., et al. 2021, A&A, 649, A3, doi: 10.1051/0004-6361/202039587",
+    ),
+    "rowe2015": (
+        "Rowe et al. 2015",
+        "Rowe, J. F., Coughlin, J. L., Antoci, V., et al. 2015, ApJS, 217, 16, doi: 10.1088/0067-0049/217/1/16",
+    ),
+    "smith2012": (
+        "Smith et al. 2012",
+        "Smith, J. C., Stumpe, M. C., Van Cleve, J. E., et al. 2012, PASP, 124, 1000, doi: 10.1086/667697",
+    ),
+    "stassun2019": (
+        "Stassun et al. 2019",
+        "Stassun, K. G., Oelkers, R. J., Paegert, M., et al. 2019, AJ, 158, 138, doi: 10.3847/1538-3881/ab3467",
+    ),
+    "stumpe2012": (
+        "Stumpe et al. 2012",
+        "Stumpe, M. C., Smith, J. C., Van Cleve, J. E., et al. 2012, PASP, 124, 985, doi: 10.1086/667698",
+    ),
+    "stumpe2014": (
+        "Stumpe et al. 2014",
+        "Stumpe, M. C., Smith, J. C., Catanzarite, J. H., et al. 2014, PASP, 126, 100, doi: 10.1086/674989",
+    ),
+    "tessteam2018": (
+        "TESS Team 2018",
+        "TESS Team 2018, TESS Input Catalog and Candidate Target List, STScI/MAST, doi: 10.17909/fwdt-2x66",
+    ),
+    "tessteam2021": (
+        "TESS Team 2021",
+        "TESS Team 2021, TESS Light Curves - All Sectors, STScI/MAST, doi: 10.17909/t9-nmc8-f686",
+    ),
+    "watson2006": (
+        "Watson et al. 2006",
+        "Watson, C. L., Henden, A. A., & Price, A. 2006, SASS, 25, 47",
+    ),
+    "wenger2000": (
+        "Wenger et al. 2000",
+        "Wenger, M., Ochsenbein, F., Egret, D., et al. 2000, A&AS, 143, 9, doi: 10.1051/aas:2000332",
+    ),
+}
+# The works every paper cites in its fixed text and its Software line.
+CITED = (
+    "acton1996",
+    "acton2018",
+    "annex2020",
+    "astropy2013",
+    "astropy2018",
+    "astropy2022",
+    "boch2012",
+    "brasseur2019",
+    "bryson2013",
+    "burke2020",
+    "christiansen2025",
+    "coughlin2016",
+    "creevey2023",
+    "foremanmackey2013",
+    "gaia2016",
+    "gaia2023",
+    "giacalone2020",
+    "giacalone2021",
+    "ginsburg2019",
+    "guerrero2021",
+    "hippke2019a",
+    "hippke2019b",
+    "hunter2007",
+    "justesen2021",
+    "kipping2013",
+    "kostov2025",
+    "kovacs2002",
+    "kreidberg2015",
+    "kunimoto2025",
+    "lightkurve2018",
+    "lindegren2021",
+    "martinho2025a",
+    "martinho2025b",
+    "mowlavi2023",
+    "nexsci2022",
+    "ochsenbein2000",
+    "paegert2021",
+    "parviainen2015",
+    "pineau2020",
+    "pont2006",
+    "priem2022",
+    "prsa2022a",
+    "prsa2022b",
+    "ricker2015",
+    "riello2021",
+    "rowe2015",
+    "stassun2019",
+    "tessteam2018",
+    "watson2006",
+    "wenger2000",
+)
+# Each light-curve product's papers and data DOI entry, cited where the paper names the product; PDCSAP's papers
+# with the products whose flux is PDCSAP.
+PRODUCT_REFERENCES = {
+    "SPOC 2-min": ("jenkins2016", "tessteam2021"),
+    "TESS-SPOC": ("caldwell2020a", "caldwell2020b"),
+    "QLP": ("huang2020a", "huang2020b", "kunimoto2021", "kunimoto2022", "huang2020"),
+}
+PDCSAP_REFERENCES = ("smith2012", "stumpe2012", "stumpe2014")
+SOFTWARE = (
+    "Astrocut (Brasseur et al. 2019), astropy (Astropy Collaboration et al. 2013, 2018, 2022), astroquery (Ginsburg "
+    "et al. 2019), batman (Kreidberg 2015), emcee (Foreman-Mackey et al. 2013), LEO-Vetter (Kunimoto et al. 2025), "
+    "lightkurve (Lightkurve Collaboration et al. 2018), matplotlib (Hunter 2007), PyTransit (Parviainen 2015), SPICE "
+    "(Acton 1996; Acton et al. 2018), SpiceyPy (Annex et al. 2020), tess-point (Burke et al. 2020), "
+    'transit-diffImage<span class="footnote">https://github.com/stevepur/transit-diffImage, commit 2b13199</span>, '
+    "transitleastsquares (Hippke & Heller 2019), TRICERATOPS (Giacalone & Dressing 2020; Giacalone et al. 2021) and "
+    "wotan (Hippke et al. 2019)"
 )
 # What each of a record's files holds, for the dataset's guide, in the order the paper lists them. A pattern ending in
 # "/" is a directory; one with "*" matches file names.
@@ -154,7 +508,7 @@ GUIDE = (
     ),
     (
         "neighbours.csv",
-        "the Gaia DR3 stars near the target, with the eclipse depth each would need to make the dip",
+        "the Gaia DR3 stars near the target, with the eclipse depth each would need to produce the transit",
     ),
     (
         "checks-with-suspect.json",
@@ -162,7 +516,7 @@ GUIDE = (
     ),
     (
         "triceratops.json",
-        "TRICERATOPS's runs: its probabilities, the stars it weighed and the depth it gave each",
+        "TRICERATOPS's runs: its probabilities, the stars it modelled and the transit depth it assigned each",
     ),
     ("probs.csv", "TRICERATOPS's probability for each scenario"),
     ("pixels.json", "the second list's pixel check"),
@@ -172,10 +526,10 @@ GUIDE = (
     ),
     (
         "claims.json",
-        "the claim, the listings decision record 0042 sorted and the novelty check run again",
+        "the claim, the listings sorted under DR 0042, and the rerun novelty check",
     ),
     ("prereg.json", "the preregistered test's result"),
-    ("merge.json", "what a re-vet's light curve changed"),
+    ("merge.json", "what a new vetting's light curve changed"),
     ("review.json", "the review: each finding with its rating and its refuters' verdicts"),
     ("review-notes.toml", "the dated notes on the review's quoted text"),
     ("review-scripts.tar.gz", "the scripts the review ran"),
@@ -184,21 +538,16 @@ GUIDE = (
         "provenance-*.json",
         "one run's commit, criteria and command, for the files that run wrote",
     ),
-    ("plots/", "the record's figures, the centroid plot among them"),
+    ("plots/", "the record's figures, including the centroid plot"),
     ("pixels.png", "the second list's centroid plot"),
     ("dossier.md", "tess-hunt's account of the record, in prose"),
 )
-# ACKNOWLEDGEMENTS.md's Gaia acknowledgement and the Gaia DR3 papers it asks for.
+# ACKNOWLEDGEMENTS.md's Gaia acknowledgement. The Gaia DR3 papers it asks for are in REFERENCES.
 GAIA_CREDIT = (
     " This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), "
     "processed by the Gaia Data Processing and Analysis Consortium (DPAC, "
     "https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national "
     "institutions, in particular the institutions participating in the Gaia Multilateral Agreement."
-)
-GAIA_PAPERS = (
-    "\n- Gaia: Gaia Collaboration, Prusti, T., et al. 2016, A&A, 595, A1; Gaia Collaboration, Vallenari, A., et al. "
-    "2023 (doi:10.1051/0004-6361/202243940); Lindegren, L., Klioner, S., Hernández, J., et al. 2021, A&A, 649, A2; "
-    "Riello, M., et al. 2021, A&A, 649, A3; Mowlavi et al. 2023, A&A, 674, A16; Creevey et al., arXiv:2206.05864"
 )
 STYLE = """
 @page { size: A4; margin: 2cm; @bottom-right { content: counter(page); font-size: 9pt; } }
@@ -383,11 +732,56 @@ def licence(path: str) -> dict[str, str]:
 
 
 def _spell(n: int) -> str:
-    return SPELLED[n] if 0 <= n < len(SPELLED) else str(n)
+    """A count in words up to nine, and a numeral above, with a thousands separator from five digits (AAS)."""
+    if 0 <= n < len(SPELLED):
+        return SPELLED[n]
+    return f"{n:,}" if n >= 10000 else str(n)
 
 
 def _count(n: int, word: str) -> str:
     return f"{_spell(n)} {word}" + ("" if n == 1 else "s")
+
+
+def _date(value) -> str:
+    """A date in the paper's prose as AAS journals print it, 2027 January 20; run ids keep their own form."""
+    day = dt.date.fromisoformat(str(value)[:10])
+    return f"{day.year} {MONTHS[day.month - 1]} {day.day}"
+
+
+def _signed(text: str) -> str:
+    return text.replace("-", MINUS)
+
+
+def _spread(value: dict, fmt: str) -> str:
+    """A median with its distances to the 16th and 84th percentiles: one ± when they agree at the printed precision,
+    otherwise a superscript and a subscript."""
+    median = _signed(f"{value['median']:{fmt}}")
+    plus, minus = f"{value['plus']:{fmt}}", f"{value['minus']:{fmt}}"
+    if plus == minus:
+        return f"{median} ± {plus}"
+    return f"{median}<sup>+{plus}</sup><sub>{MINUS}{minus}</sub>"
+
+
+def _mean_sd(mean: float, sd: float, runs: int) -> str:
+    """A mean over TRICERATOPS's runs with their standard deviation, both to the deviation's first significant
+    figure (its first two when that figure is 1). One run has no spread, so it gives the mean alone."""
+    if runs < 2 or not sd > 0:
+        return _number(mean, ".3g")
+    scale = math.floor(math.log10(sd))
+    if f"{sd:e}".startswith("1"):
+        scale -= 1
+    if scale >= -5:
+        places = max(0, -scale)
+        return f"{mean:.{places}f} ± {sd:.{places}f}"
+    exponent = math.floor(math.log10(mean)) if mean > 0 else scale
+    places = max(0, exponent - scale)
+    unit = 10.0**exponent
+    return f"({mean / unit:.{places}f} ± {sd / unit:.{places}f}) × 10<sup>{_signed(str(exponent))}</sup>"
+
+
+def _footnote(text: str) -> str:
+    """A footnote at the foot of the page, for a URL that would break the running text (AAS)."""
+    return f'<span class="footnote">{text}</span>'
 
 
 def _quote(text: str) -> str:
@@ -404,7 +798,7 @@ def _stop(sentence: str) -> str:
 def _beside(notes: list[dict]) -> str:
     """The notes added on a quoted finding under decision 0037, each nested under the finding after its quoted lines.
     Python-Markdown nests a list only at four spaces."""
-    return "".join(f"\n    - **Note ({n['date']}):** {_scrub(n['text'])}" for n in notes)
+    return "".join(f"\n    - **Note ({_date(n['date'])}):** {_scrub(n['text'])}" for n in notes)
 
 
 def _claims(record: Path) -> dict | None:
@@ -422,14 +816,33 @@ def _excepted(record: Path) -> list[dict]:
 def _upcoming(upcoming: list[int] | None, vetted_on: str) -> str | None:
     if upcoming is None:
         return None
+    when = f"As of the vetting run ({_date(vetted_on)}), tess-point (Burke et al. 2020) predicted"
     if not upcoming:
-        return (
-            f"At the time of the vetting run ({vetted_on}), tess-point (Burke et al. 2020) showed no TESS sector "
-            "still to come for the star."
-        )
+        return f"{when} no further TESS sectors for the star."
+    return f"{when} that TESS would observe the star in {prereg._sectors_words(upcoming)}."
+
+
+def _parameters(found: dict) -> str:
+    """Table 1, with its caption above and its note below (AAS)."""
+    rows = [
+        ["Period, <i>P</i> (d)", found["period_pm"]],
+        ["Mid-transit time, <i>T</i><sub>0</sub> (BTJD)", found["t0_pm"]],
+        ["Duration (h)", found["duration_h"]],
+        ["Depth (ppm)", found["depth_ppm"]],
+        ["Planet-to-star radius ratio, <i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub>", found["rp_rs"]],
+        ["Radius, <i>R</i><sub>p</sub> (R⊕)", found["rp_pm"]],
+        ["Impact parameter, <i>b</i>", found["b"]],
+        ["Scaled semi-major axis, <i>a</i>/<i>R</i><sub>⋆</sub>", found["a_rs"]],
+    ]
     return (
-        f"At the time of the vetting run ({vetted_on}), tess-point (Burke et al. 2020) showed TESS would observe the "
-        f"star in {prereg._sectors_words(upcoming)}."
+        f"**Table 1.** Transit parameters of TIC {found['tic']} from the density-prior fit\n\n"
+        + _table(["Parameter", "Value"], rows)
+        + "\n\n*Note.* The <i>P</i> and <i>T</i><sub>0</sub> uncertainties are posterior standard deviations. For "
+        "<i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub>, <i>b</i> and <i>a</i>/<i>R</i><sub>⋆</sub>, the value is the "
+        "posterior median with its differences from the 16th and 84th percentiles. <i>R</i><sub>p</sub> is the median "
+        "with its 16th and 84th percentiles from <i>R</i><sub>p</sub>/<i>R</i><sub>⋆</sub> and the TIC radius alone "
+        "(Section 3). The depth is the BLS box depth, and the duration comes from the density-prior fit's medians. The "
+        f"record carries no uncertainty for either. BTJD = BJD<sub>TDB</sub> {MINUS} 2457000."
     )
 
 
@@ -445,72 +858,85 @@ def _star(checks: dict, made: dict) -> dict:
     }
     if prior is None:
         return found
-    fit, rp = prior["ephemeris"], prior["rp_rearth"] or {}
+    fit, rp = prior["ephemeris"], prior["rp_rearth"]
     duration = checks["window_duration"]
-    return found | {
-        "period": _number(fit["period"]["median"], ".6f"),
+    found |= {
+        "period_pm": f"{fit['period']['median']:.6f} ± {fit['period']['sd']:.6f}",
         "period_short": _number(fit["period"]["median"], ".1f"),
-        "period_sd_s": _number(fit["period"]["sd"] * 86400, ".1f"),
-        "t0": _number(fit["t0"]["median"], ".4f"),
-        "t0_sd_min": _number(fit["t0"]["sd"] * 1440, ".1f"),
-        "rp_rs": _summary(prior["rp_rs"], ".4f"),
-        "rp_rearth": _number(rp.get("median"), ".2f"),
-        "rp_lo": _number(rp.get("p16"), ".2f"),
-        "rp_hi": _number(rp.get("p84"), ".2f"),
-        "b": _summary(prior["b"], ".2f"),
-        "a_rs": _summary(prior["a_rs"], ".2f"),
-        # The duration is the density-prior fit's only when the record says so.
-        "duration_h": _number(duration["days"] * 24, ".2f")
-        if duration["from"] == "fit_prior"
-        else None,
+        "t0_pm": f"{fit['t0']['median']:.4f} ± {fit['t0']['sd']:.4f}",
+        "rp_rs": _spread(prior["rp_rs"], ".4f"),
+        "b": _spread(prior["b"], ".2f"),
+        "a_rs": _spread(prior["a_rs"], ".2f"),
     }
+    # The radius needs the TIC's stellar radius, and the duration is the density-prior fit's only when the record
+    # says so; a paper without either leaves its placeholders unfilled.
+    if rp is not None:
+        found["rp_pm"] = _spread(
+            {
+                "median": rp["median"],
+                "plus": rp["p84"] - rp["median"],
+                "minus": rp["median"] - rp["p16"],
+            },
+            ".2f",
+        )
+    if duration["from"] == "fit_prior":
+        found["duration_h"] = _number(duration["days"] * 24, ".2f")
+    if all(found.get(key) is not None for key in ("rp_pm", "duration_h", "depth_ppm")):
+        found["parameters"] = _parameters(found)
+    return found
 
 
 def _changed(version: Path) -> str:
-    """What a re-vet's light curve changed, from its merge record (decision 0041)."""
+    """What a new vetting's light curve changed, from its merge record (decision 0041)."""
     tic = json.loads((version / "checks.json").read_text())["tic"]
     merged = json.loads((version / "merge.json").read_text())[str(tic)]["sectors"]
     rows = sorted(merged.items(), key=lambda item: int(item[0]))
     said = []
     added = [f"Sector {s} ({x['fresh']['provenance']})" for s, x in rows if x["status"] == "added"]
     if added:
-        said.append(f"adds {_words(added)}")
+        said.append(f"{_words(added)} added")
     said += [
-        f"replaces Sector {s}'s timing-suspect delivery with a newer one"
+        f"Sector {s}'s timing-suspect delivery replaced by a newer one"
         for s, x in rows
         if x["status"] == "redelivered"
     ]
     said += [
-        f"replaces Sector {s}'s {x['base']['provenance']} light curve with {x['fresh']['provenance']}'s"
+        f"Sector {s}'s {x['base']['provenance']} light curve replaced by {x['fresh']['provenance']}'s"
         for s, x in rows
         if x["status"] == "upgraded"
     ]
     if not said:
-        return "a re-vet on the same light curve"
-    return f"a re-vet whose light curve {_words(said)}"
+        return "a new vetting on the same light curve"
+    return f"a new vetting on a light curve with {_words(said)}"
 
 
 def _history(record: Path) -> str:
-    """Each published record of the signal up to `record`: an earlier one's call, quoted, and what each re-vet's light
-    curve changed."""
+    """Each published record of the signal up to `record`: our call on an earlier one, its reason quoted, and what
+    each new vetting's light curve changed."""
     versions = _versions(record)
     if len(versions) == 1:
         return "This paper reports the signal's only record."
-    said = [f"This signal has {_count(len(versions), 'record')}."]
+    said = [f"The signal has {_count(len(versions), 'record')}."]
     for r in versions[:-1]:
         n = calls.version(r)
         call = calls.load(r / "call.toml")
-        name = "The first" if n is None else f"Version r{n}, {_changed(r)},"
-        said.append(f"{name} was called {call['outcome']} on {call['date']}.")
-        gave = f"Its call gave the reason as {_quote(call['reasons'])}"
-        if call["deciding_evidence"]:
-            gave += (
-                f" and named the evidence that would decide it: {_quote(call['deciding_evidence'])}"
+        at = "its first record" if n is None else f"version r{n}, {_changed(r)},"
+        said.append(
+            _stop(
+                f"We {CALLED[call['outcome']]} the signal at {at} on {_date(call['date'])}, giving the reason "
+                f"{_quote(call['reasons'])}"
             )
-        said.append(_stop(gave))
+        )
+        if call["deciding_evidence"]:
+            said.append(
+                _stop(
+                    "The call named the evidence that would decide the signal: "
+                    f"{_quote(call['deciding_evidence'])}"
+                )
+            )
     n = calls.version(record)
     said.append(
-        f"This paper reports the {ORDINALS.get(n, 'latest')} version, r{n}, {_changed(record)}."
+        f"This paper reports the {ORDINALS.get(n, 'latest')} record, version r{n}, {_changed(record)}."
     )
     return " ".join(said)
 
@@ -521,32 +947,35 @@ def _matched(check: dict) -> list[str]:
 
 
 def _novelty_said(check: dict) -> str:
-    """A novelty check's outcome as a verb with what it matched; its reason, quoted, where its evidence lists no
-    match."""
+    """A novelty check's outcome with what it matched, after a listing is set aside; its reason, quoted, where its
+    evidence lists no match."""
     matched = _matched(check)
     if check["outcome"] == "pass":
-        return "the novelty check passes: no known object matches the signal"
+        return "no other catalogued object matches the signal, and the novelty check passes"
     if matched:
         return (
-            f"the novelty check {IS[check['outcome']]}, because {_words(matched)} "
+            f"the novelty check {IS[check['outcome']]} because {_words(matched)} "
             f"{'matches' if len(matched) == 1 else 'match'} the signal"
         )
     return f"the novelty check {IS[check['outcome']]}, for the reason {_quote(check['reason'])}"
 
 
 def _novelty_against(check: dict) -> str:
-    """The vetting run's own novelty check, against the catalogs it read, said as _novelty_said says a check."""
-    head = f"The novelty check {IS[check['outcome']]} against the catalogs the vetting run read"
+    """The vetting run's own novelty check, against the catalogues it used."""
+    head = "Against the catalogues used in the vetting run, the novelty check"
     matched = _matched(check)
     if check["outcome"] == "pass":
-        return f"{head}: no known object matches the signal."
+        return f"{head} passes: no known object matches the signal."
     if matched:
-        return f"{head}, because {_words(matched)} {'matches' if len(matched) == 1 else 'match'} the signal."
-    return _stop(f"{head}, for the reason {_quote(check['reason'])}")
+        return (
+            f"{head} {IS[check['outcome']]} because {_words(matched)} "
+            f"{'matches' if len(matched) == 1 else 'match'} the signal."
+        )
+    return _stop(f"{head} {IS[check['outcome']]}, for the reason {_quote(check['reason'])}")
 
 
 def _novelty(record: Path, checks: dict, call: dict) -> str:
-    """What the checks table's novelty row leaves out: a rerun under decision 0042 and a promotion under 0013."""
+    """What Table 2's novelty row leaves out: a rerun under decision 0042 and a promotion under 0013."""
     own = next(c for c in checks["checks"] if c["check"] == "novelty")
     judged = calls.novelty(record, checks)
     excepted = _excepted(record)
@@ -554,52 +983,55 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
     if excepted:
         line = _novelty_against(own)
         one = len(excepted) == 1
+        matched = one and excepted[0]["name"] in _matched(own)
         which = (
-            f"that {excepted[0]['source']}"
-            if one and excepted[0]["name"] in _matched(own)
-            else _words([r["name"] for r in excepted])
+            f"that {excepted[0]['source']}" if matched else _words([r["name"] for r in excepted])
         )
         it = "it" if one else "them"
+        aside = f"the {excepted[0]['source']}" if matched else it
         line += (
-            f" ExoFOP first listed {which} after tess-hunt made the signal public, so decision record 0042 sets {it} "
-            'aside (see "When it was made public"). '
-            + _stop(f"Without {it}, {_novelty_said(judged)}")
+            f" ExoFOP first listed {which} after we made the signal public, so DR 0042 sets {it} aside. "
+            + _stop(f"With {aside} set aside, {_novelty_said(judged)}")
         )
         said.append(line)
     if judged["outcome"] != "pass":
         said.append(
             _stop(f"T{_novelty_said(judged)[1:]}")
             + " The rows at the signal's period are SPOC threshold-crossing events or ExoMiner rows that never became "
-            "TOIs. Decision record 0013 lets the call promote such a signal, and this call does. "
-            + _stop(f"It gives the reason as {_quote(call['promotion'])}")
+            "TOIs. DR 0013 lets the call promote such a signal, and we promoted this one. "
+            + _stop(f"The call gives the reason {_quote(call['promotion'])}")
         )
     return "\n\n".join(said)
 
 
 def _modshift(checks: dict) -> str:
     m = checks["modshift"]
+    test = "ModShift, the model-shift uniqueness test (Rowe et al. 2015; Coughlin et al. 2016)"
     if m is None:
-        return f"The record holds no ModShift result ({_quote(checks['triage_reason'])})."
+        return (
+            f"{test}, which LEO-Vetter runs during triage, has no result in the record "
+            f"({_quote(checks['triage_reason'])})."
+        )
     depth = None if m["dep_sec"] is None else m["dep_sec"] * 1e6
     return (
-        "ModShift, the model-shift uniqueness test (Rowe et al. 2015; Coughlin et al. 2016), looks for a secondary "
-        "eclipse at any phase. LEO-Vetter runs it during triage. The strongest secondary it finds is "
-        f"{_f(m['sig_sec'], '.3g')} sigma at phase {_f(m['phs_sec'], '.3g')} (depth {_f(depth, '.0f')} ppm). The "
-        f"primary is {_f(m['sig_pri'], '.3g')} sigma, and ModShift's red-noise factor, Fred, is {_f(m['Fred'], '.3g')}."
+        f"{test}, searches for a secondary eclipse at any phase, and LEO-Vetter runs it during triage. Its most "
+        f"significant secondary event is at phase {_f(m['phs_sec'], '.3g')}, with a depth of {_f(depth, '.0f')} ppm "
+        f"and a significance of {_f(m['sig_sec'], '.3g')}σ. The primary event has a significance of "
+        f"{_f(m['sig_pri'], '.3g')}σ, and ModShift's red-noise factor, F<sub>red</sub>, is {_f(m['Fred'], '.3g')}."
     )
 
 
 def _eccentric(checks: dict) -> str:
     m = checks["modshift"]
     there = (
-        f"An eccentric orbit can put it elsewhere, and only ModShift looks there. Its strongest secondary is "
-        f"{_f(m['sig_sec'], '.3g')} sigma."
+        "In an eccentric orbit it can fall at another phase, which only ModShift searches. ModShift's most significant "
+        f"secondary event is {_f(m['sig_sec'], '.3g')}σ."
         if m is not None
-        else "An eccentric orbit can put it elsewhere, and the record holds no ModShift result."
+        else "In an eccentric orbit it can fall at another phase, and the record holds no ModShift result."
     )
     return (
-        "The secondary check only looks at phase 0.5, where a circular orbit puts an eclipsing binary's secondary "
-        f"eclipse. {there}"
+        "The secondary-eclipse check searches only at phase 0.5, where an eclipsing binary's secondary eclipse falls "
+        f"if the orbit is circular. {there}"
     )
 
 
@@ -608,23 +1040,23 @@ def _red_noise(checks: dict) -> str:
     measured = [f"{r['beta']:.2f} in Sector {s}" for s, r in rows if "note" not in r]
     unmeasured = [int(s) for s, r in rows if "note" in r]
     said = [
-        "Each sector's depth errors are scaled by a red-noise factor, beta, measured from the residuals binned at the "
-        "timescale of the transit core (Pont et al. 2006; decision record 0006)."
+        "The red-noise factor β scales each sector's depth errors and is measured from the residuals binned at the "
+        "timescale of the transit core (Pont et al. 2006; DR 0006)."
     ]
     if measured:
-        said.append(f"Beta is {_words(measured)}.")
+        said.append(f"The factor is {_words(measured)}.")
     if unmeasured:
-        their = "its errors assume" if len(unmeasured) == 1 else "their errors assume"
+        them, their = ("it", "its") if len(unmeasured) == 1 else ("them", "their")
         said.append(
-            f"{prereg._sectors_words(unmeasured)} had too few binned points to measure it, so beta is 1 there and "
-            f"{their} white noise."
+            f"{prereg._sectors_words(unmeasured)} had too few binned points to measure β, so β is set to 1 for {them} "
+            f"and {their} depth errors assume white noise."
         )
     return " ".join(said)
 
 
-def _tdepth_zero(evidence: dict, hosts: list[dict]) -> str:
-    """The neighbour check's possible hosts TRICERATOPS gave zero depth: it weighed no scenario on them (decision 0026,
-    Ruling M)."""
+def _tdepth_zero(evidence: dict, hosts: list[dict], limit: float) -> str:
+    """The neighbour check's possible hosts TRICERATOPS gave zero depth: it computed no scenario for them (decision
+    0026, Ruling M), and any of them inside the pixel check's reach."""
     zero = evidence["hosts_tdepth_zero"]
     if not zero:
         return ""
@@ -641,12 +1073,27 @@ def _tdepth_zero(evidence: dict, hosts: list[dict]) -> str:
         which = (
             f"{_spell(len(zero))} of the neighbour check's {_count(len(hosts), 'possible host')}"
         )
-    star, it = ("that star", "it") if one else ("those stars", "them")
-    return (
-        f" Its apertures take in too little light from {which} for {star} to make the dip. TRICERATOPS gave {it} "
-        f"zero depth and weighed no scenario on {it} (decision record 0026). Ruling {star} out depends on "
-        "TRICERATOPS's model of the light in its apertures and on the pixel check, not on a probability."
+    star, it, its = ("that star", "it", "its") if one else ("those stars", "them", "their")
+    said = (
+        f" The apertures take in too little of the light of {which} to produce the transit, so TRICERATOPS assigned "
+        f"{it} a transit depth of zero and computed no scenario for {it} (DR 0026). Whether {star} can be excluded "
+        f"therefore depends on how much of {its} light TRICERATOPS places in the apertures and on the pixel check, "
+        f"and no false-positive probability covers {it}."
     )
+    inside = [
+        h
+        for h in hosts
+        if h.get("source_id") in zero and h["sep_arcsec"] is not None and h["sep_arcsec"] < limit
+    ]
+    if inside:
+        if one:
+            lies = "That star lies"
+        elif len(inside) == len(zero):
+            lies = "Both of them lie" if len(zero) == 2 else f"All {_spell(len(zero))} of them lie"
+        else:
+            lies = f"{_spell(len(inside)).capitalize()} of them {'lies' if len(inside) == 1 else 'lie'}"
+        said += f" {lies} within {limit:g}″ of the target, closer than the pixel check can resolve (Section 6.2)."
+    return said
 
 
 def _validated(record: Path, version: str, triceratops: dict) -> str:
@@ -656,8 +1103,8 @@ def _validated(record: Path, version: str, triceratops: dict) -> str:
     ]
     e = triceratops["evidence"]
     said = (
-        'Giacalone et al. also define a "validated planet" label. Decision record 0026 allows it only with an FPP '
-        f"under {limit:g}, a high-resolution contrast curve and 2-minute data."
+        'Giacalone et al. also define a "validated planet" label, which DR 0026 applies only with an FPP under '
+        f"{limit:g}, a high-resolution contrast curve and 2-minute data."
     )
     if e["validated_label"]:
         return f"{said} These runs meet those conditions, but this paper still calls the signal a planet candidate."
@@ -674,7 +1121,7 @@ def _validated(record: Path, version: str, triceratops: dict) -> str:
         had = f"neither {lacking[0][0]} nor {lacking[1][0]}"
     else:
         had = _words([no for _, no in lacking])
-    return f"{said} These runs had {had}, so the label doesn't apply."
+    return f"{said} These runs had {had}, so the label does not apply."
 
 
 def _offsets(pixel: dict, suspect: set[int]) -> dict:
@@ -685,7 +1132,7 @@ def _offsets(pixel: dict, suspect: set[int]) -> dict:
         "The offsets were "
         + _words(
             [
-                f"{_f(s['offset_arcsec'], '.1f')} arcsec in Sector {s['sector']} (quality {_f(s['quality'], '.2f')})"
+                f"{_f(s['offset_arcsec'], '.1f')}″ in Sector {s['sector']} (quality {_f(s['quality'], '.2f')})"
                 for s in sectors
             ]
         )
@@ -700,19 +1147,22 @@ def _offsets(pixel: dict, suspect: set[int]) -> dict:
     outcome = pixel["outcome"]
     if len(judged) == 1:
         n = judged[0]
-        said = f"Sector {n} has the best quality, so the {outcome} comes from it"
+        said = f"Sector {n} has the best quality, so the check's {outcome} is based on its offset"
         said += (
-            f", though the vetting run left Sector {n} out for suspect timestamps."
+            f", even though the vetting run left Sector {n} out because its timestamps are suspect."
             if n in suspect
             else "."
         )
     else:
-        said = f"The {outcome} comes from the best-quality offset, which no single sector above reports."
+        said = f"The check's {outcome} is based on the best-quality offset, which no single sector above reports."
     others = sorted(
         s["sector"] for s in sectors if s["sector"] in suspect and s["sector"] not in judged
     )
     if others:
-        said += f" The vetting run left {prereg._sectors_words(others)} out for suspect timestamps."
+        said += (
+            f" The vetting run left {prereg._sectors_words(others)} out because "
+            f"{'its timestamps are' if len(others) == 1 else 'their timestamps are'} suspect."
+        )
     return {"offsets": offsets, "rests_on": said}
 
 
@@ -722,36 +1172,36 @@ def _blends(hosts: list[dict], limit: float, zero: list) -> str:
     if not hosts:
         return "The neighbour check found no possible hosts."
     inside = [h for h in hosts if h["sep_arcsec"] is not None and h["sep_arcsec"] < limit]
-    within = f"within {limit:g} arcsec of the target, too close for the pixel check to tell apart"
+    within = f"within {limit:g}″ of the target, too close for the pixel check to separate"
     two = len(hosts) == 2
     if len(hosts) == 1:
         said = (
-            f"The neighbour check's one possible host is {within}"
+            f"The one possible host from the neighbour check lies {within}"
             if inside
-            else f"The neighbour check's one possible host is not within {limit:g} arcsec of the target"
+            else f"The one possible host from the neighbour check does not lie within {limit:g}″ of the target"
         )
-        said += ", and TRICERATOPS weighed no scenario on it." if zero else "."
+        said += ", and TRICERATOPS computed no scenario for it." if zero else "."
     else:
         if not inside:
             said = (
-                f"{'Neither' if two else 'None'} of the neighbour check's {_spell(len(hosts))} possible hosts is "
-                f"within {limit:g} arcsec of the target."
+                f"{'Neither' if two else 'None'} of the neighbour check's {_spell(len(hosts))} possible hosts lies "
+                f"within {limit:g}″ of the target."
             )
         elif len(inside) == len(hosts):
             every = "Both" if two else f"All {_spell(len(hosts))}"
-            said = f"{every} of the neighbour check's possible hosts are {within}."
+            said = f"{every} of the neighbour check's possible hosts lie {within}."
         else:
-            are = "is" if len(inside) == 1 else "are"
+            lie = "lies" if len(inside) == 1 else "lie"
             said = (
                 f"{_spell(len(inside)).capitalize()} of the neighbour check's {_spell(len(hosts))} possible hosts "
-                f"{are} {within}."
+                f"{lie} {within}."
             )
         if zero:
             every = "either of them" if two else "any of them"
             on = every if len(zero) == len(hosts) else f"{_spell(len(zero))} of them"
-            said += f" TRICERATOPS weighed no scenario on {on}."
+            said += f" TRICERATOPS computed no scenario for {on}."
     if inside or zero:
-        them = "it" if len(hosts) == 1 else "them"
+        them = "that star" if len(hosts) == 1 else "those stars"
         said += f" Photometry that resolves the stars near the target could rule {them} out."
     return said
 
@@ -760,12 +1210,12 @@ def _companions(triceratops: dict, exofop: dict) -> str:
     contrast = triceratops["contrast"]
     if contrast:
         return (
-            "TRICERATOPS judged unresolved companions and background stars from its priors, limited by "
-            f"{_count(len(contrast), 'high-resolution contrast curve')} of the star from ExoFOP."
+            "TRICERATOPS evaluated the unresolved-companion and background-star scenarios from its priors, "
+            f"constrained by {_count(len(contrast), 'high-resolution contrast curve')} of the star from ExoFOP."
         )
     said = (
-        "TRICERATOPS judged unresolved companions and background stars from its priors alone, because no "
-        "high-resolution contrast curve went into it."
+        "With no high-resolution contrast curve as input, TRICERATOPS evaluated the unresolved-companion and "
+        "background-star scenarios from its priors alone."
     )
     if exofop["imaging"]:
         said += (
@@ -850,6 +1300,10 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         for s in seasons
         if s not in tested
     )
+    judged, excepted = calls.novelty(record, checks), _excepted(record)
+    runs = len(tric["fpp"])
+    fpp = _mean_sd(tric["fpp_mean"], tric["fpp_sd"], runs)
+    nfpp = _mean_sd(tric["nfpp_mean"], tric["nfpp_sd"], runs)
     return {
         "vetting_run": json.loads((record / "provenance-checks.json").read_text())["run_id"],
         "criteria_version": version,
@@ -857,42 +1311,48 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "core": f"{100 * vet['depth']['core_fraction']:g}%",
         "min_sigma": f"{vet['holdout']['min_sigma']:g}",
         "max_tension": f"{vet['holdout']['max_depth_tension']:g}",
-        "bar_promotion": " For a SPOC threshold-crossing event that never became a TOI, the maintainer's promotion "
-        "can replace the novelty check's pass (decision record 0013)."
+        "bar_promotion": " For a SPOC threshold-crossing event that never became a TOI, a promotion in the call can "
+        "replace the novelty check's pass (DR 0013)."
         if second
         else "",
         "vetted_products": _words(
-            sorted({prereg.PRODUCTS[sources[str(s)]["provenance"]] for s in vetted})
+            sorted(
+                {
+                    PRODUCT_NAMES.get(p, p)
+                    for p in (prereg.PRODUCTS[sources[str(s)]["provenance"]] for s in vetted)
+                }
+            )
         ),
         "vetted_sectors": prereg._sectors_words(vetted),
-        "suspect": f" It left out {prereg._sectors_words(dropped)} for suspect timestamps (decision record 0022)."
+        "suspect": f" {prereg._sectors_words(dropped)} "
+        + ("was left out because its" if len(dropped) == 1 else "were left out because their")
+        + " timestamps are suspect (DR 0022)."
         if dropped
         else "",
-        "checks": _table(
-            ["Check", "Outcome", "Reason, as the record gives it"],
-            [
-                [
-                    f"{CHECKS[name]} (`{name}`"
-                    + (", see below the table)" if name == "novelty" and novelty else ")"),
-                    outcome,
-                    reason,
-                ]
-                for name, outcome, reason in rows
-            ],
-        ),
+        "checks": _checks_table(rows, own, judged, excepted),
+        "abstract_checks": _abstract_checks(rows, own, judged, excepted),
         "novelty": novelty,
         "modshift": _modshift(checks),
         "eccentric": _eccentric(checks),
         "red_noise": _red_noise(checks),
         "hosts": f"The neighbour check found {_count(len(hosts), 'possible host')}."
         + (
-            f" The dataset's `neighbours.csv` gives the eclipse depth {'it' if len(hosts) == 1 else 'each'} would need."
+            " The dataset's `neighbours.csv` gives the eclipse depth "
+            f"{'that star' if len(hosts) == 1 else 'each'} would need to produce the transit."
             if hosts
             else ""
         ),
-        "tdepth_zero": _tdepth_zero(tric, hosts),
+        "tdepth_zero": _tdepth_zero(tric, hosts, limit),
         "tric_data": f"{prereg._sectors_words(tric['sectors'])} at {tric['exposure_s']:g}-s exposures"
         + (", folded and binned in phase" if tric["bin_phase"] else ""),
+        "fpp_pm": fpp,
+        "nfpp_pm": nfpp,
+        "tric_probabilities": (
+            f"The false-positive probability (FPP) is {fpp} and the nearby false-positive probability (NFPP) is {nfpp}."
+            if runs < 2
+            else f"Over those runs, the false-positive probability (FPP) is {fpp} and the nearby false-positive "
+            f"probability (NFPP) is {nfpp} (mean ± standard deviation)."
+        ),
         "validated": _validated(record, version, triceratops),
         "pixel_check": "the second list's, run as triage runs it" if second else "triage's",
         "max_offset": f"{limit:g}",
@@ -906,30 +1366,92 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "exofop_rows": "None of ExoFOP's planet-parameter rows for the star matches the signal's period or a "
         "harmonic of it."
         if not at_period
-        else f"Apart from {_words(at_period)}, which decision record 0042 sets aside, none of ExoFOP's "
-        "planet-parameter rows for the star matches the signal's period or a harmonic of it.",
-        "tric_times": {1: "once", 2: "twice"}.get(
-            len(tric["fpp"]), f"{_spell(len(tric['fpp']))} times"
-        ),
+        else f"Apart from {_words(at_period)}, which DR 0042 sets aside, none of ExoFOP's planet-parameter rows for "
+        "the star matches the signal's period or a harmonic of it.",
+        "tric_times": {1: "once", 2: "twice"}.get(runs, f"{_spell(runs)} times"),
         "companions": _companions(triceratops, exofop),
-        "holdout": f"For this signal the check {WAS[holdout['outcome']]}. "
-        + _seasons(len(seasons), len(tested), predicted)
-        + untested,
+        "holdout": f"For this signal {_seasons(len(seasons), len(tested), predicted)}, so the check "
+        f"{WAS[holdout['outcome']]}." + untested,
     }
 
 
+def _checks_table(rows: list[list], own: dict, judged: dict, excepted: list[dict]) -> str:
+    """Table 2, the record's outcomes and reasons verbatim, with a lettered footnote on a novelty outcome that is not
+    a pass and that Section 6.4 sets aside or the call's promotion replaces."""
+    note = []
+    if own["outcome"] != "pass" and (excepted or judged["outcome"] != "pass"):
+        if excepted:
+            names = [r["name"] for r in excepted]
+            note.append(
+                f"ExoFOP first listed {_words(names)} after we made the signal public, so DR 0042 sets "
+                f"{'it' if len(names) == 1 else 'them'} aside."
+            )
+        if judged["outcome"] != "pass":
+            note.append("The call promotes the signal past this check under DR 0013.")
+    cells = [
+        [
+            f"{CHECKS[name]} (`{name}`)",
+            f"{outcome}<sup>a</sup>" if name == "novelty" and note else outcome,
+            reason,
+        ]
+        for name, outcome, reason in rows
+    ]
+    footnote = f" <sup>a</sup> {' '.join(note)} See Section 6.4." if note else ""
+    return (
+        "**Table 2.** Vetting checks\n\n"
+        + _table(["Check", "Outcome", "Reason, as the record gives it"], cells)
+        + f"\n\n*Note.* Outcomes and reasons are the record's, verbatim.{footnote}"
+    )
+
+
+def _abstract_checks(rows: list[list], own: dict, judged: dict, excepted: list[dict]) -> str:
+    """The Abstract's word on Table 2: every check passed, or which did not and why the call stands."""
+    failing = [(name, outcome) for name, outcome, _ in rows if outcome != "pass"]
+    if not failing:
+        return "Every vetting check passed."
+    parts = []
+    for name, outcome in failing:
+        if name == "novelty":
+            matched = _matched(own)
+            parts.append(
+                "the comparison with known objects, which "
+                + (f"matched {_words(matched)}" if matched else WAS[outcome])
+            )
+        else:
+            parts.append(f"the {name} check, which {WAS[outcome]}")
+    said = f"Every vetting check passed except {_words(parts)}."
+    if own["outcome"] != "pass" and excepted:
+        named = [r for r in excepted if r["name"] in _matched(own)]
+        listed = named or excepted
+        one = len(listed) == 1
+        # The sentence before names a matched listing; one it doesn't name is named here.
+        which = (
+            f"that {listed[0]['source']}" if one and named else _words([r["name"] for r in listed])
+        )
+        said += (
+            f" ExoFOP listed {which} only after we made the signal public, so "
+            f"{'it does not count as a known object' if one else 'they do not count as known objects'}."
+        )
+    if judged["outcome"] != "pass":
+        said += (
+            " We promoted the signal past that check, as our rules allow for a SPOC threshold-crossing event that "
+            "never became a TOI."
+        )
+    return said
+
+
 def _seasons(n: int, testable: int, predicted: int) -> str:
-    """How many of the signal's seasons the held-out check could test, and how many it predicted."""
+    """How many of the signal's seasons the held-out check could test, and how many it predicted, as a clause."""
     if n == 1:
         if not testable:
-            return "Its one season was not testable."
-        return f"Its one season was testable and was{'' if predicted else ' not'} predicted."
+            return "its one season was not testable"
+        return f"its one season was testable and was{'' if predicted else ' not'} predicted"
     if not testable:
-        return f"{'Neither' if n == 2 else 'None'} of its {_spell(n)} seasons was testable."
+        return f"{'neither' if n == 2 else 'none'} of its {_spell(n)} seasons was testable"
     if testable == n:
-        head = "Both seasons were testable" if n == 2 else f"All {_spell(n)} seasons were testable"
+        head = "both seasons were testable" if n == 2 else f"all {_spell(n)} seasons were testable"
     else:
-        head = f"Of its {_spell(n)} seasons, {_spell(testable)} {'was' if testable == 1 else 'were'} testable"
+        head = f"{_spell(testable)} of its {_spell(n)} seasons {'was' if testable == 1 else 'were'} testable"
     if testable == 1:
         tail = f"it was{'' if predicted else ' not'} predicted"
     elif predicted == testable:
@@ -938,7 +1460,7 @@ def _seasons(n: int, testable: int, predicted: int) -> str:
         tail = "neither was predicted" if testable == 2 else "none was predicted"
     else:
         tail = f"{_spell(predicted)} {'was' if predicted == 1 else 'were'} predicted"
-    return f"{head} and {tail}."
+    return f"{head} and {tail}"
 
 
 def _label(finding: dict, confirmed: list[str]) -> str:
@@ -956,9 +1478,9 @@ def _label(finding: dict, confirmed: list[str]) -> str:
         else:
             who = f"{_spell(k)} of its {_spell(n)} refuters"
         said = f"{who} disproved it"
-    # Confirmed only because nothing tested it, as the dossier says: the reader should not take it for tested.
+    # Upheld only because nothing tested it, as the dossier says: the reader should not take it for tested.
     elif n == 0:
-        said = "no refuter tested it, so it counts as confirmed"
+        said = "no refuter tested it, so it counts as upheld"
     elif n == 1:
         said = "its one refuter did not disprove it"
     elif n == 2:
@@ -969,14 +1491,14 @@ def _label(finding: dict, confirmed: list[str]) -> str:
 
 
 def _fates(findings: list[dict], confirmed: list[str]) -> str:
-    """How many of the review's findings were confirmed, refuted or notes, by rating."""
+    """How many of the review's findings were upheld (the records' `confirmed`), refuted or notes, by rating."""
     n = len(findings)
     if not n:
         return "The review raised no findings."
     counts = Counter(
         ("note", "note")
         if f["rating"] == "note"
-        else ("confirmed" if f["id"] in confirmed else "refuted", f["rating"])
+        else ("upheld" if f["id"] in confirmed else "refuted", f["rating"])
         for f in findings
     )
     if len(counts) == 1:
@@ -997,7 +1519,7 @@ def _fates(findings: list[dict], confirmed: list[str]) -> str:
 
     said = [
         told(k, rating, fate)
-        for fate in ("confirmed", "refuted")
+        for fate in ("upheld", "refuted")
         for rating in ("kill", "hold")
         if (k := counts[fate, rating])
     ]
@@ -1010,7 +1532,7 @@ def _flagged(review: dict, literature: dict) -> str:
     """The papers the review flagged, each by its title and id where the literature search found it."""
     flagged = review["hits_flagged"]
     if not flagged:
-        return "The review flagged no papers for the maintainer to read."
+        return "The review flagged no papers for us to read."
     hits = literature["evidence"]["hits"]
 
     def paper(ident: str) -> str:
@@ -1021,8 +1543,8 @@ def _flagged(review: dict, literature: dict) -> str:
 
     one = len(flagged) == 1
     return (
-        f"The review flagged {_count(len(flagged), 'paper')} for the maintainer to read{',' if one else ':'} "
-        f"{_words([paper(i) for i in flagged])}. The call records that the maintainer read {'it' if one else 'each'}."
+        f"The review flagged {_count(len(flagged), 'paper')} for us to read{',' if one else ':'} "
+        f"{_words([paper(i) for i in flagged])}. The call records that we read {'it' if one else 'each'}."
     )
 
 
@@ -1060,12 +1582,12 @@ def _review(record: Path, review: dict, call: dict, literature: dict) -> dict:
         for f in refuted
     )
     return {
-        "call_date": str(call["date"]),
-        "review_date": str(review["date"]),
+        "call_date": _date(call["date"]),
+        "review_date": _date(review["date"]),
         "n_confirmed": str(len(confirmed)),
         "fates": _fates(findings, confirmed),
         "hits_read": _flagged(review, literature),
-        "answers": answers or "The review confirmed no findings.",
+        "answers": answers or "The review upheld no findings.",
         "refuted": "Refuted findings, with each refuter's verdict:\n\n" + verdicts
         if refuted
         else "No refuter disproved any finding.",
@@ -1102,12 +1624,11 @@ def _triage(row: pd.Series, made: dict, checks: dict) -> str:
     """What triage made of the signal, from its row in the triage run's signals.csv."""
     used = made["inputs"].get("triage_criteria")
     # A vetting run made before M4's deferred minors recorded no triage criteria file.
-    under = f" (criteria {Path(used['file']).stem})" if used else ""
-    said = f"Triage{under} screened every signal at or above the threshold."
+    under = f"Under triage criteria {Path(used['file']).stem}" if used else "In triage"
     if bool(row["shortlisted"]):
         return (
-            f"{said} This signal passed the novelty check, LEO-Vetter's false-alarm and flux-level tests (LEO-Vetter "
-            f"calls it {_quote(row['leo_reason'])}) and the pixel check, so it was shortlisted."
+            f"{under}, this signal passed the novelty check, LEO-Vetter's false-alarm and flux-level tests "
+            f"(LEO-Vetter's disposition: {_quote(row['leo_reason'])}) and the pixel check, and was shortlisted."
         )
     # Triage records a pixel check it never ran as inconclusive, "not run: ...".
     pixels = (
@@ -1115,14 +1636,14 @@ def _triage(row: pd.Series, made: dict, checks: dict) -> str:
         if str(row["pixels_reason"]).startswith("not run")
         else f"its pixel check {WAS[row['pixels']]}"
     )
-    said += (
-        f" This signal's novelty check {WAS[row['novelty']]}, LEO-Vetter's tests {WAS[row['leo_flux']]} and "
+    said = (
+        f"{under}, this signal's novelty check {WAS[row['novelty']]}, LEO-Vetter's tests {WAS[row['leo_flux']]} and "
         f"{pixels}, so triage did not shortlist it."
     )
     if checks["signal"]["kind"] == "second":
         said += (
             " It came to vetting on tess-hunt's second list of SPOC threshold-crossing events that never became TOIs "
-            "(decision record 0028)."
+            "(DR 0028)."
         )
     return said
 
@@ -1223,13 +1744,18 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
     if claim is None:
         where = None
     elif deposit is not None and claim.record == f"https://doi.org/{deposit['doi']}":
-        where = f"in its predictions deposit (doi:{deposit['doi']})"
+        where = f"in our predictions deposit (doi:{deposit['doi']})"
+    elif claim.record.startswith("https://doi.org/"):
+        where = f"in the record doi:{claim.record.removeprefix('https://doi.org/')}"
+    elif claim.record.startswith("https://"):
+        where = f"in a public record{_footnote(claim.record)}"
     else:
         where = f"in {claim.record}"
     own = next(c for c in checks["checks"] if c["check"] == "novelty")
     ratios = {m["name"]: m.get("ratio") for m in own["evidence"].get("matches") or []}
+    excepted = found["excepted"]
     listings = []
-    for r in found["excepted"]:
+    for r in excepted:
         dispositions = r["dispositions"]
         disposition = (
             f"disposition{'s' if len(dispositions) > 1 else ''} {_words(dispositions)}"
@@ -1247,19 +1773,19 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
                 f" ExoFOP{also} lists {r['name']} on the star (period {r['period']:.6g} d, {disposition})."
             )
         listings.append(
-            f" ExoFOP first listed it on {r['first_listed']}, after tess-hunt made the signal public."
+            f" ExoFOP first listed it on {_date(r['first_listed'])}, after we made the signal public."
         )
     if listings:
-        them = "it" if len(found["excepted"]) == 1 else "them"
+        them = f"the {excepted[0]['source']}" if len(excepted) == 1 else "them"
         listings.append(
-            f" The record doesn't say who submitted {them}. A listing made after tess-hunt's claim, possibly prompted "
-            "by it, can't show the signal was known before the claim. So tess-hunt doesn't count a TOI or CTOI on the "
-            "same star as already known when ExoFOP first listed it after the claim and its dispositions are all PC or "
-            "empty (decision record 0042). The rule only compares public dates. It says nothing about when or how "
-            f"anyone else found the signal. ExoFOP's page for the star is {EXOFOP_STAR.format(tic)}."
+            f" The vetting record does not say who submitted {them}. A listing made after our claim cannot show that "
+            "the signal was known before the claim. Under DR 0042, a TOI or CTOI on the star is therefore not counted "
+            "as known when ExoFOP first listed it after the claim and all its dispositions are PC or empty. Only "
+            "public dates are compared, and nothing is implied about when or how anyone else found the signal."
+            + _footnote(f"ExoFOP's page for the star: {EXOFOP_STAR.format(tic)}")
         )
     return {
-        "claim_date": None if claim is None else claim.date.isoformat(),
+        "claim_date": None if claim is None else _date(claim.date),
         "claim_where": where,
         "listings": "".join(listings),
     }
@@ -1289,8 +1815,9 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
     path = record / "prereg.json"
     if not path.is_file():
         return {
-            "prereg": "This record holds no preregistered test of a later season (decision record 0040).",
+            "prereg": "This record holds no preregistered test of a later season (DR 0040).",
             "summary_prereg": "",
+            "conclusion_prereg": "",
         }
     p = json.loads(path.read_text())
     deposit = _deposit(record, repo)
@@ -1302,49 +1829,49 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
             f"refused: Zenodo published predictions package {p['package']} on {published}, not before TESS began "
             f"observing Sector {first} on {start}; the paper would say the prediction came before the data"
         )
-    them = "it" if len(sectors) == 1 else "them"
+    those = "that sector" if len(sectors) == 1 else "those sectors"
     deposited = (
-        f"Before TESS observed {prereg._sectors_words(sectors)}, tess-hunt deposited on Zenodo a prediction of the "
-        f"signal's transits in {them}"
+        f"Before TESS observed {prereg._sectors_words(sectors)}, we deposited a prediction of the signal's transits in "
+        f"{those} on Zenodo"
     )
     summary = f" {deposited}." + SUMMARY_RESULT[p["result"]]
     as_of = dt.date.fromisoformat(p["as_of"])
     if p["result"] == "pending":
-        said = f"As of {as_of}, the test is pending ({_quote(p['reason'])})."
+        said = f"As of {_date(as_of)}, the test is pending ({_quote(p['reason'])})."
     elif p["result"] == "untested":
-        said = f"As of {as_of}, the new data could not test the prediction ({_quote(p['reason'])})."
+        said = f"As of {_date(as_of)}, the new data could not test the prediction ({_quote(p['reason'])})."
     else:
         depth, err = _ppm(p["depth"]), _ppm(p["err"])
         if depth is None or err is None:
-            return {"summary_prereg": summary}
+            return {"summary_prereg": summary, "conclusion_prereg": CONCLUSION_RESULT[p["result"]]}
         verb = "replicate the signal" if p["result"] == "replicated" else "miss the prediction"
         said = (
-            f"As of {as_of}, the new sectors {verb}. In the cores of the predicted transits, {p['n']} cadences give a "
-            f"depth of {depth} ± {err} ppm, {p['sigma']:.2f} times its error, where the test expected "
-            f"{p['expected_snr']:.2f} times it."
+            f"As of {_date(as_of)}, the new sectors {verb}. The {p['n']} cadences in the cores of the predicted "
+            f"transits give a depth of {depth} ± {err} ppm, a significance of {p['sigma']:.2f}σ against the "
+            f"{p['expected_snr']:.2f}σ the test expected."
         )
         if "tension" in p:
             said += (
-                f" The tension with the earlier seasons is {p['tension']:.2f} sigma. That is the largest across the "
-                "light-curve product families, each compared with its own depth in the earlier seasons, as the "
-                "deposit's `references.json` records."
+                " Each light-curve family's new depth was compared with that family's depth in the earlier seasons, "
+                f"as recorded in the deposit's `references.json`. The largest tension is {p['tension']:.2f}σ."
             )
         else:
             said += f" No tension was measured ({_quote(p['tension_skipped'])})."
         if p["result"] == "replicated":
             said += (
-                " Replication shows the dip is real, periodic and where the prediction put it. It doesn't show the dip "
-                "is on the target."
+                " The replication shows that the transit is real and recurs at the predicted times. Which star it "
+                "comes from remains open."
             )
     order = (
         "before" if call["date"] < as_of else "after" if call["date"] > as_of else "on the day of"
     )
     return {
-        "prereg": f"{deposited} (doi:{deposit['doi']}). The deposit also fixed the test that would judge the "
-        "prediction: the held-out check's test, applied to the predicted transits (decision record 0040). Zenodo "
-        f"published the deposit on {published}, and TESS began observing Sector {first} on {start}. {said} The "
-        f"maintainer's call ({call['date']}) came {order} this result.",
+        "prereg": f"{deposited} (doi:{deposit['doi']}). The deposit also fixed how the prediction would be judged: by "
+        "the held-out check's criteria, applied to the predicted transits (DR 0040). Zenodo published the deposit on "
+        f"{_date(published)}, and TESS began observing Sector {first} on {_date(start)}. {said} Our call "
+        f"({_date(call['date'])}) came {order} this result.",
         "summary_prereg": summary,
+        "conclusion_prereg": CONCLUSION_RESULT[p["result"]],
     }
 
 
@@ -1360,7 +1887,7 @@ def _files(record: Path) -> str:
             return any(n.startswith(head) and n.endswith(tail) and "/" not in n for n in names)
         return pattern in names
 
-    return _table(
+    return "**Table 4.** Files in each record\n\n" + _table(
         ["File", "What it holds"],
         [[f"`{pattern}`", what] for pattern, what in GUIDE if held(pattern)],
     )
@@ -1379,8 +1906,30 @@ def _records(signal: str, version: int | None) -> str:
     )
 
 
+def _cites(keys) -> str:
+    return "; ".join(REFERENCES[k][0] for k in keys)
+
+
+def _reference_order(entry: str) -> tuple:
+    """AAS order: by first author, a sole author before a listed group before "et al.", then by year."""
+    authors, year = re.match(r"^(.*?) (\d{4}[a-z]?), ", entry).groups()
+    rank = 2 if "et al." in authors else 1 if "&" in authors else 0
+    return (authors.split(",")[0].casefold(), rank, year, entry.casefold())
+
+
+def _references(keys) -> str:
+    """The reference list, one entry per paragraph with no labels, as HTML so the list keeps its hanging indent."""
+    entries = sorted((REFERENCES[k][1] for k in set(keys)), key=_reference_order)
+    return (
+        '<div class="references">\n'
+        + "\n".join(f"<p>{escape(e, quote=False)}</p>" for e in entries)
+        + "\n</div>"
+    )
+
+
 def _data(record: Path, checks: dict, made: dict) -> dict:
-    """The light curves' products and DOIs, the dataset's records, and the credits they ask for."""
+    """The light curves' products and their citations, the dataset's records, the credits they ask for, and the
+    reference list."""
     sectors: dict[str, list[int]] = {}
     for sector, source in checks["sources"].items():
         sectors.setdefault(prereg.PRODUCTS[source["provenance"]], []).append(int(sector))
@@ -1388,33 +1937,36 @@ def _data(record: Path, checks: dict, made: dict) -> dict:
     signal = vetting._signal_dir(record).name
     gaia = any(licence(path)["licence"] == GAIA for path in _record_paths(record))
     version = calls.version(record)
+    pdcsap = any(p in PDCSAP for p in used)
+    products = _words(
+        [
+            f"{prereg.CREDITED[p][0]} from {prereg._sector_runs(s)} ({_cites(PRODUCT_REFERENCES[p])})"
+            for p, s in used.items()
+        ]
+    )
+    if pdcsap:
+        products += f", with PDCSAP flux ({_cites(PDCSAP_REFERENCES)})"
+    cited = [*CITED, *(k for p in used for k in PRODUCT_REFERENCES[p])]
+    if pdcsap:
+        cited += PDCSAP_REFERENCES
     return {
         "commit": made["git"]["commit"],
         "light_curve": f"lc/{int(checks['tic'])}.npz",
-        "products": _words(
-            [
-                f"{prereg.CREDITED[p][0]} from {prereg._sector_runs(s)} (doi:{prereg.CREDITED[p][1]})"
-                for p, s in used.items()
-            ]
-        ),
-        "product_papers": "; ".join(
-            f"{prereg.CREDITED[p][0]}, "
-            + ", and ".join(f"{who}, {where}" for who, where in prereg.CREDITED[p][2])
-            for p in used
-        ),
-        "pdcsap_papers": PDCSAP_PAPERS if any(p in PDCSAP for p in used) else "",
+        "products": products,
+        "references": _references(cited),
+        "facilities": "TESS, Gaia" if gaia else "TESS",
+        "software": SOFTWARE,
         "records": _records(signal, version),
         "rendered_from": "that record" if version is None else f"version r{version}",
         "files": _files(record),
         "tess_credit": prereg.TESS_CREDIT,
         "qlp_credit": f" {prereg.QLP_CREDIT}" if "QLP" in used else "",
         "gaia_credit": GAIA_CREDIT if gaia else "",
-        "gaia_papers": GAIA_PAPERS if gaia else "",
     }
 
 
 def _runs(record: Path, repo: Path, found: dict) -> str:
-    """The runs the paper reads, each by its run id and where its files are published."""
+    """Table 3: the runs the paper reads, each by its run id and where its files are published."""
     signal = vetting._signal_dir(record).name
     benchmarks = [
         ("Search", found["search_run"]),
@@ -1444,32 +1996,54 @@ def _runs(record: Path, repo: Path, found: dict) -> str:
                 f"`results/predictions/{deposit['package']}/`, doi:{deposit['doi']}",
             ]
         )
-    return _table(["Step", "Run id", "Where its files are"], rows)
-
-
-def _figures(record: Path) -> str | None:
-    """The figures from the record's plots, each with the paper's caption; None when the record lacks one."""
-    if any(not (record / "plots" / name).is_file() for name in FIGURES):
-        return None
-    return "\n\n".join(
-        f"![Figure {i}]({name})\n\n*Figure {i}. {CAPTIONS[name]}.*"
-        for i, name in enumerate(FIGURES, 1)
+    return (
+        "**Table 3.** Runs whose outputs this paper uses\n\n"
+        + _table(["Step", "Run id", "Location of files"], rows)
+        + f"\n\n*Note.* The injection-recovery run's `{COMPLETENESS}` holds the recovered fraction as a function of "
+        "expected signal-to-noise ratio. Each provenance file names the command and the commit of one run that wrote "
+        "files in the record."
     )
 
 
-def _author(author: dict) -> dict:
-    parts = [f"{author['given_names']} {author['family_names']}", author["affiliation"]]
+def _figures(record: Path) -> dict:
+    """Each figure from the record's plots, with its number and the paper's caption, placed where the text cites it;
+    none when the record lacks one, so their placeholders raise."""
+    if any(not (record / "plots" / name).is_file() for name in FIGURES):
+        return {}
+    return {
+        f"figure_{Path(name).stem}": (
+            f'<figure>\n<img src="{name}" alt="Figure {i}">\n<figcaption><b>Figure {i}.</b> '
+            + re.sub(r"`([^`]+)`", r"<code>\1</code>", CAPTIONS[name])
+            + ".</figcaption>\n</figure>"
+        )
+        for i, name in enumerate(FIGURES, 1)
+    }
+
+
+def _author(author: dict, version: dt.date) -> dict:
+    """The author block: the name, the affiliation, the ORCID and email when author.toml gives them, each on its own
+    line, and the version's date."""
+    lines = [f"{author['given_names']} {author['family_names']}", author["affiliation"]]
     if "orcid" in author:
-        parts.append(f"ORCID {author['orcid']}")
+        lines.append(f"ORCID {author['orcid']}")
     if "email" in author:
-        parts.append(author["email"])
-    return {"author_line": ", ".join(parts), "repository": author["repository"]}
+        lines.append(author["email"])
+    block = "<br>".join(escape(line, quote=False) for line in lines)
+    return {
+        "author_block": f'<div class="front">\n<p class="author">{block}</p>\n'
+        f'<p class="version">Version of {_date(version)}</p>\n</div>',
+        "repository": author["repository"],
+    }
 
 
-def values(record: Path, author: dict, repo: Path) -> dict[str, str]:
+def values(
+    record: Path, author: dict, repo: Path, version: dt.date | None = None
+) -> dict[str, str]:
     """Every placeholder of the template, read by key from the record, its runs' provenance, the published runs they
     name, results/claims.toml, results/predictions/dois.toml, benchmarks/tess_sectors.csv and `author`, formatted as the
-    dossier formats them. A value they don't hold is left out, so its placeholder raises."""
+    dossier formats them, with `version` as the paper's date (today by default). A value they don't hold is left out,
+    so its placeholder raises."""
+    version = version or dt.datetime.now(dt.UTC).date()
     checks = json.loads((record / "checks.json").read_text())
     made = json.loads((record / "provenance-checks.json").read_text())
     call = calls.load(record / "call.toml")
@@ -1483,20 +2057,23 @@ def values(record: Path, author: dict, repo: Path) -> dict[str, str]:
         | found
         | _public(record, repo, checks)
         | _data(record, checks, made)
-        | _author(author)
+        | _author(author, version)
         | _prereg(record, repo, call)
+        | _figures(record)
         | {
             "history": _history(record),
-            "figures": _figures(record),
             "runs": _runs(record, repo, found),
         }
     )
     return {key: value for key, value in out.items() if value is not None}
 
 
-def render(record: Path, author: dict, repo: Path, specimen: bool = False) -> str:
-    """The paper in Markdown. A specimen opens with a line saying it is one."""
-    text = Template((repo / TEMPLATE).read_text()).substitute(values(record, author, repo))
+def render(
+    record: Path, author: dict, repo: Path, specimen: bool = False, version: dt.date | None = None
+) -> str:
+    """The paper in Markdown, dated `version` (the day it is rendered by default, the day its run starts). A
+    specimen opens with a line saying it is one."""
+    text = Template((repo / TEMPLATE).read_text()).substitute(values(record, author, repo, version))
     if specimen:
         return f"**{SPECIMEN}.** Rendered from a made-up record to review this template; it is never deposited.\n\n{text}"
     return text
@@ -1508,9 +2085,13 @@ def html(markdown_text: str, specimen: bool) -> str:
     # The optional preprint group's; the rest of tess-hunt runs without it.
     import markdown
 
-    body = markdown.markdown(markdown_text, extensions=["tables"])
+    # toc gives each heading an id, which the stylesheet's section numbering reads.
+    body = markdown.markdown(markdown_text, extensions=["tables", "toc"])
     style = STYLE + (SPECIMEN_STYLE if specimen else "")
-    return f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>{style}</style></head><body>{body}</body></html>'
+    return (
+        f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><style>{style}</style></head>'
+        f"<body>{body}</body></html>"
+    )
 
 
 def document(markdown_text: str, assets: Path, specimen: bool):
@@ -1608,6 +2189,14 @@ def _section(text: str, heading: str) -> str:
     return text.split(f"\n## {heading}\n")[1].split("\n## ")[0].strip()
 
 
+def _plain(text: str) -> str:
+    """The paper's inline HTML as plain text, for Zenodo's description box, which would show the tags: an
+    asymmetric error as "(+0.12, −0.13)", a power as "^", and the other tags dropped."""
+    text = re.sub(r"<sup>([^<]*)</sup><sub>([^<]*)</sub>", r" (\1, \2)", text)
+    text = re.sub(r"<sup>([^<]*)</sup>", r"^\1", text)
+    return re.sub(r"</?(sub|i|b|code)>", "", text)
+
+
 def deposit_form(run: Path) -> str:
     """The Zenodo deposit form's text for the paper and dataset a finished preprint run made, from the run's own
     files."""
@@ -1638,8 +2227,10 @@ def deposit_form(run: Path) -> str:
             0,
             f'- {made["predictions_doi"]} (DOI), "References": the preregistered predictions whose test it reports',
         )
+    # Each section's first paragraph: the Abstract without its keywords, which Zenodo takes in a field of its own, and
+    # the Use of LLMs without the Facilities and Software lines below it.
     description = [
-        _section(text, "Summary"),
+        _plain(_section(text, "Abstract").split("\n\n")[0]),
         "The deposit holds the paper (`preprint.pdf`, made from `preprint.md`), its figures and its dataset. The "
         "dataset holds the signal's published vetting records and the light curve that the vetting run of the paper's "
         "record read. `manifest.json` lists each of its files with its sha256 and licence. The files are CC BY 4.0, "
@@ -1647,7 +2238,7 @@ def deposit_form(run: Path) -> str:
         f"({_words([f'`{name}`' for name in gaia])}, in each record's directory) stay under ESA's CC BY-NC 3.0 IGO "
         "terms, as does any Gaia value in the paper's quoted text or notes. ExoFOP's rows in the dataset stay under "
         "ExoFOP's terms, as do the ExoFOP listings the paper names.",
-        _section(text, "Use of LLMs"),
+        _section(text, "Use of LLMs").split("\n\n")[0],
     ]
     return ZENODO.substitute(
         run_id=made["run_id"],
