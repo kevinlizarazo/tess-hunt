@@ -1748,6 +1748,11 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
     own = re.sub(r'"[^"]*"', "", text)
     for word in ("can't", "doesn't", "couldn't", "isn't", "won't", " catalogs ", "modeled"):
         assert word not in own, word
+    # No sentence opens in lowercase, apart from the Use of LLMs paragraph, which is the maintainer's word for word.
+    disclosure = td.section(text, "Use of LLMs").split("\n\n")[0].strip()
+    prose = " ".join(own.replace(disclosure, "").split())
+    assert not re.search(r"(?:^|[.?!] )tess-hunt", prose)
+    assert not re.search(r"(?:^|[.?!] )Its search", prose)
     # A second-list row's bar names its promotion (decision 0013).
     pixels = json.loads((record / "checks.json").read_text())["pixels"]
     (record / "pixels.json").write_text(json.dumps(pixels))
@@ -1799,7 +1804,7 @@ def test_the_figures_and_references_are_the_papers_own(tmp_path, monkeypatch):
         surname, year = cite.rsplit(" ", 1)
         assert surname.removesuffix(" et al.") in body and year in body, key
     available = " ".join(td.section(text, "Data Availability").split())
-    assert "tess-hunt's code, under the MIT licence," in available
+    assert "The tess-hunt code, under the MIT licence," in available
     licences = " ".join(td.section(text, "Appendix D. Licences").split())
     assert "or in a note, stays under ESA's CC BY-NC 3.0 IGO terms" in licences
     assert "the ExoFOP listings the paper names stay under ExoFOP's terms" in licences

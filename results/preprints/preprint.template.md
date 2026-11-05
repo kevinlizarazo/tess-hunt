@@ -35,7 +35,7 @@ concludes.
 ## The tess-hunt Search and Vetting
 
 The tess-hunt project is an independent search for transiting planets in public light curves from NASA's TESS mission.
-Its search looks for periodic transit signals in the light curves of a fixed sample of stars (Section 4). Each signal at
+The search looks for periodic transit signals in the light curves of a fixed sample of stars (Section 4). Each signal at
 or above a detection threshold goes to triage, which applies three screens:
 
 - the novelty check compares the signal with published catalogues of known planets, candidates and eclipsing binaries;
@@ -262,7 +262,7 @@ assisted by LLMs. More information on models is available on GitHub.
 
 ## Data Availability
 
-The TESS light curves come from MAST: $products. tess-hunt's code, under the MIT licence, is at $repository. The
+The TESS light curves come from MAST: $products. The tess-hunt code, under the MIT licence, is at $repository. The
 vetting run for the record reported here used commit $commit, and the commit that generated this paper is named in its
 `provenance.json`. The decision records are in the repository's `docs/decisions/` directory at that commit. The
 dataset deposited with this paper holds the signal's published records and the light curve that was the input to the
