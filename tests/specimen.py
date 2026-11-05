@@ -35,9 +35,18 @@ from tess_hunt.provenance import sha256_file
 # for, so it can't name a real star.
 TIC = 9310582746
 NAME = f"{TIC}-1"
-# A Sun-like dwarf's TIC values and a signal off the fixtures' round 5-day grid, so a reader judges the prose and not a
-# toy.
-STAR = {"tmag": 9.43, "teff": 5712.0, "rad": 0.97, "rho": 1.07, "e_rho": 0.12, "ruwe": 0.85}
+# A Sun-like dwarf's TIC values, with errors of the size TIC v8 gives such a star, and a signal off the fixtures' round
+# 5-day grid, so a reader judges the prose and not a toy.
+STAR = {
+    "tmag": 9.43,
+    "teff": 5712.0,
+    "e_teff": 126.0,
+    "rad": 0.97,
+    "e_rad": 0.052,
+    "rho": 1.07,
+    "e_rho": 0.12,
+    "ruwe": 0.85,
+}
 SIGNAL = {"period": 4.71836, "t0": 1326.4172, "duration": 0.126, "depth": 0.00168}
 # SPOC's 2-minute cadence, at the fixtures' own 2-minute noise.
 CADENCE_MIN, NOISE_PPM = 2.0, 600.0
