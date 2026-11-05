@@ -9,7 +9,8 @@
   `results/preprints/author.toml` is committed on its own, once the maintainer approves its text. The template's
   changes after the specimen's pre-release review (2026-11-02), which made 60 findings and confirmed 57, follow the
   controller's rulings on those findings, with no acceptance by the maintainer recorded: among them, the refusal of
-  a preregistered result whose deposit came on or after the start of the first sector it predicts.
+  a preregistered result whose deposit came on or after the start of the first sector it predicts. Amended on
+  2026-11-05 (below): the maintainer asked for the paper to follow journal conventions.
 
 ## Context
 
@@ -140,6 +141,58 @@ reviewed on a specimen and fixed before a real result can shape it.
   only), a Research Note of the AAS and a JOSS paper. Each waits for a pass, and the note also for ExoFOP's answer on
   whether it would qualify (docs/design.md, section 1.1).
 
+## Amendment (2026-11-05): journal conventions
+
+The maintainer read the specimen and asked for a paper that reads and looks like a professional paper of its kind. Two
+reviews compared it with six published analogues and the AAS rules; the controller's rulings on them are applied.
+Where this amendment and the Decision above differ, the amendment holds.
+
+- **Sections and numbering.** The paper has numbered sections in the order the analogues use: 1 Introduction (new
+  fixed text: TESS, the TOI and CTOI process, what the paper reports), 2 The tess-hunt Search and Vetting, 3 Host Star,
+  4 Detection, 5 Transit Parameters, 6 Vetting with five subsections (light-curve tests, location of the signal, the
+  statistical false-positive probability, literature, catalogues and later listings, and the adversarial review and
+  the call), 7 Held-out Seasons and the Preregistered Test, 8 Discussion, which quotes the upheld findings with their
+  answers, and 9 Conclusions. The unnumbered back matter follows: Acknowledgements, Use of LLMs (word for word),
+  Facilities and Software lines, Data Availability as one paragraph, and References, then Appendices A to D (the
+  runs, the dataset's files, the refuted findings and the notes, and the licences). The stylesheet numbers the
+  headings, and the text refers to sections by number, in place of quoting their headings.
+- **Voice.** The body says "we", as single-author papers in the field do, and Section 2 says once that the decision
+  records call the author "the maintainer". tess-hunt stays the subject only of what its code does. A finding that
+  survives its refuters is "upheld" in the paper's prose; the records keep `confirmed`. Decision records are defined
+  once in Section 2 and cited as "DR 0042". Contractions are expanded outside quoted text, and the prose spells
+  "catalogue" as British English, beside `neighbours` and "licence".
+- **Front matter and abstract.** The title is in title case. The author block gives the name, the affiliation, and
+  the ORCID and email when `author.toml` has them, each on its own line, and a "Version of" line with the day the paper
+  is rendered; the repository's URL moves to Data Availability. The Summary becomes the Abstract: the period, depth,
+  duration, radius and FPP with the errors the record holds, the star's TIC values, what Table 2 shows (every check
+  passed, or which did not and why the call still stands), the preregistered result, and that the signal stays a
+  candidate and what would establish it as a planet. It still says "planet candidate" and never "confirmed",
+  "validated" or "discovered a planet". Who makes the call and its outcomes move to Section 2. UAT keywords follow
+  the Abstract. The Zenodo description is the Abstract's first paragraph in plain text.
+- **Notation.** Values carry ± or, for asymmetric percentile offsets, a superscript and a subscript with a minus sign,
+  in the value's own unit: the period and epoch uncertainties are their posterior standard deviations in days, and
+  the radius takes its offsets from the 16th and 84th percentiles. FPP and NFPP are the mean ± the standard deviation
+  over TRICERATOPS's runs, as the record holds them. The record holds no uncertainty for the depth (the BLS box depth)
+  or the duration (from the density-prior fit's medians), and Table 1's note says so. Symbols follow the AAS (R⊕, R⊙,
+  σ, ″), dates in prose read "2027 January 20", and counts of five or more digits take separators. Quoted text and
+  the record's reasons in Table 2 stay verbatim.
+- **Tables.** Tables 1 to 4 are numbered, captioned above and cited in the text, with notes below. Table 2's novelty
+  row carries a lettered footnote when its outcome is not a pass and Section 6.4 sets the listing aside or the call's
+  promotion replaces the check.
+- **References.** One alphabetical list in AAS form, built and sorted in code, each entry with its DOI where it has
+  one, every entry checked in NASA ADS on 2026-11-05 (the MAST and ExoFOP data DOIs, which ADS does not index, in
+  DataCite). It adds Guerrero et al. 2021 for the TOI process and full entries for the light-curve products, the TIC,
+  TESS-EBs and ExoFOP. Every entry is cited in the text or the Software line. URLs leave the running text for
+  footnotes or Data Availability; the acknowledgements' requested credits keep theirs.
+- **Figures.** Each figure is cited where its subject is discussed and placed after that citation, with a bold label
+  and a caption that opens with no article. `plots.py` draws every future record's plots at the paper's text width with
+  text of one size, no titles above the plots, axis labels in sentence case with units, the whole orbit from phase
+  −0.25 to 0.75, and 300 dpi, each PNG under 300 KB. Published records keep their plots.
+- **Typography.** STIX Two Text, with STIX Two Math for the symbols it lacks, justified and hyphenated text, a centred
+  title block, numbered capitalised headings, and tables with horizontal rules only.
+- **The specimen.** Its made-up record tells one story: its runs take their ids from a clock of its own, so each run,
+  call, listing and deposit comes in order, and the held call names evidence the next version supplies.
+
 ## Limitations
 
 - The prose around the numbers is fixed text, and a test can't check that it claims no more than the record shows.
@@ -169,6 +222,9 @@ reviewed on a specimen and fixed before a real result can shape it.
   `test_the_dataset_lets_a_reader_recompute` (a file git ignores stays out),
   `test_a_versions_dataset_holds_each_record_up_to_it`, `test_the_author_line_comes_from_author_toml`,
   `test_a_production_run_reads_only_committed_results`, `test_run_refuses_before_starting_without_the_pdf_group`,
+  `test_numbers_read_as_aas_prints_them`, `test_each_count_reads_as_words`, `test_counts_from_the_record_read_as_words`,
   `test_publish_copies_the_package`, `test_zenodo_prints_the_form_from_the_run` (only a production run, and a judged
   result without its depth raises), `test_the_pdf_renders` (the header and footer of every page, and the findings'
   nested list in the HTML).
+- [tests/test_plots.py](../../tests/test_plots.py): `test_each_plot_is_drawn_for_print` (the 2026-11-05 amendment's
+  plot style).
