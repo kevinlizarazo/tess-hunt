@@ -166,10 +166,9 @@ Where this amendment and the Decision above differ, the amendment holds.
 - **Front matter and abstract.** The title is in title case. The author block gives the name, the affiliation, and
   the ORCID and email when `author.toml` has them, each on its own line, and a "Version of" line with the day the paper
   is rendered; the repository's URL moves to Data Availability. The Summary becomes the Abstract: the period, depth,
-  duration, radius and FPP with their errors, the star's TIC values, what Table 2 shows (every check
-  passed, or which did not and why the call still stands), the preregistered result, and that the signal stays a
-  candidate and what would establish it as a planet. The radius's error is said to omit the stellar radius's, there
-  and in the Conclusions. It still says "planet candidate" and never "confirmed", "validated" or "discovered a
+  duration, radius and FPP with their errors, the star's TIC values, what Table 2 shows (every check passed, or which
+  did not and why the call still stands), the preregistered result, and that the signal stays a candidate and what
+  would establish it as a planet. It still says "planet candidate" and never "confirmed", "validated" or "discovered a
   planet". Who makes the call and its outcomes move to Section 2. UAT keywords follow the Abstract. The Zenodo
   description is the Abstract's first paragraph in plain text.
 - **Notation.** Values carry ± or, for asymmetric percentile offsets, a stacked superscript and subscript with a minus
@@ -191,7 +190,8 @@ Where this amendment and the Decision above differ, the amendment holds.
 - **Figures.** Each figure is cited where its subject is discussed and placed after that citation, with a bold label
   and a caption that opens with no article. `plots.py` draws every future record's plots at the paper's text width with
   text of one size, no titles above the plots, axis labels in sentence case with units, the whole orbit from phase
-  −0.25 to 0.75, and 300 dpi, each PNG under 300 KB. Published records keep their plots.
+  −0.25 to 0.75, and 300 dpi, saved as 256-colour palette PNGs with every cadence's point kept. The aim, not a rule,
+  is each PNG under 300 KB. Published records keep their plots.
 - **Typography.** STIX Two Text, with STIX Two Math for the symbols it lacks, justified and hyphenated text, a centred
   title block, numbered capitalised headings, and tables with horizontal rules only.
 - **The specimen.** Its made-up record tells one story: its runs take their ids from a clock of its own, so each run,
@@ -200,8 +200,9 @@ Where this amendment and the Decision above differ, the amendment holds.
 ## Amendment (2026-11-05): depth and duration from the reproduced posterior
 
 The maintainer read the specimen at 5ed9213 and asked for three things: the depth and the duration carry errors like
-every other value, no note in the paper says a value lacks an uncertainty, and the paper shows the author's name.
-Where this amendment and the text above differ, this amendment holds.
+every other value, no note in the paper says a value lacks an uncertainty, and the paper shows the author's name. The
+controller's rulings on the build's questions (the depth unsmeared, the TIC radius's error folded into the planet's
+radius, and palette PNGs) are applied. Where this amendment and the text above differ, this amendment holds.
 
 - **The posterior.** A record keeps only the density-prior fit's percentile summary (`fit_prior`), so `preprint run`
   reproduces the fit. It rebuilds the light curve the fit read, as `vet.prepare` and `vet.vet_with_fits` build it:
@@ -212,21 +213,31 @@ Where this amendment and the text above differ, this amendment holds.
 - **The check.** The run refuses, before any run directory exists, unless the reproduced fit's summary equals the
   record's `fit_prior`: each parameter's median and its distances to the 16th and 84th percentiles, and the
   acceptance, to a relative tolerance of 1e-9. The refusal names the value that differs.
-- **The values.** Each sample's depth is the transit model's at mid-transit, with the sample's parameters and limb
-  darkening, integrated over the fit's exposure (the shortest, when the fit read several). Its total duration,
+- **The depth and the duration.** Each sample's depth is the transit model's at mid-transit, with the sample's
+  parameters and limb darkening and no exposure smearing: papers give the depth as a property of the transit model,
+  smearing belongs to a cadence, and a fit over several exposures has no single one. Its total duration,
   T<sub>14</sub>, comes from `vetting.fit_durations`, the formula whose median the record's `window_duration` keeps.
   Table 1, the Abstract and the Zenodo description give each as the median with its 16th and 84th percentile
   offsets, and the search's box depth is no longer printed. Table 1's note says where both come from and that the
-  posterior was reproduced and checked. No sentence says the record holds no uncertainty for either. For these two
-  values, this replaces the Decision's "computes nothing new".
-- **The dataset.** `dataset/posterior-prior.npz` holds the samples, each sample's depth and T<sub>14</sub>, the
-  parameter names and the fit's exposures. `manifest.json` lists it under CC BY 4.0, and Data Availability and
-  Appendix B name it. It sits beside `lc/`, not in a record's directory, since `vetting/` holds the published records
-  as `results/vetting/` does.
+  posterior was reproduced and checked, and names no exposure.
+- **The radius.** Each sample's R<sub>p</sub> is its R<sub>p</sub>/R<sub>⋆</sub> times a draw of the star's radius
+  from the TIC's value and error (`rad`, `e_rad` in the record's star row), the draws seeded by the criteria's seed.
+  The Abstract, Table 1 and the Conclusions give its median with its 16th and 84th percentile offsets; the checks
+  table's reasons stay as the record gives them. Section 3, and the Abstract, give the TIC's Teff and radius with
+  their errors where the record keeps them. A record whose star has no `e_rad` keeps the spread of
+  R<sub>p</sub>/R<sub>⋆</sub> alone, and Section 3 says once that the TIC gives no error for the star's radius: a fact
+  of the catalogue, not a gap in the record. The four sentences that said the radius's error left out the stellar
+  radius's, or that the record holds no error for it, are gone, and no sentence says a value lacks an uncertainty.
+  For the depth, the duration and the radius, this replaces the Decision's "computes nothing new".
+- **The dataset.** `dataset/posterior-prior.npz` holds the samples, the parameter names, and each sample's depth,
+  T<sub>14</sub>, stellar-radius draw and R<sub>p</sub>. `manifest.json` lists it under CC BY 4.0, and Data
+  Availability and Appendix B name it. It sits beside `lc/`, not in a record's directory, since `vetting/` holds the
+  published records as `results/vetting/` does.
 - **The specimen.** vet's own fit, seeded, makes its record from its synthetic light curve, so its paper goes through
-  the same reproduction and check. Its sectors are at SPOC's 2-minute cadence, which the paper names and Table 1's
-  note gives as the fit's exposure. It renders with the repository's `results/preprints/author.toml`, so the
-  maintainer reads the author block the paper will print. The tests keep their placeholder author.
+  the same reproduction and check. Its sectors are at SPOC's 2-minute cadence, which the paper and TRICERATOPS's
+  120-s data name, and its star has TIC-sized errors on its Teff and radius. It renders with the repository's
+  `results/preprints/author.toml`, so the maintainer reads the author block the paper will print. The tests keep
+  their placeholder author.
 
 ## Limitations
 
@@ -243,8 +254,8 @@ Where this amendment and the text above differ, this amendment holds.
 - [tests/test_preprint.py](../../tests/test_preprint.py): `test_preprint_refuses_unless_the_latest_version_is_a_standing_pass`
   (a held record, a passed M3 record with a held r2, a pass `calls.problems` refuses, an uncommitted change, a
   `fit_prior` median or acceptance the reproduced fit does not give),
-  `test_every_number_comes_from_the_record` (the depth and duration from the reproduced posterior, and a missing value
-  raises), `test_the_paper_says_candidate_not_planet`,
+  `test_every_number_comes_from_the_record` (the depth, duration and radius from the reproduced posterior, a star with
+  and without the TIC's radius error, and a missing value raises), `test_the_paper_says_candidate_not_planet`,
   `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_confirmed_finding_no_refuter_ran_on_says_so`,
   `test_a_versions_paper_names_its_records` (an earlier record's call quoted, what the re-vet changed, the runs
   table and the dataset's guide),
