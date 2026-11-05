@@ -8,6 +8,7 @@ writes specimen.md, specimen.pdf and the paper's figures to DIR.
 """
 
 import argparse
+import datetime as dt
 import functools
 import json
 import logging
@@ -25,7 +26,7 @@ import test_preprint as tp
 import test_vetting as tv
 from synthetic import make_transit_lc
 
-from tess_hunt import literature, predict, preprint
+from tess_hunt import literature, predict, preprint, provenance
 from tess_hunt.cli import main
 from tess_hunt.fit import NAMES, FitResult
 from tess_hunt.lightcurve import LightCurve
@@ -43,9 +44,18 @@ SIGNAL = {"period": 4.71836, "t0": 1326.4172, "duration": 0.126, "depth": 0.0016
 TYCHO = "TYC 9601-327-1"
 # A CTOI is named after its star's TIC, so this one can't be real either.
 LISTING = f"CTOI-{TIC}.01"
+# One order for the made-up story, which the paper prints: the first vetting run, then its review and held call
+# (2026-10-27, 2026-10-28), the predictions package (tp.PACKAGE, made 2026-11-12) and its Zenodo deposit, which is the
+# claim, then ExoFOP's later CTOI, then version r2's vetting run before Sector 112 starts (2026-12-22), its review and
+# call, the preregistered result (2027-02-20) and the paper. The runs take their ids from this clock, not today's.
+FIRST_VETTING = dt.datetime(2026, 10, 20, 9, 0, tzinfo=dt.UTC)
+R2_VETTING = dt.datetime(2026, 12, 18, 9, 0, tzinfo=dt.UTC)
+VERSION = dt.date(2027, 2, 24)
 # The claim is the predictions deposit, as for tess-hunt's real held signals, published by decision 0040's deadline for
 # a lock before the predicted sectors; the DOI is the fixtures' made-up one.
-CLAIM = {"date": "2026-11-05", "record": f"https://doi.org/{tp.DOI}"}
+CLAIM = {"date": "2026-11-14", "record": f"https://doi.org/{tp.DOI}"}
+CTOI_LISTED = "2026-12-15"
+PIXEL_REASON = f'centroid offset {td.S64["offset_arcsec"]}" within 15"'
 # The paper names the papers the literature search found and what ExoFOP lists on the star, so neither may be real. An
 # arXiv id's month runs to 12, so this one names no paper.
 HIT = tl.paper("A placeholder paper that names the star, for the specimen only", arxiv="2613.00001")
@@ -84,7 +94,22 @@ REVIEW_R2 = {
         },
     ],
 }
-HELD = tc.edit(tc.HELD, tc.NAME, NAME)
+# The first record held on its one season, which the held-out check needs two of; r2's Sector 65 is the second, and its
+# held-out check passes, so the pass follows from the evidence the held call named.
+HELD = tc.HELD
+for old, new in (
+    (tc.NAME, NAME),
+    (
+        "The public data can't tell the two stars apart.",
+        "The held-out check has only one season to test.",
+    ),
+    ('rests_on = ["F2"]', 'rests_on = ["holdout"]'),
+    (
+        "High-resolution imaging of the 12.5 arcsec companion.",
+        "A second season of TESS data, which the held-out check can test against the first.",
+    ),
+):
+    HELD = tc.edit(HELD, old, new)
 PASSED = tc.PASSED
 for old, new in (
     (tc.NAME, NAME),
@@ -157,6 +182,8 @@ def triage_run(tmp: Path) -> Path:
     evidence["signal"]["tic"] = TIC
     evidence["pixels"]["evidence"]["sectors"].append(td.S64)
     evidence["pixels"]["evidence"]["offset_qual_arcsec"] = td.S64["offset_arcsec"]
+    # The reason names the best-quality offset the pass rests on, as the pixel check writes it.
+    evidence["pixels"]["reason"] = PIXEL_REASON
     (run / "evidence" / f"{NAME}.json").write_text(json.dumps(evidence))
     old.unlink()
     return run
@@ -196,6 +223,7 @@ def vetting_runs(tmp: Path, mp) -> tuple[Path, Path]:
     for i, source in enumerate(lc.sources.values()):
         source["crowdsap"] = 0.9 + 0.01 * i
     lc.save(path)
+    mp.setattr(provenance, "_now", lambda: FIRST_VETTING)
     return vetted(tmp, [*argv, "--triage-run", str(triage_run(tmp))])
 
 
@@ -224,6 +252,8 @@ def literature_record(run: Path, mp) -> dict:
 def made_from(tmp: Path, mp, run: Path, suspect: Path, tag: str) -> dict[str, Path]:
     """The TRICERATOPS, literature and titles runs made from the vetting run `run`, as td.all_runs makes them."""
     tric = {**td.triceratops_record(run), "signal": {"name": NAME, "tic": TIC}}
+    # TRICERATOPS read the vetting run's own 2-minute SPOC light curves, as a real run on them would.
+    tric["evidence"] = {**tric["evidence"], "exposure_s": 120.0}
     tric_run = td.made_run(
         tmp,
         "vetting-triceratops",
@@ -264,7 +294,7 @@ def judged(checks: dict) -> None:
 def claims_run(tmp: Path, run: Path, lit: Path, tag: str) -> Path:
     """td.claims_run for the made-up star: the claims run that sets aside the later CTOI."""
     listing = {
-        **td.later_listing("CTOI", LISTING, "2026-12-15"),
+        **td.later_listing("CTOI", LISTING, CTOI_LISTED),
         "tic": TIC,
         "period": SIGNAL["period"],
     }
@@ -295,7 +325,9 @@ def prepared(repo: Path) -> None:
     predictions deposit and the placeholder author."""
     tp.published_runs(repo)
     signals = repo / "results" / "triage" / tv.TRIAGE_RUN / "signals.csv"
-    pd.read_csv(signals).assign(tic=TIC).to_csv(signals, index=False)
+    rows = pd.read_csv(signals).assign(tic=TIC)
+    rows.loc[rows["rank"] == 1, "pixels_reason"] = PIXEL_REASON
+    rows.to_csv(signals, index=False)
     preprints = repo / "results" / "preprints"
     preprints.mkdir()
     shutil.copy(tp.REPO / preprint.TEMPLATE, preprints)
@@ -329,6 +361,9 @@ def build(tmp: Path, mp) -> tuple[Path, Path]:
 
     lc_run = td.revet_run(tmp, tics=(TIC,))
     triage = tmp / "data" / "runs" / tv.TRIAGE_RUN
+    # After ExoFOP lists the CTOI the run's novelty check matches, and before Sector 112, which tess-point places the
+    # star in, begins.
+    mp.setattr(provenance, "_now", lambda: R2_VETTING)
     run, suspect = vetted(
         tmp, [*tv.run_argv(tmp), "--triage-run", str(triage), "--lc-dir", str(lc_run / "lc")]
     )
@@ -354,7 +389,7 @@ def specimen(out: Path) -> None:
     with tempfile.TemporaryDirectory() as tmp, pytest.MonkeyPatch.context() as mp:
         repo, record = build(Path(tmp), mp)
         author = preprint.load_author(repo / preprint.AUTHOR)
-        text = preprint.render(record, author, repo, specimen=True)
+        text = preprint.render(record, author, repo, specimen=True, version=VERSION)
         out.mkdir(parents=True, exist_ok=True)
         for name in preprint.FIGURES:
             shutil.copyfile(record / "plots" / name, out / name)
