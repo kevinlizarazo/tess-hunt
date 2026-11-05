@@ -67,8 +67,12 @@ CLAIM = {"date": "2026-11-14", "record": f"https://doi.org/{tp.DOI}"}
 CTOI_LISTED = "2026-12-15"
 PIXEL_REASON = f'centroid offset {td.S64["offset_arcsec"]}" within 15"'
 # The paper names the papers the literature search found and what ExoFOP lists on the star, so neither may be real. An
-# arXiv id's month runs to 12, so this one names no paper.
-HIT = tl.paper("A placeholder paper that names the star, for the specimen only", arxiv="2613.00001")
+# arXiv id's month runs to 12, so this one names no paper. Its title reads as a paper that would list the star by its
+# Tycho-2 name without reporting a transit, and with no spectrum of it, as the call and the review's F4 say.
+HIT = tl.paper(
+    "Rotation Periods of Bright Southern Solar Analogues from TESS Full-Frame Images",
+    arxiv="2613.00001",
+)
 EXOFOP = {
     "status": "ok",
     "error": None,
@@ -391,7 +395,7 @@ def specimen(out: Path) -> None:
     with tempfile.TemporaryDirectory() as tmp, pytest.MonkeyPatch.context() as mp:
         repo, record = build(Path(tmp), mp)
         author = preprint.load_author(repo / preprint.AUTHOR)
-        text = preprint.render(record, author, repo, specimen=True, version=VERSION)
+        text = preprint.render(record, author, repo, version=VERSION)
         out.mkdir(parents=True, exist_ok=True)
         for name in preprint.FIGURES:
             shutil.copyfile(record / "plots" / name, out / name)

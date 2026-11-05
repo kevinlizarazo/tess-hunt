@@ -2233,18 +2233,14 @@ def render(
     record: Path,
     author: dict,
     repo: Path,
-    specimen: bool = False,
     version: dt.date | None = None,
     posterior: dict | None = None,
 ) -> str:
-    """The paper in Markdown, dated `version` (the day it is rendered by default, the day its run starts). A
-    specimen opens with a line saying it is one."""
-    text = Template((repo / TEMPLATE).read_text()).substitute(
+    """The paper in Markdown, dated `version` (the day it is rendered by default, the day its run starts). A specimen's
+    text is a paper's: its PDF's header and footer mark it (`html`)."""
+    return Template((repo / TEMPLATE).read_text()).substitute(
         values(record, author, repo, version, posterior)
     )
-    if specimen:
-        return f"**{SPECIMEN}.** Rendered from a made-up record to review this template; it is never deposited.\n\n{text}"
-    return text
 
 
 def html(markdown_text: str, specimen: bool) -> str:

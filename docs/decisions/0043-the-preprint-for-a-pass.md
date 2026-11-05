@@ -237,7 +237,8 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   the same reproduction and check. Its sectors are at SPOC's 2-minute cadence, which the paper and TRICERATOPS's
   120-s data name, and its star has TIC-sized errors on its Teff and radius. It renders with the repository's
   `results/preprints/author.toml`, so the maintainer reads the author block the paper will print. The tests keep
-  their placeholder author.
+  their placeholder author. Its text is a paper's: no opening line and no title or name in it says the record is made
+  up, and only the header and footer of every page mark it "SPECIMEN: not a candidate".
 
 ## Limitations
 

@@ -256,11 +256,9 @@ def runs_made(tmp_path: Path) -> list[Path]:
     return sorted((tmp_path / "data" / "runs").glob("*-preprint-*"))
 
 
-def paper(repo: Path, specimen: bool = False) -> str:
+def paper(repo: Path) -> str:
     record = repo / "results" / "vetting" / NAME
-    return preprint.render(
-        record, preprint.load_author(repo / preprint.AUTHOR), repo, specimen=specimen
-    )
+    return preprint.render(record, preprint.load_author(repo / preprint.AUTHOR), repo)
 
 
 @pytest.fixture
@@ -1206,7 +1204,7 @@ def test_the_pdf_renders(tmp_path, monkeypatch):
     def marks(specimen: bool) -> list[list[str]]:
         """The margin boxes on each page of WeasyPrint's layout that carry the specimen's marking (the lock holds no
         PDF reader)."""
-        document = preprint.document(paper(repo, specimen), plots, specimen)
+        document = preprint.document(paper(repo), plots, specimen)
         return [
             sorted(
                 box.at_keyword
@@ -1218,9 +1216,10 @@ def test_the_pdf_renders(tmp_path, monkeypatch):
 
     marked = marks(specimen=True)
     assert len(marked) >= 1
-    # The header and the footer of every page.
+    # The header and the footer of every page, and only there: a specimen's text is a paper's.
     assert all(page == ["@bottom-center", "@top-center"] for page in marked)
     assert all(page == [] for page in marks(specimen=False))
+    assert preprint.SPECIMEN not in preprint.html(paper(repo), specimen=True).split("<body>")[1]
     # The review's finding keeps its quoted claim and the call's answer nested under it.
     page = preprint.html(paper(repo), specimen=False)
     assert re.search(
