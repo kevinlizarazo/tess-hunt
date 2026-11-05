@@ -62,7 +62,8 @@ CAPTIONS = {
     "as in Figure 1. The red line marks the median flux in the transit core (the central half of the transit), taken "
     "separately for the odd and the even transits",
     "phase.png": "Relative flux vs. orbital phase over the whole orbit, with the transit at phase 0 and phases from "
-    "−0.25 to 0.75. Grey points are individual cadences, and blue points are medians in bins half the transit "
+    "−0.25 to 0.75, so a phase above 0.75 is drawn one orbit earlier. Grey points are individual cadences, and "
+    "blue points are medians in bins half the transit "
     "duration wide. The dashed line marks phase 0.5, where a secondary eclipse falls if the orbit is circular. The red "
     "line marks the most significant secondary event ModShift finds at any phase, labelled with its phase and "
     "significance",
@@ -549,15 +550,42 @@ GAIA_CREDIT = (
     "https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national "
     "institutions, in particular the institutions participating in the Gaia Multilateral Agreement."
 )
-STYLE = """
-@page { size: A4; margin: 2cm; @bottom-right { content: counter(page); font-size: 9pt; } }
-body { font-family: serif; font-size: 10.5pt; line-height: 1.35; }
-h1 { font-size: 16pt; }
-h2 { font-size: 12.5pt; margin-top: 1.2em; }
-table { border-collapse: collapse; font-size: 9pt; }
-th, td { border: 0.5pt solid #999; padding: 2pt 4pt; vertical-align: top; }
-img { max-width: 100%; }
-code { font-size: 9pt; }
+# AASTeX's look: a Times-like face (STIX Two Math only for ⊕, ⊙ and ⋆, which the text face lacks), justified and
+# hyphenated text, a centred title block, numbered capitalised section
+# heads (the toc extension's ids pick out the unnumbered back matter), tables with horizontal rules only and rows
+# kept whole, figures at the text width with a bold label, and URLs as footnotes.
+UNNUMBERED = "h2#abstract, h2#acknowledgements, h2#use-of-llms, h2#data-availability, h2#references, h2[id^='appendix']"
+STYLE = f"""
+@page {{ size: A4; margin: 2cm; @bottom-right {{ content: counter(page); font-size: 9pt; }}
+  @footnote {{ border-top: 0.5pt solid; padding-top: 2pt; }} }}
+html {{ font-family: "STIX Two Text", "STIX Two Math", "TeX Gyre Termes", serif; font-size: 10.5pt; line-height: 1.3; }}
+body {{ text-align: justify; hyphens: auto; counter-reset: section; }}
+h1 {{ font-size: 15pt; text-align: center; hyphens: none; margin: 0.4em 0; }}
+.front {{ text-align: center; margin-bottom: 1.2em; }}
+.front p {{ margin: 0.15em 0; }}
+h2, h3 {{ text-align: left; hyphens: none; break-after: avoid; }}
+h2 {{ font-size: 10.5pt; text-transform: uppercase; letter-spacing: 0.04em; margin: 1.4em 0 0.5em;
+  counter-increment: section; counter-reset: subsection; }}
+h2::before {{ content: counter(section) ". "; }}
+{UNNUMBERED} {{ counter-increment: none; }}
+{", ".join(f"{h}::before" for h in UNNUMBERED.split(", "))} {{ content: none; }}
+h2#abstract {{ text-align: center; }}
+h3 {{ font-size: 10.5pt; font-style: italic; font-weight: normal; margin: 1em 0 0.4em; counter-increment: subsection; }}
+h3::before {{ content: counter(section) "." counter(subsection) ". "; }}
+table {{ border-collapse: collapse; font-size: 9pt; border-top: 1pt solid; border-bottom: 1pt solid;
+  margin: 0.4em auto; break-before: avoid; }}
+th {{ border-bottom: 0.5pt solid; }}
+th, td {{ padding: 2pt 5pt; vertical-align: top; text-align: left; hyphens: none; }}
+tr {{ break-inside: avoid; }}
+table + p {{ font-size: 9pt; }}
+figure {{ break-inside: avoid; margin: 1em 0; }}
+figure img {{ width: 100%; }}
+figcaption {{ font-size: 9pt; }}
+code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; hyphens: none; overflow-wrap: anywhere; }}
+.id {{ hyphens: none; }}
+.footnote {{ float: footnote; font-size: 8pt; text-align: left; hyphens: none; overflow-wrap: anywhere; }}
+.references p {{ padding-left: 1.5em; text-indent: -1.5em; margin: 0 0 2pt; font-size: 9pt; text-align: left;
+  hyphens: none; }}
 """
 SPECIMEN_STYLE = f"""
 @page {{ @top-center {{ content: "{SPECIMEN}"; }} @bottom-center {{ content: "{SPECIMEN}"; }} }}
@@ -782,6 +810,11 @@ def _mean_sd(mean: float, sd: float, runs: int) -> str:
 def _footnote(text: str) -> str:
     """A footnote at the foot of the page, for a URL that would break the running text (AAS)."""
     return f'<span class="footnote">{text}</span>'
+
+
+def _doi(doi: str) -> str:
+    """A DOI in running text, kept from hyphenation, which would break it with a hyphen it does not have."""
+    return f'<span class="id">doi:{doi}</span>'
 
 
 def _quote(text: str) -> str:
@@ -1744,9 +1777,9 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
     if claim is None:
         where = None
     elif deposit is not None and claim.record == f"https://doi.org/{deposit['doi']}":
-        where = f"in our predictions deposit (doi:{deposit['doi']})"
+        where = f"in our predictions deposit ({_doi(deposit['doi'])})"
     elif claim.record.startswith("https://doi.org/"):
-        where = f"in the record doi:{claim.record.removeprefix('https://doi.org/')}"
+        where = f"in the record {_doi(claim.record.removeprefix('https://doi.org/'))}"
     elif claim.record.startswith("https://"):
         where = f"in a public record{_footnote(claim.record)}"
     else:
@@ -1866,9 +1899,9 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
         "before" if call["date"] < as_of else "after" if call["date"] > as_of else "on the day of"
     )
     return {
-        "prereg": f"{deposited} (doi:{deposit['doi']}). The deposit also fixed how the prediction would be judged: by "
-        "the held-out check's criteria, applied to the predicted transits (DR 0040). Zenodo published the deposit on "
-        f"{_date(published)}, and TESS began observing Sector {first} on {_date(start)}. {said} Our call "
+        "prereg": f"{deposited} ({_doi(deposit['doi'])}). The deposit also fixed how the prediction would be judged: "
+        "by the held-out check's criteria, applied to the predicted transits (DR 0040). Zenodo published the deposit "
+        f"on {_date(published)}, and TESS began observing Sector {first} on {_date(start)}. {said} Our call "
         f"({_date(call['date'])}) came {order} this result.",
         "summary_prereg": summary,
         "conclusion_prereg": CONCLUSION_RESULT[p["result"]],

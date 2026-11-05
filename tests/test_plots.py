@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 from synthetic import make_lc, with_products
 
 from tess_hunt import plots
@@ -64,6 +65,48 @@ def test_each_plot_writes_a_png(tmp_path, monkeypatch):
     for path in paths:
         assert path.read_bytes()[:8] == PNG, path.name
     assert sorted(p.name for p in (tmp_path / "plots").iterdir()) == sorted(p.name for p in paths)
+
+
+def test_each_plot_is_drawn_for_print(tmp_path, monkeypatch):
+    # The figure each plot saves, kept for inspection.
+    drawn = {}
+    save = plots._save
+
+    def keep(fig, path):
+        drawn[path.name] = fig
+        return save(fig, path)
+
+    monkeypatch.setattr(plots, "_save", keep)
+    draw_all(planet_lc(), tmp_path / "plots", MODSHIFT, PIXELS, NEIGHBOURS)
+    for name, fig in drawn.items():
+        # At the preprint's text width, so its text prints at one size, with no title above the plot: the caption
+        # says what each shows. Grids keep their panel titles.
+        assert fig.get_figwidth() == plots.WIDTH_IN, name
+        assert fig._suptitle is None, name
+        if name in ("phase.png", "centroids.png"):
+            assert all(not ax.get_title() for ax in fig.axes), name
+    for name in ("transits.png", "folds.png", "odd_even.png"):
+        assert (
+            drawn[name]
+            ._supxlabel.get_text()
+            .startswith(("Time from mid-transit (h)", "Time from predicted"))
+        )
+        assert drawn[name]._supylabel.get_text() == "Relative flux (ppm)"
+        assert drawn[name]._supxlabel.get_fontsize() == plots.FONT_PT
+    [ax] = drawn["phase.png"].axes
+    assert ax.get_xlim() == (-0.25, 0.75)
+    assert (ax.get_xlabel(), ax.get_ylabel()) == ("Orbital phase", "Relative flux (ppm)")
+    # The ModShift secondary at 0.759 is drawn an orbit earlier, labelled with the phase the record gives.
+    lines = {
+        line.get_label(): line.get_xdata()[0]
+        for line in ax.get_lines()
+        if line.get_label().startswith("Mod")
+    }
+    assert lines == {"ModShift secondary, phase 0.759, 3.1σ": pytest.approx(0.759 - 1.0)}
+    assert all(t.get_fontsize() == plots.FONT_PT for t in ax.get_xticklabels())
+    # Sharp in print and small enough to commit.
+    for path in (tmp_path / "plots").iterdir():
+        assert path.stat().st_size < 300_000, path.name
 
 
 def test_a_plot_with_nothing_to_show_says_no_data(tmp_path, monkeypatch):

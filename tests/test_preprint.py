@@ -650,8 +650,8 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
     _, repo = published(tmp_path, monkeypatch)
     public = " ".join(td.section(paper(repo), "Vetting").split())
     assert (
-        "We first made the signal public on 2026 October 28, in the record doi:10.5281/zenodo.23745923."
-        in public
+        "We first made the signal public on 2026 October 28, in the record "
+        '<span class="id">doi:10.5281/zenodo.23745923</span>.' in public
     )
     assert "ExoFOP lists a signal" not in public
 
@@ -973,7 +973,7 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     text = " ".join(td.section(written, "Held-out Seasons and the Preregistered Test").split())
     assert (
         "Before TESS observed Sectors 112 and 113, we deposited a prediction of the signal's transits in those "
-        f"sectors on Zenodo (doi:{DOI})." in text
+        f'sectors on Zenodo (<span class="id">doi:{DOI}</span>).' in text
     )
     assert (
         "Zenodo published the deposit on 2026 November 5, and TESS began observing Sector 112 on 2026 December 22."
@@ -1001,8 +1001,8 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     claims = repo / "results" / "claims.toml"
     claims.write_text(claims.read_text().replace("10.5281/zenodo.23745923", DOI))
     assert (
-        f"We first made the signal public on 2026 October 28, in our predictions deposit (doi:{DOI})."
-        in " ".join(paper(repo).split())
+        f'We first made the signal public on 2026 October 28, in our predictions deposit (<span class="id">doi:{DOI}'
+        "</span>)." in " ".join(paper(repo).split())
     )
     # A judged result without its depth raises instead of rendering.
     (record / "prereg.json").write_text(json.dumps({**PREREG, "depth": None}))

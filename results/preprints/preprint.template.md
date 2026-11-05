@@ -112,9 +112,9 @@ $triage
 
 Table 1 gives the transit parameters. The depth is that of the search's BLS box model. The other values come from a
 transit model (batman; Kreidberg 2015), with limb darkening parametrised as in Kipping (2013), fitted to the light curve
-with the TIC stellar density as a prior (the density-prior fit). Because of the prior, b and a/R<sub>⋆</sub> partly
-reflect the TIC density. The shape, density and radius checks use a second fit without the density prior, so the
-density check compares the density the transit implies with the TIC density.
+with the TIC stellar density as a prior (the density-prior fit). Because of the prior, <i>b</i> and
+<i>a</i>/<i>R</i><sub>⋆</sub> partly reflect the TIC density. The shape, density and radius checks use a second fit
+without the density prior, so the density check compares the density the transit implies with the TIC density.
 
 $parameters
 
@@ -298,13 +298,12 @@ $notes
 
 ## Appendix D. Licences
 
-This paper and its figures are licensed under CC BY
-4.0<span class="footnote">https://creativecommons.org/licenses/by/4.0/</span>, with two exceptions:
+This paper and its figures are licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/), with two
+exceptions:
 
-- any Gaia value in text quoted from the review or the call, or in a note, stays under ESA's CC BY-NC 3.0 IGO
-  terms<span class="footnote">https://www.cosmos.esa.int/web/gaia-users/license</span>;
-- the ExoFOP listings the paper names stay under ExoFOP's
-  terms<span class="footnote">https://exofop.ipac.caltech.edu/tess/pcp.php</span>.
+- any Gaia value in text quoted from the review or the call, or in a note, stays under ESA's CC BY-NC 3.0 IGO terms
+  (https://www.cosmos.esa.int/web/gaia-users/license);
+- the ExoFOP listings the paper names stay under ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php).
 
 The dataset is also CC BY 4.0, with two exceptions:
 
