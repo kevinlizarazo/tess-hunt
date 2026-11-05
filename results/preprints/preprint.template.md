@@ -179,7 +179,8 @@ set for a likely planet, FPP < $fpp_pass and NFPP < $nfpp_pass. $validated
 
 The literature search queried Zenodo, arXiv and OpenAlex (Priem et al. 2022) by every name SIMBAD (Wenger et al.
 2000) gives the star, including $names, searched NASA ADS by its object search, and retrieved ExoFOP's records for the
-star. The search returned $papers, and it passes when all of its queries complete. $exofop
+star. The search returned $papers. The literature check passes when every query completes, and all of them did.
+$exofop
 
 We first made the signal public on $claim_date, $claim_where.$listings
 

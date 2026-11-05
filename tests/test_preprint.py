@@ -1597,6 +1597,17 @@ def test_counts_from_the_record_read_as_words(tmp_path, monkeypatch):
             assert " ± " not in made["tric_probabilities"]
         else:
             assert made["tric_probabilities"].endswith("(mean ± standard deviation).")
+    # The literature search's count of papers, apart from the check's rule and its outcome, which a pass needs
+    # complete.
+    hit = json.loads((record / "literature.json").read_text())["evidence"]["hits"][0]
+    for n, returned in ((0, "no papers"), (1, "one paper"), (3, "three papers")):
+        td.edit_json(
+            record / "literature.json", lambda r, n=n: r["evidence"].update(hits=[hit] * n)
+        )
+        assert (
+            f"The search returned {returned}. The literature check passes when every query completes, and all of "
+            "them did." in " ".join(paper(repo).split())
+        )
 
 
 def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
