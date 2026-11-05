@@ -4,12 +4,12 @@ the script never touches results/ or $TESS_HUNT_DATA, and nothing it makes is de
 
     uv run --group preprint python tests/specimen.py --out DIR
 
-writes specimen.md, specimen.pdf and the paper's figures to DIR.
+writes specimen.md, specimen.pdf and the paper's figures to DIR. The record's fits are vet's own, seeded, and the paper
+reproduces one of them, so a run takes about ten minutes.
 """
 
 import argparse
 import datetime as dt
-import functools
 import json
 import logging
 import shutil
@@ -28,7 +28,6 @@ from synthetic import make_transit_lc
 
 from tess_hunt import literature, predict, preprint, provenance
 from tess_hunt.cli import main
-from tess_hunt.fit import NAMES, FitResult
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.provenance import sha256_file
 
@@ -40,6 +39,8 @@ NAME = f"{TIC}-1"
 # toy.
 STAR = {"tmag": 9.43, "teff": 5712.0, "rad": 0.97, "rho": 1.07, "e_rho": 0.12, "ruwe": 0.85}
 SIGNAL = {"period": 4.71836, "t0": 1326.4172, "duration": 0.126, "depth": 0.00168}
+# SPOC's 2-minute cadence, at the fixtures' own 2-minute noise.
+CADENCE_MIN, NOISE_PPM = 2.0, 600.0
 # The first field of a Tycho-2 name is a Guide Star Catalog region, 1 to 9537, so no real star has this name.
 TYCHO = "TYC 9601-327-1"
 # A CTOI is named after its star's TIC, so this one can't be real either.
@@ -71,12 +72,6 @@ EXOFOP = {
         {"itype": "Speckle", "itel": "Gemini (8 m)", "iinst": "'Alopeke", "icont": "4.49 @ 0.5"}
     ],
 }
-AUTHOR = """\
-given_names = "Placeholder"
-family_names = "Author"
-affiliation = "Placeholder affiliation"
-repository = "https://github.com/kevinlizarazo/tess-hunt"
-"""
 REVIEW = {**tc.REVIEW, "signal": NAME, "hits_flagged": [HIT["arxiv"]]}
 # r2's review adds a confirmed finding no refuter ran on, beside F2, whose refuters did.
 REVIEW_R2 = {
@@ -141,28 +136,13 @@ PREREG = {
     "signal": {"name": NAME, "tic": TIC},
     # After the deposit, as the paper requires.
     "predicted_sectors": [112, 113],
-    "depth": 0.00161,
+    # Near the earlier seasons' core depths, which the record's odd-even check gives as about 1790 ppm.
+    "depth": 0.00172,
     "err": 0.00019,
-    "sigma": 8.47,
-    "expected_snr": 8.84,
+    "sigma": 9.05,
+    "expected_snr": 9.42,
     "tension": 0.37,
 }
-
-
-def fit(lc, eph, cfg, rho_prior=None, seed=None) -> FitResult:
-    """tv.fake_fit with a posterior that has width, as a real fit's has: the fixture's has none."""
-    rng = np.random.default_rng(0)
-    n = 4000
-    values = {
-        "t0": eph.t0 + rng.normal(0.0, 1e-3, n),
-        "period": eph.period + rng.normal(0.0, 1e-5, n),
-        "rp_rs": rng.normal(0.04, 0.0012, n),
-        "b": np.abs(rng.normal(0.3, 0.12, n)),
-        "log_rho": rng.normal(0.15, 0.04, n),
-        "q1": rng.uniform(0.25, 0.45, n),
-        "q2": rng.uniform(0.25, 0.45, n),
-    }
-    return FitResult(np.column_stack([values[name] for name in NAMES]), 0.3, rho_prior)
 
 
 def triage_run(tmp: Path) -> Path:
@@ -202,16 +182,28 @@ def vetted(tmp: Path, argv: list[str]) -> tuple[Path, Path]:
     return made[False], made[True]
 
 
+def transit_lc(cadences: dict, noise_ppm: dict, **kwargs) -> LightCurve:
+    """The light curves setup and td.revet_run make, with the transit at the signal's ephemeris and each sector at
+    SPOC's 2-minute cadence, which the paper names: Table 1's note gives the fit's exposure, so the fixtures' 30-minute
+    cadence would contradict it."""
+    return make_transit_lc(
+        period=SIGNAL["period"],
+        t0=SIGNAL["t0"],
+        cadences=dict.fromkeys(cadences, CADENCE_MIN),
+        noise_ppm=dict.fromkeys(cadences, NOISE_PPM),
+        **kwargs,
+    )
+
+
 def vetting_runs(tmp: Path, mp) -> tuple[Path, Path]:
     """td.vetting_runs for the made-up star and its signal, whose files that function names by TIC 1."""
     mp.setattr(tv, "CANDIDATE", {**tv.CANDIDATE, **STAR, "tic": TIC})
     mp.setattr(tv, "SIGNAL", SIGNAL)
-    # The light curves setup and td.revet_run make, the transit at the signal's ephemeris.
-    transit = functools.partial(make_transit_lc, period=SIGNAL["period"], t0=SIGNAL["t0"])
-    mp.setattr(tv, "make_transit_lc", transit)
-    mp.setattr(td, "make_transit_lc", transit)
+    mp.setattr(tv, "make_transit_lc", transit_lc)
+    mp.setattr(td, "make_transit_lc", transit_lc)
     signal = {"name": NAME, "tic": TIC, **SIGNAL, "kind": "candidate"}
-    argv, _ = tv.setup(tmp, mp, signals=[signal], suspect={64}, fit=fit)
+    # vet's own fit, seeded by the criteria, so the paper's reproduction of it is checked as a real record's is.
+    argv, _ = tv.setup(tmp, mp, signals=[signal], suspect={64})
     # A deposit predicts only sectors tess-point placed the star in.
     mp.setattr(
         predict,
@@ -321,8 +313,9 @@ def publish(runs: dict[str, Path], *roles: str) -> list[str]:
 
 
 def prepared(repo: Path) -> None:
-    """What `preprint run` reads beside the record, as tp.prepared writes it, for the made-up star, its claim, the
-    predictions deposit and the placeholder author."""
+    """What `preprint run` reads beside the record, as tp.prepared writes it, for the made-up star, its claim and the
+    predictions deposit, with the repository's own author line: the maintainer reads the author block the paper will
+    print."""
     tp.published_runs(repo)
     signals = repo / "results" / "triage" / tv.TRIAGE_RUN / "signals.csv"
     rows = pd.read_csv(signals).assign(tic=TIC)
@@ -331,7 +324,7 @@ def prepared(repo: Path) -> None:
     preprints = repo / "results" / "preprints"
     preprints.mkdir()
     shutil.copy(tp.REPO / preprint.TEMPLATE, preprints)
-    (preprints / "author.toml").write_text(AUTHOR)
+    shutil.copy(tp.REPO / preprint.AUTHOR, preprints)
     (repo / "results" / "claims.toml").write_text(
         f'["{NAME}"]\ndate = {CLAIM["date"]}\nrecord = "{CLAIM["record"]}"\n'
     )
