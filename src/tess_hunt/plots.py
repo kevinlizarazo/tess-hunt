@@ -3,12 +3,14 @@ with matplotlib's Agg canvas, and a light curve with nothing to show gets a PNG 
 signal's vet must not fail on its plots."""
 
 import functools
+import io
 from pathlib import Path
 
 import numpy as np
 from matplotlib import rc_context
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
+from PIL import Image
 from scipy.stats import binned_statistic
 
 from tess_hunt.checks.families import family_labels
@@ -53,7 +55,14 @@ def _styled(draw):
 def _save(fig: Figure, path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     FigureCanvasAgg(fig)
-    fig.savefig(path, dpi=DPI)
+    drawn = io.BytesIO()
+    fig.savefig(drawn, format="png", dpi=DPI)
+    # A 256-colour palette PNG: every cadence's point stays on the plot, and a 2-minute light curve's points would
+    # otherwise make a full-colour PNG several times the size.
+    palette = (
+        Image.open(drawn).convert("RGB").quantize(colors=256, method=Image.Quantize.FASTOCTREE)
+    )
+    palette.save(path, dpi=(DPI, DPI))
     return path
 
 

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from PIL import Image
 from synthetic import make_lc, with_products
 
 from tess_hunt import plots
@@ -104,9 +105,13 @@ def test_each_plot_is_drawn_for_print(tmp_path, monkeypatch):
     }
     assert lines == {"ModShift secondary, phase 0.759, 3.1σ": pytest.approx(0.759 - 1.0)}
     assert all(t.get_fontsize() == plots.FONT_PT for t in ax.get_xticklabels())
-    # Sharp in print and small enough to commit.
+    # Sharp in print and small enough to commit: a 256-colour palette PNG at 300 dpi, which PNG keeps in pixels per
+    # metre.
     for path in (tmp_path / "plots").iterdir():
         assert path.stat().st_size < 300_000, path.name
+        with Image.open(path) as image:
+            assert image.mode == "P", path.name
+            assert image.info["dpi"] == pytest.approx((plots.DPI, plots.DPI), abs=0.01), path.name
     # A plot with nothing to show carries no title either, and names the plot it stands in for in its text.
     plots.no_data(tmp_path / "blank.png", "TIC 1: phase", "no finite cadences")
     [ax] = drawn["blank.png"].axes
