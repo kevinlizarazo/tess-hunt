@@ -9,8 +9,9 @@
   `results/preprints/author.toml` is committed on its own, once the maintainer approves its text. The template's
   changes after the specimen's pre-release review (2026-11-02), which made 60 findings and confirmed 57, follow the
   controller's rulings on those findings, with no acceptance by the maintainer recorded: among them, the refusal of
-  a preregistered result whose deposit came on or after the start of the first sector it predicts. Amended on
-  2026-11-05 (below): the maintainer asked for the paper to follow journal conventions.
+  a preregistered result whose deposit came on or after the start of the first sector it predicts. Amended twice on
+  2026-11-05 (below): the maintainer asked for the paper to follow journal conventions, then for the depth and the
+  duration with errors from the reproduced density-prior posterior.
 
 ## Context
 
@@ -165,7 +166,7 @@ Where this amendment and the Decision above differ, the amendment holds.
 - **Front matter and abstract.** The title is in title case. The author block gives the name, the affiliation, and
   the ORCID and email when `author.toml` has them, each on its own line, and a "Version of" line with the day the paper
   is rendered; the repository's URL moves to Data Availability. The Summary becomes the Abstract: the period, depth,
-  duration, radius and FPP with the errors the record holds, the star's TIC values, what Table 2 shows (every check
+  duration, radius and FPP with their errors, the star's TIC values, what Table 2 shows (every check
   passed, or which did not and why the call still stands), the preregistered result, and that the signal stays a
   candidate and what would establish it as a planet. The radius's error is said to omit the stellar radius's, there
   and in the Conclusions. It still says "planet candidate" and never "confirmed", "validated" or "discovered a
@@ -174,8 +175,8 @@ Where this amendment and the Decision above differ, the amendment holds.
 - **Notation.** Values carry ± or, for asymmetric percentile offsets, a stacked superscript and subscript with a minus
   sign, in the value's own unit: the period and epoch uncertainties are their posterior standard deviations in days, and
   the radius takes its offsets from the 16th and 84th percentiles. FPP and NFPP are the mean ± the standard deviation
-  over TRICERATOPS's runs, as the record holds them. The record holds no uncertainty for the depth (the BLS box depth)
-  or the duration (from the density-prior fit's medians), and Table 1's note says so. Symbols follow the AAS (R⊕, R⊙,
+  over TRICERATOPS's runs, as the record holds them. The depth and the duration take theirs from the reproduced
+  posterior (the second amendment below). Symbols follow the AAS (R⊕, R⊙,
   σ, ″), dates in prose read "2027 January 20", and counts of five or more digits take separators. Quoted text and
   the record's reasons in Table 2 stay verbatim.
 - **Tables.** Tables 1 to 4 are numbered, captioned above and cited in the text, with notes below. Table 2's novelty
@@ -196,6 +197,37 @@ Where this amendment and the Decision above differ, the amendment holds.
 - **The specimen.** Its made-up record tells one story: its runs take their ids from a clock of its own, so each run,
   call, listing and deposit comes in order, and the held call names evidence the next version supplies.
 
+## Amendment (2026-11-05): depth and duration from the reproduced posterior
+
+The maintainer read the specimen at 5ed9213 and asked for three things: the depth and the duration carry errors like
+every other value, no note in the paper says a value lacks an uncertainty, and the paper shows the author's name.
+Where this amendment and the text above differ, this amendment holds.
+
+- **The posterior.** A record keeps only the density-prior fit's percentile summary (`fit_prior`), so `preprint run`
+  reproduces the fit. It rebuilds the light curve the fit read, as `vet.prepare` and `vet.vet_with_fits` build it:
+  the light curve the record's vetting run read (the dataset's `lc/<tic>.npz`), without the timing-suspect sectors,
+  detrended around the rows the record masked, and split to the fit's family. It then calls `vet.fit_transit` with the
+  TIC density prior and the seed of the criteria files the vetting run recorded, each checked by its sha256. No frozen
+  file changes.
+- **The check.** The run refuses, before any run directory exists, unless the reproduced fit's summary equals the
+  record's `fit_prior`: each parameter's median and its distances to the 16th and 84th percentiles, and the
+  acceptance, to a relative tolerance of 1e-9. The refusal names the value that differs.
+- **The values.** Each sample's depth is the transit model's at mid-transit, with the sample's parameters and limb
+  darkening, integrated over the fit's exposure (the shortest, when the fit read several). Its total duration,
+  T<sub>14</sub>, comes from `vetting.fit_durations`, the formula whose median the record's `window_duration` keeps.
+  Table 1, the Abstract and the Zenodo description give each as the median with its 16th and 84th percentile
+  offsets, and the search's box depth is no longer printed. Table 1's note says where both come from and that the
+  posterior was reproduced and checked. No sentence says the record holds no uncertainty for either. For these two
+  values, this replaces the Decision's "computes nothing new".
+- **The dataset.** `dataset/posterior-prior.npz` holds the samples, each sample's depth and T<sub>14</sub>, the
+  parameter names and the fit's exposures. `manifest.json` lists it under CC BY 4.0, and Data Availability and
+  Appendix B name it. It sits beside `lc/`, not in a record's directory, since `vetting/` holds the published records
+  as `results/vetting/` does.
+- **The specimen.** vet's own fit, seeded, makes its record from its synthetic light curve, so its paper goes through
+  the same reproduction and check. Its sectors are at SPOC's 2-minute cadence, which the paper names and Table 1's
+  note gives as the fit's exposure. It renders with the repository's `results/preprints/author.toml`, so the
+  maintainer reads the author block the paper will print. The tests keep their placeholder author.
+
 ## Limitations
 
 - The prose around the numbers is fixed text, and a test can't check that it claims no more than the record shows.
@@ -209,8 +241,10 @@ Where this amendment and the Decision above differ, the amendment holds.
 ## Evidence
 
 - [tests/test_preprint.py](../../tests/test_preprint.py): `test_preprint_refuses_unless_the_latest_version_is_a_standing_pass`
-  (a held record, a passed M3 record with a held r2, a pass `calls.problems` refuses, an uncommitted change),
-  `test_every_number_comes_from_the_record` (and a missing value raises), `test_the_paper_says_candidate_not_planet`,
+  (a held record, a passed M3 record with a held r2, a pass `calls.problems` refuses, an uncommitted change, a
+  `fit_prior` median or acceptance the reproduced fit does not give),
+  `test_every_number_comes_from_the_record` (the depth and duration from the reproduced posterior, and a missing value
+  raises), `test_the_paper_says_candidate_not_planet`,
   `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_confirmed_finding_no_refuter_ran_on_says_so`,
   `test_a_versions_paper_names_its_records` (an earlier record's call quoted, what the re-vet changed, the runs
   table and the dataset's guide),
@@ -222,7 +256,7 @@ Where this amendment and the Decision above differ, the amendment holds.
   triage run without the signal's row, are refused), `test_the_paper_says_what_vetting_leaves_open`,
   `test_triage_and_the_novelty_check_are_said_in_words`, `test_what_a_revet_changed_is_said`,
   `test_how_tess_hunt_works_is_said_once`, `test_the_figures_and_references_are_the_papers_own`,
-  `test_the_dataset_lets_a_reader_recompute` (a file git ignores stays out),
+  `test_the_dataset_lets_a_reader_recompute` (a file git ignores stays out, and the posterior is the reproduced one),
   `test_a_versions_dataset_holds_each_record_up_to_it`, `test_the_author_line_comes_from_author_toml`,
   `test_a_production_run_reads_only_committed_results`, `test_run_refuses_before_starting_without_the_pdf_group`,
   `test_numbers_read_as_aas_prints_them`, `test_each_count_reads_as_words`, `test_counts_from_the_record_read_as_words`,
