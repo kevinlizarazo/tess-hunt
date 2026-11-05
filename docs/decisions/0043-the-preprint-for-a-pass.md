@@ -151,11 +151,12 @@ Where this amendment and the Decision above differ, the amendment holds.
   fixed text: TESS, the TOI and CTOI process, what the paper reports), 2 The tess-hunt Search and Vetting, 3 Host Star,
   4 Detection, 5 Transit Parameters, 6 Vetting with five subsections (light-curve tests, location of the signal, the
   statistical false-positive probability, literature, catalogues and later listings, and the adversarial review and
-  the call), 7 Held-out Seasons and the Preregistered Test, 8 Discussion, which quotes the upheld findings with their
-  answers, and 9 Conclusions. The unnumbered back matter follows: Acknowledgements, Use of LLMs (word for word),
-  Facilities and Software lines, Data Availability as one paragraph, and References, then Appendices A to D (the
-  runs, the dataset's files, the refuted findings and the notes, and the licences). The stylesheet numbers the
-  headings, and the text refers to sections by number, in place of quoting their headings.
+  the call, which says when we passed the signal), 7 Held-Out Seasons and the Preregistered Test, 8 Discussion, which
+  quotes the upheld findings with their answers, and 9 Conclusions. The unnumbered back matter follows:
+  Acknowledgements, closing on the Facilities and Software lines, Use of LLMs (word for word), Data Availability as
+  one paragraph, and References, then Appendices A to D (the runs, the dataset's files, the refuted findings and the
+  notes, and the licences). The stylesheet numbers the headings, and the text refers to sections by number, in place
+  of quoting their headings. The back matter names "the author", not "we".
 - **Voice.** The body says "we", as single-author papers in the field do, and Section 2 says once that the decision
   records call the author "the maintainer". tess-hunt stays the subject only of what its code does. A finding that
   survives its refuters is "upheld" in the paper's prose; the records keep `confirmed`. Decision records are defined
@@ -166,11 +167,12 @@ Where this amendment and the Decision above differ, the amendment holds.
   is rendered; the repository's URL moves to Data Availability. The Summary becomes the Abstract: the period, depth,
   duration, radius and FPP with the errors the record holds, the star's TIC values, what Table 2 shows (every check
   passed, or which did not and why the call still stands), the preregistered result, and that the signal stays a
-  candidate and what would establish it as a planet. It still says "planet candidate" and never "confirmed",
-  "validated" or "discovered a planet". Who makes the call and its outcomes move to Section 2. UAT keywords follow
-  the Abstract. The Zenodo description is the Abstract's first paragraph in plain text.
-- **Notation.** Values carry ± or, for asymmetric percentile offsets, a superscript and a subscript with a minus sign,
-  in the value's own unit: the period and epoch uncertainties are their posterior standard deviations in days, and
+  candidate and what would establish it as a planet. The radius's error is said to omit the stellar radius's, there
+  and in the Conclusions. It still says "planet candidate" and never "confirmed", "validated" or "discovered a
+  planet". Who makes the call and its outcomes move to Section 2. UAT keywords follow the Abstract. The Zenodo
+  description is the Abstract's first paragraph in plain text.
+- **Notation.** Values carry ± or, for asymmetric percentile offsets, a stacked superscript and subscript with a minus
+  sign, in the value's own unit: the period and epoch uncertainties are their posterior standard deviations in days, and
   the radius takes its offsets from the 16th and 84th percentiles. FPP and NFPP are the mean ± the standard deviation
   over TRICERATOPS's runs, as the record holds them. The record holds no uncertainty for the depth (the BLS box depth)
   or the duration (from the density-prior fit's medians), and Table 1's note says so. Symbols follow the AAS (R⊕, R⊙,
@@ -182,8 +184,9 @@ Where this amendment and the Decision above differ, the amendment holds.
 - **References.** One alphabetical list in AAS form, built and sorted in code, each entry with its DOI where it has
   one, every entry checked in NASA ADS on 2026-11-05 (the MAST and ExoFOP data DOIs, which ADS does not index, in
   DataCite). It adds Guerrero et al. 2021 for the TOI process and full entries for the light-curve products, the TIC,
-  TESS-EBs and ExoFOP. Every entry is cited in the text or the Software line. URLs leave the running text for
-  footnotes or Data Availability; the acknowledgements' requested credits keep theirs.
+  TESS-EBs, the calibrated full-frame images and ExoFOP. Every entry is cited in the text or the Software line. URLs
+  leave the running text for Data Availability; the acknowledgements' requested credits keep theirs. The paper has no
+  footnotes: WeasyPrint 70 sets a footnote a page or more after its call, with `footnote-policy: line` too.
 - **Figures.** Each figure is cited where its subject is discussed and placed after that citation, with a bold label
   and a caption that opens with no article. `plots.py` draws every future record's plots at the paper's text width with
   text of one size, no titles above the plots, axis labels in sentence case with units, the whole orbit from phase

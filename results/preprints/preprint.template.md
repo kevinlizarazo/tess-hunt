@@ -8,10 +8,11 @@ We report a transiting planet candidate around TIC $tic, a star with a TESS magn
 temperature of $teff K and a radius of $radius_sun R⊙ in the TESS Input Catalog. We searched public TESS light curves
 and found a periodic transit signal with a period of $period_pm d, a depth of $depth_ppm ppm and a duration of
 $duration_h h. A transit-model fit, with the stellar radius from the TESS Input Catalog, gives a radius of $rp_pm R⊕
-for the transiting body. $abstract_checks TRICERATOPS gives a mean false-positive probability of $fpp_pm. An
-LLM-assisted adversarial review looked for reasons the signal might not be a planet, and we answered every finding
-that its refuters did not disprove.$summary_prereg The signal remains a planet candidate. The TESS light curves cannot
-measure the transiting body's mass, and they cannot exclude every nearby star as the source of the transit.
+for the transiting body, an error that omits the uncertainty of the stellar radius. $abstract_checks TRICERATOPS
+gives a mean false-positive probability of $fpp_pm. An LLM-assisted adversarial review looked for reasons the signal
+might not be a planet, and we answered every finding that its refuters did not disprove.$summary_prereg The signal
+remains a planet candidate. The TESS light curves cannot measure the transiting body's mass, and they cannot exclude
+every nearby star as the source of the transit.
 Establishing that the signal comes from a planet needs further observations: photometry that resolves the stars near
 the target, high-resolution imaging to search for companions too close to resolve, and radial velocities to measure
 the mass.
@@ -21,11 +22,12 @@ the mass.
 ## Introduction
 
 The Transiting Exoplanet Survey Satellite (TESS; Ricker et al. 2015) observes the sky in a series of sectors, and its
-light curves are public. The TESS Science Office searches them for transits and releases the signals it judges
-planetary as TESS Objects of Interest (TOIs; Guerrero et al. 2021). Community members submit their own candidates to
-the Exoplanet Follow-up Observing Program (ExoFOP; NExScI 2022) as community TOIs (CTOIs). A candidate found in
-photometry alone is not yet a planet: follow-up observations must rule out the false positives that mimic a transit,
-such as eclipsing binaries, and measure the companion's mass.
+light curves are public. The SPOC (Jenkins et al. 2016) and QLP (Huang et al. 2020a) pipelines search them for
+transits, and the TESS Science Office releases the signals it judges planetary as TESS Objects of Interest (TOIs;
+Guerrero et al. 2021). Community members submit their own candidates to the Exoplanet Follow-up Observing Program
+(ExoFOP; NExScI 2022) as community TOIs (CTOIs). A candidate found in photometry alone is not yet a planet: follow-up
+observations must rule out the false positives that mimic a transit, such as eclipsing binaries, and measure the
+transiting body's mass.
 
 This paper reports a candidate from tess-hunt, an independent search of public TESS light curves. Section 2 describes
 the search and how we vet its signals. Sections 3 to 7 give the host star, the detection, the transit parameters, the
@@ -82,14 +84,15 @@ term.
 
 ## Detection
 
-The search ran box least squares (BLS; Kovács et al. 2002) over periods of $period_min to $period_max days on the light
-curves of $sample_stars stars from the TESS Input Catalog. Each star has:
+The search ran box least squares (BLS; Kovács et al. 2002) over periods of $period_min to $period_max days, on the
+period grid of transitleastsquares (Hippke & Heller 2019), on the light curves of $sample_stars stars from the TESS
+Input Catalog. Each star has:
 
 - an effective temperature above $teff_min K and no higher than $teff_max K;
 - a TESS magnitude of $tmag_max or brighter;
-- a surface gravity (log g) of $logg_min to $logg_max;
-- a log g of at least $flame_logg_min from the Gaia DR3 FLAME mass and radius (Creevey et al. 2023), where Gaia gives
-  them (DR 0009);
+- a surface gravity (log <i>g</i>) of $logg_min to $logg_max;
+- a log <i>g</i> of at least $flame_logg_min from the Gaia DR3 FLAME mass and radius (Creevey et al. 2023), where Gaia
+  gives them (DR 0009);
 - light curves in at least $min_sectors sectors, one of them in Sectors $recent_min to $recent_max.
 
 The search found this signal at a signal detection efficiency (SDE) of $sde.
@@ -137,7 +140,7 @@ Sections 6.1 to 6.4 discuss them, and Section 6.5 the adversarial review.
 
 $checks
 
-### Light-curve Tests
+### Light-Curve Tests
 
 Figure 3 shows the odd- and even-numbered transits, which the odd-even check compares, and Figure 4 the whole orbit,
 where the secondary-eclipse check looks for an eclipse at phase 0.5. $modshift
@@ -156,13 +159,14 @@ observed depth if all its light fell in the aperture. Gaia DR3 astrometry (Linde
 every star near the target could be assessed (DR 0025). $hosts
 
 The pixel check in Table 2 is $pixel_check. In each sector, the check measures the offset of the signal's
-difference-image centroid (Bryson et al. 2013) from the target. Following LEO-Vetter, it passes when the offset in the
+difference-image centroid (Bryson et al. 2013) from the target, on TESScut cutouts (Brasseur et al. 2019) of the
+calibrated full-frame images (TESS Team 2022). Following LEO-Vetter, it passes when the offset in the
 sector of best quality is within $max_offset″. The quality measures how closely the difference image matches the
 pixel response function, not how much of the transit it holds (DR 0033). $offsets $rests_on The check cannot
 distinguish the target from a star closer than $max_offset″. The signal of TOI-1399.01, for example, comes from a nearby
 binary inside that limit, yet TOI-1399.01 passes the check (DR 0032).
 
-### Statistical False-positive Probability
+### Statistical False-Positive Probability
 
 TRICERATOPS (Giacalone et al. 2021) computed the probability of each scenario that could produce the transit: on the
 target, on unresolved companions and background stars, and on each nearby TIC star whose light falls in the
@@ -189,9 +193,9 @@ An LLM-assisted adversarial review, dated $review_date, looked for reasons the s
 a planet, or not be real and new. The review rates each finding kill, hold or note. Kill means the signal is not a
 planet candidate if the finding stands. Hold means the signal cannot pass until the finding is answered. A note needs
 no answer. Each finding also names the question it concerns. Refuters are separate LLM-assisted checks, each asked to
-disprove one finding. A kill or hold finding is upheld unless a refuter disproves it. $fates Our call answers each
-upheld finding. Section 8 quotes the upheld findings with their answers, and Appendix C gives the refuted findings and
-the notes. $hits_read
+disprove one finding. A kill or hold finding is upheld unless a refuter disproves it. $fates We passed the signal on
+$call_date, and our call answers each upheld finding. Section 8 quotes the upheld findings with their answers, and
+Appendix C gives the refuted findings and the notes. $hits_read
 
 The call also answers three fixed questions in one sentence each: is the target itself an eclipsing binary, does the
 transit come from another star, and is it an artefact or a known object? We quote the answers from the call. Any
@@ -199,7 +203,7 @@ number in them was written by us and is not filled in from the records (DR 0037)
 
 $sentences
 
-## Held-out Seasons and the Preregistered Test
+## Held-Out Seasons and the Preregistered Test
 
 The held-out season check leaves out one season at a time and refits the period and epoch with BLS on the rest. The
 check then measures the held-out season's depth in the cores of the transits the refit predicts in that season (the
@@ -211,7 +215,7 @@ season counts as predicted when its depth is at least ${min_sigma}σ and, for ea
 ${max_tension}σ of that family's depth in the other seasons. The check passes when at least two seasons are testable
 and all of them are predicted. $holdout
 
-$upcoming $prereg
+$prereg
 
 ## Discussion
 
@@ -225,10 +229,10 @@ $answers
 
 ## Conclusions
 
-We report a planet candidate around TIC $tic with a period of $period_pm d and a radius of $rp_pm R⊕. It passed our
-vetting, and TRICERATOPS gives it a mean false-positive probability of $fpp_pm.$conclusion_prereg It remains a
-candidate until photometry that resolves the stars near the target, high-resolution imaging and radial velocities show
-whether it is a planet and measure its mass.
+We report a planet candidate around TIC $tic with a period of $period_pm d and a radius of $rp_pm R⊕, without the
+stellar-radius uncertainty. We passed the signal on $call_date, and TRICERATOPS gives it a mean false-positive
+probability of $fpp_pm.$conclusion_prereg The signal remains a candidate until photometry that resolves the stars near
+the target, high-resolution imaging and radial velocities show whether it is a planet and measure its mass.
 
 ## Acknowledgements
 
@@ -251,26 +255,28 @@ Cooperative Agreement 80NSSC25M7105. Thank you to arXiv for use of its open acce
 The repository's `ACKNOWLEDGEMENTS.md`, at the commit named in Data Availability, gives every source tess-hunt reads
 with its terms and the citation it asks for.
 
+<p class="names"><b>Facilities:</b> $facilities</p>
+
+<p class="names"><b>Software:</b> $software</p>
+
 ## Use of LLMs
 
 tess-hunt's code and this paper's text were written with LLM assistance. Adversarial reviews this paper quotes were
 assisted by LLMs. More information on models is available on GitHub.
 
-**Facilities:** $facilities
-
-**Software:** $software
-
 ## Data Availability
 
-The TESS light curves come from MAST: $products. The tess-hunt code, under the MIT licence, is at $repository. The
-vetting run for the record reported here used commit $commit, and the commit that generated this paper is named in its
-`provenance.json`. The decision records are in the repository's `docs/decisions/` directory at that commit. The
-dataset deposited with this paper holds the signal's published records and the light curve that was the input to the
-vetting run of $rendered_from. Appendix B describes its files and Appendix D their licences. The remaining numbers
-come from the search, threshold, injection-recovery and triage runs listed in Appendix A, published in the repository
-under `results/`. The text of this paper is generated from a fixed template, and tess-hunt's code filled in every
-number from those files and runs, except in quoted text and the dated notes. We typed the notes by hand and proofread
-them (DR 0037).
+The TESS light curves come from MAST: $products. The tess-hunt code, under the MIT licence, is at $repository, and it
+queries MAST and the Gaia archive through astroquery (Ginsburg et al. 2019). The pixel check's transit-diffImage, by
+S. Bryson, is at $diffimage at commit 2b13199. ExoFOP's page for the star is $exofop_page.$claim_at The vetting run for
+the record reported here used commit $commit, and the commit that generated this paper is named in its
+`provenance.json`. The decision records are in the repository's `docs/decisions/` directory at the vetting run's
+commit. The dataset deposited with this paper holds the signal's published records and the light curve that was the
+input to the vetting run of $rendered_from. Appendix B describes its files and Appendix D their licences. The
+remaining numbers come from the search, threshold, injection-recovery and triage runs listed in Appendix A, published
+in the repository under `results/`. The text of this paper is generated from a fixed template, and tess-hunt's code
+filled in every number from those files and runs, except in quoted text and the dated notes. The author typed the
+notes by hand and proofread them (DR 0037).
 
 ## References
 

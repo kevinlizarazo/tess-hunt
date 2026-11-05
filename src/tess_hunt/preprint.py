@@ -52,7 +52,8 @@ FIGURES = ("transits.png", "folds.png", "odd_even.png", "phase.png")
 # opens with a phrase and no article (AAS).
 CAPTIONS = {
     "transits.png": "Each predicted transit in the light curve, one panel per transit, as relative flux against time "
-    "from the predicted mid-transit time. Panel titles give the epoch (counted from T<sub>0</sub>) and the sector. "
+    "from the predicted mid-transit time. Panel titles give the epoch (counted from <i>T</i><sub>0</sub>) and the "
+    "sector. "
     "Grey points are individual cadences, and blue points are medians in bins one-eighth of the transit duration wide. "
     "The shaded band spans the transit duration. Panels with few points lie at the edge of a data gap",
     "folds.png": "Light curve folded on the ephemeris, one panel per season and light-curve family. Panel titles give "
@@ -62,11 +63,10 @@ CAPTIONS = {
     "as in Figure 1. The red line marks the median flux in the transit core (the central half of the transit), taken "
     "separately for the odd and the even transits",
     "phase.png": "Relative flux vs. orbital phase over the whole orbit, with the transit at phase 0 and phases from "
-    "−0.25 to 0.75, so a phase above 0.75 is drawn one orbit earlier. Grey points are individual cadences, and "
-    "blue points are medians in bins half the transit "
-    "duration wide. The dashed line marks phase 0.5, where a secondary eclipse falls if the orbit is circular. The red "
-    "line marks the most significant secondary event ModShift finds at any phase, labelled with its phase and "
-    "significance",
+    "−0.25 to 0.75, so a phase above 0.75 is drawn one orbit earlier. Grey points are individual cadences, and blue "
+    "points are medians in bins half the transit duration wide. The dashed line marks phase 0.5, where a secondary "
+    "eclipse falls if the orbit is circular. The red line marks the most significant secondary event ModShift finds "
+    "at any phase, labelled with its phase and significance",
 }
 PACKAGE = ["preprint.md", "preprint.pdf", "manifest.json", "provenance.json", *FIGURES]
 CC_BY = "CC BY 4.0"
@@ -128,8 +128,6 @@ MONTHS = (
     "December",
 )
 MINUS = "−"
-# What we did with a signal at an earlier record, by its call's outcome.
-CALLED = {"passed": "passed", "held": "held", "killed": "killed"}
 ORDINALS = {
     2: "second",
     3: "third",
@@ -162,9 +160,9 @@ SUMMARY_RESULT = {
     "untested": " The new data could not test that prediction.",
 }
 CONCLUSION_RESULT = {
-    "replicated": " Its transits recurred at the times we preregistered.",
-    "missed": " Its transits were absent at the times we preregistered.",
-    "pending": " The preregistered test of its transits in later sectors is not yet judged.",
+    "replicated": " The transits recurred at the times we preregistered.",
+    "missed": " The transits were absent at the times we preregistered.",
+    "pending": " The preregistered test of the transits in later sectors is not yet judged.",
     "untested": " The later sectors could not test our preregistered prediction.",
 }
 # The products' names in prose, where they differ from prereg.PRODUCTS.
@@ -420,6 +418,10 @@ REFERENCES = {
         "TESS Team 2021",
         "TESS Team 2021, TESS Light Curves - All Sectors, STScI/MAST, doi: 10.17909/t9-nmc8-f686",
     ),
+    "tessteam2022": (
+        "TESS Team 2022",
+        "TESS Team 2022, TESS Calibrated Full Frame Images: All Sectors, STScI/MAST, doi: 10.17909/0cp4-2j79",
+    ),
     "watson2006": (
         "Watson et al. 2006",
         "Watson, C. L., Henden, A. A., & Price, A. 2006, SASS, 25, 47",
@@ -453,7 +455,9 @@ CITED = (
     "guerrero2021",
     "hippke2019a",
     "hippke2019b",
+    "huang2020a",
     "hunter2007",
+    "jenkins2016",
     "justesen2021",
     "kipping2013",
     "kostov2025",
@@ -479,6 +483,7 @@ CITED = (
     "rowe2015",
     "stassun2019",
     "tessteam2018",
+    "tessteam2022",
     "watson2006",
     "wenger2000",
 )
@@ -495,10 +500,11 @@ SOFTWARE = (
     "et al. 2019), batman (Kreidberg 2015), emcee (Foreman-Mackey et al. 2013), LEO-Vetter (Kunimoto et al. 2025), "
     "lightkurve (Lightkurve Collaboration et al. 2018), matplotlib (Hunter 2007), PyTransit (Parviainen 2015), SPICE "
     "(Acton 1996; Acton et al. 2018), SpiceyPy (Annex et al. 2020), tess-point (Burke et al. 2020), "
-    'transit-diffImage<span class="footnote">https://github.com/stevepur/transit-diffImage, commit 2b13199</span>, '
-    "transitleastsquares (Hippke & Heller 2019), TRICERATOPS (Giacalone & Dressing 2020; Giacalone et al. 2021) and "
-    "wotan (Hippke et al. 2019)"
+    "transit-diffImage, transitleastsquares (Hippke & Heller 2019), TRICERATOPS (Giacalone & "
+    "Dressing 2020; Giacalone et al. 2021) and wotan (Hippke et al. 2019)"
 )
+# transit-diffImage asks for no citation, so the paper gives its author, URL and the commit tess-hunt pins.
+DIFFIMAGE = "https://github.com/stevepur/transit-diffImage"
 # What each of a record's files holds, for the dataset's guide, in the order the paper lists them. A pattern ending in
 # "/" is a directory; one with "*" matches file names.
 GUIDE = (
@@ -551,13 +557,13 @@ GAIA_CREDIT = (
     "institutions, in particular the institutions participating in the Gaia Multilateral Agreement."
 )
 # AASTeX's look: a Times-like face (STIX Two Math only for ⊕, ⊙ and ⋆, which the text face lacks), justified and
-# hyphenated text, a centred title block, numbered capitalised section
-# heads (the toc extension's ids pick out the unnumbered back matter), tables with horizontal rules only and rows
-# kept whole, figures at the text width with a bold label, and URLs as footnotes.
+# hyphenated text, a centred title block, numbered capitalised section heads (the toc extension's ids pick out the
+# unnumbered back matter), errors stacked, tables at the text width with horizontal rules only and rows kept whole,
+# and figures at the text width with a bold label. No footnotes: WeasyPrint 70 sets them a page or more after their
+# call, with footnote-policy: line too, so URLs go in Data Availability.
 UNNUMBERED = "h2#abstract, h2#acknowledgements, h2#use-of-llms, h2#data-availability, h2#references, h2[id^='appendix']"
 STYLE = f"""
-@page {{ size: A4; margin: 2cm; @bottom-right {{ content: counter(page); font-size: 9pt; }}
-  @footnote {{ border-top: 0.5pt solid; padding-top: 2pt; }} }}
+@page {{ size: A4; margin: 2cm; @bottom-right {{ content: counter(page); font-size: 9pt; }} }}
 html {{ font-family: "STIX Two Text", "STIX Two Math", "TeX Gyre Termes", serif; font-size: 10.5pt; line-height: 1.3; }}
 body {{ text-align: justify; hyphens: auto; counter-reset: section; }}
 h1 {{ font-size: 15pt; text-align: center; hyphens: none; margin: 0.4em 0; }}
@@ -572,8 +578,13 @@ h2::before {{ content: counter(section) ". "; }}
 h2#abstract {{ text-align: center; }}
 h3 {{ font-size: 10.5pt; font-style: italic; font-weight: normal; margin: 1em 0 0.4em; counter-increment: subsection; }}
 h3::before {{ content: counter(section) "." counter(subsection) ". "; }}
-table {{ border-collapse: collapse; font-size: 9pt; border-top: 1pt solid; border-bottom: 1pt solid;
-  margin: 0.4em auto; break-before: avoid; }}
+sub, sup {{ font-size: 70%; line-height: 0; position: relative; vertical-align: baseline; }}
+sup {{ top: -0.45em; }}
+sub {{ top: 0.25em; }}
+.pm {{ display: inline-block; vertical-align: -0.3em; line-height: 1; }}
+.pm sup, .pm sub {{ display: block; position: static; line-height: 1.1; }}
+table {{ width: 100%; border-collapse: collapse; font-size: 9pt; border-top: 1pt solid; border-bottom: 1pt solid;
+  margin: 0.4em 0; break-before: avoid; }}
 th {{ border-bottom: 0.5pt solid; }}
 th, td {{ padding: 2pt 5pt; vertical-align: top; text-align: left; hyphens: none; }}
 tr {{ break-inside: avoid; }}
@@ -582,8 +593,8 @@ figure {{ break-inside: avoid; margin: 1em 0; }}
 figure img {{ width: 100%; }}
 figcaption {{ font-size: 9pt; }}
 code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; hyphens: none; overflow-wrap: anywhere; }}
-.id {{ hyphens: none; }}
-.footnote {{ float: footnote; font-size: 8pt; text-align: left; hyphens: none; overflow-wrap: anywhere; }}
+.id {{ hyphens: none; white-space: nowrap; }}
+.names {{ hyphens: manual; text-align: left; }}
 .references p {{ padding-left: 1.5em; text-indent: -1.5em; margin: 0 0 2pt; font-size: 9pt; text-align: left;
   hyphens: none; }}
 """
@@ -787,7 +798,8 @@ def _spread(value: dict, fmt: str) -> str:
     plus, minus = f"{value['plus']:{fmt}}", f"{value['minus']:{fmt}}"
     if plus == minus:
         return f"{median} ± {plus}"
-    return f"{median}<sup>+{plus}</sup><sub>{MINUS}{minus}</sub>"
+    # The span stacks the pair, one above the other, as AAS sets it.
+    return f'{median}<span class="pm"><sup>+{plus}</sup><sub>{MINUS}{minus}</sub></span>'
 
 
 def _mean_sd(mean: float, sd: float, runs: int) -> str:
@@ -807,14 +819,15 @@ def _mean_sd(mean: float, sd: float, runs: int) -> str:
     return f"({mean / unit:.{places}f} ± {sd / unit:.{places}f}) × 10<sup>{_signed(str(exponent))}</sup>"
 
 
-def _footnote(text: str) -> str:
-    """A footnote at the foot of the page, for a URL that would break the running text (AAS)."""
-    return f'<span class="footnote">{text}</span>'
+def _id(text: str) -> str:
+    """An identifier kept on one line: a break at one of its hyphens would read as a hyphenated word."""
+    return f'<span class="id">{text}</span>'
 
 
 def _doi(doi: str) -> str:
-    """A DOI in running text, kept from hyphenation, which would break it with a hyphen it does not have."""
-    return f'<span class="id">doi:{doi}</span>'
+    """A DOI in running text, kept on one line and from hyphenation, which would break it with a hyphen it does not
+    have."""
+    return _id(f"doi:{doi}")
 
 
 def _quote(text: str) -> str:
@@ -846,13 +859,19 @@ def _excepted(record: Path) -> list[dict]:
     return [] if found is None else found["excepted"]
 
 
-def _upcoming(upcoming: list[int] | None, vetted_on: str) -> str | None:
+def _upcoming(record: Path) -> str:
+    """The sectors tess-point placed the star in at the record's vetting run, as a sentence; none when the run did
+    not record them."""
+    upcoming = json.loads((record / "checks.json").read_text())["upcoming_sectors"]
     if upcoming is None:
-        return None
-    when = f"As of the vetting run ({_date(vetted_on)}), tess-point (Burke et al. 2020) predicted"
+        return ""
+    made = json.loads((record / "provenance-checks.json").read_text())
+    version = calls.version(record)
+    run = "the vetting run" if version is None else f"the vetting run of version r{version}"
+    when = f"As of {run} ({_date(made['started_at'])}), tess-point (Burke et al. 2020) predicted"
     if not upcoming:
-        return f"{when} no further TESS sectors for the star."
-    return f"{when} that TESS would observe the star in {prereg._sectors_words(upcoming)}."
+        return f" {when} no further TESS sectors for the star."
+    return f" {when} that TESS would observe the star in {prereg._sectors_words(upcoming)}."
 
 
 def _parameters(found: dict) -> str:
@@ -887,7 +906,6 @@ def _star(checks: dict, made: dict) -> dict:
         "teff": _number(star["teff"], ".0f"),
         "radius_sun": _number(star["rad"], ".2f"),
         "depth_ppm": _ppm(eph["depth"]),
-        "upcoming": _upcoming(checks["upcoming_sectors"], made["started_at"][:10]),
     }
     if prior is None:
         return found
@@ -956,7 +974,7 @@ def _history(record: Path) -> str:
         at = "its first record" if n is None else f"version r{n}, {_changed(r)},"
         said.append(
             _stop(
-                f"We {CALLED[call['outcome']]} the signal at {at} on {_date(call['date'])}, giving the reason "
+                f"We {call['outcome']} the signal at {at} on {_date(call['date'])}, giving the reason "
                 f"{_quote(call['reasons'])}"
             )
         )
@@ -1014,19 +1032,13 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
     excepted = _excepted(record)
     said = []
     if excepted:
-        line = _novelty_against(own)
-        one = len(excepted) == 1
-        matched = one and excepted[0]["name"] in _matched(own)
-        which = (
-            f"that {excepted[0]['source']}" if matched else _words([r["name"] for r in excepted])
+        # The paragraph before names each listing and when ExoFOP first listed it; this one only sets them aside.
+        matched = len(excepted) == 1 and excepted[0]["name"] in _matched(own)
+        aside = f"the {excepted[0]['source']}" if matched else _words([r["name"] for r in excepted])
+        said.append(
+            f"{_novelty_against(own)} "
+            + _stop(f"With {aside} set aside under DR 0042, {_novelty_said(judged)}")
         )
-        it = "it" if one else "them"
-        aside = f"the {excepted[0]['source']}" if matched else it
-        line += (
-            f" ExoFOP first listed {which} after we made the signal public, so DR 0042 sets {it} aside. "
-            + _stop(f"With {aside} set aside, {_novelty_said(judged)}")
-        )
-        said.append(line)
     if judged["outcome"] != "pass":
         said.append(
             _stop(f"T{_novelty_said(judged)[1:]}")
@@ -1047,7 +1059,7 @@ def _modshift(checks: dict) -> str:
         )
     depth = None if m["dep_sec"] is None else m["dep_sec"] * 1e6
     return (
-        f"{test}, searches for a secondary eclipse at any phase, and LEO-Vetter runs it during triage. Its most "
+        f"{test}, searches for a secondary eclipse at any phase, and LEO-Vetter runs it during triage. The most "
         f"significant secondary event is at phase {_f(m['phs_sec'], '.3g')}, with a depth of {_f(depth, '.0f')} ppm "
         f"and a significance of {_f(m['sig_sec'], '.3g')}σ. The primary event has a significance of "
         f"{_f(m['sig_pri'], '.3g')}σ, and ModShift's red-noise factor, F<sub>red</sub>, is {_f(m['Fred'], '.3g')}."
@@ -1399,8 +1411,8 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "exofop_rows": "None of ExoFOP's planet-parameter rows for the star matches the signal's period or a "
         "harmonic of it."
         if not at_period
-        else f"Apart from {_words(at_period)}, which DR 0042 sets aside, none of ExoFOP's planet-parameter rows for "
-        "the star matches the signal's period or a harmonic of it.",
+        else f"Apart from {_words(at_period)}, none of ExoFOP's planet-parameter rows for the star matches the "
+        "signal's period or a harmonic of it.",
         "tric_times": {1: "once", 2: "twice"}.get(runs, f"{_spell(runs)} times"),
         "companions": _companions(triceratops, exofop),
         "holdout": f"For this signal {_seasons(len(seasons), len(tested), predicted)}, so the check "
@@ -1451,7 +1463,11 @@ def _abstract_checks(rows: list[list], own: dict, judged: dict, excepted: list[d
                 + (f"matched {_words(matched)}" if matched else WAS[outcome])
             )
         else:
-            parts.append(f"the {name} check, which {WAS[outcome]}")
+            # Table 2's wording for the check, lowercased unless it opens on a name.
+            label = CHECKS[name]
+            if label.split()[0] not in ("Gaia", "TRICERATOPS's"):
+                label = label[0].lower() + label[1:]
+            parts.append(f"the check of {label}, which {WAS[outcome]}")
     said = f"Every vetting check passed except {_words(parts)}."
     if own["outcome"] != "pass" and excepted:
         named = [r for r in excepted if r["name"] in _matched(own)]
@@ -1774,6 +1790,8 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
             f"{CLAIMS} gives {name}"
         )
     deposit = _deposit(record, repo)
+    # A URL goes in Data Availability, out of the running text (AAS).
+    at = ""
     if claim is None:
         where = None
     elif deposit is not None and claim.record == f"https://doi.org/{deposit['doi']}":
@@ -1781,7 +1799,8 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
     elif claim.record.startswith("https://doi.org/"):
         where = f"in the record {_doi(claim.record.removeprefix('https://doi.org/'))}"
     elif claim.record.startswith("https://"):
-        where = f"in a public record{_footnote(claim.record)}"
+        where = "in a public record, which Data Availability gives"
+        at = f" The record that first made the signal public is at {claim.record}."
     else:
         where = f"in {claim.record}"
     own = next(c for c in checks["checks"] if c["check"] == "novelty")
@@ -1815,11 +1834,12 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
             "the signal was known before the claim. Under DR 0042, a TOI or CTOI on the star is therefore not counted "
             "as known when ExoFOP first listed it after the claim and all its dispositions are PC or empty. Only "
             "public dates are compared, and nothing is implied about when or how anyone else found the signal."
-            + _footnote(f"ExoFOP's page for the star: {EXOFOP_STAR.format(tic)}")
         )
     return {
         "claim_date": None if claim is None else _date(claim.date),
         "claim_where": where,
+        "claim_at": at,
+        "exofop_page": EXOFOP_STAR.format(tic),
         "listings": "".join(listings),
     }
 
@@ -1848,7 +1868,8 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
     path = record / "prereg.json"
     if not path.is_file():
         return {
-            "prereg": "This record holds no preregistered test of a later season (DR 0040).",
+            "prereg": "This record holds no preregistered test of a later season (DR 0040)."
+            + _upcoming(record),
             "summary_prereg": "",
             "conclusion_prereg": "",
         }
@@ -1901,8 +1922,8 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
     return {
         "prereg": f"{deposited} ({_doi(deposit['doi'])}). The deposit also fixed how the prediction would be judged: "
         "by the held-out check's criteria, applied to the predicted transits (DR 0040). Zenodo published the deposit "
-        f"on {_date(published)}, and TESS began observing Sector {first} on {_date(start)}. {said} Our call "
-        f"({_date(call['date'])}) came {order} this result.",
+        f"on {_date(published)}, and TESS began observing Sector {first} on {_date(start)}.{_upcoming(record)} "
+        f"{said} Our call ({_date(call['date'])}) came {order} this result.",
         "summary_prereg": summary,
         "conclusion_prereg": CONCLUSION_RESULT[p["result"]],
     }
@@ -1943,19 +1964,28 @@ def _cites(keys) -> str:
     return "; ".join(REFERENCES[k][0] for k in keys)
 
 
-def _reference_order(entry: str) -> tuple:
-    """AAS order: by first author, a sole author before a listed group before "et al.", then by year."""
-    authors, year = re.match(r"^(.*?) (\d{4}[a-z]?), ", entry).groups()
-    rank = 2 if "et al." in authors else 1 if "&" in authors else 0
-    return (authors.split(",")[0].casefold(), rank, year, entry.casefold())
+def _reference_order(key: str) -> tuple:
+    """AAS order, read from the citation the text gives each work: by first author, then a sole author before two
+    before "et al.", then by year."""
+    cite = REFERENCES[key][0]
+    names, year = cite.rsplit(" ", 1)
+    rank = 2 if names.endswith(" et al.") else 1 if " & " in names else 0
+    first = names.removesuffix(" et al.").split(" & ")[0]
+    return (first.casefold(), rank, year)
 
 
 def _references(keys) -> str:
-    """The reference list, one entry per paragraph with no labels, as HTML so the list keeps its hanging indent."""
-    entries = sorted((REFERENCES[k][1] for k in set(keys)), key=_reference_order)
+    """The reference list, one entry per paragraph with no labels, as HTML so the list keeps its hanging indent. A
+    DOI is kept on one line."""
+    entries = [REFERENCES[k][1] for k in sorted(set(keys), key=_reference_order)]
     return (
         '<div class="references">\n'
-        + "\n".join(f"<p>{escape(e, quote=False)}</p>" for e in entries)
+        + "\n".join(
+            "<p>"
+            + re.sub(r"doi: (\S+)$", r'<span class="id">doi: \1</span>', escape(e, quote=False))
+            + "</p>"
+            for e in entries
+        )
         + "\n</div>"
     )
 
@@ -1989,6 +2019,7 @@ def _data(record: Path, checks: dict, made: dict) -> dict:
         "references": _references(cited),
         "facilities": "TESS, Gaia" if gaia else "TESS",
         "software": SOFTWARE,
+        "diffimage": DIFFIMAGE,
         "records": _records(signal, version),
         "rendered_from": "that record" if version is None else f"version r{version}",
         "files": _files(record),
@@ -2007,8 +2038,10 @@ def _runs(record: Path, repo: Path, found: dict) -> str:
         ("Threshold", found["threshold_run"]),
         ("Injection recovery", found["inject_run"]),
     ]
-    rows = [[step, run, f"`results/benchmarks/{run}/`"] for step, run in benchmarks]
-    rows.append(["Triage", found["triage_run"], f"`results/triage/{found['triage_run']}/`"])
+    # A published run's directory is named by its run id, so the table gives the directory that holds it and keeps
+    # each id on one line.
+    rows = [[step, _id(run), "`results/benchmarks/`"] for step, run in benchmarks]
+    rows.append(["Triage", _id(found["triage_run"]), "`results/triage/`"])
     for r in _versions(record):
         n = calls.version(r)
         made = json.loads((r / "provenance-checks.json").read_text())
@@ -2016,8 +2049,8 @@ def _runs(record: Path, repo: Path, found: dict) -> str:
         rows.append(
             [
                 "Vetting, the first record" if n is None else f"Vetting, version r{n}",
-                made["run_id"],
-                f"`dataset/vetting/{signal}/{inside}provenance-checks.json`",
+                _id(made["run_id"]),
+                f"`dataset/vetting/{signal}/{inside}`",
             ]
         )
     deposit = _deposit(record, repo)
@@ -2025,16 +2058,18 @@ def _runs(record: Path, repo: Path, found: dict) -> str:
         rows.append(
             [
                 "Predictions package",
-                deposit["package"],
-                f"`results/predictions/{deposit['package']}/`, doi:{deposit['doi']}",
+                _id(deposit["package"]),
+                f"`results/predictions/`, {_doi(deposit['doi'])}",
             ]
         )
     return (
         "**Table 3.** Runs whose outputs this paper uses\n\n"
         + _table(["Step", "Run id", "Location of files"], rows)
-        + f"\n\n*Note.* The injection-recovery run's `{COMPLETENESS}` holds the recovered fraction as a function of "
-        "expected signal-to-noise ratio. Each provenance file names the command and the commit of one run that wrote "
-        "files in the record."
+        + "\n\n*Note.* The files of the search, null-search, threshold, injection-recovery, triage and predictions "
+        "runs are in a directory named by the run id under the location given. A vetting run's provenance is the "
+        "`provenance-checks.json` in its record's directory. Each provenance file names the command and the commit of "
+        f"one run that wrote files in the record. The injection-recovery run's `{COMPLETENESS}` holds the recovered "
+        "fraction as a function of expected signal-to-noise ratio."
     )
 
 
@@ -2120,6 +2155,8 @@ def html(markdown_text: str, specimen: bool) -> str:
 
     # toc gives each heading an id, which the stylesheet's section numbering reads.
     body = markdown.markdown(markdown_text, extensions=["tables", "toc"])
+    # Hyphenation would split these names mid-word ("TRICER-ATOPS"); the Markdown keeps them plain.
+    body = re.sub(r"\b(TRICERATOPS|LEO-Vetter)\b", r'<span class="id">\1</span>', body)
     style = STYLE + (SPECIMEN_STYLE if specimen else "")
     return (
         f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><style>{style}</style></head>'
@@ -2225,7 +2262,9 @@ def _section(text: str, heading: str) -> str:
 def _plain(text: str) -> str:
     """The paper's inline HTML as plain text, for Zenodo's description box, which would show the tags: an
     asymmetric error as "(+0.12, −0.13)", a power as "^", and the other tags dropped."""
-    text = re.sub(r"<sup>([^<]*)</sup><sub>([^<]*)</sub>", r" (\1, \2)", text)
+    text = re.sub(
+        r'<span class="pm"><sup>([^<]*)</sup><sub>([^<]*)</sub></span>', r" (\1, \2)", text
+    )
     text = re.sub(r"<sup>([^<]*)</sup>", r"^\1", text)
     return re.sub(r"</?(sub|i|b|code)>", "", text)
 

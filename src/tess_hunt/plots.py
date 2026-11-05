@@ -62,8 +62,8 @@ def no_data(path: Path, title: str, why: str) -> Path:
     fig = Figure(figsize=(WIDTH_IN, 1.2))
     ax = fig.subplots()
     ax.set_axis_off()
-    ax.set_title(title)
-    ax.text(0.5, 0.5, f"No data: {why}", ha="center", va="center", transform=ax.transAxes)
+    # The plot it stands in for is named in its one line of text, since no plot carries a title.
+    ax.text(0.5, 0.5, f"{title}: no data ({why})", ha="center", va="center", transform=ax.transAxes)
     return _save(fig, path)
 
 

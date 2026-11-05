@@ -107,6 +107,11 @@ def test_each_plot_is_drawn_for_print(tmp_path, monkeypatch):
     # Sharp in print and small enough to commit.
     for path in (tmp_path / "plots").iterdir():
         assert path.stat().st_size < 300_000, path.name
+    # A plot with nothing to show carries no title either, and names the plot it stands in for in its text.
+    plots.no_data(tmp_path / "blank.png", "TIC 1: phase", "no finite cadences")
+    [ax] = drawn["blank.png"].axes
+    assert ax.get_title() == "" and drawn["blank.png"]._suptitle is None
+    assert [t.get_text() for t in ax.texts] == ["TIC 1: phase: no data (no finite cadences)"]
 
 
 def test_a_plot_with_nothing_to_show_says_no_data(tmp_path, monkeypatch):

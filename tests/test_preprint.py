@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 import tomllib
-from html import escape
 from pathlib import Path
 
 import pandas as pd
@@ -336,7 +335,7 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         return (
             f"{median} ± {plus}"
             if plus == minus
-            else f"{median}<sup>+{plus}</sup><sub>−{minus}</sub>"
+            else f'{median}<span class="pm"><sup>+{plus}</sup><sub>−{minus}</sub></span>'
         )
 
     radius = {
@@ -430,7 +429,7 @@ def test_numbers_read_as_aas_prints_them():
     )
     assert (
         preprint._spread({"median": 11.85, "plus": 0.37, "minus": 0.35}, ".2f")
-        == "11.85<sup>+0.37</sup><sub>−0.35</sub>"
+        == '11.85<span class="pm"><sup>+0.37</sup><sub>−0.35</sub></span>'
     )
     assert preprint._spread({"median": -0.5, "plus": 0.1, "minus": 0.1}, ".2f") == "−0.50 ± 0.10"
     # A mean over TRICERATOPS's runs to its standard deviation's first significant figure, two when it is a 1; one run
@@ -481,6 +480,21 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
         assert claim not in summary.lower()
     # The body says "we"; "the maintainer" is named once, for a reader following a decision record.
     assert " ".join(text.split()).count("the maintainer") == 1
+    # The radius error is said to leave out the stellar radius's wherever the radius is given.
+    conclusions = " ".join(td.section(text, "Conclusions").split())
+    assert (
+        "R⊕ for the transiting body, an error that omits the uncertainty of the stellar radius."
+        in summary
+    )
+    assert "R⊕, without the stellar-radius uncertainty." in conclusions
+    # A paper with no preregistered test still says that we passed the signal, and when.
+    assert not (repo / "results" / "vetting" / NAME / "prereg.json").exists()
+    vetted = " ".join(td.section(text, "Vetting").split())
+    assert (
+        "We passed the signal on 2026 October 28, and our call answers each upheld finding."
+        in vetted
+    )
+    assert "We passed the signal on 2026 October 28, and TRICERATOPS gives it" in conclusions
 
 
 def test_a_note_0037_added_sits_under_the_quoted_finding(tmp_path, monkeypatch):
@@ -602,12 +616,22 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
     assert "the light curve that was the input to the vetting run of version r2" in available
     runs = td.section(text, "Appendix A. Runs")
     assert (
-        f"| Vetting, the first record | {m3['run_id']} | `dataset/vetting/{NAME}/provenance-checks.json` |"
+        f'| Vetting, the first record | <span class="id">{m3["run_id"]}</span> | `dataset/vetting/{NAME}/` |'
         in runs
     )
     assert (
-        f"| Vetting, version r2 | {made['run_id']} | `dataset/vetting/{NAME}/r2/provenance-checks.json` |"
+        f'| Vetting, version r2 | <span class="id">{made["run_id"]}</span> | `dataset/vetting/{NAME}/r2/` |'
         in runs
+    )
+    assert (
+        "A vetting run's provenance is the `provenance-checks.json` in its record's directory."
+        in " ".join(runs.split())
+    )
+    # The sectors tess-point gave are r2's vetting run's, said after the record's own history.
+    held_out = " ".join(td.section(text, "Held-Out Seasons and the Preregistered Test").split())
+    assert (
+        f"As of the vetting run of version r2 ({preprint._date(made['started_at'])}), tess-point"
+        in held_out
     )
     files = td.section(text, "Appendix B. Dataset Files")
     assert (
@@ -681,10 +705,11 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
     )
     assert "as TOI-7001.02" not in public
     assert "Under DR 0042" in public
-    # The star's ExoFOP page is a footnote, out of the running text.
+    # The star's ExoFOP page is in Data Availability, out of the running text.
+    assert "https://" not in public
     assert (
-        '<span class="footnote">ExoFOP\'s page for the star: https://exofop.ipac.caltech.edu/tess/target.php?id=1'
-        "</span>" in public
+        "ExoFOP's page for the star is https://exofop.ipac.caltech.edu/tess/target.php?id=1."
+        in " ".join(td.section(text, "Data Availability").split())
     )
     # The rule is stated once, and no motive is guessed at.
     assert " ".join(text.split()).count("is therefore not counted as known") == 1
@@ -696,14 +721,16 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
         "<sup>a</sup> ExoFOP first listed TOI-7001.01 and TOI-7001.02 after we made the signal public, so DR 0042 "
         "sets them aside. See Section 6.4." in public
     )
-    assert (
+    # The paragraph after the listings sets them aside without saying again when ExoFOP listed them.
+    [novelty] = [
+        p
+        for p in td.section(text, "Vetting").split("\n\n")
+        if p.startswith("Against the catalogues")
+    ]
+    assert novelty == (
         "Against the catalogues used in the vetting run, the novelty check fails because TOI-7001.01 matches the "
-        "signal. ExoFOP first listed TOI-7001.01 and TOI-7001.02 after we made the signal public, so DR 0042 sets "
-        "them aside." in public
-    )
-    assert (
-        "With them set aside, no other catalogued object matches the signal, and the novelty check passes."
-        in public
+        "signal. With TOI-7001.01 and TOI-7001.02 set aside under DR 0042, no other catalogued object matches the "
+        "signal, and the novelty check passes."
     )
     # The Abstract says what Table 2 shows.
     summary = " ".join(td.section(text, "Abstract").split())
@@ -713,7 +740,7 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
         in summary
     )
     # Only the listing at the signal's period is named against ExoFOP's rows at the period.
-    assert "Apart from TOI-7001.01, which DR 0042 sets aside, none of ExoFOP's" in public
+    assert "Apart from TOI-7001.01, none of ExoFOP's" in public
     assert "TOI-7001.02, which" not in public
     # The claim the exception rests on must be the committed one.
     claims = repo / "results" / "claims.toml"
@@ -758,24 +785,49 @@ def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
         "2012; Stumpe et al. 2012; Stumpe et al. 2014)" in text
     )
     references = td.section(written, "References")
-    assert f"doi: {doi}</p>" in references
-    assert all(who in text for who, _ in papers)
-    assert prereg.QLP_CREDIT not in text and "Huang et al. 2020a" not in references
+    assert f'<span class="id">doi: {doi}</span></p>' in references
+    # Each product paper prereg.CREDITED names is the one REFERENCES gives, by journal, volume and page, for every
+    # product, and the paper prints the SPOC one.
+    for product, (_, product_doi, product_papers) in prereg.CREDITED.items():
+        entries = [preprint.REFERENCES[k] for k in preprint.PRODUCT_REFERENCES[product]]
+        assert any(f"doi: {product_doi}" in entry for _, entry in entries), product
+        for who, where in product_papers:
+            journal, volume, page = re.match(r"(.*) (\S+), (\S+)$", where).groups()
+            assert any(
+                cite.startswith(who) and f"{journal}, {volume}, {page}" in entry
+                for cite, entry in entries
+            ), (product, who)
+    for who, where in papers:
+        journal, volume, page = re.match(r"(.*) (\S+), (\S+)$", where).groups()
+        assert who in text and f"{journal}, {volume}, {page}" in references
+    # QLP's light curves are not the fixture's, so their credit, data entry and later papers stay out.
+    assert prereg.QLP_CREDIT not in text and "Quick-Look Pipeline" not in references
+    assert "Huang et al. 2020b" not in text
     assert "Stassun et al. 2019" in text and "Paegert et al. 2021" in text
     assert "European Space Agency (ESA) mission Gaia" in text
-    # The disclosure, word for word, and the back matter in AAS order with Facilities and Software lines.
-    llms = td.section(written, "Use of LLMs").lstrip()
-    assert llms.startswith(
+    # The disclosure, word for word and alone under its heading; the Facilities and Software lines close the
+    # Acknowledgements, and the back matter is in the order AAS sets it.
+    assert td.section(written, "Use of LLMs").strip() == (
         "tess-hunt's code and this paper's text were written with LLM assistance. Adversarial reviews this paper "
-        "quotes were\nassisted by LLMs. More information on models is available on GitHub.\n\n**Facilities:** TESS, "
-        "Gaia\n\n**Software:** Astrocut (Brasseur et al. 2019),"
+        "quotes were\nassisted by LLMs. More information on models is available on GitHub."
+    )
+    acknowledgements = td.section(written, "Acknowledgements")
+    assert '<p class="names"><b>Facilities:</b> TESS, Gaia</p>' in acknowledgements
+    assert '<p class="names"><b>Software:</b> Astrocut (Brasseur et al. 2019),' in acknowledgements
+    # transit-diffImage asks for no citation, so Data Availability gives its author, URL and pinned commit.
+    assert (
+        "The pixel check's transit-diffImage, by S. Bryson, is at https://github.com/stevepur/transit-diffImage at "
+        "commit 2b13199." in " ".join(td.section(written, "Data Availability").split())
     )
     order = [
         "## Conclusions",
         "## Acknowledgements",
+        "<b>Facilities:</b>",
+        "<b>Software:</b>",
         "## Use of LLMs",
         "## Data Availability",
         "## References",
+        "## Appendix A. Runs",
     ]
     assert [written.index(h) for h in order] == sorted(written.index(h) for h in order)
     # The review and its refuters are described as the disclosure describes them, and no model is named.
@@ -792,7 +844,7 @@ def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
     monkeypatch.setattr(preprint, "GAIA_FILES", set())
     without = paper(repo)
     assert "European Space Agency (ESA) mission Gaia" not in without
-    assert "**Facilities:** TESS\n" in without
+    assert '<p class="names"><b>Facilities:</b> TESS</p>' in without
 
 
 def test_the_dataset_lets_a_reader_recompute(tmp_path, monkeypatch, no_pdf):
@@ -954,6 +1006,11 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     assert "<sup>" not in description and "<sub>" not in description and "<i>" not in description
     assert "Keywords" not in description and "Facilities" not in description
     assert "More information on models is available on GitHub." in description
+    # Otherwise the Abstract's text as the paper prints it, with no claim the Abstract does not make.
+    abstract = td.section((first / "preprint.md").read_text(), "Abstract").split("\n\n")[0]
+    assert description.strip().split("\n\n")[0] == " ".join(preprint._plain(abstract).split())
+    for claim in ("confirmed", "discovered a planet", "validated"):
+        assert claim not in description.lower()
 
     # A record that holds a preregistered test's result cites the predictions' DOI.
     (record / "prereg.json").write_text(json.dumps(PREREG))
@@ -970,10 +1027,16 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     form = capsys.readouterr().out
     assert DOI in form
     written = (second / "preprint.md").read_text()
-    text = " ".join(td.section(written, "Held-out Seasons and the Preregistered Test").split())
+    text = " ".join(td.section(written, "Held-Out Seasons and the Preregistered Test").split())
     assert (
         "Before TESS observed Sectors 112 and 113, we deposited a prediction of the signal's transits in those "
         f'sectors on Zenodo (<span class="id">doi:{DOI}</span>).' in text
+    )
+    # In order: the deposit, the sectors tess-point gave at the vetting run, then the result.
+    assert (
+        text.index("we deposited a prediction")
+        < text.index("As of the vetting run (")
+        < text.index("the new sectors replicate")
     )
     assert (
         "Zenodo published the deposit on 2026 November 5, and TESS began observing Sector 112 on 2026 December 22."
@@ -994,7 +1057,7 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
         "Before TESS observed Sectors 112 and 113, we deposited a prediction of the signal's transits in those "
         "sectors on Zenodo. The transits appeared at the predicted times." in summary
     )
-    assert "Its transits recurred at the times we preregistered." in td.section(
+    assert "The transits recurred at the times we preregistered." in td.section(
         written, "Conclusions"
     )
     # The claim made in the predictions deposit is named as that deposit.
@@ -1050,6 +1113,9 @@ def test_the_pdf_renders(tmp_path, monkeypatch):
     assert (
         '<h2 id="abstract">Abstract</h2>' in page and '<h2 id="references">References</h2>' in page
     )
+    # Names hyphenation would split are kept whole in the page, and the Markdown keeps them plain.
+    assert '<span class="id">TRICERATOPS</span> (Giacalone et al. 2021) computed' in page
+    assert '<span class="id">TRICERATOPS</span>' not in paper(repo)
 
 
 def deposited(repo: Path, record: Path, published: str) -> None:
@@ -1084,7 +1150,7 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
             'As of 2027 February 20, the test is pending ("no light curve the test can use yet in S112").',
             "Before TESS observed Sectors 112 and 113, we deposited a prediction of the signal's transits in those "
             "sectors on Zenodo. The preregistered test of that prediction is not yet judged.",
-            "The preregistered test of its transits in later sectors is not yet judged.",
+            "The preregistered test of the transits in later sectors is not yet judged.",
         ),
         (
             {
@@ -1101,7 +1167,7 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
             "As of 2027 February 20, the new sectors miss the prediction. The 412 cadences in the cores of the "
             "predicted transits",
             "The transits were absent at the predicted times.",
-            "Its transits were absent at the times we preregistered.",
+            "The transits were absent at the times we preregistered.",
         ),
     ):
         (record / "prereg.json").write_text(json.dumps({**PREREG, **result}))
@@ -1118,16 +1184,17 @@ def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
     found = " ".join(td.section(text, "Detection").split())
     sample = tomllib.loads(tv.SEARCH.read_text())["sample"]
     assert (
-        f"The search ran box least squares (BLS; Kovács et al. 2002) over periods of 1 to 40 days on the light curves "
-        f"of {SAMPLE:,} stars from the TESS Input Catalog." in found
+        "The search ran box least squares (BLS; Kovács et al. 2002) over periods of 1 to 40 days, on the period grid "
+        f"of transitleastsquares (Hippke & Heller 2019), on the light curves of {SAMPLE:,} stars from the TESS Input "
+        "Catalog." in found
     )
     assert (
         f"Each star has: - an effective temperature above {sample['teff_min']:g} K and no higher than "
         f"{sample['teff_max']:g} K;" in found
     )
     assert (
-        f"- a log g of at least {sample['flame_logg_min']:g} from the Gaia DR3 FLAME mass and radius (Creevey et al. "
-        "2023), where Gaia gives them (DR 0009);" in found
+        f"- a log <i>g</i> of at least {sample['flame_logg_min']:g} from the Gaia DR3 FLAME mass and radius (Creevey "
+        "et al. 2023), where Gaia gives them (DR 0009);" in found
     )
     assert (
         f"- light curves in at least {preprint._spell(sample['min_sectors'])} sectors, one of them in Sectors "
@@ -1163,9 +1230,15 @@ def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
         ("Injection recovery", INJECT_RUN, "benchmarks"),
         ("Triage", tv.TRIAGE_RUN, "triage"),
     ):
-        assert f"| {step} | {run} | `results/{where}/{run}/` |" in runs
+        # Each run's id on one line, and the directory that holds the run's own, named by that id.
+        assert f'| {step} | <span class="id">{run}</span> | `results/{where}/` |' in runs
+    note = " ".join(runs.split("*Note.*")[1].split())
+    assert note.startswith(
+        "The files of the search, null-search, threshold, injection-recovery, triage and predictions runs are in a "
+        "directory named by the run id under the location given."
+    )
     assert (
-        "The injection-recovery run's `completeness_snr.csv` holds the recovered fraction" in runs
+        "The injection-recovery run's `completeness_snr.csv` holds the recovered fraction" in note
     )
     # The paper points to the recovered fractions, so an injection-recovery run without them is refused.
     (repo / "results" / "benchmarks" / INJECT_RUN / "completeness_snr.csv").unlink()
@@ -1284,6 +1357,13 @@ def test_triage_and_the_novelty_check_are_said_in_words(tmp_path, monkeypatch):
     )
     assert preprint._abstract_checks([["odd_even", "pass", "agree"]], passed, passed, []) == (
         "Every vetting check passed."
+    )
+    # Any other check is named in Table 2's words, not by its id.
+    assert preprint._abstract_checks(
+        [["sector_depth", "fail", "x"], ["neighbours", "inconclusive", "y"]], passed, passed, []
+    ) == (
+        "Every vetting check passed except the check of depth from sector to sector, which failed and the check of "
+        "Gaia DR3 neighbours that could make the dip, which was inconclusive."
     )
 
 
@@ -1527,9 +1607,9 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     left = " ".join(td.section(text, "Discussion").split())
     # The vetting section's subsections, numbered by the stylesheet in this order.
     subsections = [
-        "### Light-curve Tests",
+        "### Light-Curve Tests",
         "### Location of the Signal",
-        "### Statistical False-positive Probability",
+        "### Statistical False-Positive Probability",
         "### Literature, Catalogues and Later Listings",
         "### Adversarial Review and the Call",
     ]
@@ -1589,6 +1669,11 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
         "The quality measures how closely the difference image matches the pixel response function"
         in vetted
     )
+    # The cutouts the check measures on, and their service.
+    assert (
+        "from the target, on TESScut cutouts (Brasseur et al. 2019) of the calibrated full-frame images (TESS Team "
+        "2022)." in vetted
+    )
     assert (
         "The signal of TOI-1399.01, for example, comes from a nearby binary inside that limit, yet TOI-1399.01 passes "
         "the check (DR 0032)." in vetted
@@ -1602,7 +1687,7 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     # ModShift's secondary at any phase, from triage's evidence, and each figure cited where it is discussed.
     m = tv.MODSHIFT
     assert (
-        f"Its most significant secondary event is at phase {m['phs_sec']:.3g}, with a depth of "
+        f"during triage. The most significant secondary event is at phase {m['phs_sec']:.3g}, with a depth of "
         f"{m['dep_sec'] * 1e6:.0f} ppm and a significance of {m['sig_sec']:.3g}σ. The primary event has a "
         f"significance of {m['sig_pri']:.3g}σ, and ModShift's red-noise factor, F<sub>red</sub>, is "
         f"{m['Fred']:.3g}." in vetted
@@ -1628,17 +1713,17 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
         "background-star scenarios from its priors alone. ExoFOP lists one high-resolution imaging observation of "
         "the star, which TRICERATOPS did not use." in left
     )
-    held_out = " ".join(td.section(text, "Held-out Seasons and the Preregistered Test").split())
+    held_out = " ".join(td.section(text, "Held-Out Seasons and the Preregistered Test").split())
     # The fixture's light curve gives one season.
     assert (
         "For this signal its one season was testable and was predicted, so the check passed."
         in held_out
     )
-    assert "This record holds no preregistered test of a later season (DR 0040)." in held_out
     made = json.loads((record / "provenance-checks.json").read_text())
     assert (
-        f"As of the vetting run ({preprint._date(made['started_at'])}), tess-point (Burke et al. 2020) predicted "
-        "that TESS would observe the star in Sectors 110, 111 and 115." in held_out
+        "This record holds no preregistered test of a later season (DR 0040). As of the vetting run "
+        f"({preprint._date(made['started_at'])}), tess-point (Burke et al. 2020) predicted that TESS would observe "
+        "the star in Sectors 110, 111 and 115." in held_out
     )
 
     # Measured red noise, a season that could not be tested, no zero-depth host, a host outside the pixel check's
@@ -1707,7 +1792,13 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
     available = " ".join(td.section(text, "Data Availability").split())
     assert f"used commit {made['git']['commit']}" in available
     assert (
-        "The decision records are in the repository's `docs/decisions/` directory at that commit."
+        "The decision records are in the repository's `docs/decisions/` directory at the vetting run's commit."
+        in available
+    )
+    # The back matter names the author, not "we", and says what queries the archives.
+    assert "The author typed the notes by hand and proofread them (DR 0037)." in available
+    assert (
+        "it queries MAST and the Gaia archive through astroquery (Ginsburg et al. 2019)."
         in available
     )
     holdout = tomllib.loads(tv.VET3.read_text())["holdout"]
@@ -1725,6 +1816,11 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
     # The Introduction cites TESS and the TOI process, and the sections are in the conventions' order.
     intro = " ".join(td.section(text, "Introduction").split())
     assert "(TESS; Ricker et al. 2015)" in intro and "(TOIs; Guerrero et al. 2021)" in intro
+    assert (
+        "The SPOC (Jenkins et al. 2016) and QLP (Huang et al. 2020a) pipelines search them for transits, and the "
+        "TESS Science Office releases" in intro
+    )
+    assert "measure the transiting body's mass." in intro and "companion" not in intro
     headings = [line for line in text.splitlines() if line.startswith("## ")]
     assert headings[:10] == [
         "## Abstract",
@@ -1734,7 +1830,7 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
         "## Detection",
         "## Transit Parameters",
         "## Vetting",
-        "## Held-out Seasons and the Preregistered Test",
+        "## Held-Out Seasons and the Preregistered Test",
         "## Discussion",
         "## Conclusions",
     ]
@@ -1748,11 +1844,12 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
     own = re.sub(r'"[^"]*"', "", text)
     for word in ("can't", "doesn't", "couldn't", "isn't", "won't", " catalogs ", "modeled"):
         assert word not in own, word
-    # No sentence opens in lowercase, apart from the Use of LLMs paragraph, which is the maintainer's word for word.
+    # No sentence of the paper's own text opens in lowercase or on "It" or "Its"; quoted text and the Use of LLMs
+    # paragraph, which is the maintainer's word for word, are their own.
     disclosure = td.section(text, "Use of LLMs").split("\n\n")[0].strip()
     prose = " ".join(own.replace(disclosure, "").split())
     assert not re.search(r"(?:^|[.?!] )tess-hunt", prose)
-    assert not re.search(r"(?:^|[.?!] )Its search", prose)
+    assert re.findall(r"(?:^|[.?!] )(Its?)\b", prose) == []
     # A second-list row's bar names its promotion (decision 0013).
     pixels = json.loads((record / "checks.json").read_text())["pixels"]
     (record / "pixels.json").write_text(json.dumps(pixels))
@@ -1779,30 +1876,45 @@ def test_the_figures_and_references_are_the_papers_own(tmp_path, monkeypatch):
     # One alphabetical list in AAS form, each entry a paragraph, with the entries preprint.py adds sorted among the
     # template's citations.
     references = td.section(text, "References")
-    entries = re.findall(r"<p>(.*?)</p>", references)
-    assert entries == sorted(entries, key=lambda e: preprint._reference_order(html.unescape(e)))
+    entries = [
+        html.unescape(re.sub(r"<[^>]+>", "", e)) for e in re.findall(r"<p>(.*?)</p>", references)
+    ]
+    key_of = {entry: key for key, (_, entry) in preprint.REFERENCES.items()}
+    keys = [key_of[e] for e in entries]
+    assert keys == sorted(keys, key=preprint._reference_order)
+    # The order reads the citation form: a sole author before two before "et al.", then the year and its letter,
+    # whatever the printed author list.
+    order = sorted(
+        ["caldwell2020b", "huang2020a", "caldwell2020a", "huang2020"], key=preprint._reference_order
+    )
+    assert order == ["caldwell2020a", "caldwell2020b", "huang2020", "huang2020a"]
+    assert '<span class="id">doi: 10.1117/1.JATIS.1.1.014003</span>' in references
     for cited in (
         "Ricker, G. R., Winn, J. N., Vanderspek, R., et al. 2015, JATIS, 1, 014003, doi: 10.1117/1.JATIS.1.1.014003",
         "Kipping, D. M. 2013, MNRAS, 435, 2152, doi: 10.1093/mnras/stt1435",
         "Guerrero, N. M., Seager, S., Huang, C. X., et al. 2021, ApJS, 254, 39, doi: 10.3847/1538-4365/abefe1",
-        "Pont, F., Zucker, S., &amp; Queloz, D. 2006, MNRAS, 373, 231",
+        "Pont, F., Zucker, S., & Queloz, D. 2006, MNRAS, 373, 231",
         "Rowe, J. F., Coughlin, J. L., Antoci, V., et al. 2015, ApJS, 217, 16",
         "Coughlin, J. L., Mullally, F., Thompson, S. E., et al. 2016, ApJS, 224, 12",
         "TESS Team 2018, TESS Input Catalog and Candidate Target List, STScI/MAST, doi: 10.17909/fwdt-2x66",
+        "TESS Team 2022, TESS Calibrated Full Frame Images: All Sectors, STScI/MAST, doi: 10.17909/0cp4-2j79",
     ):
-        assert cited in references
+        assert any(cited in e for e in entries), cited
     assert "(Rowe et al. 2015; Coughlin et al. 2016)" in flat
-    # Every entry is cited in the text, and the fixture's SPOC light curve brings PDCSAP's papers.
+    # The list is exactly the works the paper cites, and each is cited in the text by its own citation: its names
+    # and year, in a parenthesis or a list of that author's years ("Stumpe et al. 2012, 2014").
     body = flat.split("## References")[0]
-    for key in {
+    expected = {
         *preprint.CITED,
         *preprint.PDCSAP_REFERENCES,
         *preprint.PRODUCT_REFERENCES["SPOC 2-min"],
-    }:
-        cite, entry = preprint.REFERENCES[key]
-        assert escape(entry, quote=False) in references, key
-        surname, year = cite.rsplit(" ", 1)
-        assert surname.removesuffix(" et al.") in body and year in body, key
+    }
+    assert set(keys) == expected
+    for key in expected:
+        names, year = preprint.REFERENCES[key][0].rsplit(" ", 1)
+        assert re.search(
+            re.escape(names) + r" \(?(?:\d{4}[a-z]?, )*" + re.escape(year) + r"\b", body
+        ), key
     available = " ".join(td.section(text, "Data Availability").split())
     assert "The tess-hunt code, under the MIT licence," in available
     licences = " ".join(td.section(text, "Appendix D. Licences").split())
@@ -1811,9 +1923,8 @@ def test_the_figures_and_references_are_the_papers_own(tmp_path, monkeypatch):
     files = td.section(text, "Appendix B. Dataset Files")
     assert "**Table 4.** Files in each record" in files
     assert "| `checks.json` | each vetting check's outcome" in files
-    # URLs stay out of the running text: in footnotes, Data Availability or the acknowledgements' quoted credits.
+    # URLs stay out of the running text, in Data Availability or the acknowledgements' requested credits, and there
+    # are no footnotes, which WeasyPrint sets on a later page than their call.
     running = text.split("## Acknowledgements")[0]
-    assert (
-        re.findall(r"https?://\S+", re.sub(r'<span class="footnote">[^<]*</span>', "", running))
-        == []
-    )
+    assert re.findall(r"https?://\S+", running) == []
+    assert "footnote" not in text and "footnote" not in preprint.STYLE
