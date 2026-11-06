@@ -17,6 +17,7 @@ import test_dossier as td
 import test_vetting as tv
 
 from tess_hunt import calls, dossier, preprint, prereg, provenance, transit
+from tess_hunt.catalogs import KNOWN_COLUMNS
 from tess_hunt.cli import main
 from tess_hunt.config import load_criteria
 from tess_hunt.provenance import sha256_file
@@ -88,6 +89,9 @@ finding = "F1"
 date = 2026-10-27
 text = "Sector 2 carries most of it."
 """
+# Wording that would say a value lacks an uncertainty, which no sentence of the paper may (decision 0043), matched in
+# lower case.
+GAPS = r"\bomits?\b|no uncertainty|without the stellar-radius|carries no|\black|without an error"
 
 
 def git(repo: Path, *args: str) -> None:
@@ -341,6 +345,49 @@ def test_preprint_refuses_unless_the_latest_version_is_a_standing_pass(
     assert runs_made(tmp_path) == []
 
 
+def test_the_reproduced_fit_reads_the_light_curve_vet_fitted(tmp_path, monkeypatch):
+    # The fake fit ignores its light curve, so the summary check cannot see a wrong rebuild in the tests: the light
+    # curve each density-prior fit receives is compared instead, with a catalogued signal masked and a timing-suspect
+    # sector dropped.
+    fake, seen = tv.fake_fit, []
+
+    def recording(lc, eph, cfg, rho_prior=None, seed=None):
+        if rho_prior is not None:
+            seen.append(lc)
+        return fake(lc, eph, cfg, rho_prior, seed)
+
+    monkeypatch.setattr(tv, "fake_fit", recording)
+    snapshot = tv.v2_snapshot(tmp_path / "catalogs")
+    known = pd.read_parquet(snapshot / "known.parquet")
+    ctoi = {
+        "tic": 1,
+        "ra": tv.CANDIDATE["ra"],
+        "dec": tv.CANDIDATE["dec"],
+        "depth_ppm": 900.0,
+        "source": "CTOI",
+        "kind": "candidate",
+        "name": "CTOI-1.01",
+        "period": 7.3,
+        "t0": 1330.0,
+        "duration": 0.1,
+    }
+    rows = pd.concat([known, pd.DataFrame([ctoi])[KNOWN_COLUMNS]], ignore_index=True)
+    rows.to_parquet(snapshot / "known.parquet")
+    run, _ = td.vetting_runs(tmp_path, monkeypatch, snapshot=snapshot)
+    vetted = seen[0]
+    record = tmp_path / "record"
+    record.mkdir()
+    shutil.copy(run / "signals" / NAME / "checks.json", record)
+    shutil.copy(run / "provenance.json", record / "provenance-checks.json")
+    checks = json.loads((record / "checks.json").read_text())
+    assert [m["period"] for m in checks["masked"]] == [7.3] and checks["dropped_suspect"] == [64]
+    seen.clear()
+    preprint.reproduce(record)
+    [rebuilt] = seen
+    for column in ("time", "flux", "flux_err"):
+        assert np.array_equal(getattr(rebuilt, column), getattr(vetted, column)), column
+
+
 def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
     _, repo = published(tmp_path, monkeypatch)
     record = repo / "results" / "vetting" / NAME
@@ -468,15 +515,19 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
         "rp_pm",
     ):
         assert expected[key] in text
-    # One depth and one duration: the search's box values appear nowhere.
+    # One depth and one duration: the search's box values appear once, in Section 4, named as the box's.
     eph = checks["ephemeris"]
-    assert f"{eph['depth'] * 1e6:.0f} ppm" not in text
-    assert f"{eph['duration'] * 24:.2f} h" not in text
+    box_duration, box_depth = f"{eph['duration'] * 24:.2f} h", f"{eph['depth'] * 1e6:.0f} ppm"
+    assert (found["box_duration_h"], found["box_depth_ppm"]) == (box_duration[:-2], box_depth[:-4])
+    detection = " ".join(td.section(text, "Detection").split())
+    assert f"with a box duration of {box_duration} and a box depth of {box_depth}." in detection
+    flat = " ".join(text.split())
+    assert flat.count(box_duration) == 1 and flat.count(box_depth) == 1
     # Without a TIC error on the star's radius, Section 3 says so once, and Table 1's note gives Rp from the radius.
     assert text.count("The TIC gives no error for the star's radius.") == 1
     assert "times the TIC radius (Section 3)." in text
-    # With the TIC's errors, Section 3 gives them, and Rp takes the radius's error through a draw per sample, seeded
-    # by the criteria, so each render gives the same Rp.
+    # With the TIC's errors, Section 3 gives them, and Rp takes the radius's error through a draw per sample, from a
+    # seed sequence of the criteria's seed and 1, apart from the fit's walker starts, so each render gives the same Rp.
     td.edit_json(record / "checks.json", lambda c: c["star"].update(e_rad=0.05, e_teff=120.0))
     drawn = preprint.reproduce(record)
     found = preprint.values(
@@ -486,7 +537,7 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
     assert found["teff"] == f"{star['teff']:.0f} ± 120"
     assert found["radius_error"] == ""
     seed = tomllib.loads(tv.VET3.read_text())["fit"]["seed"]
-    radii = np.random.default_rng(seed).normal(star["rad"], 0.05, len(drawn["samples"]))
+    radii = np.random.default_rng([seed, 1]).normal(star["rad"], 0.05, len(drawn["samples"]))
     assert np.array_equal(drawn["rad_rsun"], radii)
     rp_rs = drawn["samples"][:, preprint.NAMES.index("rp_rs")]
     assert np.array_equal(drawn["rp_rearth"], rp_rs * radii * preprint.R_EARTH_PER_R_SUN)
@@ -495,7 +546,8 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
     assert found["rp_pm"] != expected["rp_pm"]
     text = paper(repo)
     host = " ".join(td.section(text, "Host Star").split())
-    assert f"a radius of {star['rad']:.2f} ± 0.05 R⊙ in the TESS" in host and "no error" not in text
+    assert f"a radius of {star['rad']:.2f} ± 0.05 R⊙ in the TESS" in host
+    assert not re.search(f"{GAPS}|no error", " ".join(text.split()).lower())
     assert (
         "times the TIC radius, drawn for each sample from its value and error (Section 3)." in text
     )
@@ -538,9 +590,15 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     assert text.startswith("# A 5.0-day Transiting Planet Candidate around TIC 1\n")
     summary = " ".join(td.section(text, "Abstract").split())
     assert "We report a transiting planet candidate around TIC 1" in summary
+    # The search found the signal; the fit, not the search, gives its numbers.
     assert (
-        "We searched public TESS light curves and found a periodic transit signal with a period of"
-        in summary
+        "We searched public TESS light curves and found a periodic transit signal. A transit-model fit gives a period "
+        "of " in summary
+    )
+    assert re.search(
+        r"a depth at mid-transit of .+? ppm, a total duration of .+? h and, with the stellar radius from the TESS "
+        r"Input Catalog, a radius of .+? R⊕ for the transiting body\.",
+        summary,
     )
     # The result with its errors, the star's TIC values, and what Table 2 shows.
     assert " ± " in summary and "R⊕" in summary and "R⊙ in the TESS Input Catalog" in summary
@@ -571,11 +629,8 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     # Every value carries its error, and no sentence says one lacks it: the TIC's missing radius error is said once, in
     # Section 3, as a fact of the catalogue.
     conclusions = " ".join(td.section(text, "Conclusions").split())
-    assert "R⊕ for the transiting body." in summary
     assert "R⊕. We passed the signal" in conclusions
-    flat = " ".join(text.split())
-    for gap in ("omits", "no uncertainty", "without the stellar-radius", "carries no"):
-        assert gap not in flat, gap
+    assert not re.search(GAPS, " ".join(text.split()).lower())
     # A paper with no preregistered test still says that we passed the signal, and when.
     assert not (repo / "results" / "vetting" / NAME / "prereg.json").exists()
     vetted = " ".join(td.section(text, "Vetting").split())
@@ -1746,14 +1801,22 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     assert [section.index(s) for s in subsections] == sorted(section.index(s) for s in subsections)
     # The neighbour check is described once, by that name, where Section 6.2 introduces it.
     assert (
-        vetted.count("Gaia DR3 star near the target bright enough to produce the observed depth")
+        vetted.count(
+            "Gaia DR3 star near the target bright enough to produce the search's box depth"
+        )
         == 1
     )
     assert "neighbour table" not in text
     assert (
         "The neighbour check lists the possible hosts: every Gaia DR3 star near the target bright enough to produce "
-        "the observed depth if all its light fell in the aperture." in vetted
+        "the search's box depth if all its light fell in the aperture." in vetted
     )
+    # The search's box values are the box's wherever the paper uses them; "duration" alone is T14.
+    flat = " ".join(text.split())
+    assert "the central 50% of the search's box duration, Section 4)" in flat
+    assert "transit duration" not in flat and "transit's duration" not in flat
+    for caption in preprint.CAPTIONS.values():
+        assert "duration" not in caption.replace("box duration", "")
     assert (
         "The check has no fail outcome: a pass means only that every star near the target could be assessed"
         in vetted

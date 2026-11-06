@@ -6,13 +6,13 @@ $author_block
 
 We report a transiting planet candidate around TIC $tic, a star with a TESS magnitude of $tmag, an effective
 temperature of $teff K and a radius of $radius_sun R⊙ in the TESS Input Catalog. We searched public TESS light curves
-and found a periodic transit signal with a period of $period_pm d, a depth of $depth_pm ppm and a duration of
-$duration_pm h. A transit-model fit, with the stellar radius from the TESS Input Catalog, gives a radius of $rp_pm R⊕
-for the transiting body. $abstract_checks TRICERATOPS
-gives a mean false-positive probability of $fpp_pm. An LLM-assisted adversarial review looked for reasons the signal
-might not be a planet, and we answered every finding that its refuters did not disprove.$summary_prereg The signal
-remains a planet candidate. The TESS light curves cannot measure the transiting body's mass, and they cannot exclude
-every nearby star as the source of the transit.
+and found a periodic transit signal. A transit-model fit gives a period of $period_pm d, a depth at mid-transit of
+$depth_pm ppm, a total duration of $duration_pm h and, with the stellar radius from the TESS Input Catalog, a radius
+of $rp_pm R⊕ for the transiting body. $abstract_checks TRICERATOPS gives a mean false-positive probability of
+$fpp_pm. An LLM-assisted adversarial review looked for reasons the signal might not be a planet, and we answered
+every finding that its refuters did not disprove.$summary_prereg The signal remains a planet candidate. The TESS light
+curves cannot measure the transiting body's mass, and they cannot exclude every nearby star as the source of the
+transit.
 Establishing that the signal comes from a planet needs further observations: photometry that resolves the stars near
 the target, high-resolution imaging to search for companions too close to resolve, and radial velocities to measure
 the mass.
@@ -93,7 +93,9 @@ Input Catalog. Each star has:
   gives them (DR 0009);
 - light curves in at least $min_sectors sectors, one of them in Sectors $recent_min to $recent_max.
 
-The search found this signal at a signal detection efficiency (SDE) of $sde.
+The search found this signal at a signal detection efficiency (SDE) of $sde, with a box duration of $box_duration_h h
+and a box depth of $box_depth_ppm ppm. The light-curve checks and the figures use the search's box duration, and the
+neighbour check uses its box depth. Table 1 gives the transit model's own duration and depth.
 
 The detection threshold, SDE $threshold, comes from a null search. In the null search, each sample star's light curve
 was searched again after the segments between data gaps had been shuffled within each sector and the sectors then
@@ -152,7 +154,7 @@ $red_noise
 ### Location of the Signal
 
 The neighbour check lists the possible hosts: every Gaia DR3 star near the target bright enough to produce the
-observed depth if all its light fell in the aperture. Gaia DR3 astrometry (Lindegren et al. 2021) and photometry
+search's box depth if all its light fell in the aperture. Gaia DR3 astrometry (Lindegren et al. 2021) and photometry
 (Riello et al. 2021) give the stars' positions and brightness. The check has no fail outcome: a pass means only that
 every star near the target could be assessed (DR 0025). $hosts
 
@@ -206,13 +208,13 @@ $sentences
 
 The held-out season check leaves out one season at a time and refits the period and epoch with BLS on the rest. The
 check then measures the held-out season's depth in the cores of the transits the refit predicts in that season (the
-central $core of each transit's duration). Because the refit searches only near the original period, and the original
-search used every season including the held-out one, the check tests whether the seasons agree with each other. The
-preregistered test in this section is the paper's only blind prediction. A season is not testable when, for example,
-the depth expected there is too small against its error or too few cadences fall in the predicted cores. A testable
-season counts as predicted when its depth is at least ${min_sigma}σ and, for each light-curve family, within
-${max_tension}σ of that family's depth in the other seasons. The check passes when at least two seasons are testable
-and all of them are predicted. $holdout
+central $core of the search's box duration, Section 4). Because the refit searches only near the original period, and
+the original search used every season including the held-out one, the check tests whether the seasons agree with each
+other. The preregistered test in this section is the paper's only blind prediction. A season is not testable when,
+for example, the depth expected there is too small against its error or too few cadences fall in the predicted cores.
+A testable season counts as predicted when its depth is at least ${min_sigma}σ and, for each light-curve family,
+within ${max_tension}σ of that family's depth in the other seasons. The check passes when at least two seasons are
+testable and all of them are predicted. $holdout
 
 $prereg
 

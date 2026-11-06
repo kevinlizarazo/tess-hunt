@@ -63,22 +63,24 @@ CAPTIONS = {
     "transits.png": "Each predicted transit in the light curve, one panel per transit, as relative flux against time "
     "from the predicted mid-transit time. Panel titles give the epoch (counted from <i>T</i><sub>0</sub>) and the "
     "sector. "
-    "Grey points are individual cadences, and blue points are medians in bins one-eighth of the transit duration wide. "
-    "The shaded band spans the transit duration. Panels with few points lie at the edge of a data gap",
+    "Grey points are individual cadences, and blue points are medians in bins one-eighth of the search's box duration "
+    "(Section 4) wide. The shaded band spans the box duration. Panels with few points lie at the edge of a data gap",
     "folds.png": "Light curve folded on the ephemeris, one panel per season and light-curve family. Panel titles give "
     "the family (`pdcsap` for PDCSAP flux from SPOC or TESS-SPOC, `qlp` for QLP flux), the season (counted from 0) and "
     "its sectors. Points and band are as in Figure 1",
     "odd_even.png": "Odd-numbered (left) and even-numbered (right) transits, folded separately. Points and band are "
-    "as in Figure 1. The red line marks the median flux in the transit core (the central half of the transit), taken "
-    "separately for the odd and the even transits",
+    "as in Figure 1. The red line marks the median flux in the transit core (the central half of the search's box "
+    "duration, Section 4), taken separately for the odd and the even transits",
     "phase.png": "Relative flux vs. orbital phase over the whole orbit, with the transit at phase 0 and phases from "
     "−0.25 to 0.75, so a phase above 0.75 is drawn one orbit earlier. Grey points are individual cadences, and blue "
-    "points are medians in bins half the transit duration wide. The dashed line marks phase 0.5, where a secondary "
+    "points are medians in bins half the search's box duration (Section 4) wide. The dashed line marks phase 0.5, "
+    "where a secondary "
     "eclipse falls if the orbit is circular. The red line marks the most significant secondary event ModShift finds "
     "at any phase, labelled with its phase and significance",
 }
 PACKAGE = ["preprint.md", "preprint.pdf", "manifest.json", "provenance.json", *FIGURES]
-# The density-prior posterior the run reproduces, in the dataset: Table 1's depth and duration come from its samples.
+# The density-prior posterior the run reproduces, in the dataset: Table 1's depth, duration and radius come from its
+# samples.
 POSTERIOR = "posterior-prior.npz"
 CC_BY = "CC BY 4.0"
 GAIA = "CC BY-NC 3.0 IGO"
@@ -942,13 +944,13 @@ def reproduce(record: Path) -> dict[str, np.ndarray] | None:
     prior = vet.density_prior(checks["star"], crit_vet["density"]["default_log_rho_error"])
     fit = vet.fit_transit(fit_lc, eph, cfg, rho_prior=prior, seed=cfg["seed"])
     _same_fit(fit.summary(), checks["fit_prior"])
-    # The TIC radius enters each sample's Rp as a draw from its value and error, seeded by the criteria; a star the TIC
-    # gives no error for keeps its value, and Rp the spread of Rp/R⋆ alone, as the record's fit summary has it.
+    # The TIC radius enters each sample's Rp as a draw from its value and error; a star the TIC gives no error for
+    # keeps its value, and Rp the spread of Rp/R⋆ alone, as the record's fit summary has it. The draws take a seed
+    # sequence of their own from the criteria's seed: the seed alone is the stream fit_transit placed its walkers with.
     star = checks["star"]
     rad, e_rad = (np.nan if star.get(k) is None else float(star[k]) for k in ("rad", "e_rad"))
-    radii = np.random.default_rng(cfg["seed"]).normal(
-        rad, e_rad if _known(e_rad) else 0.0, len(fit.samples)
-    )
+    rng = np.random.default_rng([cfg["seed"], 1])
+    radii = rng.normal(rad, e_rad if _known(e_rad) else 0.0, len(fit.samples))
     return {
         "names": np.array(NAMES),
         "samples": fit.samples,
@@ -1004,6 +1006,9 @@ def _star(checks: dict, posterior: dict | None) -> dict:
         "teff": _with_error(star["teff"], star.get("e_teff"), ".0f"),
         "radius_sun": _with_error(star["rad"], star.get("e_rad"), ".2f"),
         "radius_error": "" if with_rad_error else " The TIC gives no error for the star's radius.",
+        # The search's box, which the checks, the neighbour check and the figures use; Section 4 alone gives it.
+        "box_duration_h": _number(checks["ephemeris"]["duration"] * 24, ".2f"),
+        "box_depth_ppm": _ppm(checks["ephemeris"]["depth"]),
     }
     if prior is None:
         return found
@@ -2402,9 +2407,10 @@ def deposit_form(run: Path) -> str:
     description = [
         _plain(_section(text, "Abstract").split("\n\n")[0]),
         "The deposit holds the paper (`preprint.pdf`, made from `preprint.md`), its figures and its dataset. The "
-        "dataset holds the signal's published vetting records and the light curve that the vetting run of the paper's "
-        "record read. `manifest.json` lists each of its files with its sha256 and licence. The files are CC BY 4.0, "
-        "with two exceptions. The dataset's files that hold Gaia DR3 data "
+        "dataset holds the signal's published vetting records, the light curve that the vetting run of the paper's "
+        "record read, and the samples of the density-prior fit behind Table 1's depth, duration and radius "
+        f"(`{POSTERIOR}`). `manifest.json` lists each of its files with its sha256 and licence. The files are CC BY "
+        "4.0, with two exceptions. The dataset's files that hold Gaia DR3 data "
         f"({_words([f'`{name}`' for name in gaia])}, in each record's directory) stay under ESA's CC BY-NC 3.0 IGO "
         "terms, as does any Gaia value in the paper's quoted text or notes. ExoFOP's rows in the dataset stay under "
         "ExoFOP's terms, as do the ExoFOP listings the paper names.",
