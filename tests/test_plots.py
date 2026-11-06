@@ -119,6 +119,32 @@ def test_each_plot_is_drawn_for_print(tmp_path, monkeypatch):
     assert [t.get_text() for t in ax.texts] == ["TIC 1: phase: no data (no finite cadences)"]
 
 
+def test_the_phase_plot_cuts_a_noisy_light_curve_evenly(tmp_path, monkeypatch):
+    # At 2-minute cadence the scatter dwarfs the binned flux, which alone set the range and cut the cadences mostly
+    # above the out-of-transit level.
+    drawn = []
+    save = plots._save
+
+    def keep(fig, path):
+        drawn.append(fig)
+        return save(fig, path)
+
+    monkeypatch.setattr(plots, "_save", keep)
+    lc = make_lc(
+        sectors=(1, 2), cadence_min=2.0, noise_ppm=600.0, signals=[(5.0, 1326.1, 0.13, 0.0017)]
+    )
+    plots.phase(with_products(lc, {1: "SPOC", 2: "SPOC"}), EPH, MODSHIFT, tmp_path / "phase.png")
+    [ax] = drawn[0].axes
+    grey, binned = ax.lines[0], ax.lines[1]
+    bottom, top = ax.get_ylim()
+    # The binned transit stays in view.
+    assert bottom <= binned.get_ydata().min() and binned.get_ydata().max() <= top
+    # Few out-of-transit cadences lie outside the range, on either side.
+    x, y = grey.get_xdata(), grey.get_ydata()
+    out = y[np.abs(x) > EPH.duration / EPH.period]
+    assert np.mean(out > top) < 0.01 and np.mean(out < bottom) < 0.01
+
+
 def test_a_plot_with_nothing_to_show_says_no_data(tmp_path, monkeypatch):
     lc = planet_lc()
     empty = lc.select(np.zeros(len(lc.time), dtype=bool))

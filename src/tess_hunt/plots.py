@@ -245,10 +245,18 @@ def phase(lc: LightCurve, eph: Ephemeris, modshift: dict | None, path: Path) -> 
         ax.axvline(_wrapped(secondary), color="C3", lw=1.2, label=label)
     ax.set_xlim(PHASE_FROM, PHASE_FROM + 1.0)
     # Scaled to the binned flux: a secondary a fifth of the primary's depth would be lost in the
-    # scatter's range.
+    # scatter's range. The top then reaches as far above the out-of-transit level as the bottom
+    # reaches below it, up to three times the scatter there, so a noisy light curve's cadences are
+    # cut about evenly on both sides rather than mostly above.
     if len(y) > 1:
         pad = 0.3 * max(float(y.max() - y.min()), 1.0)
-        ax.set_ylim(float(y.min()) - pad, float(y.max()) + pad)
+        bottom, top = float(y.min()) - pad, float(y.max()) + pad
+        out = ppm[np.abs(orbit) > eph.duration / eph.period]
+        if len(out) > 1:
+            level = float(np.median(out))
+            scatter = 1.4826 * float(np.median(np.abs(out - level)))
+            top = max(top, level + min(level - bottom, 3.0 * scatter))
+        ax.set_ylim(bottom, top)
     else:
         ax.set_ylim(*_ylim(ppm))
     ax.set_xlabel("Orbital phase")
