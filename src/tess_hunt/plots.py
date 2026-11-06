@@ -209,10 +209,11 @@ def odd_even(lc: LightCurve, eph: Ephemeris, path: Path) -> Path:
         core = np.abs(phase_days(part.time, eph)) < 0.25 * eph.duration
         if core.any():
             level = float(np.median(_ppm(part.flux[core])))
-            # A minus sign, as the tick labels print it, not a hyphen.
+            # A minus sign, as the tick labels print it, not a hyphen. The value goes in the title: a legend in the
+            # panel would cover the in-transit cadences.
             shown = f"{level:.0f}".replace("-", "−")
-            ax.axhline(level, color="C3", lw=1, label=f"Core median {shown} ppm")
-            ax.legend(loc="lower right")
+            ax.axhline(level, color="C3", lw=1)
+            ax.set_title(f"{label}, core median {shown} ppm")
     axes[0].set_ylim(*_ylim(_ppm(near.flux)))
     fig.supxlabel("Time from mid-transit (h)")
     fig.supylabel("Relative flux (ppm)")
@@ -261,7 +262,8 @@ def phase(lc: LightCurve, eph: Ephemeris, modshift: dict | None, path: Path) -> 
         ax.set_ylim(*_ylim(ppm))
     ax.set_xlabel("Orbital phase")
     ax.set_ylabel("Relative flux (ppm)")
-    ax.legend(loc="lower center")
+    # In one row above the axes, where no title sits: inside, it would cover cadences.
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncols=2, frameon=False)
     return _save(fig, path)
 
 

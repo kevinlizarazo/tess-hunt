@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import numpy as np
@@ -105,6 +106,18 @@ def test_each_plot_is_drawn_for_print(tmp_path, monkeypatch):
     }
     assert lines == {"ModShift secondary, phase 0.759, 3.1σ": pytest.approx(0.759 - 1.0)}
     assert all(t.get_fontsize() == plots.FONT_PT for t in ax.get_xticklabels())
+    # The legend sits in one row above the axes, inside the figure, where it covers no cadence.
+    renderer = drawn["phase.png"].canvas.get_renderer()
+    legend = ax.get_legend().get_window_extent(renderer)
+    assert legend.y0 >= ax.get_window_extent(renderer).y1 - 0.5
+    assert legend.y1 <= drawn["phase.png"].bbox.y1
+    # Each odd-even panel gives its core median in its title, with a minus sign, and has no legend over the transit.
+    odd_even = drawn["odd_even.png"].axes
+    assert [a.get_legend() for a in odd_even] == [None, None]
+    assert [re.sub(r"\d+", "N", a.get_title()) for a in odd_even] == [
+        "Odd, core median −N ppm",
+        "Even, core median −N ppm",
+    ]
     # Sharp in print and small enough to commit: a 256-colour palette PNG at 300 dpi, which PNG keeps in pixels per
     # metre.
     for path in (tmp_path / "plots").iterdir():
