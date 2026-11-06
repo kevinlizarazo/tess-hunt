@@ -5,7 +5,7 @@ Amended for M2 from the M2 design of 2026-10-12 (kept outside the repository): s
 6.1, 6.2, 7 and 8. Amended for M3 from the M3 design of 2026-10-16 (kept outside the repository) and M3's decisions:
 sections 4.1, 5.2, 5.4, 5.7, 5.8, 6, 6.2, 7 and 8. Amended for M4 from the M4 design of 2026-10-27 (kept outside the
 repository) and M4's decisions: sections 1.1, 4.1, 7, 8 and 9. Amended for M5 on 2026-11-02 and 2026-11-05 from the
-M5 design of 2026-10-30 (kept outside the repository) and M5's decisions: sections 1.1, 3, 4.1, 7, 8 and 9. Each
+M5 design of 2026-10-30 (kept outside the repository) and M5's decisions: sections 1.1, 3, 4.1, 6.1, 7, 8 and 9. Each
 changed rule links its decision record in [docs/decisions/](decisions/).
 Repo: `kevinlizarazo/tess-hunt` (public since 2026-10-28).
 
@@ -595,6 +595,8 @@ environment by running it, and CI installs it from the lockfile.
 | batman-package | 2.5.3 | |
 | emcee | 3.1.6 | |
 | numba | 0.68.0 | Requires numpy<2.6 |
+| weasyprint | ==70.0 | Optional `preprint` group (`uv sync --group preprint`): renders the preprint's PDF ([0043](decisions/0043-the-preprint-for-a-pass.md), 2026-11-05) |
+| markdown | ==3.11.1 | Optional `preprint` group: turns the preprint's Markdown into HTML for WeasyPrint ([0043](decisions/0043-the-preprint-for-a-pass.md), 2026-11-05) |
 
 transit-diffImage's undeclared imports (spiceypy, lightkurve, pandas, matplotlib, requests) are declared in
 `pyproject.toml`, and it brings tess-point. It shells out to curl, unzip and rm, so `curl` and `unzip` are system
