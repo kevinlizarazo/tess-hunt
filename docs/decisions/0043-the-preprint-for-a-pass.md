@@ -218,10 +218,16 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   smearing belongs to a cadence, and a fit over several exposures has no single one. Its total duration,
   T<sub>14</sub>, comes from `vetting.fit_durations`, the formula whose median the record's `window_duration` keeps.
   Table 1, the Abstract and the Zenodo description give each as the median with its 16th and 84th percentile
-  offsets, and the search's box depth is no longer printed. Table 1's note says where both come from and that the
-  posterior was reproduced and checked, and names no exposure.
+  offsets; the Abstract says the fit, not the search, gives the period, depth, duration and radius. Table 1's note
+  says where both come from and that the posterior was reproduced and checked, and names no exposure.
+- **The search's box.** Section 4 gives the search's box duration and box depth once, with the SDE, as the values the
+  light-curve checks and the figures (the box duration) and the neighbour check (the box depth) use. The figure
+  captions, Section 6.2 and Section 7 call them the search's box duration and box depth; "duration" alone, or
+  T<sub>14</sub>, is the fit's. Published records keep plots drawn with the box duration, so the plots cannot follow
+  T<sub>14</sub>, and the paper names the box instead.
 - **The radius.** Each sample's R<sub>p</sub> is its R<sub>p</sub>/R<sub>⋆</sub> times a draw of the star's radius
-  from the TIC's value and error (`rad`, `e_rad` in the record's star row), the draws seeded by the criteria's seed.
+  from the TIC's value and error (`rad`, `e_rad` in the record's star row). The draws take the seed sequence of the
+  criteria's seed and 1, apart from the stream of the seed alone, which placed the fit's walkers.
   The Abstract, Table 1 and the Conclusions give its median with its 16th and 84th percentile offsets; the checks
   table's reasons stay as the record gives them. Section 3, and the Abstract, give the TIC's Teff and radius with
   their errors where the record keeps them. A record whose star has no `e_rad` keeps the spread of
@@ -231,8 +237,11 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   For the depth, the duration and the radius, this replaces the Decision's "computes nothing new".
 - **The dataset.** `dataset/posterior-prior.npz` holds the samples, the parameter names, and each sample's depth,
   T<sub>14</sub>, stellar-radius draw and R<sub>p</sub>. `manifest.json` lists it under CC BY 4.0, and Data
-  Availability and Appendix B name it. It sits beside `lc/`, not in a record's directory, since `vetting/` holds the
-  published records as `results/vetting/` does.
+  Availability, Appendix B and the Zenodo description name it. It sits beside `lc/`, not in a record's directory,
+  since `vetting/` holds the published records as `results/vetting/` does.
+- **The whole-orbit plot.** Its range keeps the binned transit in view and reaches as far above the out-of-transit
+  level as below it, up to three times the scatter there, so a 2-minute light curve's cadences are cut about evenly
+  on both sides.
 - **The specimen.** vet's own fit, seeded, makes its record from its synthetic light curve, so its paper goes through
   the same reproduction and check. Its sectors are at SPOC's 2-minute cadence, which the paper and TRICERATOPS's
   120-s data name, and its star has TIC-sized errors on its Teff and radius. It renders with the repository's
@@ -255,6 +264,7 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
 - [tests/test_preprint.py](../../tests/test_preprint.py): `test_preprint_refuses_unless_the_latest_version_is_a_standing_pass`
   (a held record, a passed M3 record with a held r2, a pass `calls.problems` refuses, an uncommitted change, a
   `fit_prior` median or acceptance the reproduced fit does not give),
+  `test_the_reproduced_fit_reads_the_light_curve_vet_fitted` (with a masked signal and a timing-suspect sector),
   `test_every_number_comes_from_the_record` (the depth, duration and radius from the reproduced posterior, a star with
   and without the TIC's radius error, and a missing value raises), `test_the_paper_says_candidate_not_planet`,
   `test_a_note_0037_added_sits_under_the_quoted_finding`, `test_a_confirmed_finding_no_refuter_ran_on_says_so`,
@@ -276,4 +286,4 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   result without its depth raises), `test_the_pdf_renders` (the header and footer of every page, and the findings'
   nested list in the HTML).
 - [tests/test_plots.py](../../tests/test_plots.py): `test_each_plot_is_drawn_for_print` (the 2026-11-05 amendment's
-  plot style).
+  plot style), `test_the_phase_plot_cuts_a_noisy_light_curve_evenly`.
