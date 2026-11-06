@@ -4,9 +4,9 @@ Status: approved 2026-10-08.
 Amended for M2 from the M2 design of 2026-10-12 (kept outside the repository): sections 3, 4.1, 4.2, 5.2, 5.4, 5.6,
 6.1, 6.2, 7 and 8. Amended for M3 from the M3 design of 2026-10-16 (kept outside the repository) and M3's decisions:
 sections 4.1, 5.2, 5.4, 5.7, 5.8, 6, 6.2, 7 and 8. Amended for M4 from the M4 design of 2026-10-27 (kept outside the
-repository) and M4's decisions: sections 1.1, 4.1, 7, 8 and 9. Amended for M5 on 2026-11-02 from the M5 design of
-2026-10-30 (kept outside the repository) and M5's decisions: sections 1.1, 3, 4.1, 7, 8 and 9. Each changed rule links
-its decision record in [docs/decisions/](decisions/).
+repository) and M4's decisions: sections 1.1, 4.1, 7, 8 and 9. Amended for M5 on 2026-11-02 and 2026-11-05 from the
+M5 design of 2026-10-30 (kept outside the repository) and M5's decisions: sections 1.1, 3, 4.1, 7, 8 and 9. Each
+changed rule links its decision record in [docs/decisions/](decisions/).
 Repo: `kevinlizarazo/tess-hunt` (public since 2026-10-28).
 
 ## 1. Goal
@@ -384,6 +384,11 @@ from a run directory and writes its own.
     holds a light curve, so it is deposited from the run directory, and the committed manifest gives each file's sha256.
     `tess-hunt preprint zenodo` prints the deposit form's text. The committed copy is the deposited copy, and a real
     pass's paper gets its own pre-release review before the maintainer deposits it (2026-11-02,
+    [0043](decisions/0043-the-preprint-for-a-pass.md)). The paper takes a journal's form, with numbered sections, an
+    Abstract that gives each value with its errors, and an author block from `results/preprints/author.toml`. Its
+    depth, total duration and planet radius, with their errors, come from the density-prior fit's posterior, which the
+    run reproduces from the record's light curve; it refuses unless the reproduced fit's summary equals the record's
+    `fit_prior`. The dataset holds the reproduced samples as `posterior-prior.npz` (2026-11-05,
     [0043](decisions/0043-the-preprint-for-a-pass.md)).
   - **DDT proposal:** for 2-min cadence through the TESS DDT page (`https://tess.mit.edu/science/ddt/`).
 - **Acknowledgements and DOIs:** per section 6.
@@ -719,8 +724,10 @@ its data is seen, and moved slice B to M6. M5 built:
 - `tess-hunt revet status`, step 0 of the re-vet runbook, which says from MAST's listings whether each predicted
   sector has data the preregistered test can use ([0041](decisions/0041-revets-as-versions.md));
 - the preprint and dataset for a pass, `tess-hunt preprint run`, `publish` and `zenodo`, with a specimen rendered from
-  a made-up record so that the template is reviewed before any real result exists
-  ([0043](decisions/0043-the-preprint-for-a-pass.md));
+  a made-up record so that the template was reviewed before any real result exists. The review's 57 confirmed
+  findings went into the template, and after the maintainer read the specimen the paper took a journal's form and its
+  depth, duration and radius errors from the reproduced posterior (2026-11-05,
+  [0043](decisions/0043-the-preprint-for-a-pass.md));
 - the re-vet minors: fetch takes the higher QLP version when MAST lists two for a sector, so a `v02` redelivery of
   S99 to S104 reaches a re-vet, and a version's publish stopped between its dossier and the README is finished by the
   same runs ([0041](decisions/0041-revets-as-versions.md)).

@@ -236,6 +236,9 @@ candidate, not a confirmed planet.
 - `plots/`: each transit, the fold per season and product family, odd and even transits, the whole orbit with phase
   0.5 and the ModShift secondary, and the centroid offsets per sector with the neighbours that could host the signal
   (for a second-list row, `centroids.png` draws triage's record, which holds no offsets; its own are in `pixels.png`).
+  Plots drawn since 2026-11-05 are drawn for print, at the preprint's text width and 300 dpi, as 256-colour palette
+  PNGs with every cadence's point kept; the records published before keep theirs
+  ([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md), amended 2026-11-05).
 - `triceratops.json`, `probs.csv`: TRICERATOPS ([decision 0026](../docs/decisions/0026-triceratops.md)): the outcome,
   each run's FPP and NFPP, the stars it weighed and the possible hosts matched to them, and the TIC's DUPLICATE and
   ARTIFACT rows it left out (`dropped_stars`, [decision 0036](../docs/decisions/0036-triceratops-tic-duplicates.md));
@@ -388,28 +391,36 @@ among them, gets no exception. The file changes only with a decision record.
 ([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md)). A passed signal is a planet candidate, not a
 confirmed planet.
 
-- `preprint.template.md`: the paper's words, with a placeholder for each value. `tess-hunt preprint run` fills it with
-  `substitute` from the signal's latest published record, its runs' provenance and the runs they lead to, so a value
-  the sources lack raises instead of rendering. The review's and the call's words are quoted
+- `preprint.template.md`: the paper's words, with a placeholder for each value. The paper takes a journal's form:
+  numbered sections, an Abstract, numbered tables and figures, references and appendices
+  ([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md), amended 2026-11-05). `tess-hunt preprint run`
+  fills it with `substitute` from the signal's latest published record, its runs' provenance and the runs they lead
+  to, so a value the sources lack raises instead of rendering. The review's and the call's words are quoted
   ([decision 0037](../docs/decisions/0037-quoted-text-in-the-dossier.md)).
-- `author.toml`: the author line and the repository's URL the paper gives. It is the maintainer's file, its text
-  changes only with the maintainer's approval, and `preprint run` refuses without it.
+- The depth, the total duration and the planet's radius, with their errors, come from the density-prior fit's
+  posterior, which the record keeps only as a summary (`fit_prior` in `checks.json`). `preprint run` reproduces the
+  fit from the light curve the record's vetting run read, and refuses unless the reproduced summary equals the
+  record's ([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md), amended 2026-11-05).
+- `author.toml`: the author block the paper prints (the name, the affiliation, and the ORCID and email where the file
+  gives them) and the repository's URL, which the paper gives under Data Availability. It is the maintainer's file,
+  its text changes only with the maintainer's approval, and `preprint run` refuses without it.
 - Each directory `<run id>/` is one production run of `tess-hunt preprint run`, copied unchanged by `tess-hunt
   preprint publish`: `preprint.md`, `preprint.pdf` rendered from it, the four figures from the record's plots
   (`transits.png`, `folds.png`, `odd_even.png`, `phase.png`), `manifest.json` and `provenance.json`. The committed copy
   is the deposited copy. The dataset is not committed, since it holds a light curve: it is deposited from the run
   directory, and `manifest.json` lists each of its files with its sha256 and licence. It holds the signal's published
-  records, from the M3 record to the one the paper is rendered from, under `vetting/<name>/`, and the light curve that
-  record's vetting run read, `lc/<tic>.npz`. The Zenodo deposit form's text is not a package file: `tess-hunt preprint
-  zenodo --run RUN_ID` prints it from the run's files.
+  records, from the M3 record to the one the paper is rendered from, under `vetting/<name>/`; the light curve that
+  record's vetting run read, `lc/<tic>.npz`; and `posterior-prior.npz`, the reproduced fit's samples with each
+  sample's depth, total duration, draw of the stellar radius and planet radius. The Zenodo deposit form's text is not
+  a package file: `tess-hunt preprint zenodo --run RUN_ID` prints it from the run's files.
 
 The paper and its figures are CC BY 4.0, except any Gaia value in the text it quotes from a review or a call or in a
 note beside it, which stays under ESA's terms (above), and the ExoFOP listings it names, which stay under ExoFOP's
-terms (above). The dataset is CC BY 4.0 too, except the files that hold Gaia DR3 data, which stay
-under ESA's CC BY-NC 3.0 IGO terms ([decision 0026](../docs/decisions/0026-triceratops.md)): `checks.json`,
-`checks-with-suspect.json`, `neighbours.csv`, `triceratops.json`, `plots/centroids.png`, `pixels.png`, `review.json`,
-`review-scripts.tar.gz` and `dossier.md` in each record. ExoFOP's rows in its `literature.json`, `claims.json` and
-`dossier.md` stay under ExoFOP's terms (above), as `manifest.json` notes beside each of those files.
+terms (above). The dataset is CC BY 4.0 too, `posterior-prior.npz` included, except the files that hold Gaia DR3
+data, which stay under ESA's CC BY-NC 3.0 IGO terms ([decision 0026](../docs/decisions/0026-triceratops.md)):
+`checks.json`, `checks-with-suspect.json`, `neighbours.csv`, `triceratops.json`, `plots/centroids.png`, `pixels.png`,
+`review.json`, `review-scripts.tar.gz` and `dossier.md` in each record. ExoFOP's rows in its `literature.json`,
+`claims.json` and `dossier.md` stay under ExoFOP's terms (above), as `manifest.json` notes beside each of those files.
 
 ## Catalog snapshots
 
