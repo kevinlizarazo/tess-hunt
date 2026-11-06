@@ -74,9 +74,8 @@ CAPTIONS = {
     "phase.png": "Relative flux vs. orbital phase over the whole orbit, with the transit at phase 0 and phases from "
     "−0.25 to 0.75, so a phase above 0.75 is drawn one orbit earlier. Grey points are individual cadences, and blue "
     "points are medians in bins half the search's box duration (Section 4) wide. The dashed line marks phase 0.5, "
-    "where a secondary "
-    "eclipse falls if the orbit is circular. The red line marks the most significant secondary event ModShift finds "
-    "at any phase, labelled with its phase and significance",
+    "where a secondary eclipse falls if the orbit is circular. The red line marks the most significant secondary event "
+    "ModShift finds at any phase, labelled with its phase and significance",
 }
 PACKAGE = ["preprint.md", "preprint.pdf", "manifest.json", "provenance.json", *FIGURES]
 # The density-prior posterior the run reproduces, in the dataset: Table 1's depth, duration and radius come from its

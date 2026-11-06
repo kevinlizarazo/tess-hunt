@@ -521,6 +521,10 @@ def test_every_number_comes_from_the_record(tmp_path, monkeypatch):
     assert (found["box_duration_h"], found["box_depth_ppm"]) == (box_duration[:-2], box_depth[:-4])
     detection = " ".join(td.section(text, "Detection").split())
     assert f"with a box duration of {box_duration} and a box depth of {box_depth}." in detection
+    assert (
+        "The light-curve checks and the figures use the search's box duration, and the neighbour check and "
+        "TRICERATOPS use its box depth." in detection
+    )
     flat = " ".join(text.split())
     assert flat.count(box_duration) == 1 and flat.count(box_depth) == 1
     # Without a TIC error on the star's radius, Section 3 says so once, and Table 1's note gives Rp from the radius.
@@ -1163,8 +1167,14 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     assert "Creative Commons Attribution 4.0 International (CC BY 4.0)" in licences
     assert "(CC BY-NC 3.0 IGO)" in licences
     assert "ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php)" in licences
-    # The description names the files the second licence covers.
+    # The description names the dataset's parts, the density-prior samples among them, and the files the second
+    # licence covers.
     description = form.split("## Description\n")[1].split("\n## ")[0]
+    assert (
+        "The dataset holds the signal's published vetting records, the light curve that the vetting run of the "
+        "paper's record read, and the samples of the density-prior fit behind Table 1's depth, duration and radius "
+        f"(`{preprint.POSTERIOR}`)." in description
+    )
     gaia = sorted(name for name in GAIA_FILES if (record / name).is_file())
     assert (
         f"({dossier._words([f'`{name}`' for name in gaia])}, in each record's directory)"

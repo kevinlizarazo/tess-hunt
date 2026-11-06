@@ -95,7 +95,7 @@ Input Catalog. Each star has:
 
 The search found this signal at a signal detection efficiency (SDE) of $sde, with a box duration of $box_duration_h h
 and a box depth of $box_depth_ppm ppm. The light-curve checks and the figures use the search's box duration, and the
-neighbour check uses its box depth. Table 1 gives the transit model's own duration and depth.
+neighbour check and TRICERATOPS use its box depth. Table 1 gives the transit model's own duration and depth.
 
 The detection threshold, SDE $threshold, comes from a null search. In the null search, each sample star's light curve
 was searched again after the segments between data gaps had been shuffled within each sector and the sectors then

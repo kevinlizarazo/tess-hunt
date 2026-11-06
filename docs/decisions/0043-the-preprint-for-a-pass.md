@@ -220,8 +220,8 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   Table 1, the Abstract and the Zenodo description give each as the median with its 16th and 84th percentile
   offsets; the Abstract says the fit, not the search, gives the period, depth, duration and radius. Table 1's note
   says where both come from and that the posterior was reproduced and checked, and names no exposure.
-- **The search's box.** Section 4 gives the search's box duration and box depth once, with the SDE, as the values the
-  light-curve checks and the figures (the box duration) and the neighbour check (the box depth) use. The figure
+- **The search's box.** Section 4 gives the search's box duration and box depth once, with the SDE: the light-curve
+  checks and the figures use its box duration, and the neighbour check and TRICERATOPS use its box depth. The figure
   captions, Section 6.2 and Section 7 call them the search's box duration and box depth; "duration" alone, or
   T<sub>14</sub>, is the fit's. Published records keep plots drawn with the box duration, so the plots cannot follow
   T<sub>14</sub>, and the paper names the box instead.
