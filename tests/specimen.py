@@ -197,8 +197,8 @@ def vetted(tmp: Path, argv: list[str]) -> tuple[Path, Path]:
 
 def transit_lc(cadences: dict, noise_ppm: dict, **kwargs) -> LightCurve:
     """The light curves setup and td.revet_run make, with the transit at the signal's ephemeris and each sector at
-    SPOC's 2-minute cadence, which the paper names: Table 1's note gives the fit's exposure, so the fixtures' 30-minute
-    cadence would contradict it."""
+    SPOC's 2-minute cadence, which the paper's "SPOC 2-minute light curves" and TRICERATOPS's 120-s data name: the
+    fixtures' 30-minute cadence would contradict both."""
     return make_transit_lc(
         period=SIGNAL["period"],
         t0=SIGNAL["t0"],
