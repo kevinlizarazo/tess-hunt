@@ -256,6 +256,66 @@ def held_r2(tmp_path, monkeypatch) -> Path:
     return repo
 
 
+def exofop_row(
+    toi: str | None, name: str, period: float | None, provenance: str = "TOIs (TESS Project)"
+) -> dict:
+    """One of ExoFOP's planet-parameter rows for 1-1's star, as the literature search keeps it: a TOI's rows carry the
+    TOI in `toi` and the star's listing in `name` (pin P2)."""
+    return {
+        "provenance": provenance,
+        "name": name,
+        "toi": toi,
+        "period": period,
+        "epoch_bjd": None,
+        "duration_hours": None,
+        "disposition": "PC",
+    }
+
+
+def excepted_pass(
+    tmp_path, monkeypatch, novelty: dict, planets: list[dict], excepted: list[dict]
+) -> Path:
+    """1-1's pass as td.claimed_pass publishes it, with the vetting run's novelty check updated by `novelty`, `planets`
+    added to ExoFOP's planet-parameter rows, and a claims run that excepts `excepted` under decision 0042, prepared for
+    `preprint run` in a repo of its own. Returns the repo."""
+    run, suspect = td.vetting_runs(tmp_path, monkeypatch)
+
+    def judged(checks):
+        held_out_passed(checks)
+        next(c for c in checks["checks"] if c["check"] == "novelty").update(novelty)
+
+    td.edit_json(run / "signals" / NAME / "checks.json", judged)
+    complete = {**td.literature_record(run, monkeypatch), "outcome": "pass", "reason": "complete"}
+    complete["search"]["exofop"]["planets"] += planets
+    tric = td.made_run(
+        tmp_path,
+        "vetting-triceratops",
+        run,
+        {NAME: {"triceratops.json": td.triceratops_record(run), "probs.csv": "ID,prob\n1,0.98\n"}},
+    )
+    lit = td.made_run(tmp_path, "vetting-literature", run, {NAME: {"literature.json": complete}})
+    claims = td.claims_record(run, lit, excepted, td.RERUN)
+    runs = {
+        "run": run,
+        "suspect": suspect,
+        "triceratops": tric,
+        "literature": lit,
+        "titles": td.titles_run(tmp_path, lit),
+        "claims": td.claims_run(tmp_path, run, lit, claims),
+    }
+    td.production(*runs.values())
+    repo = td.results_repo(tmp_path, monkeypatch)
+    signal = repo / "results" / "vetting" / NAME
+    signal.mkdir(parents=True)
+    (signal / "call.toml").write_text(tc.edit(tc.PASSED, "44926986-1", NAME))
+    (signal / "review.json").write_text(json.dumps(td.REVIEW))
+    argv = td.publish_argv(runs, "run", "triceratops", "literature", "suspect", "titles")
+    assert main([*argv, *td.flags(runs, "claims")]) == 0
+    assert calls.problems(signal) == []
+    prepared(repo, monkeypatch)
+    return repo
+
+
 def runs_made(tmp_path: Path) -> list[Path]:
     return sorted((tmp_path / "data" / "runs").glob("*-preprint-*"))
 
@@ -827,18 +887,20 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
     )
     assert "ExoFOP lists a signal" not in public
 
-    # A pass that stands because decision 0042 excepts a TOI listed after the claim.
+    # A pass that stands because decision 0042 excepts a TOI listed after the claim, as td.claimed_pass makes it, with
+    # ExoFOP's rows for both later TOIs.
     other = tmp_path / "claimed"
     other.mkdir()
-    runs, repo, argv = td.claimed_pass(other, monkeypatch)
+    match = {"source": "TOI", "name": "TOI-7001.01", "period": 5.0, "ratio": 1.0}
+    failed = {
+        "outcome": "fail",
+        "reason": "matches TOI TOI-7001.01",
+        "evidence": {"matches": [match]},
+    }
     # Decision 0042 also excepts a later listing on the star at another period, which novelty never matched.
     later = {**td.later_listing(name="TOI-7001.02", first="2027-04-01"), "period": 12.1}
-    excepted = [td.later_listing(), later]
-    record = td.claims_record(runs["run"], runs["literature"], excepted, td.RERUN)
-    runs["claims"] = td.claims_run(other, runs["run"], runs["literature"], record, tag="b")
-    td.production(runs["claims"])
-    assert main([*argv, *td.flags(runs, "claims")]) == 0
-    prepared(repo, monkeypatch)
+    rows = [exofop_row("TOI 7001.01", "TIC 1.01", 5.0), exofop_row("TOI 7001.02", "TIC 1.02", 12.1)]
+    repo = excepted_pass(other, monkeypatch, failed, rows, [td.later_listing(), later])
     text = paper(repo)
     public = " ".join(td.section(text, "Vetting").split())
     assert "We first made the signal public on 2026 October 28" in public
@@ -887,14 +949,94 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
         "listed that TOI only after we made the signal public, so it does not count as a known object."
         in summary
     )
-    # Only the listing at the signal's period is named against ExoFOP's rows at the period.
-    assert "Apart from TOI-7001.01, none of ExoFOP's" in public
+    # Only the listing with a row at the signal's period is named against ExoFOP's rows at the period.
+    assert (
+        "Apart from the rows of TOI-7001.01, set aside under DR 0042, none of ExoFOP's planet-parameter rows for the "
+        "star matches the signal's period or a harmonic of it." in public
+    )
     assert "TOI-7001.02, which" not in public
     # The claim the exception rests on must be the committed one.
     claims = repo / "results" / "claims.toml"
     claims.write_text(claims.read_text().replace("2026-10-28", "2026-10-29"))
     with pytest.raises(SystemExit, match="claims.json"):
         paper(repo)
+
+
+def test_exofop_rows_set_aside_are_named_whatever_novelty_matched(tmp_path, monkeypatch):
+    # A later TOI whose catalogue epoch misses: the novelty check files it as a period match only (novelty.py's stale
+    # branch), and ExoFOP's row for it is at the signal's period.
+    stale = {
+        "outcome": "inconclusive",
+        "reason": "period matches TOI-7001.01 but the epoch does not; the catalog ephemeris may be stale",
+        "evidence": {
+            "category": "stale_catalog_epoch",
+            "period_matches": [
+                {"source": "TOI", "name": "TOI-7001.01", "period": 5.0, "ratio": 1.0, "cycles": 120}
+            ],
+            "tce_matches": [],
+            "tce_period_matches": [],
+        },
+    }
+    (tmp_path / "stale").mkdir()
+    repo = excepted_pass(
+        tmp_path / "stale",
+        monkeypatch,
+        stale,
+        [exofop_row("TOI 7001.01", "TIC 1.01", 5.0)],
+        [td.later_listing()],
+    )
+    vetted = " ".join(td.section(paper(repo), "Vetting").split())
+    aside = (
+        "Apart from the rows of TOI-7001.01, set aside under DR 0042, none of ExoFOP's planet-parameter rows for the "
+        "star matches the signal's period or a harmonic of it."
+    )
+    assert aside in vetted and "None of ExoFOP's" not in vetted
+    at = "ExoFOP lists a signal at this period on the star as TOI-7001.01 (period 5 d, disposition PC)."
+    assert at in vetted
+    # A TOI the snapshot gives another period, which the novelty check never matched, under which a user uploaded a row
+    # at the signal's period: bar 2 passes over that row only because decision 0042 excepts the TOI.
+    (tmp_path / "uploaded").mkdir()
+    rows = [
+        exofop_row("TOI 7001.01", "TIC 1.01", 12.1),
+        exofop_row("TOI 7001.01", "TIC 1.01", 5.0, "Planet Parameters (User uploaded)"),
+    ]
+    passed = {"outcome": "pass", "reason": "no known object matches", "evidence": {}}
+    later = {**td.later_listing(), "period": 12.1}
+    repo = excepted_pass(tmp_path / "uploaded", monkeypatch, passed, rows, [later])
+    vetted = " ".join(td.section(paper(repo), "Vetting").split())
+    assert aside in vetted and at in vetted
+    # The paper and bar 2 read the same rows: without the exception, that row is bar 2's refusal.
+    record = repo / "results" / "vetting" / NAME
+    checks = json.loads((record / "checks.json").read_text())
+    literature = json.loads((record / "literature.json").read_text())
+    monkeypatch.setattr(calls, "excepted_listings", lambda signal_dir: set())
+    assert calls._exofop_at_the_period(record, checks, literature) == [
+        "ExoFOP lists TOI 7001.01 (TIC 1.01) (Planet Parameters (User uploaded)) at 5 d, which matches the signal's "
+        "period at ratio 1"
+    ]
+
+
+def test_a_listing_set_aside_with_no_period_is_named_so(tmp_path, monkeypatch):
+    novelty = {
+        "outcome": "inconclusive",
+        "reason": "this star has a known object with no period",
+        "evidence": {
+            "category": "no_period_object",
+            "objects": [{"source": "TOI", "name": "TOI-7001.01", "period": None}],
+            "tce_matches": [],
+            "tce_period_matches": [],
+        },
+    }
+    repo = excepted_pass(
+        tmp_path, monkeypatch, novelty, [], [{**td.later_listing(), "period": None}]
+    )
+    named = "ExoFOP lists TOI-7001.01 on the star with no period (disposition PC)."
+    assert named in " ".join(td.section(paper(repo), "Vetting").split())
+    # A zero period, or a NaN in a claims.json that keeps one, is no period either.
+    claims = repo / "results" / "vetting" / NAME / "claims.json"
+    for period in (0.0, float("nan")):
+        td.edit_json(claims, lambda c, period=period: c["excepted"][0].update(period=period))
+        assert named in " ".join(paper(repo).split())
 
 
 def test_the_paper_gives_the_ephemeris_with_uncertainties(tmp_path, monkeypatch):

@@ -308,36 +308,51 @@ def _match_rule(signal_dir: Path) -> tuple[tuple[float, ...], float, float]:
     )
 
 
-def _exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[str]:
-    """Bar 2: ExoFOP shows nothing at the period (Ruling Q), matched on period alone at the novelty harmonics. A row of
-    a listing decision 0042 excepts belongs to that listing and is passed over."""
+def exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[dict]:
+    """ExoFOP's planet-parameter rows for the star that match the signal's period, on period alone at the novelty
+    harmonics (Ruling Q), each with the `listing` it belongs to as the snapshot names it (None for a row of neither a
+    TOI nor a CTOI), the harmonic it matched at (`ratio`) and whether decision 0042 excepts that listing (`excepted`).
+    Bar 2 and the preprint both read these rows, so they cannot disagree. Raises CallError when the record keeps no
+    ExoFOP periods or the vetting run's match rule is unknown."""
     planets = literature["search"]["exofop"].get("planets")
     if planets is None:
-        return [
+        raise CallError(
             "the literature record keeps no ExoFOP planet periods (it predates decision 0028); search again"
-        ]
-    try:
-        harmonics, sigma_p, sigma_t = _match_rule(signal_dir)
-    except CallError as exc:
-        return [str(exc)]
+        )
+    harmonics, sigma_p, sigma_t = _match_rule(signal_dir)
     eph = Ephemeris(**checks["ephemeris"])
     excepted = excepted_listings(signal_dir)
     out = []
     for p in planets:
-        # A TOI's rows name it in `toi` and its star's listing in `name`; a CTOI never made a TOI has its row under its
-        # own name with no TOI (pin P2).
-        listing = _listing("TOI", p["toi"]) if p["toi"] else _listing("CTOI", p["name"])
-        if p["period"] is None or listing in excepted:
+        if p["period"] is None:
             continue
         ratio = ephemeris_match(
             eph, Ephemeris(p["period"], float("nan"), float("nan")), harmonics, sigma_p, sigma_t
         )
         if ratio is not None:
-            label = f"{p['toi']} ({p['name']})" if p["toi"] else p["name"]
-            out.append(
-                f"ExoFOP lists {label} ({p['provenance']}) at {p['period']:.6g} d, which matches the signal's "
-                f"period at ratio {ratio:g}"
-            )
+            # A TOI's rows name it in `toi` and its star's listing in `name`; a CTOI never made a TOI has its row under
+            # its own name with no TOI (pin P2).
+            listing = _listing("TOI", p["toi"]) if p["toi"] else _listing("CTOI", p["name"])
+            out.append({**p, "listing": listing, "ratio": ratio, "excepted": listing in excepted})
+    return out
+
+
+def _exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[str]:
+    """Bar 2: ExoFOP shows nothing at the period (Ruling Q). A row of a listing decision 0042 excepts belongs to that
+    listing and is passed over."""
+    try:
+        rows = exofop_at_the_period(signal_dir, checks, literature)
+    except CallError as exc:
+        return [str(exc)]
+    out = []
+    for p in rows:
+        if p["excepted"]:
+            continue
+        label = f"{p['toi']} ({p['name']})" if p["toi"] else p["name"]
+        out.append(
+            f"ExoFOP lists {label} ({p['provenance']}) at {p['period']:.6g} d, which matches the signal's period at "
+            f"ratio {p['ratio']:g}"
+        )
     return out
 
 

@@ -886,6 +886,19 @@ def _excepted(record: Path) -> list[dict]:
     return [] if found is None else found["excepted"]
 
 
+def _aside_at_period(record: Path, checks: dict, literature: dict) -> dict[str, dict]:
+    """Each listing decision 0042 excepts that has a planet-parameter row on ExoFOP at the signal's period or a harmonic
+    of it, by its name in claims.json, with the first such row: the rows bar 2 passes over
+    (`calls.exofop_at_the_period`), whatever the novelty check matched."""
+    rows = [p for p in calls.exofop_at_the_period(record, checks, literature) if p["excepted"]]
+    found = {}
+    for r in _excepted(record):
+        held = [p for p in rows if p["listing"] == calls._listing(r["source"], r["name"])]
+        if held:
+            found[r["name"]] = held[0]
+    return found
+
+
 def _upcoming(record: Path) -> str:
     """The sectors tess-point placed the star in at the record's vetting run, as a sentence; none when the run did
     not record them."""
@@ -930,7 +943,7 @@ def _depths(samples: np.ndarray) -> np.ndarray:
 
 
 def _known(value) -> bool:
-    """An error the record keeps: a positive number, not a null or a NaN."""
+    """An error or a period the record keeps: a positive number, not a null, a NaN or a zero."""
     return value is not None and math.isfinite(value) and value > 0
 
 
@@ -1434,10 +1447,8 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         ["triceratops", triceratops["outcome"], triceratops["reason"]],
         ["literature", literature["outcome"], literature["reason"]],
     ]
-    # Only a listing the novelty check matched is at the signal's period or a harmonic of it: decision 0042 excepts
-    # later ones at any period.
     own = next(c for c in checks["checks"] if c["check"] == "novelty")
-    at_period = [r["name"] for r in _excepted(record) if r["name"] in _matched(own)]
+    at_period = list(_aside_at_period(record, checks, literature))
     second = checks["signal"]["kind"] == "second"
     exofop = literature["search"]["exofop"]
     limit = pixel["max_offset_arcsec"]
@@ -1521,8 +1532,8 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "exofop_rows": "None of ExoFOP's planet-parameter rows for the star matches the signal's period or a "
         "harmonic of it."
         if not at_period
-        else f"Apart from {_words(at_period)}, none of ExoFOP's planet-parameter rows for the star matches the "
-        "signal's period or a harmonic of it.",
+        else f"Apart from the rows of {_named(at_period)}, set aside under DR 0042, none of ExoFOP's "
+        "planet-parameter rows for the star matches the signal's period or a harmonic of it.",
         "tric_times": {1: "once", 2: "twice"}.get(runs, f"{_spell(runs)} times"),
         "companions": _companions(triceratops, exofop),
         "holdout": f"For this signal {_seasons(len(seasons), len(tested), predicted)}, so the check "
@@ -1885,7 +1896,7 @@ def predictions_doi(record: Path, repo: Path) -> str | None:
     return None if deposit is None else deposit["doi"]
 
 
-def _public(record: Path, repo: Path, checks: dict) -> dict:
+def _public(record: Path, repo: Path, checks: dict, literature: dict) -> dict:
     """The claim results/claims.toml gives the signal (decision 0042), and each later listing its record excepts, with
     decision 0042's rule stated once."""
     name, tic = checks["signal"]["name"], int(checks["tic"])
@@ -1914,8 +1925,7 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
         at = f" The record that first made the signal public is at {claim.record}."
     else:
         where = f"in {claim.record}"
-    own = next(c for c in checks["checks"] if c["check"] == "novelty")
-    ratios = {m["name"]: m.get("ratio") for m in own["evidence"].get("matches") or []}
+    aside = _aside_at_period(record, checks, literature)
     excepted = found["excepted"]
     listings = []
     for r in excepted:
@@ -1925,15 +1935,20 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
             if dispositions
             else "no disposition"
         )
-        if r["name"] in ratios:
+        listed, also = _literal(r["name"]), " also" if listings else ""
+        if r["name"] in aside:
+            row = aside[r["name"]]
             listings.append(
-                f" ExoFOP lists a signal at {_harmonic(ratios[r['name']])} on the star as {r['name']} (period "
-                f"{r['period']:.6g} d, {disposition})."
+                f" ExoFOP lists a signal at {_harmonic(row['ratio'])} on the star as {listed} (period "
+                f"{row['period']:.6g} d, {disposition})."
+            )
+        elif _known(r["period"]):
+            listings.append(
+                f" ExoFOP{also} lists {listed} on the star (period {r['period']:.6g} d, {disposition})."
             )
         else:
-            also = " also" if listings else ""
             listings.append(
-                f" ExoFOP{also} lists {r['name']} on the star (period {r['period']:.6g} d, {disposition})."
+                f" ExoFOP{also} lists {listed} on the star with no period ({disposition})."
             )
         listings.append(
             f" ExoFOP first listed it on {_date(r['first_listed'])}, after we made the signal public."
@@ -1956,7 +1971,7 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
 
 
 def _harmonic(ratio: float | None) -> str:
-    """Where a listing the novelty check matched lies against the signal's period, by the harmonic it matched at."""
+    """Where a listing's planet-parameter row lies against the signal's period, by the harmonic it matched at."""
     return next(
         (said for k, said in HARMONICS.items() if ratio is not None and abs(ratio - k) < 1e-6),
         "a harmonic of this period",
@@ -2237,7 +2252,7 @@ def values(
         | _from_triceratops(record, checks["criteria_version"])
         | _review(record, calls.load_review(record / "review.json"), call, literature)
         | found
-        | _public(record, repo, checks)
+        | _public(record, repo, checks, literature)
         | _data(record, checks, made)
         | _author(author, version)
         | _prereg(record, repo, call)

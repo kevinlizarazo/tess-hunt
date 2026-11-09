@@ -77,9 +77,20 @@ EXOFOP = {
     "status": "ok",
     "error": None,
     "tois": [],
-    # The CTOI decision 0042 sets aside, as ExoFOP lists it on the star.
+    # The CTOI decision 0042 sets aside, as ExoFOP lists it on the star, with its uploader's planet-parameter row, as
+    # ExoFOP keeps one for a CTOI never made a TOI (pin P2).
     "ctois": [{"ctoi": f"TIC {TIC}.01", "cdisp": "PC"}],
-    "planets": [],
+    "planets": [
+        {
+            "provenance": "Planet Parameters (User uploaded)",
+            "name": f"TIC {TIC}.01",
+            "toi": None,
+            "period": SIGNAL["period"],
+            "epoch_bjd": SIGNAL["t0"] + 2457000.0,
+            "duration_hours": SIGNAL["duration"] * 24,
+            "disposition": "PC",
+        }
+    ],
     "confirmed_planets": None,
     "imaging": [
         {"itype": "Speckle", "itel": "Gemini (8 m)", "iinst": "'Alopeke", "icont": "4.49 @ 0.5"}
