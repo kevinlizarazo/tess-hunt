@@ -705,6 +705,36 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     assert "We passed the signal on 2026 October 28, and TRICERATOPS gives it" in conclusions
 
 
+def test_a_paper_without_a_preregistered_test_claims_none(tmp_path, monkeypatch):
+    _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
+    text = paper(repo)
+    flat = " ".join(text.split())
+    # Section 1, Section 7's heading and its text name no preregistered test, and the paper says once that it makes no
+    # blind prediction.
+    assert "the vetting, and the held-out test. Section 8" in flat
+    assert "\n## Held-Out Seasons\n" in text and "Preregistered Test" not in text
+    assert flat.count("blind prediction") == 1
+    assert (
+        "This record holds no preregistered test of a later season (DR 0040), so this paper makes no blind "
+        "prediction." in flat
+    )
+    said = [
+        s for s in re.findall(r"[^.]*\bpreregistered\b[^.]*", flat) if "no preregistered" not in s
+    ]
+    assert said == []
+    # With a preregistered result, each says so.
+    deposited(repo, record, "2026-11-05")
+    flat = " ".join(paper(repo).split())
+    assert "the vetting, and the held-out and preregistered tests. Section 8" in flat
+    assert "## Held-Out Seasons and the Preregistered Test" in flat
+    assert (
+        flat.count("The preregistered test in this section is the paper's only blind prediction.")
+        == 1
+    )
+    assert "makes no blind prediction" not in flat
+
+
 def test_a_note_0037_added_sits_under_the_quoted_finding(tmp_path, monkeypatch):
     _, repo = published(tmp_path, monkeypatch)
     record = repo / "results" / "vetting" / NAME
@@ -836,7 +866,7 @@ def test_a_versions_paper_names_its_records(tmp_path, monkeypatch):
         in " ".join(runs.split())
     )
     # The sectors tess-point gave are r2's vetting run's, said after the record's own history.
-    held_out = " ".join(td.section(text, "Held-Out Seasons and the Preregistered Test").split())
+    held_out = " ".join(td.section(text, "Held-Out Seasons").split())
     assert (
         f"As of the vetting run of version r2 ({preprint._date(made['started_at'])}), tess-point"
         in held_out
@@ -1558,8 +1588,10 @@ def test_every_published_review_is_quoted_word_for_word():
 
 
 def deposited(repo: Path, record: Path, published: str) -> None:
-    """The fixture's preregistered result in `record`, its package published on Zenodo on `published`."""
+    """The fixture's preregistered result in `record`, its package published on Zenodo on `published`, beside the
+    provenance of the run that judged it, which names the vetting run's criteria (vetting prereg refuses others)."""
     (record / "prereg.json").write_text(json.dumps(PREREG))
+    shutil.copy(record / "provenance-checks.json", record / "provenance-prereg.json")
     (repo / "results" / "predictions").mkdir(exist_ok=True)
     (repo / "results" / "predictions" / "dois.toml").write_text(
         f'["{PACKAGE}"]\ndoi = "{DOI}"\nconcept = "10.5281/zenodo.99999998"\npublished = {published}\n'
@@ -1601,12 +1633,33 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
             "The new data could not test that prediction.",
             "The later sectors could not test our preregistered prediction.",
         ),
+        # A missed season as holdout.judge calls one, under vet-v3's min_sigma of 2 and max_depth_tension of 3: a dip
+        # too weak to see, and a dip whose depth disagrees with the earlier seasons'.
         (
-            {"result": "missed", "status": "missed"},
+            {
+                "result": "missed",
+                "status": "missed",
+                "depth": 0.00012,
+                "sigma": 1.2,
+                "tension": 3.6,
+            },
             "As of 2027 February 20, the new sectors miss the prediction. The 412 cadences in the cores of the "
-            "predicted transits",
+            "predicted transits give a depth of 120 ± 100 ppm, a significance of 1.20σ",
             "The transits were absent at the predicted times.",
             "The transits were absent at the times we preregistered.",
+        ),
+        (
+            {
+                "result": "missed",
+                "status": "missed",
+                "depth": 0.0012,
+                "sigma": 12.0,
+                "tension": 6.3,
+            },
+            "As of 2027 February 20, the new sectors miss the prediction. The 412 cadences in the cores of the "
+            "predicted transits give a depth of 1200 ± 100 ppm, a significance of 12.00σ",
+            "A dip appeared at the predicted times, but its depth disagreed with the earlier sectors.",
+            "A dip appeared at the times we preregistered, but its depth disagreed with the earlier sectors.",
         ),
     ):
         (record / "prereg.json").write_text(json.dumps({**PREREG, **result}))
@@ -1615,6 +1668,12 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
         assert said in text and summary in " ".join(td.section(written, "Abstract").split())
         assert concluded in " ".join(td.section(written, "Conclusions").split())
         assert "untestable" not in text and "The replication shows" not in text
+    # A missed result whose significance and tension both meet the criteria is one prereg.py never writes.
+    (record / "prereg.json").write_text(
+        json.dumps({**PREREG, "result": "missed", "status": "missed"})
+    )
+    with pytest.raises(SystemExit, match="calls the season missed, yet its significance of 5.00σ"):
+        paper(repo)
 
 
 def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
@@ -2171,7 +2230,7 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
         "background-star scenarios from its priors alone. ExoFOP lists one high-resolution imaging observation of "
         "the star, which TRICERATOPS did not use." in left
     )
-    held_out = " ".join(td.section(text, "Held-Out Seasons and the Preregistered Test").split())
+    held_out = " ".join(td.section(text, "Held-Out Seasons").split())
     # The fixture's light curve gives one season.
     assert (
         "For this signal its one season was testable and was predicted, so the check passed."
@@ -2179,7 +2238,8 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     )
     made = json.loads((record / "provenance-checks.json").read_text())
     assert (
-        "This record holds no preregistered test of a later season (DR 0040). As of the vetting run "
+        "This record holds no preregistered test of a later season (DR 0040), so this paper makes no blind "
+        "prediction. As of the vetting run "
         f"({preprint._date(made['started_at'])}), tess-point (Burke et al. 2020) predicted that TESS would observe "
         "the star in Sectors 110, 111 and 115." in held_out
     )
@@ -2318,7 +2378,7 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
         "## Detection",
         "## Transit Parameters",
         "## Vetting",
-        "## Held-Out Seasons and the Preregistered Test",
+        "## Held-Out Seasons",
         "## Discussion",
         "## Conclusions",
     ]

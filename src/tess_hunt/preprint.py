@@ -163,16 +163,19 @@ UNTESTED = {
     "underpowered": "the depth expected there is too small against its error",
     "no_predicted_transit_in_data": "too few cadences fall in the predicted cores",
 }
-# The Abstract's word on a preregistered result, after the sentence on the deposit, and the Conclusions'.
+# The Abstract's word on a preregistered result, after the sentence on the deposit, and the Conclusions'. A missed
+# season is said by its case (`_result`).
 SUMMARY_RESULT = {
     "replicated": " The transits appeared at the predicted times.",
-    "missed": " The transits were absent at the predicted times.",
+    "absent": " The transits were absent at the predicted times.",
+    "tension": " A dip appeared at the predicted times, but its depth disagreed with the earlier sectors.",
     "pending": " The preregistered test of that prediction is not yet judged.",
     "untested": " The new data could not test that prediction.",
 }
 CONCLUSION_RESULT = {
     "replicated": " The transits recurred at the times we preregistered.",
-    "missed": " The transits were absent at the times we preregistered.",
+    "absent": " The transits were absent at the times we preregistered.",
+    "tension": " A dip appeared at the times we preregistered, but its depth disagreed with the earlier sectors.",
     "pending": " The preregistered test of the transits in later sectors is not yet judged.",
     "untested": " The later sectors could not test our preregistered prediction.",
 }
@@ -1995,19 +1998,45 @@ def _sector_start(repo: Path, sector: int) -> dt.date:
     return dt.date.fromisoformat(str(found.iloc[0])[:10])
 
 
-def _prereg(record: Path, repo: Path, call: dict) -> dict:
+def _result(record: Path, p: dict, version: str) -> str:
+    """A preregistered result's key in SUMMARY_RESULT and CONCLUSION_RESULT. A missed season either shows no dip at the
+    held-out check's min_sigma or shows one whose depth is in tension with an earlier season's (holdout.judge), by the
+    criteria the run that judged it recorded. A missed result that is neither is refused."""
+    if p["result"] != "missed":
+        return p["result"]
+    holdout = _criteria(record, "provenance-prereg.json", version)["holdout"]
+    if p["sigma"] < holdout["min_sigma"]:
+        return "absent"
+    if p.get("tension") is not None and p["tension"] > holdout["max_depth_tension"]:
+        return "tension"
+    raise SystemExit(
+        f"prereg.json calls the season missed, yet its significance of {p['sigma']:.2f}σ and its tension meet the "
+        "criteria of the run that judged it"
+    )
+
+
+def _prereg(record: Path, repo: Path, call: dict, version: str) -> dict:
     """The preregistered test of a later season (decision 0040): when it was deposited, its result and what the result
-    shows, and the Summary's sentence on it. A judged result without its depth or error leaves the paper's placeholder
-    unfilled, so it raises. Refuses, before any run directory, a deposit Zenodo published on or after the day TESS
-    began observing the first sector it predicts, since the paper says the prediction came first."""
+    shows, and the Summary's sentence on it. Without one, the paper says once that it makes no blind prediction, and
+    names no preregistered test in Section 1 or Section 7's heading. A judged result without its depth or error leaves
+    the paper's placeholder unfilled, so it raises. Refuses, before any run directory, a deposit Zenodo published on or
+    after the day TESS began observing the first sector it predicts, since the paper says the prediction came first."""
     path = record / "prereg.json"
     if not path.is_file():
         return {
-            "prereg": "This record holds no preregistered test of a later season (DR 0040)."
-            + _upcoming(record),
+            "tests": "held-out test",
+            "holdout_heading": "Held-Out Seasons",
+            "blind": "",
+            "prereg": "This record holds no preregistered test of a later season (DR 0040), so this paper makes no "
+            "blind prediction." + _upcoming(record),
             "summary_prereg": "",
             "conclusion_prereg": "",
         }
+    tested = {
+        "tests": "held-out and preregistered tests",
+        "holdout_heading": "Held-Out Seasons and the Preregistered Test",
+        "blind": " The preregistered test in this section is the paper's only blind prediction.",
+    }
     p = json.loads(path.read_text())
     deposit = _deposit(record, repo)
     sectors = p["predicted_sectors"]
@@ -2023,7 +2052,8 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
         f"Before TESS observed {prereg._sectors_words(sectors)}, we deposited a prediction of the signal's transits in "
         f"{those} on Zenodo"
     )
-    summary = f" {deposited}." + SUMMARY_RESULT[p["result"]]
+    result = _result(record, p, version)
+    summary = f" {deposited}." + SUMMARY_RESULT[result]
     as_of = dt.date.fromisoformat(p["as_of"])
     if p["result"] == "pending":
         said = f"As of {_date(as_of)}, the test is pending ({_quote(p['reason'])})."
@@ -2032,7 +2062,11 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
     else:
         depth, err = _ppm(p["depth"]), _ppm(p["err"])
         if depth is None or err is None:
-            return {"summary_prereg": summary, "conclusion_prereg": CONCLUSION_RESULT[p["result"]]}
+            return {
+                **tested,
+                "summary_prereg": summary,
+                "conclusion_prereg": CONCLUSION_RESULT[result],
+            }
         verb = "replicate the signal" if p["result"] == "replicated" else "miss the prediction"
         said = (
             f"As of {_date(as_of)}, the new sectors {verb}. The {p['n']} cadences in the cores of the predicted "
@@ -2055,12 +2089,13 @@ def _prereg(record: Path, repo: Path, call: dict) -> dict:
         "before" if call["date"] < as_of else "after" if call["date"] > as_of else "on the day of"
     )
     return {
+        **tested,
         "prereg": f"{deposited} ({_doi(deposit['doi'])}). The deposit also fixed how the prediction would be judged: "
         "by the held-out check's criteria, applied to the predicted transits (DR 0040). Zenodo published the deposit "
         f"on {_date(published)}, and TESS began observing Sector {first} on {_date(start)}.{_upcoming(record)} "
         f"{said} Our call ({_date(call['date'])}) came {order} this result.",
         "summary_prereg": summary,
-        "conclusion_prereg": CONCLUSION_RESULT[p["result"]],
+        "conclusion_prereg": CONCLUSION_RESULT[result],
     }
 
 
@@ -2264,7 +2299,7 @@ def values(
         | _public(record, repo, checks, literature)
         | _data(record, checks, made)
         | _author(author, version)
-        | _prereg(record, repo, call)
+        | _prereg(record, repo, call, checks["criteria_version"])
         | _figures(record)
         | {
             "history": _history(record),

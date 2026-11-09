@@ -31,8 +31,7 @@ transiting body's mass.
 
 This paper reports a candidate from tess-hunt, an independent search of public TESS light curves. Section 2 describes
 the search and how we vet its signals. Sections 3 to 7 give the host star, the detection, the transit parameters, the
-vetting, and the held-out and preregistered tests. Section 8 discusses what the data do not rule out, and Section 9
-concludes.
+vetting, and the $tests. Section 8 discusses what the data do not rule out, and Section 9 concludes.
 
 ## The tess-hunt Search and Vetting
 
@@ -204,17 +203,16 @@ number in them was written by us and is not filled in from the records (DR 0037)
 
 $sentences
 
-## Held-Out Seasons and the Preregistered Test
+## $holdout_heading
 
 The held-out season check leaves out one season at a time and refits the period and epoch with BLS on the rest. The
 check then measures the held-out season's depth in the cores of the transits the refit predicts in that season (the
 central $core of the search's box duration, Section 4). Because the refit searches only near the original period, and
 the original search used every season including the held-out one, the check tests whether the seasons agree with each
-other. The preregistered test in this section is the paper's only blind prediction. A season is not testable when,
-for example, the depth expected there is too small against its error or too few cadences fall in the predicted cores.
-A testable season counts as predicted when its depth is at least ${min_sigma}σ and, for each light-curve family,
-within ${max_tension}σ of that family's depth in the other seasons. The check passes when at least two seasons are
-testable and all of them are predicted. $holdout
+other.$blind A season is not testable when, for example, the depth expected there is too small against its error or
+too few cadences fall in the predicted cores. A testable season counts as predicted when its depth is at least
+${min_sigma}σ and, for each light-curve family, within ${max_tension}σ of that family's depth in the other seasons. The
+check passes when at least two seasons are testable and all of them are predicted. $holdout
 
 $prereg
 
