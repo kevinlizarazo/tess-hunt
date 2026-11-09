@@ -66,8 +66,8 @@ The code and documents are written with Claude, Anthropic's AI model, under the 
   - `predictions/`: preregistered transit predictions for held signals, one package per Zenodo deposit, listed with
     their DOIs in its README
   - `ddt/`: DDT proposals for held signals, each rendered from the signal's published record
-  - `claims.toml`: each held signal's public claim, the day it was first public and the record that shows it
-    ([decision 0042](docs/decisions/0042-listings-after-our-claim.md))
+  - `claims.toml`: each held signal's public claim, the day it was first public and the public record a reader can
+    check that day against ([decision 0042](docs/decisions/0042-listings-after-our-claim.md))
   - `preprints/`: the template and author block for a passed signal's paper, and each published paper, the same copy
     deposited on Zenodo ([decision 0043](docs/decisions/0043-the-preprint-for-a-pass.md))
 - `docs/`: the design and the decision records

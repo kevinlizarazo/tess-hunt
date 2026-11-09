@@ -9,10 +9,10 @@ version's record holds `claims.json`.
 ## What you have
 
 The workflow names the version's draft record and its runs. In the record:
-- `claims.json`: the signal's claim (the day it was first public and the public record that shows it, from
-  `results/claims.toml`), each TOI or CTOI row on the star that decision 0042 excepted, with the day ExoFOP first
-  listed it and its dispositions, each row kept as known with the reason, and `novelty`, the novelty check run again
-  without the excepted rows.
+- `claims.json`: the signal's claim (the day it was first public and the public record a reader can check that day
+  against, from `results/claims.toml`), each TOI or CTOI row on the star that decision 0042 excepted, with the day
+  ExoFOP first listed it and its dispositions, each row kept as known with the reason, and `novelty`, the novelty
+  check run again without the excepted rows.
 - `checks.json`: novelty's own result. It still fails on an excepted listing. That is expected, and the dossier says
   so under "Real and new?", one sentence per excepted listing.
 - `literature.json`: ExoFOP's rows for the star as the version's literature run read them, which `claims.json` was

@@ -262,7 +262,7 @@ lightkurve (Lightkurve Collaboration 2018), astropy (Astropy Collaboration 2013,
 (Ginsburg et al. 2019), numpy, scipy, pandas, wotan (Hippke et al. 2019), transitleastsquares (Hippke & Heller
 2019), batman (Kreidberg 2015), emcee (Foreman-Mackey et al. 2013), TRICERATOPS (Giacalone et al. 2021),
 PyTransit (Parviainen 2015), LEO-Vetter (Kunimoto et al. 2025), transit-diffImage, tess-point (Burke et al. 2020),
-SpiceyPy (Annex et al. 2020), the SPICE toolkit (Acton 1996; Acton et al. 2017) and matplotlib (Hunter 2007).
+SpiceyPy (Annex et al. 2020), the SPICE toolkit (Acton 1996; Acton et al. 2018) and matplotlib (Hunter 2007).
 
 - TRICERATOPS 1.1.0 (MIT), which the vetting stage runs for the false-positive probabilities. Its README
   (https://github.com/stevengiacalone/triceratops, as shipped with 1.1.0) asks users to "cite both the paper and the
@@ -295,6 +295,10 @@ SpiceyPy (Annex et al. 2020), the SPICE toolkit (Acton 1996; Acton et al. 2017) 
     Space Science, Vol. 44, No. 1, pp. 65-70, 1996. DOI 10.1016/0032-0633(95)00107-7
   - Charles Acton, Nathaniel Bachman, Boris Semenov, Edward Wright; A look toward the future in the handling of space
     science mission geometry; Planetary and Space Science (2017); DOI 10.1016/j.pss.2017.02.013
+
+  NASA ADS (read 2026-11-09) has the second in volume 150 (2018), pages 9 to 12, as "A look towards the future in the
+  handling of space science mission geometry" (2018P&SS..150....9A), so tess-hunt cites it as Acton et al. 2018. ADS
+  has the first as the page lists it (1996P&SS...44...65A).
 - matplotlib, which draws every dossier plot. Its README (as shipped with 3.11.2) asks: "If Matplotlib contributes
   to a project that leads to publication, please acknowledge this by citing Matplotlib." The citation page it links
   (https://matplotlib.org/stable/users/project/citing.html, read 2026-10-26 from its source in the matplotlib

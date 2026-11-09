@@ -324,18 +324,19 @@ from a run directory and writes its own.
   lists the light-curve files MAST holds for the star, the one fetch tries first, whether a timing-suspect rule flags
   it and whether the package's test can use it, then says whether every predicted sector has data the test can use.
   It fetches nothing and writes nothing. A predicted signal is re-vetted when every predicted sector is usable, or
-  earlier on the maintainer's call, knowing its season is then judged on what that light curve holds.
+  earlier on the maintainer's call. A re-vet run before every predicted sector is usable reports the preregistered
+  test as pending; the season is judged at the first re-vet whose light curve is complete, or on 2027-12-31.
 - **Listings after our claim** (2026-11-02, [0042](decisions/0042-listings-after-our-claim.md)): a TOI or CTOI does not
   make a re-vetted signal known when it is on the signal's own star, the version's literature run finds ExoFOP first
   listed it after the signal's public claim (strictly after), and each of its ExoFOP dispositions is PC or empty.
-  `results/claims.toml` gives each held signal's claim date and the public record that shows it, and changes only with
-  a decision record. `tess-hunt vetting claims` takes the excepted rows out of the vetting run's catalog snapshot and
-  runs the unchanged novelty check again, into the version's `claims.json`. Novelty's own fail stays in `checks.json`
-  and the dossier; where `claims.json` excepts a row, its rerun stands in for novelty in the "passed" bar and the kill
-  rule, and ExoFOP's planet-parameter rows under an excepted listing don't count against the bar. Every other match
-  counts as before: a neighbour's listing, an archive planet, a row from any other source, a SPOC TCE or ExoMiner row,
-  a listing with another disposition and one the rule can't date. A signal with no claim gets no exception. When
-  unsure, a row counts as known.
+  `results/claims.toml` gives each held signal's claim date and the public record a reader can check that date
+  against, and changes only with a decision record. `tess-hunt vetting claims` takes the excepted rows out of the
+  vetting run's catalog snapshot and runs the unchanged novelty check again, into the version's `claims.json`.
+  Novelty's own fail stays in `checks.json` and the dossier; where `claims.json` excepts a row, its rerun stands in
+  for novelty in the "passed" bar and the kill rule, and ExoFOP's planet-parameter rows under an excepted listing
+  don't count against the bar. Every other match counts as before: a neighbour's listing, an archive planet, a row
+  from any other source, a SPOC TCE or ExoMiner row, a listing with another disposition and one the rule can't date.
+  A signal with no claim gets no exception. When unsure, a row counts as known.
 
 **publish**
 - **Predictions for held signals** ([0040](decisions/0040-predictions-for-held-signals.md)): each held signal with a

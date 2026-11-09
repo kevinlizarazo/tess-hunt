@@ -158,7 +158,8 @@ judged by that prediction, not by a fresh refit.
      MAST serves of each file in a sector a timing-suspect rule covers (QLP's S99 to S104), the redelivery
      241522065-1's call names, and unknown for a star MAST did not answer for. It fetches no light curve, records no
      run and writes nothing. Re-vet a predicted signal when its line reads complete, or earlier only on the
-     maintainer's call, knowing the season is judged on what that light curve holds.
+     maintainer's call. A re-vet run before every predicted sector is usable reports the preregistered test as
+     pending; the season is judged at the first re-vet whose light curve is complete, or on 2027-12-31.
   1. `tess-hunt targets tics --from CSV`, the star's TIC in a `tic` column: its targets and products tables.
   2. `tess-hunt revet fetch --targets TARGETS --products PRODUCTS --base-lc-dir DIR`, with `DIR` the directory of the
      light curve the previous record's vetting run read (the shared cache for r2 while it holds that file, the
