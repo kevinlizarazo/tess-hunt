@@ -419,7 +419,8 @@ note beside it, which stays under ESA's terms (above), and the ExoFOP listings i
 terms (above). The dataset is CC BY 4.0 too, `posterior-prior.npz` included, except the files that hold Gaia DR3
 data, which stay under ESA's CC BY-NC 3.0 IGO terms ([decision 0026](../docs/decisions/0026-triceratops.md)):
 `checks.json`, `checks-with-suspect.json`, `neighbours.csv`, `triceratops.json`, `plots/centroids.png`, `pixels.png`,
-`review.json`, `review-scripts.tar.gz` and `dossier.md` in each record. ExoFOP's rows in its `literature.json`,
+`review.json`, `review-scripts.tar.gz` and `dossier.md` in each record, and its `call.toml` and `review-notes.toml`,
+listed with the review since the paper may quote a Gaia value from them. ExoFOP's rows in its `literature.json`,
 `claims.json` and `dossier.md` stay under ExoFOP's terms (above), as `manifest.json` notes beside each of those files.
 
 ## Catalog snapshots

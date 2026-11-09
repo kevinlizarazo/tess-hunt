@@ -65,7 +65,8 @@ PREREG = {
     "expected_snr": 4.8,
     "tension": 0.4,
 }
-# A record's files that hold Gaia DR3 data, as results/README.md lists them.
+# A record's files that hold Gaia DR3 data, as results/README.md lists them, with the call and the notes, from which
+# the paper may quote a Gaia value as it may from the review.
 GAIA_FILES = [
     "checks.json",
     "checks-with-suspect.json",
@@ -76,6 +77,8 @@ GAIA_FILES = [
     "dossier.md",
     "review.json",
     "review-scripts.tar.gz",
+    "call.toml",
+    "review-notes.toml",
 ]
 # Notes added beside two of the review's findings under decision 0037.
 NOTES = """\
@@ -1205,9 +1208,10 @@ def test_credits_and_disclosure_are_present(tmp_path, monkeypatch):
 def test_the_dataset_lets_a_reader_recompute(tmp_path, monkeypatch, no_pdf):
     _, repo = published(tmp_path, monkeypatch)
     signal = repo / "results" / "vetting" / NAME
-    # A second-list row's centroid plot and the review's scripts, as some records hold them.
+    # A second-list row's centroid plot, the review's scripts and notes on its quoted text, as some records hold them.
     (signal / "pixels.png").write_bytes(b"\x89PNG")
     (signal / "review-scripts.tar.gz").write_bytes(b"\x1f\x8b")
+    (signal / "review-notes.toml").write_text(NOTES)
     (repo / ".gitignore").write_text(".DS_Store\n")
     commit(repo)
     # A file git ignores is no part of the record.
@@ -1365,19 +1369,23 @@ def test_zenodo_prints_the_form_from_the_run(tmp_path, monkeypatch, no_pdf, caps
     assert "Creative Commons Attribution 4.0 International (CC BY 4.0)" in licences
     assert "(CC BY-NC 3.0 IGO)" in licences
     assert "ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php)" in licences
+    # The form's Gaia licence covers the paper's quoted text and notes, as Appendix D and the description do.
+    assert (
+        "the dataset's files that hold Gaia DR3 data, which the description lists, and any Gaia value in the paper's "
+        "quoted text or notes" in " ".join(licences.split())
+    )
     # The description names the dataset's parts, the density-prior samples among them, and the files the second
-    # licence covers.
+    # licence covers, the call among them, in plain text: Zenodo shows Markdown's backticks as typed.
     description = form.split("## Description\n")[1].split("\n## ")[0]
     assert (
         "The dataset holds the signal's published vetting records, the light curve that the vetting run of the "
         "paper's record read, and the samples of the density-prior fit behind Table 1's depth, duration and radius "
-        f"(`{preprint.POSTERIOR}`)." in description
+        f"({preprint.POSTERIOR})." in description
     )
     gaia = sorted(name for name in GAIA_FILES if (record / name).is_file())
-    assert (
-        f"({dossier._words([f'`{name}`' for name in gaia])}, in each record's directory)"
-        in description
-    )
+    assert "call.toml" in gaia
+    assert f"({dossier._words(gaia)}, in each record's directory)" in description
+    assert "`" not in description
     assert "https://example.org/tess-hunt" in form
     assert "zenodo.99999999" not in form
     assert td.REVIEW["model"] not in form

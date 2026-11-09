@@ -82,7 +82,8 @@ PACKAGE = ["preprint.md", "preprint.pdf", "manifest.json", "provenance.json", *F
 POSTERIOR = "posterior-prior.npz"
 CC_BY = "CC BY 4.0"
 GAIA = "CC BY-NC 3.0 IGO"
-# A record's files that hold Gaia DR3 data, as results/README.md lists them, by their path in the record.
+# A record's files that hold Gaia DR3 data, as results/README.md lists them, by their path in the record. The call and
+# the notes are listed with the review: a Gaia value the paper quotes from them stays under Gaia's terms.
 GAIA_FILES = {
     "checks.json",
     "checks-with-suspect.json",
@@ -92,6 +93,8 @@ GAIA_FILES = {
     "pixels.png",
     "review.json",
     "review-scripts.tar.gz",
+    "call.toml",
+    "review-notes.toml",
     "dossier.md",
 }
 # A record's files that hold ExoFOP's rows, which stay under ExoFOP's terms whatever the file's licence.
@@ -639,9 +642,9 @@ $description
 - Creative Commons Attribution 4.0 International (CC BY 4.0): the paper, its figures and the dataset's other files
 - Creative Commons Attribution-NonCommercial 3.0 IGO (CC BY-NC 3.0 IGO), ESA's terms for Gaia data
   (https://www.cosmos.esa.int/web/gaia-users/license): the dataset's files that hold Gaia DR3 data, which the
-  description lists
-- ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php): ExoFOP's rows in the dataset's `literature.json`,
-  `claims.json` and `dossier.md`, and the ExoFOP listings the paper names
+  description lists, and any Gaia value in the paper's quoted text or notes
+- ExoFOP's terms (https://exofop.ipac.caltech.edu/tess/pcp.php): ExoFOP's rows in the dataset's literature.json,
+  claims.json and dossier.md, and the ExoFOP listings the paper names
 
 ## Related identifiers
 
@@ -2493,17 +2496,18 @@ def deposit_form(run: Path) -> str:
             f'- {made["predictions_doi"]} (DOI), "References": the preregistered predictions whose test it reports',
         )
     # Each section's first paragraph: the Abstract without its keywords, which Zenodo takes in a field of its own, and
-    # the Use of LLMs without the Facilities and Software lines below it.
+    # the Use of LLMs without the Facilities and Software lines below it. Zenodo shows Markdown's backticks as typed,
+    # so file names are plain.
     description = [
         _plain(_section(text, "Abstract").split("\n\n")[0]),
-        "The deposit holds the paper (`preprint.pdf`, made from `preprint.md`), its figures and its dataset. The "
+        "The deposit holds the paper (preprint.pdf, made from preprint.md), its figures and its dataset. The "
         "dataset holds the signal's published vetting records, the light curve that the vetting run of the paper's "
         "record read, and the samples of the density-prior fit behind Table 1's depth, duration and radius "
-        f"(`{POSTERIOR}`). `manifest.json` lists each of its files with its sha256 and licence. The files are CC BY "
-        "4.0, with two exceptions. The dataset's files that hold Gaia DR3 data "
-        f"({_words([f'`{name}`' for name in gaia])}, in each record's directory) stay under ESA's CC BY-NC 3.0 IGO "
-        "terms, as does any Gaia value in the paper's quoted text or notes. ExoFOP's rows in the dataset stay under "
-        "ExoFOP's terms, as do the ExoFOP listings the paper names.",
+        f"({POSTERIOR}). The file manifest.json lists each of its files with its sha256 and licence. The files are CC "
+        "BY 4.0, with two exceptions. The dataset's files that hold Gaia DR3 data "
+        f"({_words(gaia)}, in each record's directory) stay under ESA's CC BY-NC 3.0 IGO terms, as does any Gaia "
+        "value in the paper's quoted text or notes. ExoFOP's rows in the dataset stay under ExoFOP's terms, as do the "
+        "ExoFOP listings the paper names.",
         _section(text, "Use of LLMs").split("\n\n")[0],
     ]
     return ZENODO.substitute(
