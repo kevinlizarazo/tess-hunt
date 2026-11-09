@@ -11,7 +11,8 @@
   controller's rulings on those findings, with no acceptance by the maintainer recorded: among them, the refusal of
   a preregistered result whose deposit came on or after the start of the first sector it predicts. Amended twice on
   2026-11-05 (below): the maintainer asked for the paper to follow journal conventions, then for the depth and the
-  duration with errors from the reproduced density-prior posterior.
+  duration with errors from the reproduced density-prior posterior. Amended again on 2026-11-09 (below), on the
+  maintainer's decisions on the milestone review's findings.
 
 ## Context
 
@@ -249,6 +250,51 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   their placeholder author. Its text is a paper's: no opening line and no title or name in it says the record is made
   up, and only the header and footer of every page mark it "SPECIMEN: not a candidate".
 
+## Amendment (2026-11-09): the milestone review
+
+The milestone review of M5 (2026-11-09) found quoted text the paper would not print as written, and sentences that
+said more or less than the record. The maintainer decided each finding the same day. Where this amendment and the text
+above differ, this amendment holds.
+
+- **Quoted text.** Every string the paper takes from a record (a finding, a refuter's reason, the call's words, a note,
+  a flagged paper's title, Table 2's reasons, triage's LEO-Vetter disposition, the names ExoFOP and SIMBAD give) is
+  escaped for HTML and for Markdown before it enters the Markdown, so a tag, an asterisk or a backtick in it prints as
+  typed, and each of its line breaks is a line break in the PDF. A quote of several paragraphs stays inside its list
+  item and its quotation marks, and a table cell holds no raw `|` or line break. A test lays out the quotes of all 14
+  published reviews and their calls in one document and finds each one whole, in order, in WeasyPrint's text.
+- **ExoFOP's rows at the period.** The sentence on ExoFOP's planet-parameter rows and the "at this period" wording
+  for a listing set aside read the rows bar 2 reads (`calls.exofop_at_the_period`): each row at the signal's period or
+  a harmonic of it, matched on period alone. A listing 0042 excepts that has such a row is named ("Apart from the rows
+  of TOI-X, set aside under DR 0042, none ...") whatever the novelty check matched: a later TOI whose catalogue epoch
+  misses, which the novelty check files as a period match only, or a user-uploaded row at the period under a TOI the
+  catalogue gives another period. Such a listing is given its row's period. This replaces the Decision's rule that
+  only a listing in the novelty check's `evidence["matches"]` is placed against the signal's period.
+- **A listing with no period.** A listing set aside under 0042 whose period is null, NaN or zero is named "with no
+  period". Before, the paper could not be rendered for it.
+- **A missed preregistered test.** The Abstract, and so the Zenodo description, and the Conclusions say which case
+  the record holds, by the `min_sigma` and `max_depth_tension` of the criteria the judging run recorded
+  (`provenance-prereg.json`). A significance under `min_sigma` reads "The transits were absent at the predicted
+  times." One at or above it, missed on depth tension, reads "A dip appeared at the predicted times, but its depth
+  disagreed with the earlier sectors." A missed result that is neither is refused.
+- **No preregistered test.** Without `prereg.json`, Section 1 names the held-out test alone, Section 7 is headed
+  "Held-Out Seasons", and the paper says once that it makes no blind prediction. The sentence that the preregistered
+  test is the paper's only blind prediction prints only with one.
+- **The repository claim.** For a claim whose record is the GitHub repository, the paper says the signal was first
+  made public "when the repository that holds its record became public", that the date is our own statement and that
+  GitHub keeps no public record of it (DR 0042). Data Availability gives the repository as the one that first made
+  the signal public.
+- **0042's rule.** Section 2 states it in full once: a TOI or CTOI on the star that ExoFOP first listed after we made
+  the signal public, with every disposition PC or empty, is not counted as a known object. Section 6.4 refers to it.
+- **The Abstract's answered findings.** The Abstract says "we answered every upheld review finding", Section 2's
+  words. Section 6.5 defines upheld as a kill or hold finding no refuter disproved, so a note is not one.
+- **Gaia values in quoted text and notes.** The Zenodo form's CC BY-NC 3.0 IGO licence covers any Gaia value in the
+  paper's quoted text or notes, as Appendix D and the description say. In the dataset, `call.toml` and
+  `review-notes.toml` are listed under Gaia's terms as `review.json` is, the narrower licence when unsure, and
+  `manifest.json` and the description list them so.
+- **A value the record lacks.** A null ModShift value, or a sector's centroid offset or quality, raises while the
+  paper is rendered, naming the field, as a placeholder with no value does. The paper prints no "missing".
+- **The Zenodo description** names files in plain text, since Zenodo shows Markdown's backticks as typed.
+
 ## Limitations
 
 - The prose around the numbers is fixed text, and a test can't check that it claims no more than the record shows.
@@ -273,7 +319,8 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   `test_the_paper_names_the_claim_date_and_any_0042_listing` (a later listing at another period named with no claim
   of a match, and a `claims.json` resting on another claim is refused),
   `test_the_paper_gives_the_ephemeris_with_uncertainties`, `test_credits_and_disclosure_are_present`,
-  `test_a_deposit_after_its_first_sector_is_refused` (and the pending, untested and missed results),
+  `test_a_deposit_after_its_first_sector_is_refused` (and the pending and untested results, a missed result in each
+  of its two cases, and a missed result prereg.py could not write),
   `test_the_paper_says_how_the_signal_was_found` (and an injection-recovery run without its completeness file, and a
   triage run without the signal's row, are refused), `test_the_paper_says_what_vetting_leaves_open`,
   `test_triage_and_the_novelty_check_are_said_in_words`, `test_what_a_revet_changed_is_said`,
@@ -284,6 +331,10 @@ radius, and palette PNGs) are applied. Where this amendment and the text above d
   `test_numbers_read_as_aas_prints_them`, `test_each_count_reads_as_words`, `test_counts_from_the_record_read_as_words`,
   `test_publish_copies_the_package`, `test_zenodo_prints_the_form_from_the_run` (only a production run, and a judged
   result without its depth raises), `test_the_pdf_renders` (the header and footer of every page, and the findings'
-  nested list in the HTML).
+  nested list in the HTML), and from the 2026-11-09 amendment `test_quoted_text_reaches_the_pdf_word_for_word`,
+  `test_every_published_review_is_quoted_word_for_word`,
+  `test_exofop_rows_set_aside_are_named_whatever_novelty_matched` (a stale-epoch TOI and a user-uploaded row),
+  `test_a_listing_set_aside_with_no_period_is_named_so`, `test_a_repository_claim_says_what_its_date_rests_on`,
+  `test_a_paper_without_a_preregistered_test_claims_none` and `test_a_value_the_record_lacks_raises_naming_it`.
 - [tests/test_plots.py](../../tests/test_plots.py): `test_each_plot_is_drawn_for_print` (the 2026-11-05 amendment's
   plot style), `test_the_phase_plot_cuts_a_noisy_light_curve_evenly`.
