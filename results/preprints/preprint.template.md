@@ -10,7 +10,7 @@ and found a periodic transit signal. A transit-model fit gives a period of $peri
 $depth_pm ppm, a total duration of $duration_pm h and, with the stellar radius from the TESS Input Catalog, a radius
 of $rp_pm R⊕ for the transiting body. $abstract_checks TRICERATOPS gives a mean false-positive probability of
 $fpp_pm. An LLM-assisted adversarial review looked for reasons the signal might not be a planet, and we answered
-every finding that its refuters did not disprove.$summary_prereg The signal remains a planet candidate. The TESS light
+every upheld review finding.$summary_prereg The signal remains a planet candidate. The TESS light
 curves cannot measure the transiting body's mass, and they cannot exclude every nearby star as the source of the
 transit.
 Establishing that the signal comes from a planet needs further observations: photometry that resolves the stars near
@@ -67,8 +67,8 @@ We can pass a signal only when all of the following are true (DR 0028):
 - TRICERATOPS and the pixel check passed;
 - we answered every upheld review finding (Section 6.5) and each of three fixed questions in one sentence.
 
-For the novelty check and the ExoFOP comparison, a TOI or CTOI that ExoFOP first listed after we made the signal public
-is not counted as a known object (DR 0042).$bar_promotion
+For the novelty check and the ExoFOP comparison, a TOI or CTOI on the star that ExoFOP first listed after we made the
+signal public, with every disposition PC or empty, is not counted as a known object (DR 0042).$bar_promotion
 
 A run is one execution of a tess-hunt command, identified by its run id. Appendix A lists the runs whose outputs this
 paper uses. A season is a group of TESS sectors in which no gap between successive sectors exceeds $season_gap_days

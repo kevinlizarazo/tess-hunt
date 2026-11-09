@@ -1909,8 +1909,8 @@ def predictions_doi(record: Path, repo: Path) -> str | None:
 
 
 def _public(record: Path, repo: Path, checks: dict, literature: dict) -> dict:
-    """The claim results/claims.toml gives the signal (decision 0042), and each later listing its record excepts, with
-    decision 0042's rule stated once."""
+    """The claim results/claims.toml gives the signal (decision 0042), and each later listing its record excepts,
+    pointing to decision 0042's rule as Section 2 states it."""
     name, tic = checks["signal"]["name"], int(checks["tic"])
     claim = load_claims(repo / CLAIMS).get(name)
     found = _claims(record) or {"claim": None, "excepted": []}
@@ -1932,6 +1932,14 @@ def _public(record: Path, repo: Path, checks: dict, literature: dict) -> dict:
         where = f"in our predictions deposit ({_doi(deposit['doi'])})"
     elif claim.record.startswith("https://doi.org/"):
         where = f"in the record {_doi(claim.record.removeprefix('https://doi.org/'))}"
+    elif claim.record.startswith("https://github.com/"):
+        # GitHub keeps no public record of the day a repository went public, so the claim rests on our word
+        # (results/claims.toml).
+        where = (
+            "when the repository that holds its record became public. That date is our own statement; GitHub keeps "
+            "no public record of it (DR 0042)"
+        )
+        at = f" The repository that first made the signal public is at {claim.record}."
     elif claim.record.startswith("https://"):
         where = "in a public record, which Data Availability gives"
         at = f" The record that first made the signal public is at {claim.record}."
@@ -1966,12 +1974,17 @@ def _public(record: Path, repo: Path, checks: dict, literature: dict) -> dict:
             f" ExoFOP first listed it on {_date(r['first_listed'])}, after we made the signal public."
         )
     if listings:
-        them = f"the {excepted[0]['source']}" if len(excepted) == 1 else "them"
+        one = len(excepted) == 1
+        them = f"the {excepted[0]['source']}" if one else "them"
         listings.append(
             f" The vetting record does not say who submitted {them}. A listing made after our claim cannot show that "
-            "the signal was known before the claim. Under DR 0042, a TOI or CTOI on the star is therefore not counted "
-            "as known when ExoFOP first listed it after the claim and all its dispositions are PC or empty. Only "
-            "public dates are compared, and nothing is implied about when or how anyone else found the signal."
+            "the signal was known before the claim. Under the rule Section 2 states (DR 0042), "
+            + (
+                "it is therefore not counted as a known object."
+                if one
+                else "they are therefore not counted as known objects."
+            )
+            + " Only public dates are compared, and nothing is implied about when or how anyone else found the signal."
         )
     return {
         "claim_date": None if claim is None else _date(claim.date),

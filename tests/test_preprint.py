@@ -685,7 +685,10 @@ def test_the_paper_says_candidate_not_planet(tmp_path, monkeypatch):
     assert "deposited a prediction" not in summary
     # It is the Zenodo description too, where no other section exists.
     assert "The tess-hunt Search and Vetting" not in summary
-    assert "we answered every finding that its refuters did not disprove" in summary
+    # Section 2's words: Section 6.5 defines an upheld finding as a kill or hold no refuter disproved, so a note, which
+    # needs no answer, is not one.
+    assert "we answered every upheld review finding." in summary
+    assert "refuters did not disprove" not in summary
     for claim in ("confirmed", "discovered a planet", "validated"):
         assert claim not in summary.lower()
     # The body says "we"; "the maintainer" is named once, for a reader following a decision record.
@@ -944,7 +947,11 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
         in public
     )
     assert "as TOI-7001.02" not in public
-    assert "Under DR 0042" in public
+    # Section 2 states the rule in full; this paragraph points to it.
+    assert (
+        "A listing made after our claim cannot show that the signal was known before the claim. Under the rule "
+        "Section 2 states (DR 0042), they are therefore not counted as known objects." in public
+    )
     # The star's ExoFOP page is in Data Availability, out of the running text.
     assert "https://" not in public
     assert (
@@ -952,7 +959,8 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
         in " ".join(td.section(text, "Data Availability").split())
     )
     # The rule is stated once, and no motive is guessed at.
-    assert " ".join(text.split()).count("is therefore not counted as known") == 1
+    assert " ".join(text.split()).count("with every disposition PC or empty") == 1
+    assert "all its dispositions" not in text
     assert "prompted" not in text
     # Table 2 shows the novelty check's fail with a footnote, and the text says it failed on the snapshot and passed
     # without the later listings.
@@ -1067,6 +1075,24 @@ def test_a_listing_set_aside_with_no_period_is_named_so(tmp_path, monkeypatch):
     for period in (0.0, float("nan")):
         td.edit_json(claims, lambda c, period=period: c["excepted"][0].update(period=period))
         assert named in " ".join(paper(repo).split())
+
+
+def test_a_repository_claim_says_what_its_date_rests_on(tmp_path, monkeypatch):
+    _, repo = published(tmp_path, monkeypatch)
+    (repo / "results" / "claims.toml").write_text(
+        f'["{NAME}"]\ndate = 2026-10-28\nrecord = "https://github.com/example/tess-hunt"\n'
+    )
+    text = paper(repo)
+    vetted = " ".join(td.section(text, "Vetting").split())
+    assert (
+        "We first made the signal public on 2026 October 28, when the repository that holds its record became public. "
+        "That date is our own statement; GitHub keeps no public record of it (DR 0042)." in vetted
+    )
+    assert "in a public record" not in text
+    assert (
+        "The repository that first made the signal public is at https://github.com/example/tess-hunt."
+        in " ".join(td.section(text, "Data Availability").split())
+    )
 
 
 def test_the_paper_gives_the_ephemeris_with_uncertainties(tmp_path, monkeypatch):
@@ -2358,8 +2384,9 @@ def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
         "- no row of ExoFOP's planet parameters for the star matches the signal's period;" in works
     )
     assert (
-        "For the novelty check and the ExoFOP comparison, a TOI or CTOI that ExoFOP first listed after we made the "
-        "signal public is not counted as a known object (DR 0042)." in works
+        "For the novelty check and the ExoFOP comparison, a TOI or CTOI on the star that ExoFOP first listed after we "
+        "made the signal public, with every disposition PC or empty, is not counted as a known object (DR 0042)."
+        in works
     )
     # The Introduction cites TESS and the TOI process, and the sections are in the conventions' order.
     intro = " ".join(td.section(text, "Introduction").split())
