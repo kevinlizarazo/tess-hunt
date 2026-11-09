@@ -1547,8 +1547,8 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "exofop_rows": "None of ExoFOP's planet-parameter rows for the star matches the signal's period or a "
         "harmonic of it."
         if not at_period
-        else f"Apart from the rows of {_named(at_period)}, set aside under DR 0042, none of ExoFOP's "
-        "planet-parameter rows for the star matches the signal's period or a harmonic of it.",
+        else f"Apart from the rows of {_named(at_period)}, none of ExoFOP's planet-parameter rows for the star "
+        "matches the signal's period or a harmonic of it.",
         "tric_times": {1: "once", 2: "twice"}.get(runs, f"{_spell(runs)} times"),
         "companions": _companions(triceratops, exofop),
         "holdout": f"For this signal {_seasons(len(seasons), len(tested), predicted)}, so the check "
@@ -1959,8 +1959,16 @@ def _public(record: Path, repo: Path, checks: dict, literature: dict) -> dict:
             else "no disposition"
         )
         listed, also = _literal(r["name"]), " also" if listings else ""
-        if r["name"] in aside:
-            row = aside[r["name"]]
+        row = aside.get(r["name"])
+        # A row under the listing can sit at the period while ExoFOP's catalogue gives the listing another period, as
+        # an uploader's can; the listing then keeps its own period and the row is named apart. Whether the two agree
+        # is decided as bar 2 matches periods.
+        apart = (
+            row is not None
+            and _known(r["period"])
+            and calls.period_ratio(record, checks, r["period"]) != row["ratio"]
+        )
+        if row is not None and not apart:
             listings.append(
                 f" ExoFOP lists a signal at {_harmonic(row['ratio'])} on the star as {listed} (period "
                 f"{row['period']:.6g} d, {disposition})."
@@ -1976,6 +1984,11 @@ def _public(record: Path, repo: Path, checks: dict, literature: dict) -> dict:
         listings.append(
             f" ExoFOP first listed it on {_date(r['first_listed'])}, after we made the signal public."
         )
+        if apart:
+            listings.append(
+                f" A planet-parameter row under it, from {_literal(row['provenance'])}, gives "
+                f"{row['period']:.6g} d, at {_harmonic(row['ratio'])}."
+            )
     if listings:
         one = len(excepted) == 1
         them = f"the {excepted[0]['source']}" if one else "them"
@@ -2017,16 +2030,20 @@ def _sector_start(repo: Path, sector: int) -> dt.date:
 def _result(record: Path, p: dict, version: str) -> str:
     """A preregistered result's key in SUMMARY_RESULT and CONCLUSION_RESULT. A missed season either shows no dip at the
     held-out check's min_sigma or shows one whose depth is in tension with an earlier season's (holdout.judge), by the
-    criteria the run that judged it recorded. A missed result that is neither is refused."""
+    criteria the run that judged it recorded. A null significance or tension, as a NaN reaches prereg.json, raises
+    naming it, and a missed result that is neither case is refused."""
     if p["result"] != "missed":
         return p["result"]
     holdout = _criteria(record, "provenance-prereg.json", version)["holdout"]
+    sigma = _needed(_number(p["sigma"], ".2f"), "prereg.json sigma")
     if p["sigma"] < holdout["min_sigma"]:
         return "absent"
-    if p.get("tension") is not None and p["tension"] > holdout["max_depth_tension"]:
+    # holdout.judge keeps a NaN family tension so that it fails the season, so a miss at min_sigma can carry one.
+    tension = _needed(_number(p.get("tension"), ".2f"), "prereg.json tension")
+    if p["tension"] > holdout["max_depth_tension"]:
         return "tension"
     raise SystemExit(
-        f"prereg.json calls the season missed, yet its significance of {p['sigma']:.2f}σ and its tension meet the "
+        f"prereg.json calls the season missed, yet its significance of {sigma}σ and its tension of {tension}σ meet the "
         "criteria of the run that judged it"
     )
 
@@ -2092,7 +2109,8 @@ def _prereg(record: Path, repo: Path, call: dict, version: str) -> dict:
         if "tension" in p:
             said += (
                 " Each light-curve family's new depth was compared with that family's depth in the earlier seasons, "
-                f"as recorded in the deposit's `references.json`. The largest tension is {p['tension']:.2f}σ."
+                "as recorded in the deposit's `references.json`. The largest tension is "
+                f"{_needed(_number(p['tension'], '.2f'), 'prereg.json tension')}σ."
             )
         else:
             said += f" No tension was measured ({_quote(p['tension_skipped'])})."

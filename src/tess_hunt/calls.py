@@ -308,6 +308,23 @@ def _match_rule(signal_dir: Path) -> tuple[tuple[float, ...], float, float]:
     )
 
 
+def _ratio(
+    eph: Ephemeris, period: float, rule: tuple[tuple[float, ...], float, float]
+) -> float | None:
+    """The novelty harmonic at which `period` matches the signal's `eph` on period alone (Ruling Q), or None."""
+    harmonics, sigma_p, sigma_t = rule
+    return ephemeris_match(
+        eph, Ephemeris(period, float("nan"), float("nan")), harmonics, sigma_p, sigma_t
+    )
+
+
+def period_ratio(signal_dir: Path, checks: dict, period: float) -> float | None:
+    """The novelty harmonic at which `period` matches the signal's period, as bar 2 matches ExoFOP's rows: on period
+    alone, with the vetting run's own tolerance and harmonics. None when it matches at none. Raises CallError when the
+    match rule is unknown."""
+    return _ratio(Ephemeris(**checks["ephemeris"]), period, _match_rule(signal_dir))
+
+
 def exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[dict]:
     """ExoFOP's planet-parameter rows for the star that match the signal's period, on period alone at the novelty
     harmonics (Ruling Q), each with the `listing` it belongs to as the snapshot names it (None for a row of neither a
@@ -319,16 +336,14 @@ def exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> li
         raise CallError(
             "the literature record keeps no ExoFOP planet periods (it predates decision 0028); search again"
         )
-    harmonics, sigma_p, sigma_t = _match_rule(signal_dir)
+    rule = _match_rule(signal_dir)
     eph = Ephemeris(**checks["ephemeris"])
     excepted = excepted_listings(signal_dir)
     out = []
     for p in planets:
         if p["period"] is None:
             continue
-        ratio = ephemeris_match(
-            eph, Ephemeris(p["period"], float("nan"), float("nan")), harmonics, sigma_p, sigma_t
-        )
+        ratio = _ratio(eph, p["period"], rule)
         if ratio is not None:
             # A TOI's rows name it in `toi` and its star's listing in `name`; a CTOI never made a TOI has its row under
             # its own name with no TOI (pin P2).

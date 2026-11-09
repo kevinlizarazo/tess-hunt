@@ -992,8 +992,8 @@ def test_the_paper_names_the_claim_date_and_any_0042_listing(tmp_path, monkeypat
     )
     # Only the listing with a row at the signal's period is named against ExoFOP's rows at the period.
     assert (
-        "Apart from the rows of TOI-7001.01, set aside under DR 0042, none of ExoFOP's planet-parameter rows for the "
-        "star matches the signal's period or a harmonic of it." in public
+        "Apart from the rows of TOI-7001.01, none of ExoFOP's planet-parameter rows for the star matches the "
+        "signal's period or a harmonic of it." in public
     )
     assert "TOI-7001.02, which" not in public
     # The claim the exception rests on must be the committed one.
@@ -1028,8 +1028,8 @@ def test_exofop_rows_set_aside_are_named_whatever_novelty_matched(tmp_path, monk
     )
     vetted = " ".join(td.section(paper(repo), "Vetting").split())
     aside = (
-        "Apart from the rows of TOI-7001.01, set aside under DR 0042, none of ExoFOP's planet-parameter rows for the "
-        "star matches the signal's period or a harmonic of it."
+        "Apart from the rows of TOI-7001.01, none of ExoFOP's planet-parameter rows for the star matches the "
+        "signal's period or a harmonic of it."
     )
     assert aside in vetted and "None of ExoFOP's" not in vetted
     at = "ExoFOP lists a signal at this period on the star as TOI-7001.01 (period 5 d, disposition PC)."
@@ -1045,7 +1045,13 @@ def test_exofop_rows_set_aside_are_named_whatever_novelty_matched(tmp_path, monk
     later = {**td.later_listing(), "period": 12.1}
     repo = excepted_pass(tmp_path / "uploaded", monkeypatch, passed, rows, [later])
     vetted = " ".join(td.section(paper(repo), "Vetting").split())
-    assert aside in vetted and at in vetted
+    assert aside in vetted and at not in vetted
+    # ExoFOP's catalogue gives the TOI 12.1 d, so the TOI keeps that period and the row at the period is named apart.
+    assert (
+        "ExoFOP lists TOI-7001.01 on the star (period 12.1 d, disposition PC). ExoFOP first listed it on 2027 March 1, "
+        "after we made the signal public. A planet-parameter row under it, from Planet Parameters (User uploaded), "
+        "gives 5 d, at this period." in vetted
+    )
     # The paper and bar 2 read the same rows: without the exception, that row is bar 2's refusal.
     record = repo / "results" / "vetting" / NAME
     checks = json.loads((record / "checks.json").read_text())
@@ -1706,8 +1712,24 @@ def test_a_deposit_after_its_first_sector_is_refused(tmp_path, monkeypatch, no_p
     (record / "prereg.json").write_text(
         json.dumps({**PREREG, "result": "missed", "status": "missed"})
     )
-    with pytest.raises(SystemExit, match="calls the season missed, yet its significance of 5.00σ"):
+    with pytest.raises(
+        SystemExit,
+        match="calls the season missed, yet its significance of 5.00σ and its tension of 0.40σ",
+    ):
         paper(repo)
+    # A null significance or tension, as jsonable writes a NaN, raises naming the field: in the Abstract's case, and in
+    # Section 7's sentence on the tension when the significance alone decides the case.
+    for nulled, field in (
+        ({"sigma": None}, "sigma"),
+        ({"tension": None}, "tension"),
+        ({"depth": 0.00012, "sigma": 1.2, "tension": None}, "tension"),
+    ):
+        missed = {**PREREG, "result": "missed", "status": "missed", **nulled}
+        (record / "prereg.json").write_text(json.dumps(missed))
+        with pytest.raises(
+            SystemExit, match=f"no value for prereg.json {field}, which the paper prints"
+        ):
+            paper(repo)
 
 
 def test_the_paper_says_how_the_signal_was_found(tmp_path, monkeypatch, no_pdf):
