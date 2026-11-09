@@ -1960,13 +1960,12 @@ def _public(record: Path, repo: Path, checks: dict, literature: dict) -> dict:
         )
         listed, also = _literal(r["name"]), " also" if listings else ""
         row = aside.get(r["name"])
-        # A row under the listing can sit at the period while ExoFOP's catalogue gives the listing another period, as
-        # an uploader's can; the listing then keeps its own period and the row is named apart. Whether the two agree
-        # is decided as bar 2 matches periods.
-        apart = (
-            row is not None
-            and _known(r["period"])
-            and calls.period_ratio(record, checks, r["period"]) != row["ratio"]
+        # A row under the listing can sit at the period while ExoFOP's catalogue gives the listing another period, or
+        # none, as an uploader's can; the listing then keeps its own period, or is named with none, and the row is
+        # named apart. Whether the two agree is decided as bar 2 matches periods.
+        apart = row is not None and (
+            not _known(r["period"])
+            or calls.period_ratio(record, checks, r["period"]) != row["ratio"]
         )
         if row is not None and not apart:
             listings.append(

@@ -268,10 +268,10 @@ above differ, this amendment holds.
   of TOI-X, none ...") whatever the novelty check matched: a later TOI whose catalogue epoch misses, which the novelty
   check files as a period match only, or a user-uploaded row at the period under a TOI the catalogue gives another
   period. Where the listing's own period matches the signal's as that row does (bar 2's tolerance and harmonics), the
-  paper places the listing "at this period"; where it does not, the listing keeps its own period and the row is named
-  apart, with its source and period ("A planet-parameter row under it, from Planet Parameters (User uploaded), gives
-  5 d, at this period."). This replaces the Decision's rule that only a listing in the novelty check's
-  `evidence["matches"]` is placed against the signal's period.
+  paper places the listing "at this period"; where it does not, or the listing has no period, the listing keeps its
+  own period, or is named with none, and the row is named apart, with its source and period ("A planet-parameter row
+  under it, from Planet Parameters (User uploaded), gives 5 d, at this period."). This replaces the Decision's rule
+  that only a listing in the novelty check's `evidence["matches"]` is placed against the signal's period.
 - **A listing with no period.** A listing set aside under 0042 whose period is null, NaN or zero is named "with no
   period". Before, the paper could not be rendered for it.
 - **A missed preregistered test.** The Abstract, and so the Zenodo description, and the Conclusions say which case

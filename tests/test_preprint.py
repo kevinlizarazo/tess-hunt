@@ -1052,8 +1052,28 @@ def test_exofop_rows_set_aside_are_named_whatever_novelty_matched(tmp_path, monk
         "after we made the signal public. A planet-parameter row under it, from Planet Parameters (User uploaded), "
         "gives 5 d, at this period." in vetted
     )
-    # The paper and bar 2 read the same rows: without the exception, that row is bar 2's refusal.
     record = repo / "results" / "vetting" / NAME
+    # A TOI with no period in ExoFOP's catalogue, under which a user uploaded a row at the signal's period: the row
+    # cannot be the TOI's own, so the TOI is named with no period and the row apart.
+    (tmp_path / "unperiodic").mkdir()
+    rows = [
+        exofop_row("TOI 7001.01", "TIC 1.01", None),
+        exofop_row("TOI 7001.01", "TIC 1.01", 5.0, "Planet Parameters (User uploaded)"),
+    ]
+    nameless = {**td.later_listing(), "period": None}
+    vetted = " ".join(
+        td.section(
+            paper(excepted_pass(tmp_path / "unperiodic", monkeypatch, passed, rows, [nameless])),
+            "Vetting",
+        ).split()
+    )
+    assert aside in vetted and at not in vetted
+    assert (
+        "ExoFOP lists TOI-7001.01 on the star with no period (disposition PC). ExoFOP first listed it on 2027 March 1, "
+        "after we made the signal public. A planet-parameter row under it, from Planet Parameters (User uploaded), "
+        "gives 5 d, at this period." in vetted
+    )
+    # The paper and bar 2 read the same rows: without the exception, that row is bar 2's refusal.
     checks = json.loads((record / "checks.json").read_text())
     literature = json.loads((record / "literature.json").read_text())
     monkeypatch.setattr(calls, "excepted_listings", lambda signal_dir: set())
