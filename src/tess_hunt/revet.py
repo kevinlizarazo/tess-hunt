@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-from tess_hunt import fetch
+from tess_hunt import fetch, revet_status
 from tess_hunt.config import load_criteria
 from tess_hunt.lightcurve import LightCurve
 from tess_hunt.mast import PREFERENCE
@@ -31,7 +31,8 @@ def _product(info: dict | None) -> dict | None:
 
 
 def _rank(info: dict) -> tuple:
-    """Where a product comes in fetch's product order (`mast.rank`): by provenance, then cadence."""
+    """Where a product comes by provenance, then cadence, as fetch's product order (`mast.rank`) has them. It leaves
+    out the QLP version `mast.rank` puts between the two, so two QLP files of a sector at one cadence rank equal."""
     return PREFERENCE[info["provenance"]], info["cadence_s"]
 
 
@@ -216,7 +217,9 @@ def cmd_fetch(args) -> int:
 
 def add_parser(sub) -> None:
     p = sub.add_parser(
-        "revet", help="light curves for a re-vet, keeping the earlier fetch's sectors"
+        "revet",
+        help="before a re-vet, what MAST holds for the predicted sectors (status); then light curves for it, keeping "
+        "the earlier fetch's sectors (fetch)",
     )
     modes = p.add_subparsers(dest="mode", required=True)
     f = modes.add_parser(
@@ -234,3 +237,4 @@ def add_parser(sub) -> None:
     f.add_argument("--criteria", type=Path, default=Path("criteria/search-v2.toml"))
     f.add_argument("--production", action="store_true")
     f.set_defaults(func=cmd_fetch)
+    revet_status.add_parser(modes)

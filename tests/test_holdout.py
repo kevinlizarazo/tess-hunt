@@ -107,6 +107,25 @@ def test_a_training_season_whose_transit_has_few_core_cadences_still_counts():
     assert result.outcome is Outcome.PASS
 
 
+def test_a_season_with_too_few_pooled_training_cadences_is_untestable():
+    # The first two seasons keep two cadences each in the transit cores, however long a duration the refit takes;
+    # their ingress and egress still hold transits enough to train on (decision 0035) and to time the refit.
+    lc = make_lc(sectors=SECTORS, noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 1500e-6)], seed=1)
+    labels = season_labels(lc.time, CFG["season_gap_days"])
+    cores = (labels < 2) & in_transit(lc.time, EPH, 0.5 * max(CFG["refit_duration_factors"]))
+    keep = ~cores
+    for season in (0, 1):
+        central = cores & (labels == season) & in_transit(lc.time, EPH, 0.25)
+        keep[np.flatnonzero(central)[:2]] = True
+    result = holdout(lc.select(keep), EPH, CFG, 0.5)
+    assert result.outcome is Outcome.INCONCLUSIVE
+    last = result.evidence["seasons"][2]
+    assert last["training_seasons_with_transits"] == 2, last
+    assert last["n"] >= CFG["min_points"] > last["ref_n"], last
+    assert last["status"] == "untestable"
+    assert last["reason"] == "fewer than 5 training cadences in predicted transits"
+
+
 def test_underpowered_seasons_are_inconclusive_not_fail():
     lc = make_lc(sectors=SECTORS, noise_ppm=300.0, signals=[(3.7, 1326.1, 0.12, 60e-6)], seed=4)
     result = holdout(lc, EPH, CFG, 0.5)

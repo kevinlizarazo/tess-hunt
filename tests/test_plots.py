@@ -1,6 +1,9 @@
+import re
 from pathlib import Path
 
 import numpy as np
+import pytest
+from PIL import Image
 from synthetic import make_lc, with_products
 
 from tess_hunt import plots
@@ -64,6 +67,95 @@ def test_each_plot_writes_a_png(tmp_path, monkeypatch):
     for path in paths:
         assert path.read_bytes()[:8] == PNG, path.name
     assert sorted(p.name for p in (tmp_path / "plots").iterdir()) == sorted(p.name for p in paths)
+
+
+def test_each_plot_is_drawn_for_print(tmp_path, monkeypatch):
+    # The figure each plot saves, kept for inspection.
+    drawn = {}
+    save = plots._save
+
+    def keep(fig, path):
+        drawn[path.name] = fig
+        return save(fig, path)
+
+    monkeypatch.setattr(plots, "_save", keep)
+    draw_all(planet_lc(), tmp_path / "plots", MODSHIFT, PIXELS, NEIGHBOURS)
+    for name, fig in drawn.items():
+        # At the preprint's text width, so its text prints at one size, with no title above the plot: the caption
+        # says what each shows. Grids keep their panel titles.
+        assert fig.get_figwidth() == plots.WIDTH_IN, name
+        assert fig._suptitle is None, name
+        if name in ("phase.png", "centroids.png"):
+            assert all(not ax.get_title() for ax in fig.axes), name
+    for name in ("transits.png", "folds.png", "odd_even.png"):
+        assert (
+            drawn[name]
+            ._supxlabel.get_text()
+            .startswith(("Time from mid-transit (h)", "Time from predicted"))
+        )
+        assert drawn[name]._supylabel.get_text() == "Relative flux (ppm)"
+        assert drawn[name]._supxlabel.get_fontsize() == plots.FONT_PT
+    [ax] = drawn["phase.png"].axes
+    assert ax.get_xlim() == (-0.25, 0.75)
+    assert (ax.get_xlabel(), ax.get_ylabel()) == ("Orbital phase", "Relative flux (ppm)")
+    # The ModShift secondary at 0.759 is drawn an orbit earlier, labelled with the phase the record gives.
+    lines = {
+        line.get_label(): line.get_xdata()[0]
+        for line in ax.get_lines()
+        if line.get_label().startswith("Mod")
+    }
+    assert lines == {"ModShift secondary, phase 0.759, 3.1σ": pytest.approx(0.759 - 1.0)}
+    assert all(t.get_fontsize() == plots.FONT_PT for t in ax.get_xticklabels())
+    # The legend sits in one row above the axes, inside the figure, where it covers no cadence.
+    renderer = drawn["phase.png"].canvas.get_renderer()
+    legend = ax.get_legend().get_window_extent(renderer)
+    assert legend.y0 >= ax.get_window_extent(renderer).y1 - 0.5
+    assert legend.y1 <= drawn["phase.png"].bbox.y1
+    # Each odd-even panel gives its core median in its title, with a minus sign, and has no legend over the transit.
+    odd_even = drawn["odd_even.png"].axes
+    assert [a.get_legend() for a in odd_even] == [None, None]
+    assert [re.sub(r"\d+", "N", a.get_title()) for a in odd_even] == [
+        "Odd, core median −N ppm",
+        "Even, core median −N ppm",
+    ]
+    # Sharp in print and small enough to commit: a 256-colour palette PNG at 300 dpi, which PNG keeps in pixels per
+    # metre.
+    for path in (tmp_path / "plots").iterdir():
+        assert path.stat().st_size < 300_000, path.name
+        with Image.open(path) as image:
+            assert image.mode == "P", path.name
+            assert image.info["dpi"] == pytest.approx((plots.DPI, plots.DPI), abs=0.01), path.name
+    # A plot with nothing to show carries no title either, and names the plot it stands in for in its text.
+    plots.no_data(tmp_path / "blank.png", "TIC 1: phase", "no finite cadences")
+    [ax] = drawn["blank.png"].axes
+    assert ax.get_title() == "" and drawn["blank.png"]._suptitle is None
+    assert [t.get_text() for t in ax.texts] == ["TIC 1: phase: no data (no finite cadences)"]
+
+
+def test_the_phase_plot_cuts_a_noisy_light_curve_evenly(tmp_path, monkeypatch):
+    # At 2-minute cadence the scatter dwarfs the binned flux, which alone set the range and cut the cadences mostly
+    # above the out-of-transit level.
+    drawn = []
+    save = plots._save
+
+    def keep(fig, path):
+        drawn.append(fig)
+        return save(fig, path)
+
+    monkeypatch.setattr(plots, "_save", keep)
+    lc = make_lc(
+        sectors=(1, 2), cadence_min=2.0, noise_ppm=600.0, signals=[(5.0, 1326.1, 0.13, 0.0017)]
+    )
+    plots.phase(with_products(lc, {1: "SPOC", 2: "SPOC"}), EPH, MODSHIFT, tmp_path / "phase.png")
+    [ax] = drawn[0].axes
+    grey, binned = ax.lines[0], ax.lines[1]
+    bottom, top = ax.get_ylim()
+    # The binned transit stays in view.
+    assert bottom <= binned.get_ydata().min() and binned.get_ydata().max() <= top
+    # Few out-of-transit cadences lie outside the range, on either side.
+    x, y = grey.get_xdata(), grey.get_ydata()
+    out = y[np.abs(x) > EPH.duration / EPH.period]
+    assert np.mean(out > top) < 0.01 and np.mean(out < bottom) < 0.01
 
 
 def test_a_plot_with_nothing_to_show_says_no_data(tmp_path, monkeypatch):

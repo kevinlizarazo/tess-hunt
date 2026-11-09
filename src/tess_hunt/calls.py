@@ -8,6 +8,7 @@ import re
 import tomllib
 from pathlib import Path
 
+from tess_hunt.claims import listing_id
 from tess_hunt.config import load_criteria
 from tess_hunt.ephemeris import Ephemeris, ephemeris_match
 from tess_hunt.provenance import repo_root
@@ -33,6 +34,9 @@ KEYS = {
     "sentences",
     "hits_read",
 }
+# The forms each kind of listing is written in: the snapshot's TOI-185.01 and CTOI-17361.01, ExoFOP's TOI 185.01 and
+# TIC 17361.01. listing_id reads them all and drops the kind, and a TOI and a CTOI can share a number.
+FORMS = {"TOI": ("TOI-", "TOI "), "CTOI": ("CTOI-", "TIC ")}
 
 
 class CallError(ValueError):
@@ -160,6 +164,44 @@ def pixels(signal_dir: Path, checks: dict) -> dict | None:
     return checks["pixels"]
 
 
+def _excepting(signal_dir: Path) -> dict | None:
+    """claims.json when it excepts at least one listing made after the signal's claim (decision 0042), else None."""
+    found = _json(signal_dir / "claims.json")
+    return found if found is not None and found["excepted"] else None
+
+
+def novelty(signal_dir: Path, checks: dict) -> dict:
+    """The novelty check the bars read (decision 0042): where claims.json excepts at least one listing made after the
+    signal's claim, the check as `vetting claims` ran it again without them; otherwise the vetting run's. Raises
+    CallError for a claims.json that excepts a listing and holds no rerun."""
+    found = _excepting(signal_dir)
+    if found is None:
+        return next(c for c in checks["checks"] if c["check"] == "novelty")
+    if not isinstance(found.get("novelty"), dict):
+        raise CallError("claims.json excepts a listing but holds no rerun of novelty")
+    return found["novelty"]
+
+
+def _listing(kind: str, name: str | None) -> str | None:
+    """The listing `name` writes in one of `kind`'s forms, as the snapshot names it; None for any other name."""
+    number = listing_id(name) if name and name.startswith(FORMS[kind]) else None
+    return None if number is None else f"{kind}-{number}"
+
+
+def excepted_listings(signal_dir: Path) -> set[str]:
+    """The TOIs and CTOIs claims.json excepts under decision 0042, as the snapshot names them (TOI-185.01,
+    CTOI-17361.01)."""
+    found = _excepting(signal_dir)
+    if found is None:
+        return set()
+    return {_listing(r["source"], r["name"]) for r in found["excepted"]} - {None}
+
+
+def _judged(signal_dir: Path, checks: dict) -> list[dict]:
+    """checks.json's checks as the bars read them, novelty as decision 0042 leaves it."""
+    return [novelty(signal_dir, checks) if c["check"] == "novelty" else c for c in checks["checks"]]
+
+
 def _names(signal_dir: Path) -> set[str]:
     """What a call may rest on: the checks in the record and the review's findings."""
     checks = _json(signal_dir / "checks.json")
@@ -235,8 +277,8 @@ def load(path: Path) -> dict:
     return call
 
 
-def _failures(checks: dict, triceratops: dict | None, pixel: dict | None) -> set[str]:
-    failed = {c["check"] for c in checks["checks"] if c["outcome"] == "fail"}
+def _failures(judged: list[dict], triceratops: dict | None, pixel: dict | None) -> set[str]:
+    failed = {c["check"] for c in judged if c["outcome"] == "fail"}
     # A pixel fail kills a signal as it would have in triage (M3 design, section 4.10).
     for name, record in (("triceratops", triceratops), ("pixels", pixel)):
         if record is not None and record["outcome"] == "fail":
@@ -266,31 +308,66 @@ def _match_rule(signal_dir: Path) -> tuple[tuple[float, ...], float, float]:
     )
 
 
-def _exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[str]:
-    """Bar 2: ExoFOP shows nothing at the period (Ruling Q), matched on period alone at the novelty harmonics."""
+def _ratio(
+    eph: Ephemeris, period: float, rule: tuple[tuple[float, ...], float, float]
+) -> float | None:
+    """The novelty harmonic at which `period` matches the signal's `eph` on period alone (Ruling Q), or None."""
+    harmonics, sigma_p, sigma_t = rule
+    return ephemeris_match(
+        eph, Ephemeris(period, float("nan"), float("nan")), harmonics, sigma_p, sigma_t
+    )
+
+
+def period_ratio(signal_dir: Path, checks: dict, period: float) -> float | None:
+    """The novelty harmonic at which `period` matches the signal's period, as bar 2 matches ExoFOP's rows: on period
+    alone, with the vetting run's own tolerance and harmonics. None when it matches at none. Raises CallError when the
+    match rule is unknown."""
+    return _ratio(Ephemeris(**checks["ephemeris"]), period, _match_rule(signal_dir))
+
+
+def exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[dict]:
+    """ExoFOP's planet-parameter rows for the star that match the signal's period, on period alone at the novelty
+    harmonics (Ruling Q), each with the `listing` it belongs to as the snapshot names it (None for a row of neither a
+    TOI nor a CTOI), the harmonic it matched at (`ratio`) and whether decision 0042 excepts that listing (`excepted`).
+    Bar 2 and the preprint both read these rows, so they cannot disagree. Raises CallError when the record keeps no
+    ExoFOP periods or the vetting run's match rule is unknown."""
     planets = literature["search"]["exofop"].get("planets")
     if planets is None:
-        return [
+        raise CallError(
             "the literature record keeps no ExoFOP planet periods (it predates decision 0028); search again"
-        ]
-    try:
-        harmonics, sigma_p, sigma_t = _match_rule(signal_dir)
-    except CallError as exc:
-        return [str(exc)]
+        )
+    rule = _match_rule(signal_dir)
     eph = Ephemeris(**checks["ephemeris"])
+    excepted = excepted_listings(signal_dir)
     out = []
     for p in planets:
         if p["period"] is None:
             continue
-        ratio = ephemeris_match(
-            eph, Ephemeris(p["period"], float("nan"), float("nan")), harmonics, sigma_p, sigma_t
-        )
+        ratio = _ratio(eph, p["period"], rule)
         if ratio is not None:
-            label = f"{p['toi']} ({p['name']})" if p["toi"] else p["name"]
-            out.append(
-                f"ExoFOP lists {label} ({p['provenance']}) at {p['period']:.6g} d, which matches the signal's "
-                f"period at ratio {ratio:g}"
-            )
+            # A TOI's rows name it in `toi` and its star's listing in `name`; a CTOI never made a TOI has its row under
+            # its own name with no TOI (pin P2).
+            listing = _listing("TOI", p["toi"]) if p["toi"] else _listing("CTOI", p["name"])
+            out.append({**p, "listing": listing, "ratio": ratio, "excepted": listing in excepted})
+    return out
+
+
+def _exofop_at_the_period(signal_dir: Path, checks: dict, literature: dict) -> list[str]:
+    """Bar 2: ExoFOP shows nothing at the period (Ruling Q). A row of a listing decision 0042 excepts belongs to that
+    listing and is passed over."""
+    try:
+        rows = exofop_at_the_period(signal_dir, checks, literature)
+    except CallError as exc:
+        return [str(exc)]
+    out = []
+    for p in rows:
+        if p["excepted"]:
+            continue
+        label = f"{p['toi']} ({p['name']})" if p["toi"] else p["name"]
+        out.append(
+            f"ExoFOP lists {label} ({p['provenance']}) at {p['period']:.6g} d, which matches the signal's period at "
+            f"ratio {p['ratio']:g}"
+        )
     return out
 
 
@@ -300,7 +377,10 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
     promotion = call["promotion"]
     if promotion is not None and kind != "second":
         out.append(f"promotion is for second-list rows; {signal_name(signal_dir)} is a {kind}")
-    for c in checks["checks"]:
+    # checks.json and the dossier's table keep the vetting run's own novelty, so a refusal on the rerun says which it
+    # read.
+    rerun = _excepting(signal_dir) is not None
+    for c in _judged(signal_dir, checks):
         if c["outcome"] == "pass":
             continue
         # Bar 2: a promoted second-list row's novelty stays inconclusive as known_to_spoc (decision 0013).
@@ -312,7 +392,12 @@ def _pass_problems(signal_dir: Path, call: dict, checks: dict, review: dict | No
             and c["evidence"].get("category") == "known_to_spoc"
         )
         if not promoted:
-            out.append(f"{c['check']} is {c['outcome']}: {c['reason']}")
+            said = (
+                "novelty, run again under decision 0042,"
+                if rerun and c["check"] == "novelty"
+                else c["check"]
+            )
+            out.append(f"{said} is {c['outcome']}: {c['reason']}")
     # Ruling W: every pass needs a pixel pass. `vetting run` never checks that a candidate was shortlisted, so its
     # triage pixel record is read here, as a second-list row's is from the second list.
     pixel = pixels(signal_dir, checks)
@@ -389,7 +474,7 @@ def problems(signal_dir: Path) -> list[str]:
     if call["outcome"] == "killed":
         found = set(confirmed(review)) if review else set()
         tric = _json(signal_dir / "triceratops.json")
-        grounds = _failures(checks, tric, pixels(signal_dir, checks)) | found
+        grounds = _failures(_judged(signal_dir, checks), tric, pixels(signal_dir, checks)) | found
         if not grounds & set(call["rests_on"]):
             listed = ", ".join(sorted(grounds)) or "none in this record"
             out.append(

@@ -18,6 +18,7 @@ import requests
 
 from tess_hunt import (
     calls,
+    claims,
     dossier,
     gaia,
     literature,
@@ -96,9 +97,9 @@ def _known(value) -> bool:
     return value is not None and not pd.isna(value)
 
 
-def fit_duration(fit: FitResult) -> float:
-    """The posterior median of the full transit duration, first to fourth contact, for a circular
-    orbit (Winn 2010, eq. 14)."""
+def fit_durations(fit: FitResult) -> np.ndarray:
+    """Each posterior sample's full transit duration, first to fourth contact, for a circular orbit
+    (Winn 2010, eq. 14)."""
     period, rp_rs, b = fit.column("period"), fit.column("rp_rs"), fit.column("b")
     a_rs = np.array(
         [
@@ -108,8 +109,12 @@ def fit_duration(fit: FitResult) -> float:
     )
     sin_i = np.sqrt(1.0 - (b / a_rs) ** 2)
     chord = np.sqrt(np.clip((1.0 + rp_rs) ** 2 - b**2, 0.0, None))
-    t14 = period / np.pi * np.arcsin(np.clip(chord / (a_rs * sin_i), 0.0, 1.0))
-    return float(np.median(t14))
+    return period / np.pi * np.arcsin(np.clip(chord / (a_rs * sin_i), 0.0, 1.0))
+
+
+def fit_duration(fit: FitResult) -> float:
+    """The posterior median of the full transit duration."""
+    return float(np.median(fit_durations(fit)))
 
 
 def _neighbours(star: dict, depth: float, cfg: dict) -> tuple[dict, pd.DataFrame | None]:
@@ -1443,6 +1448,7 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
         ("checks-with-suspect", args.evidence_only, "vetting-run", "evidence-only vetting"),
         ("second-list", args.second_list, "vetting-second-list", "second-list"),
         ("prereg", args.prereg, "vetting-prereg", "preregistered test"),
+        ("claims", args.claims, "vetting-claims", "claims"),
     )
     for role, path, stage, what in given:
         if path is None:
@@ -1462,6 +1468,19 @@ def _record_runs(args, production: bool, previous: Path | None = None) -> dict[s
             )
         if [c["sha256"] for c in made["criteria"]] != criteria:
             raise SystemExit(f"{what} run {name} ran on other criteria than {run_id}")
+        # Decision 0042's first-listed dates come from the ExoFOP record of the literature run it read, which must be
+        # the record's own.
+        if role == "claims":
+            if args.literature is None:
+                raise SystemExit(
+                    f"claims run {name} was made from literature run {made['literature_run']}: give it as "
+                    "--literature"
+                )
+            literature = args.literature.resolve().name
+            if made["literature_run"] != literature:
+                raise SystemExit(
+                    f"claims run {name} was made from literature run {made['literature_run']}, not {literature}"
+                )
         runs[role] = path
     return runs
 
@@ -1489,6 +1508,7 @@ def _signal_files(
         # named apart from the vetting run's plots/ so every file there keeps its source.
         ("second-list", ("pixels.json", "pixels.png"), "second-list"),
         ("prereg", ("prereg.json",), "preregistered test"),
+        ("claims", ("claims.json",), "claims"),
     ):
         path = runs.get(role)
         # The second list judges only second-list rows; any other signal's pixel check is triage's, and its record
@@ -1497,8 +1517,14 @@ def _signal_files(
             continue
         files[f"provenance-{role}.json"] = path / "provenance.json"
         made = path / "signals" / name
-        # A signal a check killed gets no TRICERATOPS; the dossier says the run did not judge it.
+        # A signal a check killed gets no TRICERATOPS, and by default no literature search or claims sort; the dossier
+        # says the run did not judge it. A claims run sorts every signal its literature run searched unless given
+        # others, so one with no record of a signal that run searched was made for other signals.
         if not (made / outputs[0]).is_file():
+            if role == "claims":
+                searched = runs["literature"] / "signals" / name / "literature.json"
+                if searched.is_file():
+                    raise SystemExit(f"claims run {path.resolve().name} sorted no {name}")
             continue
         made_from = json.loads((path / "provenance.json").read_text())
         inputs = made_from["inputs"]
@@ -1526,6 +1552,22 @@ def _signal_files(
             raise SystemExit(
                 f"{what} run {path.resolve().name}'s files for {name} are not the ones {_label(kept)} holds"
             )
+        # claims.json must be the file `vetting claims` wrote, from the literature record this record holds: its
+        # exception rests on that record's dates.
+        if role == "claims":
+            run_id = path.resolve().name
+            written = made_from["summary"].get("signals", {}).get(name, {}).get("sha256")
+            if sha256_file(found["claims.json"]) != written:
+                raise SystemExit(
+                    f"claims run {run_id}'s claims.json for {name} is not the file it wrote"
+                )
+            literature = runs["literature"] / "signals" / name / "literature.json"
+            dated = inputs.get(f"literature_{name}", {}).get("sha256")
+            if not literature.is_file() or dated != sha256_file(literature):
+                raise SystemExit(
+                    f"claims run {run_id} read another literature.json for {name} than literature run "
+                    f"{runs['literature'].resolve().name} holds"
+                )
         files.update(found)
     suspect = runs.get("checks-with-suspect")
     if suspect is not None:
@@ -1828,10 +1870,6 @@ def cmd_publish(args) -> int:
     where = f"results/vetting/{args.name}"
     if previous is not None:
         dest, where = dest / f"r{args.version}", f"{where}/r{args.version}"
-        # A version is published once, when its dossier.md, written last, is there; nothing in it changes after,
-        # not even from the same runs. Until then the same runs finish an interrupted publish.
-        if (dest / "dossier.md").is_file():
-            raise SystemExit(f"{where} is already published; a published record never changes")
         files |= _revet_files(args.lc_run, args.run, previous, _tic(files), production=True)
         _same_signal(files, previous, root.parent / "predictions")
     # Judged and rendered, the README included, from a staged copy before anything is copied: a refusal or a render
@@ -1860,6 +1898,18 @@ def cmd_publish(args) -> int:
             for name, source in files.items()
             if (dest / name).exists() and sha256_file(dest / name) != sha256_file(source)
         )
+        # A version is published once, when its dossier.md, written last, is there; nothing in it changes after. Until
+        # then the same runs finish an interrupted publish. After it they render only the README, which a publish
+        # stopped between the two left unwritten.
+        if previous is not None and (dest / "dossier.md").is_file():
+            if changed or not all((dest / name).exists() for name in files):
+                raise SystemExit(f"{where} is already published; a published record never changes")
+            left = dossier.listed(root)[1]
+            _write(root / "README.md", dossier.readme(root))
+            print(f"{where} was already published from these runs; README.md rendered again")
+            for name, why in left.items():
+                print(f"README leaves out {name}: {'; '.join(why)}")
+            return 0
         if changed:
             raise SystemExit(
                 f"{where} already holds another {', '.join(changed)}; published files are never overwritten"
@@ -1904,7 +1954,7 @@ def cmd_publish(args) -> int:
     # Last of the record: the README lists only a directory that holds it. A part-written dossier.md would mark the
     # record published.
     _write(dest / "dossier.md", text)
-    (root / "README.md").write_text(readme)
+    _write(root / "README.md", readme)
     print(f"published {args.name} -> {where} ({len(new)} new file(s), dossier.md, README.md)")
     for name, why in left.items():
         print(f"README leaves out {name}: {'; '.join(why)}")
@@ -2093,6 +2143,7 @@ def add_parser(sub) -> None:
     pr.add_argument("--criteria-vet", type=Path, default=Path("criteria/vet-v3.toml"))
     pr.add_argument("--production", action="store_true")
     pr.set_defaults(func=cmd_prereg)
+    claims.add_parser(modes)
     d = modes.add_parser(
         "dossier", help="render draft dossiers for the maintainer, outside the repository"
     )
@@ -2180,4 +2231,9 @@ def _record_arguments(p, required: bool) -> None:
     )
     p.add_argument(
         "--prereg", type=Path, help="with --version: a vetting prereg run made from --run"
+    )
+    p.add_argument(
+        "--claims",
+        type=Path,
+        help="a vetting claims run made from --run and --literature (decision 0042)",
     )

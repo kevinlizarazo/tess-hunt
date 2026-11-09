@@ -26,6 +26,7 @@ PRODUCT_COLUMNS = [
     "s3_key",
 ]
 _SPOC_NAME = re.compile(r"^tess\d{13}-s(\d{4})-(\d{16})-\d{4}-s_lc\.fits$")
+_QLP_VERSION = r"_v(\d+)_llc\.fits$"
 
 
 class DownloadError(RuntimeError):
@@ -131,10 +132,16 @@ def discover(
 
 
 def rank(products: pd.DataFrame) -> pd.DataFrame:
-    """Products best-first within each star and sector: SPOC 2-min, then TESS-SPOC, then QLP."""
+    """Products best-first within each star and sector: SPOC 2-min, then TESS-SPOC, then QLP, a QLP sector's latest
+    version first."""
     order = products["provenance"].map(PREFERENCE)
-    ranked = products.assign(_rank=order).sort_values(["tic", "sector", "_rank", "cadence_s"])
-    return ranked.drop(columns="_rank").reset_index(drop=True)
+    # QLP redelivers a sector as a new version of the same file and MAST lists both; only QLP names end this way.
+    version = products["filename"].str.extract(_QLP_VERSION, expand=False).astype(float).fillna(0)
+    ranked = products.assign(_rank=order, _version=version).sort_values(
+        ["tic", "sector", "_rank", "_version", "cadence_s"],
+        ascending=[True, True, True, False, True],
+    )
+    return ranked.drop(columns=["_rank", "_version"]).reset_index(drop=True)
 
 
 def best(products: pd.DataFrame) -> pd.DataFrame:

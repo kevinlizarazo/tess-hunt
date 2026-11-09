@@ -207,35 +207,33 @@ PLANET_AT_THE_PERIOD = {
 
 # Without triceratops.json or review.json, a call resting on them would be refused for that alone.
 RESTS_ON_A_CHECK = edit(PASSED, '["triceratops", "F2"]', '["odd_even"]')
+REFUSED = [
+    ({"outcomes": {"odd_even": "fail"}}, "odd_even is fail"),
+    ({"outcomes": {"holdout": "inconclusive"}}, "holdout is inconclusive"),
+    ({"literature": "inconclusive"}, "the literature search is inconclusive"),
+    ({"literature": None}, "no literature.json"),
+    ({"triceratops": "inconclusive"}, "TRICERATOPS is inconclusive"),
+    ({"triceratops": None, "call": RESTS_ON_A_CHECK}, "no triceratops.json"),
+    ({"call": edit(PASSED, 'F2 = "TRICERATOPS', 'F9 = "TRICERATOPS')}, "F2 .*no answer"),
+    (
+        {
+            "call": edit(
+                PASSED,
+                'not_another_star = "TRICERATOPS weighed every star that could host it."\n',
+                "",
+            )
+        },
+        "not_another_star",
+    ),
+    ({"call": edit(PASSED, 'hits_read = ["2306.16587"]', "hits_read = []")}, "2306.16587"),
+    ({"call": edit(PASSED, 'hits_read = ["2306.16587"]\n', "")}, "hits_read"),
+    ({"review": None, "call": RESTS_ON_A_CHECK}, "no review.json"),
+    ({"planets": [PLANET_AT_THE_PERIOD]}, "TOI 9999.01"),
+    ({"novelty_category": "known_to_spoc", "outcomes": {"novelty": "inconclusive"}}, "novelty"),
+]
 
 
-@pytest.mark.parametrize(
-    "change, message",
-    [
-        ({"outcomes": {"odd_even": "fail"}}, "odd_even is fail"),
-        ({"outcomes": {"holdout": "inconclusive"}}, "holdout is inconclusive"),
-        ({"literature": "inconclusive"}, "the literature search is inconclusive"),
-        ({"literature": None}, "no literature.json"),
-        ({"triceratops": "inconclusive"}, "TRICERATOPS is inconclusive"),
-        ({"triceratops": None, "call": RESTS_ON_A_CHECK}, "no triceratops.json"),
-        ({"call": edit(PASSED, 'F2 = "TRICERATOPS', 'F9 = "TRICERATOPS')}, "F2 .*no answer"),
-        (
-            {
-                "call": edit(
-                    PASSED,
-                    'not_another_star = "TRICERATOPS weighed every star that could host it."\n',
-                    "",
-                )
-            },
-            "not_another_star",
-        ),
-        ({"call": edit(PASSED, 'hits_read = ["2306.16587"]', "hits_read = []")}, "2306.16587"),
-        ({"call": edit(PASSED, 'hits_read = ["2306.16587"]\n', "")}, "hits_read"),
-        ({"review": None, "call": RESTS_ON_A_CHECK}, "no review.json"),
-        ({"planets": [PLANET_AT_THE_PERIOD]}, "TOI 9999.01"),
-        ({"novelty_category": "known_to_spoc", "outcomes": {"novelty": "inconclusive"}}, "novelty"),
-    ],
-)
+@pytest.mark.parametrize("change, message", REFUSED)
 def test_a_pass_the_evidence_does_not_support_is_refused(tmp_path, change, message):
     found = calls.problems(signal_dir(tmp_path, **change))
     assert found, change
@@ -464,3 +462,177 @@ def test_a_notes_file_that_breaks_the_schema_is_refused(tmp_path, text, message)
     path.write_text(text)
     with pytest.raises(calls.CallError, match=re.escape(message)):
         calls.load_notes(path, REVIEW)
+
+
+# A TOI on the signal's own star at twice its period, listed after its claim with every disposition PC, as claims.json
+# lists a row decision 0042 excepts. ExoFOP shows it as PLANET_AT_THE_PERIOD.
+LATER_TOI = {
+    "source": "TOI",
+    "name": "TOI-9999.01",
+    "tic": 44926986,
+    "period": EPHEMERIS["period"] * 2,
+    "first_listed": "2027-03-01",
+    "dispositions": ["PC"],
+}
+LATER_CTOI = {**LATER_TOI, "source": "CTOI", "name": "CTOI-44926986.02"}
+# Novelty's own fail on that TOI, as the vetting run records it.
+FAILED = {"outcomes": {"novelty": "fail"}}
+
+
+def rerun(outcome: str, reason: str, category: str | None = None) -> dict:
+    """Novelty as `vetting claims` runs it again without the rows decision 0042 excepts."""
+    return {
+        "check": "novelty",
+        "outcome": outcome,
+        "reason": reason,
+        "evidence": {} if category is None else {"category": category},
+    }
+
+
+PASSES = rerun("pass", "no known object matches")
+
+
+def claimed(path: Path, excepted: list[dict], novelty: dict | None, kept: list[dict] = ()) -> Path:
+    """The record at `path` with claims.json beside it, as `vetting claims` writes it."""
+    record = {
+        "signal": {"name": NAME, "tic": 44926986},
+        "vetting_run": "20261101T000000Z-vetting-run-abc1234-0001",
+        "literature_run": "20261101T010000Z-vetting-literature-abc1234-0001",
+        "claim": {"date": "2026-10-28", "record": "https://doi.org/10.5281/zenodo.23745923"},
+        "exofop_status": "ok",
+        "excepted": excepted,
+        "kept": list(kept),
+        "novelty": novelty,
+    }
+    (path / "claims.json").write_text(json.dumps(record))
+    return path
+
+
+def test_a_pass_stands_on_a_novelty_fail_0042_excepts(tmp_path):
+    # The TOI fails novelty and shows on ExoFOP at the period: both bars refuse the pass.
+    found = calls.problems(signal_dir(tmp_path / "a", planets=[PLANET_AT_THE_PERIOD], **FAILED))
+    assert "novelty is fail: novelty fail" in found
+    assert any(p.startswith("ExoFOP lists TOI 9999.01") for p in found), found
+    # Listed after the claim, it is excepted, and novelty without it passes.
+    path = signal_dir(tmp_path / "b", planets=[PLANET_AT_THE_PERIOD], **FAILED)
+    assert calls.problems(claimed(path, [LATER_TOI], PASSES)) == []
+
+
+def test_a_pass_on_a_kept_listing_is_refused(tmp_path):
+    # TFOPWG's FP carries someone else's evidence about the signal: the row is kept and nothing is run again.
+    kept = {"source": "TOI", "name": "TOI-9999.01", "reason": "disposition FP, not PC"}
+    path = signal_dir(tmp_path, planets=[PLANET_AT_THE_PERIOD], **FAILED)
+    found = calls.problems(claimed(path, [], None, kept=[kept]))
+    assert "novelty is fail: novelty fail" in found
+    assert any(p.startswith("ExoFOP lists TOI 9999.01") for p in found), found
+
+
+def test_a_rerun_at_known_to_spoc_passes_a_promoted_row_and_blocks_a_shortlisted_one(tmp_path):
+    # Without the later TOI, the SPOC TCE from the same data still matches.
+    spoc = rerun("inconclusive", "matches only SPOC TCE or ExoMiner rows", "known_to_spoc")
+
+    def found(name, call, kind):
+        path = signal_dir(tmp_path / name, call=call, kind=kind, **FAILED)
+        return calls.problems(claimed(path, [LATER_TOI], spoc))
+
+    assert found("a", PROMOTED, "second") == []
+    # The refusal names the rerun: checks.json still holds novelty's own fail.
+    assert found("b", PASSED, "candidate") == [
+        "novelty, run again under decision 0042, is inconclusive: matches only SPOC TCE or ExoMiner rows"
+    ]
+
+
+def test_a_claims_json_the_bar_cannot_read_raises(tmp_path):
+    # An exception is never a pass: a claims.json that excepts a listing with no rerun, or one that isn't JSON, stops
+    # the bar for a pass and for a kill alike.
+    on_novelty = edit(KILLED, '["odd_even"]', '["novelty"]')
+    for name, call in (("a", PASSED), ("b", on_novelty)):
+        path = claimed(signal_dir(tmp_path / name, call=call, **FAILED), [LATER_TOI], None)
+        with pytest.raises(calls.CallError, match="excepts a listing but holds no rerun"):
+            calls.problems(path)
+        (path / "claims.json").write_text('{"excepted": [')
+        with pytest.raises(json.JSONDecodeError):
+            calls.problems(path)
+
+
+def bar_2(path: Path, planets: list[dict], excepted: list[dict]) -> list[str]:
+    """The problems of a pass whose novelty fail decision 0042 lifts, with ExoFOP's `planets` beside it."""
+    return calls.problems(claimed(signal_dir(path, planets=planets, **FAILED), excepted, PASSES))
+
+
+def test_a_planet_parameter_row_under_an_excepted_toi_does_not_block_bar_2(tmp_path):
+    # Each of the TOI's rows names it in `toi` and its star's listing in `name` (pin P2).
+    uploaded = {
+        **PLANET_AT_THE_PERIOD,
+        "provenance": "Planet Parameters (User uploaded)",
+        "period": EPHEMERIS["period"],
+    }
+    assert bar_2(tmp_path / "a", [PLANET_AT_THE_PERIOD, uploaded], [LATER_TOI]) == []
+    other = {**PLANET_AT_THE_PERIOD, "toi": "TOI 9998.01", "name": "TIC 44926986.02"}
+    [problem] = bar_2(tmp_path / "b", [PLANET_AT_THE_PERIOD, other], [LATER_TOI])
+    assert problem.startswith("ExoFOP lists TOI 9998.01 (TIC 44926986.02)")
+    # A TOI's row is read by its `toi` alone: a `name` that is an excepted CTOI's lets nothing through.
+    [problem] = bar_2(tmp_path / "c", [other], [LATER_CTOI])
+    assert problem.startswith("ExoFOP lists TOI 9998.01 (TIC 44926986.02)")
+
+
+def test_a_planet_parameter_row_under_an_excepted_ctoi_does_not_block_bar_2(tmp_path):
+    # A CTOI never made a TOI has its uploaded row under its own name, with no TOI (pin P2).
+    row = {
+        **PLANET_AT_THE_PERIOD,
+        "provenance": "Planet Parameters (User uploaded)",
+        "name": "TIC 44926986.02",
+        "toi": None,
+    }
+    assert bar_2(tmp_path / "a", [row], [LATER_CTOI]) == []
+    # Any other name still blocks: another CTOI, the excepted TOI's number as a CTOI's, and names that read as no
+    # listing.
+    for i, name in enumerate(("TIC 44926986.03", "TIC 9999.01", "HIP 8152 b", None)):
+        [problem] = bar_2(tmp_path / f"b{i}", [{**row, "name": name}], [LATER_CTOI, LATER_TOI])
+        assert problem.startswith(f"ExoFOP lists {name} ("), problem
+
+
+def test_a_kill_cannot_rest_on_a_novelty_fail_the_rerun_does_not_repeat(tmp_path):
+    on_novelty = edit(KILLED, '["odd_even"]', '["novelty"]')
+
+    def found(name, *claims):
+        path = signal_dir(tmp_path / name, call=on_novelty, **FAILED)
+        return calls.problems(claimed(path, *claims) if claims else path)
+
+    assert found("a") == []
+    # Nothing excepted: the fail stands.
+    assert found("b", [], None) == []
+    # Run again, it still fails on a row decision 0042 keeps, a neighbour's say: the kill stands on it.
+    assert found("c", [LATER_TOI], rerun("fail", "matches TOI TOI-9997.01")) == []
+    for name, again in (
+        ("d", PASSES),
+        ("e", rerun("inconclusive", "matches only SPOC TCE or ExoMiner rows", "known_to_spoc")),
+    ):
+        [problem] = found(name, [LATER_TOI], again)
+        assert problem.endswith("(failed checks and confirmed findings: F2)"), problem
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {},
+        *(change for change, _ in REFUSED),
+        FAILED,
+        {"planets": [PLANET_AT_THE_PERIOD], **FAILED},
+        {"call": PROMOTED, "kind": "second", **SPOC},
+        {"call": KILLED, "outcomes": {"odd_even": "fail"}},
+        {"call": edit(KILLED, '["odd_even"]', '["novelty"]'), **FAILED},
+        {"call": KILLED},
+        {"call": HELD},
+    ],
+)
+def test_without_claims_json_the_bar_is_unchanged(tmp_path, change):
+    # A claims.json that excepts nothing leaves every call where a record without one leaves it.
+    kept = {
+        "source": "TOI",
+        "name": "TOI-9999.01",
+        "reason": "first listed 2026-01-05, not after the claim date 2026-10-28",
+    }
+    without = calls.problems(signal_dir(tmp_path / "a", **change))
+    path = claimed(signal_dir(tmp_path / "b", **change), [], None, kept=[kept])
+    assert calls.problems(path) == without

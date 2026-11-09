@@ -4,20 +4,22 @@ Copyright (c) 2026 Kevin Lizarazo. Everything under `results/` is licensed under
 this directory). The exceptions are Gaia data (credit: ESA/Gaia/DPAC): the `ruwe` column of the published triage
 tables, the RUWE values the published controls quote, the Gaia DR3 values the pixel check's diagnosis, the
 neighbour-epoch measurements and the TIC-duplicate measurement quote or hold, the TIC-carried Gaia DR2 values the
-TIC-duplicate measurement holds (all under [Runs](#runs)), and the Gaia DR3 parts of the vetting records and the
-Gaia DR2 and DR3 values their reviews quote, listed under [Vetting](#vetting). They stay under ESA's CC BY-NC 3.0 IGO
-terms (https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
+TIC-duplicate measurement holds (all under [Runs](#runs)), the Gaia DR3 parts of the vetting records and the Gaia DR2
+and DR3 values their reviews quote, listed under [Vetting](#vetting), and any such value a preprint quotes from a
+review or a call or gives in a note beside it ([Preprints](#preprints)). They stay under ESA's CC BY-NC 3.0 IGO terms
+(https://www.cosmos.esa.int/web/gaia-users/license), not CC BY 4.0.
 
 ExoFOP's rows in the vetting records' `literature.json` (TOIs, CTOIs, planet parameters, confirmed planets and imaging
-rows), and the same rows where `dossier.md` shows them, stay under ExoFOP's terms, not CC BY 4.0: its data-use
-guidelines (https://exofop.ipac.caltech.edu/tess/pcp.php) treat data as its provider's property. The paper titles in
-`literature.json` come only from arXiv's, OpenAlex's and Zenodo's metadata
-([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read 2026-10-26: arXiv's API terms
-of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive metadata about arXiv e-prints
-under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration"; OpenAlex's about page
-(https://openalex.org/about) says "Our data is CC0"; Zenodo's policies (https://about.zenodo.org/policies/) say
-"Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs and arXiv ids are identifiers. From NASA
-ADS the records keep those identifiers and each search's query, total and status, never a title.
+rows) and `claims.json` (the TOI and CTOI rows decision 0042 sorted), and the same rows where `dossier.md` shows them,
+stay under ExoFOP's terms, not CC BY 4.0: its data-use guidelines (https://exofop.ipac.caltech.edu/tess/pcp.php)
+treat data as its provider's property. The paper titles in `literature.json` come only from arXiv's, OpenAlex's and
+Zenodo's metadata ([decision 0038](../docs/decisions/0038-literature-trim-and-username-scrub.md)), each read
+2026-10-26: arXiv's API terms of use (https://info.arxiv.org/help/api/tou.html) say "You are free to use descriptive
+metadata about arXiv e-prints under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration";
+OpenAlex's about page (https://openalex.org/about) says "Our data is CC0"; Zenodo's policies
+(https://about.zenodo.org/policies/) say "Metadata is licensed under CC0, except for email addresses." Bibcodes, DOIs
+and arXiv ids are identifiers. From NASA ADS the records keep those identifiers and each search's query, total and
+status, never a title.
 
 Attribute as: Kevin Lizarazo, tess-hunt, https://github.com/kevinlizarazo/tess-hunt.
 
@@ -234,6 +236,9 @@ candidate, not a confirmed planet.
 - `plots/`: each transit, the fold per season and product family, odd and even transits, the whole orbit with phase
   0.5 and the ModShift secondary, and the centroid offsets per sector with the neighbours that could host the signal
   (for a second-list row, `centroids.png` draws triage's record, which holds no offsets; its own are in `pixels.png`).
+  Plots drawn since 2026-11-05 are drawn for print, at the preprint's text width and 300 dpi, as 256-colour palette
+  PNGs with every cadence's point kept; the records published before keep theirs
+  ([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md), amended 2026-11-05).
 - `triceratops.json`, `probs.csv`: TRICERATOPS ([decision 0026](../docs/decisions/0026-triceratops.md)): the outcome,
   each run's FPP and NFPP, the stars it weighed and the possible hosts matched to them, and the TIC's DUPLICATE and
   ARTIFACT rows it left out (`dropped_stars`, [decision 0036](../docs/decisions/0036-triceratops-tic-duplicates.md));
@@ -284,7 +289,9 @@ is published once its `dossier.md`, written last, is there, and never changes af
 holds, as above, from runs made from its own vetting run, and these:
 
 - `call.toml`, `review.json`, `review-scripts.tar.gz` and any `review-notes.toml`, written into `r<N>/` before it is
-  published. The call names the signal, not `r<N>`.
+  published. The call names the signal, not `r<N>`. A version's review is given
+  [vetting/review-brief-0042.md](vetting/review-brief-0042.md) beside the brief whenever the version holds
+  `claims.json`.
 - `provenance-checks.json`, which also names the directory the vetting run read its light curves from (`lc_dir`), the
   revet fetch run whose `lc/` that is (`revet_run`) and the catalog snapshot (`catalogs`).
 - For a second-list row, `pixels.json`, `pixels.png` and `provenance-second-list.json`: the previous record's, byte
@@ -313,6 +320,15 @@ holds, as above, from runs made from its own vetting run, and these:
   run it left out because an earlier version had judged it, with that version and its result. A result once judged
   stands: every later version holds the judging version's two files byte for byte, and its dossier says which version
   judged it.
+- Where a claims run sorted the signal, `claims.json` and `provenance-claims.json`: how `tess-hunt vetting claims`
+  sorted the TOI and CTOI rows on the signal's own star under
+  [decision 0042](../docs/decisions/0042-listings-after-our-claim.md), and that run's `provenance.json`. `claims.json`
+  gives the `signal` (its name and TIC), the `vetting_run` and `literature_run`, the `claim` (its `date` and public
+  `record` from [claims.toml](#claims), null for a signal with none), the status of the literature run's ExoFOP read
+  (`exofop_status`), each `excepted` row (its source, name, TIC, period, the day ExoFOP first listed it and its
+  dispositions), each row `kept` as known with the reason, and `novelty`, the novelty check run again without the
+  excepted rows (null when none is excepted). Where it excepts a row, that rerun stands in for novelty in the
+  "passed" bar and the kill rule; `checks.json` keeps novelty's own result.
 
 A version's `dossier.md` names the version in its title. A section after the call's line links the version before it and
 says what changed: the sectors added, redelivered, replaced by a better product, and kept though another product was
@@ -358,6 +374,54 @@ file: `tess-hunt predictions zenodo --run RUN_ID` prints it from the run's files
   deposit. The index shows "DOI pending" for a package it does not list.
 
 The packages hold no Gaia data, so they are CC BY 4.0 whole.
+
+## Claims
+
+`claims.toml` gives each held signal's public claim: the day it was first public (`date`) and the public record a
+reader can check that day against (`record`). Six signals have 2026-10-28 and the predictions package's DOI; the four
+held signals outside the package have 2026-10-28 and the repository's URL, on the maintainer's statement of the day the
+repository was made public, since GitHub keeps no public record of it. Decision 0042 reads it: a TOI or CTOI on a
+signal's own star that ExoFOP first listed after that day, with every disposition PC or empty, does not make the signal
+known ([decision 0042](../docs/decisions/0042-listings-after-our-claim.md)). A signal with no entry, each killed signal
+among them, gets no exception. The file changes only with a decision record.
+
+## Preprints
+
+`preprints/` holds the paper for each signal the maintainer passes, and the files it is rendered from
+([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md)). A passed signal is a planet candidate, not a
+confirmed planet.
+
+- `preprint.template.md`: the paper's words, with a placeholder for each value. The paper takes a journal's form:
+  numbered sections, an Abstract, numbered tables and figures, references and appendices
+  ([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md), amended 2026-11-05). `tess-hunt preprint run`
+  fills it with `substitute` from the signal's latest published record, its runs' provenance and the runs they lead
+  to, so a value the sources lack raises instead of rendering. The review's and the call's words are quoted
+  ([decision 0037](../docs/decisions/0037-quoted-text-in-the-dossier.md)).
+- The depth, the total duration and the planet's radius, with their errors, come from the density-prior fit's
+  posterior, which the record keeps only as a summary (`fit_prior` in `checks.json`). `preprint run` reproduces the
+  fit from the light curve the record's vetting run read, and refuses unless the reproduced summary equals the
+  record's ([decision 0043](../docs/decisions/0043-the-preprint-for-a-pass.md), amended 2026-11-05).
+- `author.toml`: the author block the paper prints (the name, the affiliation, and the ORCID and email where the file
+  gives them) and the repository's URL, which the paper gives under Data Availability. It is the maintainer's file,
+  its text changes only with the maintainer's approval, and `preprint run` refuses without it.
+- Each directory `<run id>/` is one production run of `tess-hunt preprint run`, copied unchanged by `tess-hunt
+  preprint publish`: `preprint.md`, `preprint.pdf` rendered from it, the four figures from the record's plots
+  (`transits.png`, `folds.png`, `odd_even.png`, `phase.png`), `manifest.json` and `provenance.json`. The committed copy
+  is the deposited copy. The dataset is not committed, since it holds a light curve: it is deposited from the run
+  directory, and `manifest.json` lists each of its files with its sha256 and licence. It holds the signal's published
+  records, from the M3 record to the one the paper is rendered from, under `vetting/<name>/`; the light curve that
+  record's vetting run read, `lc/<tic>.npz`; and `posterior-prior.npz`, the reproduced fit's samples with each
+  sample's depth, total duration, draw of the stellar radius and planet radius. The Zenodo deposit form's text is not
+  a package file: `tess-hunt preprint zenodo --run RUN_ID` prints it from the run's files.
+
+The paper and its figures are CC BY 4.0, except any Gaia value in the text it quotes from a review or a call or in a
+note beside it, which stays under ESA's terms (above), and the ExoFOP listings it names, which stay under ExoFOP's
+terms (above). The dataset is CC BY 4.0 too, `posterior-prior.npz` included, except the files that hold Gaia DR3
+data, which stay under ESA's CC BY-NC 3.0 IGO terms ([decision 0026](../docs/decisions/0026-triceratops.md)):
+`checks.json`, `checks-with-suspect.json`, `neighbours.csv`, `triceratops.json`, `plots/centroids.png`, `pixels.png`,
+`review.json`, `review-scripts.tar.gz` and `dossier.md` in each record, and its `call.toml` and `review-notes.toml`,
+listed with the review since the paper may quote a Gaia value from them. ExoFOP's rows in its `literature.json`,
+`claims.json` and `dossier.md` stay under ExoFOP's terms (above), as `manifest.json` notes beside each of those files.
 
 ## Catalog snapshots
 
