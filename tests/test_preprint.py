@@ -2232,6 +2232,36 @@ def test_the_paper_says_what_vetting_leaves_open(tmp_path, monkeypatch):
     )
 
 
+def test_a_value_the_record_lacks_raises_naming_it(tmp_path, monkeypatch):
+    _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
+    assert "missing" not in paper(repo)
+    checks = json.loads((record / "checks.json").read_text())
+    # A null ModShift value, or a sector's centroid offset or quality, as a NaN from LEO-Vetter or diffImage reaches
+    # the record.
+    for field in ("phs_sec", "dep_sec", "sig_sec", "sig_pri", "Fred"):
+        lacking = {**checks, "modshift": {**checks["modshift"], field: None}}
+        with pytest.raises(
+            SystemExit, match=f"no value for modshift {field}, which the paper prints"
+        ):
+            preprint._modshift(lacking)
+    for field in ("offset_arcsec", "quality"):
+        sectors = [
+            {**s, field: None} if s["sector"] == 2 else s
+            for s in checks["pixels"]["evidence"]["sectors"]
+        ]
+        pixel = {
+            **checks["pixels"],
+            "evidence": {**checks["pixels"]["evidence"], "sectors": sectors},
+        }
+        with pytest.raises(SystemExit, match=f"no value for Sector 2's {field}"):
+            preprint._offsets(pixel, set())
+    # It raises while the paper is rendered, before any run starts.
+    td.edit_json(record / "checks.json", lambda c: c["modshift"].update(sig_sec=None))
+    with pytest.raises(SystemExit, match="modshift sig_sec"):
+        paper(repo)
+
+
 def test_how_tess_hunt_works_is_said_once(tmp_path, monkeypatch):
     _, repo = published(tmp_path, monkeypatch)
     record = repo / "results" / "vetting" / NAME

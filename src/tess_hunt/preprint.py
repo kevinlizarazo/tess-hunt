@@ -31,7 +31,6 @@ from tess_hunt.ddt import _criteria, _from_triceratops, _number, _ppm
 from tess_hunt.detrend import detrend
 from tess_hunt.dossier import (
     SENTENCES,
-    _f,
     _paper_id,
     _scrub,
     _table,
@@ -942,6 +941,14 @@ def _depths(samples: np.ndarray) -> np.ndarray:
     return out
 
 
+def _needed(shown: str | None, field: str) -> str:
+    """A value the paper prints, as `ddt._number` formats it; None, for a null or a NaN in the record, raises naming
+    the field, as a placeholder with no value does."""
+    if shown is None:
+        raise SystemExit(f"the record holds no value for {field}, which the paper prints")
+    return shown
+
+
 def _known(value) -> bool:
     """An error or a period the record keeps: a positive number, not a null, a NaN or a zero."""
     return value is not None and math.isfinite(value) and value > 0
@@ -1179,12 +1186,16 @@ def _modshift(checks: dict) -> str:
             f"{test}, which LEO-Vetter runs during triage, has no result in the record "
             f"({_quote(checks['triage_reason'])})."
         )
-    depth = None if m["dep_sec"] is None else m["dep_sec"] * 1e6
+    found = {
+        k: _needed(_number(m[k], ".3g"), f"modshift {k}")
+        for k in ("phs_sec", "sig_sec", "sig_pri", "Fred")
+    }
+    depth = _needed(_ppm(m["dep_sec"]), "modshift dep_sec")
     return (
         f"{test}, searches for a secondary eclipse at any phase, and LEO-Vetter runs it during triage. The most "
-        f"significant secondary event is at phase {_f(m['phs_sec'], '.3g')}, with a depth of {_f(depth, '.0f')} ppm "
-        f"and a significance of {_f(m['sig_sec'], '.3g')}σ. The primary event has a significance of "
-        f"{_f(m['sig_pri'], '.3g')}σ, and ModShift's red-noise factor, F<sub>red</sub>, is {_f(m['Fred'], '.3g')}."
+        f"significant secondary event is at phase {found['phs_sec']}, with a depth of {depth} ppm and a significance "
+        f"of {found['sig_sec']}σ. The primary event has a significance of {found['sig_pri']}σ, and ModShift's "
+        f"red-noise factor, F<sub>red</sub>, is {found['Fred']}."
     )
 
 
@@ -1192,7 +1203,7 @@ def _eccentric(checks: dict) -> str:
     m = checks["modshift"]
     there = (
         "In an eccentric orbit it can fall at another phase, which only ModShift searches. ModShift's most significant "
-        f"secondary event is {_f(m['sig_sec'], '.3g')}σ."
+        f"secondary event is {_needed(_number(m['sig_sec'], '.3g'), 'modshift sig_sec')}σ."
         if m is not None
         else "In an eccentric orbit it can fall at another phase, and the record holds no ModShift result."
     )
@@ -1295,16 +1306,14 @@ def _offsets(pixel: dict, suspect: set[int]) -> dict:
     """Each sector's centroid offset, and the sector the outcome comes from: the pixel check judges the best-quality
     sector's offset, and the row holding that offset is its sector (as the dossier finds it)."""
     sectors = sorted(pixel["evidence"]["sectors"], key=lambda s: s["sector"])
-    offsets = (
-        "The offsets were "
-        + _words(
-            [
-                f"{_f(s['offset_arcsec'], '.1f')}″ in Sector {s['sector']} (quality {_f(s['quality'], '.2f')})"
-                for s in sectors
-            ]
+    each = []
+    for s in sectors:
+        offset = _needed(
+            _number(s["offset_arcsec"], ".1f"), f"Sector {s['sector']}'s offset_arcsec"
         )
-        + "."
-    )
+        quality = _needed(_number(s["quality"], ".2f"), f"Sector {s['sector']}'s quality")
+        each.append(f"{offset}″ in Sector {s['sector']} (quality {quality})")
+    offsets = f"The offsets were {_words(each)}."
     judged_offset = pixel["evidence"]["offset_qual_arcsec"]
     judged = [
         s["sector"]
