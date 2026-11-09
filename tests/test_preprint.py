@@ -1301,6 +1301,120 @@ def test_the_pdf_renders(tmp_path, monkeypatch):
     assert '<span class="id">TRICERATOPS</span>' not in paper(repo)
 
 
+# A refuter's reason as reviews write them: paragraphs, Markdown's own marks and a path in angle brackets, all of which
+# the paper quotes as written.
+REASON = (
+    "First, the depth is 1200 ppm in **every** sector.\n\n"
+    "Second, `fit_depth.py` ran as python $O/<script>.py and agreed; a_b and [this] stay plain.\n\n"
+    "Third, the * and the # and a | end it."
+)
+
+
+def laid_out(document) -> str:
+    """The text WeasyPrint laid out on the pages, without the margins' page numbers and without whitespace, a word
+    hyphenated at a line's end joined again, so text split over lines, pages or inline boxes still reads in order (the
+    lock holds no PDF reader)."""
+    texts = [
+        box.text
+        for page in document.pages
+        for part in page._page_box.children
+        if not getattr(part, "at_keyword", None)
+        for box in part.descendants()
+        if hasattr(box, "text")
+    ]
+    return re.sub(r"\s+", "", "".join(t.removesuffix("\N{HYPHEN}") for t in texts))
+
+
+def squashed(text: str) -> str:
+    return re.sub(r"\s+", "", text)
+
+
+def test_quoted_text_reaches_the_pdf_word_for_word(tmp_path, monkeypatch):
+    pytest.importorskip("weasyprint")
+    _, repo = published(tmp_path, monkeypatch)
+    record = repo / "results" / "vetting" / NAME
+    review = json.loads((record / "review.json").read_text())
+    next(f for f in review["findings"] if f["id"] == "F3")["refuters"][0]["reason"] = REASON
+    (record / "review.json").write_text(json.dumps(review))
+    text = paper(repo)
+    # The quote of three paragraphs stays on its finding's list item, inside its quotation marks.
+    [quoted] = [
+        line
+        for line in td.section(text, "Appendix C. Refuted Findings and Notes").splitlines()
+        if line.startswith("    - Refuter 1 did not disprove it: ")
+    ]
+    assert quoted.endswith('end it."')
+    page = preprint.html(text, specimen=False)
+    for made in ("<script>", "<strong>every", "<code>fit_depth", "<em>b"):
+        assert made not in page
+    laid = laid_out(preprint.document(text, record / "plots", specimen=False))
+    assert squashed(f'Refuter 1 did not disprove it: "{REASON}"') in laid
+    # Appendix D, which follows the quote, is there to its last sentence.
+    assert "APPENDIXD.LICENCES" in laid
+    assert (
+        squashed(
+            "ExoFOP's rows in its literature.json, claims.json and dossier.md files stay under ExoFOP's terms."
+        )
+        in laid
+    )
+
+
+def test_every_published_review_is_quoted_word_for_word():
+    pytest.importorskip("weasyprint")
+    # The paper's quoting of the 14 published records, laid out in one document: each finding's claim, the call's
+    # answers, the refuted findings' verdicts, the notes, the flagged papers' titles, the call's three sentences and
+    # reasons, and Table 2's reasons.
+    parts, quoted = [], []
+    for path in sorted((REPO / "results" / "vetting").glob("*/review.json")):
+        record = path.parent
+        review = calls.load_review(path)
+        call = calls.load(record / "call.toml")
+        checks = json.loads((record / "checks.json").read_text())
+        literature = json.loads((record / "literature.json").read_text())
+        confirmed = calls.confirmed(review)
+        # A held or killed call need not answer every upheld finding or give the three sentences; its reasons stand in
+        # for them, so every quoted word is still the record's own.
+        answers = {f: call["answers"].get(f, call["reasons"]) for f in confirmed}
+        sentences = {k: call["sentences"].get(k, call["reasons"]) for k in preprint.SENTENCES}
+        found = preprint._review(
+            record, review, {**call, "answers": answers, "sentences": sentences}, literature
+        )
+        said = [call[k] for k in ("reasons", "deciding_evidence", "promotion") if call[k]]
+        rows = [[c["check"], c["outcome"], c["reason"]] for c in checks["checks"]]
+        novelty = next(c for c in checks["checks"] if c["check"] == "novelty")
+        parts += [
+            f"## {record.name}",
+            *(found[k] for k in ("answers", "refuted", "notes", "sentences", "hits_read")),
+            *(f"The call gives the reason {preprint._quote(s)}" for s in said),
+            preprint._checks_table(rows, novelty, novelty, []),
+        ]
+        refuted = [
+            f for f in review["findings"] if f["rating"] != "note" and f["id"] not in confirmed
+        ]
+        notes = record / "review-notes.toml"
+        hits = {h["arxiv"]: h for h in literature["evidence"]["hits"]} | {
+            h["doi"]: h for h in literature["evidence"]["hits"]
+        }
+        quoted += [
+            *(f["claim"] for f in review["findings"]),
+            *(v["reason"] for f in refuted for v in f["refuters"]),
+            *answers.values(),
+            *sentences.values(),
+            *said,
+            *(
+                n["text"]
+                for ns in (calls.load_notes(notes, review) if notes.is_file() else {}).values()
+                for n in ns
+            ),
+            *(hits[i]["title"] for i in review["hits_flagged"] if i in hits and hits[i]["title"]),
+            *(r[2] for r in rows),
+        ]
+    assert len(parts) >= 14 * 7 and len(quoted) > 100
+    laid = laid_out(preprint.document("\n\n".join(parts), REPO, specimen=False))
+    missing = [q for q in quoted if squashed(preprint._scrub(q)) not in laid]
+    assert missing == []
+
+
 def deposited(repo: Path, record: Path, published: str) -> None:
     """The fixture's preregistered result in `record`, its package published on Zenodo on `published`."""
     (record / "prereg.json").write_text(json.dumps(PREREG))

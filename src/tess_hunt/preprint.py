@@ -15,7 +15,7 @@ import subprocess
 import sys
 import tomllib
 from collections import Counter
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 from string import Template
 
@@ -842,10 +842,23 @@ def _doi(doi: str) -> str:
     return _id(f"doi:{doi}")
 
 
+def _literal(text: str) -> str:
+    """Text from a record as Markdown that lays out as written: HTML's specials as entities, Markdown's inline specials
+    escaped, and each line break a <br>, so text of several paragraphs stays on one line of the Markdown, inside its
+    list item or table cell, and nothing in it is read as a tag, emphasis, code or a link."""
+    escaped = re.sub(r"([\\`*_\[\]])", r"\\\1", escape(text, quote=False))
+    return "<br>".join(escaped.splitlines())
+
+
+def _named(names: list[str]) -> str:
+    """Names from a record, such as ExoFOP's listings, as a list in words."""
+    return _words([_literal(name) for name in names])
+
+
 def _quote(text: str) -> str:
-    """Quoted text in quotation marks, which mark it apart from the paper's own words without changing it (decision
+    """Quoted text in quotation marks, which mark it apart from the paper's own words, laid out word for word (decision
     0037)."""
-    return f'"{_scrub(text)}"'
+    return f'"{_literal(_scrub(text))}"'
 
 
 def _stop(sentence: str) -> str:
@@ -856,7 +869,9 @@ def _stop(sentence: str) -> str:
 def _beside(notes: list[dict]) -> str:
     """The notes added on a quoted finding under decision 0037, each nested under the finding after its quoted lines.
     Python-Markdown nests a list only at four spaces."""
-    return "".join(f"\n    - **Note ({_date(n['date'])}):** {_scrub(n['text'])}" for n in notes)
+    return "".join(
+        f"\n    - **Note ({_date(n['date'])}):** {_literal(_scrub(n['text']))}" for n in notes
+    )
 
 
 def _claims(record: Path) -> dict | None:
@@ -1099,7 +1114,7 @@ def _novelty_said(check: dict) -> str:
         return "no other catalogued object matches the signal, and the novelty check passes"
     if matched:
         return (
-            f"the novelty check {IS[check['outcome']]} because {_words(matched)} "
+            f"the novelty check {IS[check['outcome']]} because {_named(matched)} "
             f"{'matches' if len(matched) == 1 else 'match'} the signal"
         )
     return f"the novelty check {IS[check['outcome']]}, for the reason {_quote(check['reason'])}"
@@ -1113,7 +1128,7 @@ def _novelty_against(check: dict) -> str:
         return f"{head} passes: no known object matches the signal."
     if matched:
         return (
-            f"{head} {IS[check['outcome']]} because {_words(matched)} "
+            f"{head} {IS[check['outcome']]} because {_named(matched)} "
             f"{'matches' if len(matched) == 1 else 'match'} the signal."
         )
     return _stop(f"{head} {IS[check['outcome']]}, for the reason {_quote(check['reason'])}")
@@ -1128,7 +1143,7 @@ def _novelty(record: Path, checks: dict, call: dict) -> str:
     if excepted:
         # The paragraph before names each listing and when ExoFOP first listed it; this one only sets them aside.
         matched = len(excepted) == 1 and excepted[0]["name"] in _matched(own)
-        aside = f"the {excepted[0]['source']}" if matched else _words([r["name"] for r in excepted])
+        aside = f"the {excepted[0]['source']}" if matched else _named([r["name"] for r in excepted])
         said.append(
             f"{_novelty_against(own)} "
             + _stop(f"With {aside} set aside under DR 0042, {_novelty_said(judged)}")
@@ -1377,9 +1392,10 @@ def _listed(rows: list[dict], kind: str, field: str, disposition: str) -> str:
     if not rows:
         return _count(0, kind)
     named = [
-        f"{_listing(r[field], kind)}, disposition {r.get(disposition) or 'none'}"
+        f"{_literal(_listing(r[field], kind))}, disposition {_literal(r.get(disposition) or 'none')}"
         if len(rows) == 1
-        else f"{_listing(r[field], kind)} with disposition {r.get(disposition) or 'none'}"
+        else f"{_literal(_listing(r[field], kind))} with disposition "
+        f"{_literal(r.get(disposition) or 'none')}"
         for r in rows
     ]
     return f"{_count(len(rows), kind)} ({_words(named)})"
@@ -1393,7 +1409,7 @@ def _exofop(exofop: dict) -> str:
     parts = [
         _listed(exofop["tois"], "TOI", "toi", "disp_tfop"),
         _listed(exofop["ctois"], "CTOI", "ctoi", "cdisp"),
-        f"{_count(len(planets), 'confirmed planet')} ({_words(planets)})"
+        f"{_count(len(planets), 'confirmed planet')} ({_named(planets)})"
         if planets
         else _count(0, "confirmed planet"),
         _count(len(exofop["imaging"]), "high-resolution imaging observation"),
@@ -1499,7 +1515,7 @@ def _vetting(record: Path, checks: dict, call: dict, literature: dict) -> dict:
         "blends": _blends(hosts, limit, tric["hosts_tdepth_zero"]),
         # results/README.md leaves a bare Gaia DR3 source id under CC BY 4.0; the paper leaves it out anyway, so its own
         # text holds nothing from Gaia.
-        "names": _words([n for n in literature["search"]["names"] if not n.startswith("Gaia ")]),
+        "names": _named([n for n in literature["search"]["names"] if not n.startswith("Gaia ")]),
         "papers": _count(len(literature["evidence"]["hits"]), "paper"),
         "exofop": _exofop(exofop),
         "exofop_rows": "None of ExoFOP's planet-parameter rows for the star matches the signal's period or a "
@@ -1522,7 +1538,7 @@ def _checks_table(rows: list[list], own: dict, judged: dict, excepted: list[dict
         if excepted:
             names = [r["name"] for r in excepted]
             note.append(
-                f"ExoFOP first listed {_words(names)} after we made the signal public, so DR 0042 sets "
+                f"ExoFOP first listed {_named(names)} after we made the signal public, so DR 0042 sets "
                 f"{'it' if len(names) == 1 else 'them'} aside."
             )
         if judged["outcome"] != "pass":
@@ -1531,7 +1547,7 @@ def _checks_table(rows: list[list], own: dict, judged: dict, excepted: list[dict
         [
             f"{CHECKS[name]} (`{name}`)",
             f"{outcome}<sup>a</sup>" if name == "novelty" and note else outcome,
-            reason,
+            _literal(reason),
         ]
         for name, outcome, reason in rows
     ]
@@ -1554,7 +1570,7 @@ def _abstract_checks(rows: list[list], own: dict, judged: dict, excepted: list[d
             matched = _matched(own)
             parts.append(
                 "the comparison with known objects, which "
-                + (f"matched {_words(matched)}" if matched else WAS[outcome])
+                + (f"matched {_named(matched)}" if matched else WAS[outcome])
             )
         else:
             # Table 2's wording for the check, lowercased unless it opens on a name.
@@ -1569,7 +1585,7 @@ def _abstract_checks(rows: list[list], own: dict, judged: dict, excepted: list[d
         one = len(listed) == 1
         # The sentence before names a matched listing; one it doesn't name is named here.
         which = (
-            f"that {listed[0]['source']}" if one and named else _words([r["name"] for r in listed])
+            f"that {listed[0]['source']}" if one and named else _named([r["name"] for r in listed])
         )
         said += (
             f" ExoFOP listed {which} only after we made the signal public, so "
@@ -1608,7 +1624,7 @@ def _seasons(n: int, testable: int, predicted: int) -> str:
 
 def _label(finding: dict, confirmed: list[str]) -> str:
     """A finding's id, the question it concerns, its rating and what its refuters did."""
-    head = f"{finding['id']}, on {QUESTIONS[finding['lens']]}."
+    head = f"{_literal(finding['id'])}, on {QUESTIONS[finding['lens']]}."
     if finding["rating"] == "note":
         return f"{head} Rated note."
     n = len(finding["refuters"])
@@ -1681,8 +1697,9 @@ def _flagged(review: dict, literature: dict) -> str:
     def paper(ident: str) -> str:
         hit = next((h for h in hits if ident in (h["arxiv"], h["doi"])), None)
         if hit is None:
-            return ident
-        return f'"{hit["title"]}" ({_paper_id(hit)})' if hit["title"] else _paper_id(hit)
+            return _literal(ident)
+        found = _literal(_paper_id(hit))
+        return f"{_quote(hit['title'])} ({found})" if hit["title"] else found
 
     one = len(flagged) == 1
     return (
@@ -1904,7 +1921,7 @@ def _public(record: Path, repo: Path, checks: dict) -> dict:
     for r in excepted:
         dispositions = r["dispositions"]
         disposition = (
-            f"disposition{'s' if len(dispositions) > 1 else ''} {_words(dispositions)}"
+            f"disposition{'s' if len(dispositions) > 1 else ''} {_named(dispositions)}"
             if dispositions
             else "no disposition"
         )
@@ -2363,12 +2380,14 @@ def _section(text: str, heading: str) -> str:
 
 def _plain(text: str) -> str:
     """The paper's inline HTML as plain text, for Zenodo's description box, which would show the tags: an
-    asymmetric error as "(+0.12, −0.13)", a power as "^", and the other tags dropped."""
+    asymmetric error as "(+0.12, −0.13)", a power as "^", the other tags dropped, and a record's text as written
+    (`_literal`)."""
     text = re.sub(
         r'<span class="pm"><sup>([^<]*)</sup><sub>([^<]*)</sub></span>', r" (\1, \2)", text
     )
     text = re.sub(r"<sup>([^<]*)</sup>", r"^\1", text)
-    return re.sub(r"</?(sub|i|b|code)>", "", text)
+    text = re.sub(r"</?(sub|i|b|code)>", "", text)
+    return unescape(re.sub(r"\\([\\`*_\[\]])", r"\1", text))
 
 
 def deposit_form(run: Path) -> str:
